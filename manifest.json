@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "xzy新标签页拓展",
+  "version": "1.0.1",
+  "description": "一个简洁美观的新标签页拓展，支持搜索引擎切换，收藏夹快捷方式，背景切换等功能。由xzy通过必应ai创作，勉强能用，不想改了",
+  "icons": {
+    "16": "favicon.ico",
+    "32": "favicon.ico",
+    "48": "favicon.ico",
+    "128": "favicon.ico"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "permissions": [
+    "storage",
+    "bookmarks",
+    "https://*/*"
+  ],
+  "host_permissions": [
+    "https://*/*"
+  ]
+}
