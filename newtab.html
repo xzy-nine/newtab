@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>新标签页拓展</title>
+  <link rel="stylesheet" href="newtab.css"> <!-- 引入网页样式文件 -->
+  <link href="https://i0.hdslb.com/bfs/face/41db7c0f4850ce5c8d7eac789f5a7007567128d1.jpg" rel="shortcut icon"> <!-- 设置网页图标 -->
+</head>
+<body>
+  <div id="container"> <!-- 网页容器 -->
+    <form id="search-box" method="get"> <!-- 搜索框容器，修改为表单元素，以支持回车搜索 -->
+      <button id="engine-button" type="button"> <!-- 搜索引擎切换按钮，设置类型为按钮，以防止提交表单 -->
+        <img id="engine-icon" src="favicon.ico" alt="搜索引擎图标"> <!-- 搜索引擎图标 -->
+      </button>
+      <input id="search-input" type="text" name="q" placeholder="请在此搜索" autocomplete="off"> <!-- 搜索框输入框，添加name属性，以传递搜索参数 -->
+    </form>
+    <div id="bookmark-box"> <!-- 收藏夹容器 -->
+      <div id="folder-list"> <!-- 文件夹列表 -->
+        <!-- 由网页脚本动态生成文件夹按钮 -->
+      </div>
+      <div id="shortcut-list"> <!-- 快捷方式列表 -->
+        <!-- 由网页脚本动态生成快捷方式按钮 -->
+      </div>
+    </div>
+    <button id="background-button">背景</button> <!-- 背景切换按钮 -->
+  </div>
+  <script src="newtab.js"></script> <!-- 引入网页脚本文件 -->
+</body>
+</html>
