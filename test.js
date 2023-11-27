@@ -102,7 +102,7 @@ function getFaviconURL(url) {
 }
 
 // 使用getFaviconURL函数来获取favicon的URL
-var faviconURL = getFaviconURL(shortcut.url);
+var faviconURL = getFaviconURL(shortcutList.url);
 
 // 显示指定文件夹的快捷方式
 function showShortcuts(folder) {
