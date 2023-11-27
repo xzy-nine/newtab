@@ -1,0 +1,168 @@
+/* 网页样式文件，用于设置网页的布局，颜色，字体，动画等效果 */
+* { /* 通用样式 */
+  box-sizing: border-box; /* 设置盒模型为边框盒 */
+  margin: 0; /* 设置外边距为0 */
+  padding: 0; /* 设置内边距为0 */
+}
+
+:root { /* 根元素 */
+  --primary-color: #0078d4; /* 设置主要颜色为必应蓝 */
+  --secondary-color: #00000075; /* 设置次要颜色为浅灰色 */
+  --font-family: "Segoe UI", Arial, sans-serif; /* 设置字体族为Segoe UI或Arial或无衬线字体 */
+}
+
+#container { /* 网页容器 */
+  width: 100vw; /* 设置宽度为视口宽度 */
+  height: 100vh; /* 设置高度为视口高度 */
+  display: flex; /* 设置为弹性布局 */
+  flex-direction: column; /* 设置为垂直方向 */
+  align-items: center; /* 设置水平居中 */
+  justify-content: center; /* 设置垂直居中 */
+}
+
+#search-box { /* 搜索框容器 */
+  width: 61%; /* 设置宽度为50% */
+  height: 9%; /* 设置高度为9% */
+  display: flex; /* 设置为弹性布局 */
+  align-items: center; /* 设置垂直居中 */
+  border: 1px solid var(--secondary-color); /* 设置边框为1px的次要颜色 */
+  border-radius: 10px; /* 设置边框圆角为10px */
+  background: #ffffff; /* 设置背景颜色为白色 */
+  box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
+  transition: box-shadow 0.3s; /* 设置阴影的过渡时间为0.3秒 */
+}
+
+#search-box:hover { /* 当鼠标移动到搜索框容器时 */
+  box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
+}
+
+#engine-button { /* 搜索引擎切换按钮 */
+  width: 45px; /* 设置宽度为18% */
+  height: 60px; /* 设置高度为70% */
+  border: none; /* 设置无边框 */
+  border-radius: 20px; /* 设置边框圆角为25px */
+  background: white; /* 设置背景颜色为白色 */
+  cursor: pointer; /* 设置鼠标样式为指针 */
+}
+
+#engine-icon { /* 搜索引擎图标 */
+  width: 32px; /* 设置宽度为43% */
+  height: 32px; /* 设置高度为52% */
+}
+
+#search-input { /* 搜索框输入框 */
+  width: calc(100% - 50px); /* 设置宽度为剩余空间 */
+  height: 70%; /* 设置高度为70% */
+  border: none; /* 设置无边框 */
+  border-radius: 25px; /* 设置边框圆角为10px */
+  background: white; /* 设置背景颜色为白色 */
+  font-size: 20px; /* 设置字体大小为20px */
+  font-family: var(--font-family); /* 设置字体族为根元素的字体族 */
+  padding-left: 20px; /* 设置左内边距为20px */
+}
+
+#search-input:focus { /* 当搜索框输入框获得焦点时 */
+  outline: none; /* 设置无轮廓 */
+}
+
+#bookmark-box { /* 收藏夹容器 */
+  width: 80%; /* 设置宽度为80% */
+  height: 60%; /* 设置高度为60% */
+  display: flex; /* 设置为弹性布局 */
+  margin-top: 20px; /* 设置上外边距为20px */
+}
+
+#folder-list { /* 文件夹列表 */
+  width: 15%; /* 设置宽度为15% */
+  height: 100%; /* 设置高度为100% */
+  display: flex; /* 设置为弹性布局 */
+  flex-direction: column; /* 设置为垂直方向 */
+  align-items: center; /* 设置水平居中 */
+  justify-content: flex-start; /* 设置垂直靠上 */
+  overflow-y: auto; /* 设置垂直滚动 */
+  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的黑色 */
+  border-radius: 10px; /* 设置边框圆角为10px */
+}
+
+.folder-button { /* 文件夹按钮 */
+  width: 45%; /* 设置宽度为45% */
+  height: 90%; /* 设置高度为45% */
+  display: flex; /* 设置为弹性布局 */
+  align-items: center; /* 设置垂直居中 */
+  justify-content: center; /* 设置水平居中 */
+  border: none; /* 设置无边框 */
+  border-radius: 10px; /* 设置边框圆角为10px */
+  background: white; /* 设置背景颜色为白色 */
+  box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
+  cursor: pointer; /* 设置鼠标样式为指针 */
+  margin: 10px; /* 设置外边距为10px */
+  transition: box-shadow 0.3s; /* 设置阴影的过渡时间为0.3秒 */
+}
+
+.folder-button:hover { /* 当鼠标移动到文件夹按钮时 */
+  box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
+}
+
+#shortcut-list { /* 快捷方式列表 */
+  width: 80%; /* 设置宽度为80% */
+  height: 100%; /* 设置高度为100% */
+  display: flex; /* 设置为弹性布局 */
+  flex-wrap: wrap; /* 设置为换行 */
+  align-items: center; /* 设置垂直居中 */
+  justify-content: center; /* 设置水平居中 */
+  overflow-y: auto; /* 设置垂直滚动 */
+  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的黑色 */
+  border-radius: 10px; /* 设置边框圆角为10px */
+  margin-left: 10px; /* 设置左外边距为10px */
+}
+
+.shortcut-button { /* 快捷方式按钮 */
+  width: 80px; /* 设置宽度为80px */
+  height: 80px; /* 设置高度为80px */
+  display: flex; /* 设置为弹性布局 */
+  flex-direction: column; /* 设置为垂直方向 */
+  align-items: center; /* 设置水平居中 */
+  justify-content: center; /* 设置垂直居中 */
+  border: none; /* 设置无边框 */
+  border-radius: 8px; /* 设置边框圆角为8px */
+  background: #ffffff87; /* 设置背景颜色为白色 */
+  box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
+  cursor: pointer; /* 设置鼠标样式为指针 */
+  margin: 10px; /* 设置外边距为10px */
+  transition: box-shadow 0.3s; /* 设置阴影的过渡时间为0.3秒 */
+}
+
+.shortcut-button:hover { /* 当鼠标移动到快捷方式按钮时 */
+  box-shadow: inset 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
+}
+
+.shortcut-button img { /* 快捷方式按钮的图标 */
+  width: 30px; /* 设置宽度为64px */
+  height: 30px; /* 设置高度为64px */
+  display: none; /* 设置不显示 */
+}
+
+.shortcut-button img[src$="favicon.ico"] { /* 如果快捷方式按钮的图标是favicon.ico */
+  display: block; /* 设置显示 */
+}
+
+#background-button { /* 背景切换按钮 */
+  width: 100px; /* 设置宽度为100px */
+  height: 50px; /* 设置高度为50px */
+  border: none; /* 设置无边框 */
+  border-radius: 25px; /* 设置边框圆角为25px */
+  background: var(--primary-color); /* 设置背景颜色为主要颜色 */
+  color: white; /* 设置字体颜色为白色 */
+  font-size: 20px; /* 设置字体大小为20px */
+  font-family: var(--font-family); /* 设置字体族为根元素的字体族 */
+  box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
+  cursor: pointer; /* 设置鼠标样式为指针 */
+  position: fixed; /* 设置定位为固定 */
+  bottom: 20px; /* 设置距离底部为20px */
+  right: 20px; /* 设置距离右边为20px */
+  transition: box-shadow 0.3s; /* 设置阴影的过渡时间为0.3秒 */
+}
+
+#background-button:hover { /* 当鼠标移动到背景切换按钮时 */
+  box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
+}
