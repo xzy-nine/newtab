@@ -136,14 +136,18 @@
   box-shadow: inset 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
 }
 
-.shortcut-button img { /* 快捷方式按钮的图标 */
-  width: 30px; /* 设置宽度为64px */
-  height: 30px; /* 设置高度为64px */
-  display: none; /* 设置不显示 */
+.shortcut-button {
+  background-size: 40%;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
-.shortcut-button img[src$="favicon.ico"] { /* 如果快捷方式按钮的图标是favicon.ico */
-  display: block; /* 设置显示 */
+.shortcut-button {
+  display: flex; /* 使用flex布局 */
+  flex-direction: column; /* 设置主轴为垂直方向 */
+  justify-content: center; /* 在主轴上居中对齐 */
+  padding-top: 50px; /* 在底部添加20px的内边距来为文本留出空间 */
+  text-align: center; /* 文本居中对齐 */
 }
 
 #background-button { /* 背景切换按钮 */

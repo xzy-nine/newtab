@@ -12,7 +12,7 @@ const defaultIcon = "favicon.ico"; // 默认图标
 const defaultImage = "images/bing-daily.jpg"; // 默认背景图片
 let currentEngine = defaultEngine; // 当前搜索引擎
 let currentFolder = ""; // 当前文件夹
-let currentBackground = 0; // 当前背景，0表示白色，1表示必应每日图片
+let currentBackground = 0; // 当前背景，0表示灰色，1表示必应每日图片
 
 // 从后台脚本获取搜索引擎，并设置图标和链接
 function getEngine() {
@@ -29,8 +29,8 @@ function getBackground() {
   chrome.storage.local.get("background", data => { // 从本地存储中获取背景
     let background = data.background || 0; // 如果没有设置过，就使用默认背景
     currentBackground = background; // 设置当前背景
-    if (background === 0) { // 如果是白色背景
-      document.body.style.background = "white"; // 设置背景颜色为白色
+    if (background === 0) { // 如果是灰色背景
+      document.body.style.background = "gray"; // 设置背景颜色为灰色
     } else if (background === 1) { // 如果是必应每日图片背景
       chrome.storage.local.get("bingDaily", data => { // 从本地存储中获取必应每日图片
         let bingDaily = data.bingDaily || defaultImage; // 如果没有缓存过，就使用默认图片
@@ -86,7 +86,8 @@ function showShortcuts(folder) {
   for (let shortcut of shortcuts) { // 遍历每个快捷方式
     let shortcutButton = document.createElement("button"); // 创建一个快捷方式按钮
     shortcutButton.className = "shortcut-button"; // 设置快捷方式按钮的类名
-    shortcutButton.innerHTML = `<img src="${getDomain(shortcut.url)}/favicon.ico" alt="快捷方式图标" onerror="this.style.display='none'">${shortcut.title}`; // 设置快捷方式按钮的内容，包括图标和标题，如果图标无法加载，就隐藏图标
+    shortcutButton.style.backgroundImage = `url(${getDomain(shortcut.url)}/favicon.ico)`; // 设置背景图片为快捷方式的域名的图标
+    shortcutButton.innerText = shortcut.title; // 设置快捷方式按钮的文本为快捷方式的标题
     shortcutButton.onclick = function() { // 设置快捷方式按钮的点击事件
       window.open(shortcut.url, "_blank"); // 在新标签页中打开快捷方式的链接
     };
