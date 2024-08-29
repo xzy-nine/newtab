@@ -1,4 +1,11 @@
-// 新标签页的网页脚本，用于实现搜索引擎切换，收藏夹快捷方式，背景切换等功能
+// 新标签页的网页脚本，用于实现搜索引擎切换，收藏夹快捷方式，背景切换等能
+const d = new Date()
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const s = d.getSeconds();
+  time.style.setProperty('--ds', s)
+  time.style.setProperty('--dm', m + s/60)
+  time.style.setProperty('--dh', h + m/60 + s/3600)  
 const searchBox = document.getElementById("search-box"); // 获取搜索框容器
 const engineButton = document.getElementById("engine-button"); // 获取搜索引擎切换按钮
 const engineIcon = document.getElementById("engine-icon"); // 获取搜索引擎图标
@@ -45,25 +52,91 @@ function getBackground() {
 function getBookmarks() {
   chrome.bookmarks.getTree(tree => { // 从浏览器获取收藏夹的树形结构
     let root = tree[0]; // 获取收藏夹的根节点
-    let folders = getAllFolders(root); // 获取所有文件夹节点，包括次级文件夹
-    for (let folder of folders) { // 遍历每个文件夹
-      let folderButton = document.createElement("button"); // 创建一个文件夹按钮
-      folderButton.className = "folder-button"; // 设置文件夹按钮的类名
-      folderButton.innerText = folder.title; // 设置文件夹按钮的文本为文件夹的标题
-      folderButton.onclick = function() { // 设置文件夹按钮的点击事件
-        currentFolder = folder.id; // 设置当前文件夹为该文件夹的id
-        chrome.storage.local.set({folder: currentFolder}); // 将当前文件夹保存到本地存储
-        showShortcuts(folder); // 显示该文件夹的快捷方式
-      };
-      folderList.appendChild(folderButton); // 将文件夹按钮添加到文件夹列表中
-    }
-    chrome.storage.local.get("folder", data => { // 从本地存储中获取上次展示的文件夹
-      let folder = data.folder || root.id; // 如果没有记录过，就使用根节点
-      currentFolder = folder; // 设置当前文件夹为该文件夹
-      showShortcuts(folders.find(f => f.id === folder)); // 显示该文件夹的快捷方式
-    });
+    createFolderTree(root, folderList); // 创建文件夹层级结构
   });
 }
+
+// 创建文件夹层级结构
+function createFolderTree(node, parentElement) {
+  if (node.children) { // 如果该节点有子节点
+    for (let child of node.children) { // 遍历每个子节点
+      if (child.children) { // 如果该子节点是文件夹节点
+        let folderButton = document.createElement("button"); // 创建一个文件夹按钮
+        folderButton.className = "folder-button"; // 设置文件夹按钮的类名
+        folderButton.innerText = child.title; // 设置文件夹按钮的文本为文件夹的标题
+        folderButton.onclick = function() { // 设置文件夹按钮的点击事件
+          currentFolder = child.id; // 设置当前文件夹为该文件夹的id
+          chrome.storage.local.set({folder: currentFolder}); // 将当前文件夹保存到本地存储
+        };
+
+        let folderContainer = document.createElement("div"); // 创建一个容器，用于存放文件夹按钮和子文件夹
+        folderContainer.className = "folder-container"; // 设置容器的类名
+        folderContainer.appendChild(folderButton); // 将文件夹按钮添加到容器中
+
+        let childContainer = document.createElement("div"); // 创建一个容器，用于存放子文件夹
+        childContainer.className = "child-container"; // 设置子文件夹容器的类名
+        childContainer.style.display = "none"; // 默认隐藏子文件夹
+
+                folderButton.onclick = function() { // 修改文件夹按钮的点击事件
+          showShortcuts(child); // 显示点击的文件夹的快捷方式
+          let siblingContainers = parentElement.querySelectorAll('.child-container');
+          siblingContainers.forEach(sibling => {
+            if (sibling !== childContainer) {
+              sibling.style.display = "none"; // 收起其他同级子文件夹
+            }
+          });
+          if (childContainer.style.display === "none") {
+            childContainer.style.display = "block"; // 展开子文件夹
+          } else {
+            childContainer.style.display = "none"; // 收起子文件夹
+          }
+        
+          // 将 data.folder 存储到本地存储中
+          chrome.storage.local.set({ folder: data.folder }, function() {
+            console.log('Folder has been saved to local storage.');
+          });
+        };
+
+        folderContainer.appendChild(childContainer); // 将子文件夹容器添加到文件夹容器中
+        parentElement.appendChild(folderContainer); // 将文件夹容器添加到父元素中
+
+        createFolderTree(child, childContainer); // 递归创建子文件夹层级结构
+      }
+    }
+  }
+}
+
+// 显示指定文件夹的快捷方式
+function showShortcuts(folder) {
+  if (!folder || !folder.children) {
+    console.error("Invalid folder or folder has no children.");
+    return;
+  }
+
+  
+  shortcutList.innerHTML = ""; // 清空快捷方式列表的内容
+  let shortcuts = folder.children.filter(node => !node.children); // 筛选出快捷方式节点
+  for (let shortcut of shortcuts) { // 遍历每个快捷方式
+    let shortcutButton = document.createElement("button"); // 创建一个快捷方式按钮
+    shortcutButton.className = "shortcut-button"; // 设置快捷方式按钮的类名
+    shortcutButton.style.backgroundImage = `url(${getDomain(shortcut.url)}/favicon.ico)`; // 设置背景图片为快捷方式的域名的图标
+    shortcutButton.innerText = shortcut.title; // 设置快捷方式按钮的文本为快捷方式的标题
+    shortcutButton.onclick = function() { // 设置快捷方式按钮的点击事件
+      window.open(shortcut.url, "_blank"); // 在新标签页中打开快捷方式的链接
+    };
+    shortcutList.appendChild(shortcutButton); // 将快捷方式按钮添加到快捷方式列表中
+  }
+}
+
+window.onload = function() {
+  const defaultTitle = "收藏夹栏";
+  const folder = folders.find(f => f.title === defaultTitle); // 查找标题为"收藏夹栏"的文件夹
+  if (folder) {
+      showShortcuts(folder); // 显示该文件夹的快捷方式
+  } else {
+      console.error(`Folder with title "${defaultTitle}" not found.`);
+  }
+};
 
 // 获取一个节点下的所有文件夹节点，包括次级文件夹
 function getAllFolders(node) {
@@ -77,22 +150,6 @@ function getAllFolders(node) {
     }
   }
   return folders; // 返回文件夹数组
-}
-
-// 显示指定文件夹的快捷方式
-function showShortcuts(folder) {
-  shortcutList.innerHTML = ""; // 清空快捷方式列表的内容
-  let shortcuts = folder.children.filter(node => !node.children); // 筛选出快捷方式节点
-  for (let shortcut of shortcuts) { // 遍历每个快捷方式
-    let shortcutButton = document.createElement("button"); // 创建一个快捷方式按钮
-    shortcutButton.className = "shortcut-button"; // 设置快捷方式按钮的类名
-    shortcutButton.style.backgroundImage = `url(${getDomain(shortcut.url)}/favicon.ico)`; // 设置背景图片为快捷方式的域名的图标
-    shortcutButton.innerText = shortcut.title; // 设置快捷方式按钮的文本为快捷方式的标题
-    shortcutButton.onclick = function() { // 设置快捷方式按钮的点击事件
-      window.open(shortcut.url, "_blank"); // 在新标签页中打开快捷方式的链接
-    };
-    shortcutList.appendChild(shortcutButton); // 将快捷方式按钮添加到快捷方式列表中
-  }
 }
 
 // 获取一个链接的域名部分
@@ -122,9 +179,10 @@ backgroundButton.onclick = function() {
 
 // 在新标签页加载时，执行以下函数
 window.onload = function() {
-    getEngine(); // 获取并设置搜索引擎
-    getBackground(); // 获取并设置背景
-    getBookmarks(); // 获取并生成收藏夹
-    chrome.runtime.sendMessage({action: "getImage"}); // 向后台脚本发送获取图片的消息
+  getEngine(); // 获取并设置搜索引擎
+  getBackground(); // 获取并设置背景
+  getBookmarks(); // 获取并生成收藏夹
+  chrome.runtime.sendMessage({action: "getImage"}); // 向后台脚本发送获取图片的消息
   };
+  
   

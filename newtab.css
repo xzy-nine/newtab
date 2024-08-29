@@ -8,7 +8,7 @@
 :root { /* 根元素 */
   --primary-color: #0078d4; /* 设置主要颜色为必应蓝 */
   --secondary-color: #00000075; /* 设置次要颜色为浅灰色 */
-  --font-family: "Segoe UI", Arial, sans-serif; /* 设置字体族为Segoe UI或Arial或无衬线字体 */
+  --font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
 }
 
 #container { /* 网页容器 */
@@ -21,7 +21,7 @@
 }
 
 #search-box { /* 搜索框容器 */
-  width: 61%; /* 设置宽度为50% */
+  width: 61%; /* 设置宽度为61% */
   height: 9%; /* 设置高度为9% */
   display: flex; /* 设置为弹性布局 */
   align-items: center; /* 设置垂直居中 */
@@ -34,6 +34,27 @@
 
 #search-box:hover { /* 当鼠标移动到搜索框容器时 */
   box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
+}
+
+/* 美化滚动条 */
+::-webkit-scrollbar {
+  width: 12px; /* 设置滚动条的宽度 */
+  height: 12px; /* 设置滚动条的高度 */
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1; /* 设置滚动条轨道的背景颜色 */
+  border-radius: 10px; /* 设置滚动条轨道的圆角 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color); /* 设置滚动条滑块的背景颜色 */
+  border-radius: 10px; /* 设置滚动条滑块的圆角 */
+  border: 3px solid #ffffff; /* 设置滚动条滑块的边框 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-color); /* 设置滚动条滑块在悬停时的背景颜色 */
 }
 
 #engine-button { /* 搜索引擎切换按钮 */
@@ -80,23 +101,35 @@
   align-items: center; /* 设置水平居中 */
   justify-content: flex-start; /* 设置垂直靠上 */
   overflow-y: auto; /* 设置垂直滚动 */
-  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的黑色 */
+  background: rgba(198, 198, 198, 0.5); /* 设置背景颜色为半透明的黑色 */
   border-radius: 10px; /* 设置边框圆角为10px */
 }
 
 .folder-button { /* 文件夹按钮 */
-  width: 45%; /* 设置宽度为45% */
-  height: 90%; /* 设置高度为45% */
-  display: flex; /* 设置为弹性布局 */
-  align-items: center; /* 设置垂直居中 */
-  justify-content: center; /* 设置水平居中 */
+  width: 100%; /* 设置宽度为100% */
+  height: 45px; /* 设置高度为45px */
+  padding: 10px; /* 设置内边距为10px */
   border: none; /* 设置无边框 */
-  border-radius: 10px; /* 设置边框圆角为10px */
+  display: flex; /* 设置为弹性布局 */
+  justify-content: center; /* 水平居中 */
+  align-items: center; /* 垂直居中 */
+  border-radius: 15px; /* 设置边框圆角为15px */
   background: white; /* 设置背景颜色为白色 */
-  box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
+  box-shadow: 0 0 15px var(--secondary-color); /* 增加阴影 */
   cursor: pointer; /* 设置鼠标样式为指针 */
   margin: 10px; /* 设置外边距为10px */
-  transition: box-shadow 0.3s; /* 设置阴影的过渡时间为0.3秒 */
+  transition: box-shadow 0.3s, border-radius 0.3s; /* 设置阴影和圆角的过渡时间为0.3秒 */
+}
+
+.folder-button:hover { /* 鼠标移动到文件夹按钮上时 */
+  box-shadow: 0 0 15px var(--secondary-color); /* 增加阴影 */
+  border-radius: 10px; /* 减小圆角 */
+}
+
+.child-container { /* 子文件夹容器 */
+  margin-left: 20px; /* 设置左外边距为20px */
+  border-left: 2px solid #ccc; /* 设置左边框为2px的浅灰色实线 */
+  padding-left: 10px; /* 设置左内边距为10px */
 }
 
 .folder-button:hover { /* 当鼠标移动到文件夹按钮时 */
@@ -109,11 +142,12 @@
   display: flex; /* 设置为弹性布局 */
   flex-wrap: wrap; /* 设置为换行 */
   align-items: center; /* 设置垂直居中 */
-  justify-content: center; /* 设置水平居中 */
+  justify-content: flex-start; /* 设置水平从左到右排列 */
   overflow-y: auto; /* 设置垂直滚动 */
-  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的黑色 */
+  background: rgba(198, 198, 198, 0.5); /* 设置背景颜色为半透明的灰色 */
   border-radius: 10px; /* 设置边框圆角为10px */
   margin-left: 10px; /* 设置左外边距为10px */
+  padding: 10px; /* 添加内边距 */
 }
 
 .shortcut-button { /* 快捷方式按钮 */
@@ -129,12 +163,29 @@
   box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
   cursor: pointer; /* 设置鼠标样式为指针 */
   margin: 10px; /* 设置外边距为10px */
-  transition: box-shadow 0.3s; /* 设置阴影的过渡时间为0.3秒 */
+  transition: box-shadow 0.3s, transform 0.3s ease; /* 设置阴影和变换的过渡时间为0.3秒 */
+  background-size: 40%; /* 设置背景图像的大小 */
+  background-position: center; /* 设置背景图像的位置 */
+  background-repeat: no-repeat; /* 设置背景图像不重复 */
+  text-align: center; /* 文本居中对齐 */
 }
 
-.shortcut-button:hover { /* 当鼠标移动到快捷方式按钮时 */
-  box-shadow: inset 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
+.shortcut-button:hover { /* 鼠标移动到快捷方式按钮上时 */
+  box-shadow: 0 0 15px var(--secondary-color); /* 增加阴影 */
+  transform: scale(1.2); /* 放大按钮 */
 }
+
+.shortcut-button img { /* 快捷方式按钮中的图标 */
+  width: 50%; /* 设置图标宽度为按钮宽度的50% */
+  height: 50%; /* 设置图标高度为按钮高度的50% */
+  transition: transform 0.3s ease; /* 添加平滑的过渡效果 */
+}
+
+.shortcut-button:hover img { /* 鼠标移动到快捷方式按钮时 */
+  transform: scale(1.2); /* 放大图标 */
+}
+
+
 
 .shortcut-button {
   background-size: 40%;
@@ -144,7 +195,6 @@
 
 .shortcut-button {
   display: flex; /* 使用flex布局 */
-  flex-direction: column; /* 设置主轴为垂直方向 */
   justify-content: center; /* 在主轴上居中对齐 */
   padding-top: 50px; /* 在底部添加20px的内边距来为文本留出空间 */
   text-align: center; /* 文本居中对齐 */
@@ -165,8 +215,96 @@
   bottom: 20px; /* 设置距离底部为20px */
   right: 20px; /* 设置距离右边为20px */
   transition: box-shadow 0.3s; /* 设置阴影的过渡时间为0.3秒 */
+  text-align: center; /* 文本居中对齐 */
 }
 
 #background-button:hover { /* 当鼠标移动到背景切换按钮时 */
   box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
+}
+
+@property --h { /* 一个网上抄的时钟 https://codepen.io/xboxyan/pen/OJOdvyy */
+  syntax: '<integer>';
+  inherits: false;
+  initial-value: 0;
+}
+@property --m { 
+  syntax: '<integer>';
+  inherits: false;
+  initial-value: 0;
+}
+@property --s { 
+  syntax: '<integer>';
+  inherits: false;
+  initial-value: 0;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+}
+
+.time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --step: 60s;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 60px; /* 将字体大小减小一半 */
+  position: absolute;
+  top: 5%; /* 调整这个值以确保在搜索框上面 */
+  left: 50%;
+  transform: translateX(-50%);
+  color: --primary-color; /* 设置字体颜色为主要颜色 */
+}
+
+.split {
+  /* 移除动画，使冒号不再跳动 */
+}
+
+.hour::after {
+  counter-reset: hour var(--h);
+  content: counter(hour, decimal-leading-zero);
+  animation: hour calc(var(--step) * 60 * 24) infinite steps(24);
+  animation-delay: calc( -1 * var(--step) * var(--dh) * 60);
+}
+
+.minitus::after {
+  counter-reset: minitus var(--m);
+  content: counter(minitus, decimal-leading-zero);
+  animation: minitus calc(var(--step) * 60) infinite steps(60);
+  animation-delay: calc( -1 * var(--step) * var(--dm));
+}
+
+.seconds::after {
+  counter-reset: seconds var(--s);
+  content: counter(seconds, decimal-leading-zero);
+  animation: seconds var(--step) infinite steps(60);
+  animation-delay: calc( -1 * var(--step) * var(--ds) / 60 );
+}
+
+@keyframes hour {
+  to {
+      --h: 24
+  }
+}
+
+@keyframes minitus {
+  to {
+      --m: 60
+  }
+}
+
+@keyframes seconds {
+  to {
+      --s: 60
+  }
+}
+
+@keyframes shark {
+  0%, 100% {
+      opacity: 1;
+  }
+  50% {
+      opacity: 0;
+  }
 }

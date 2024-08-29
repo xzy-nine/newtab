@@ -1,0 +1,40 @@
+name: Build and Package
+
+on:
+  push:
+    branches:
+      - beta
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Update version in manifest.json
+      id: update_version
+      run: |
+        VERSION=$(jq -r '.version' manifest.json)
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Package files
+      env:
+        VERSION: ${{ env.VERSION }}
+      run: |
+        zip -r "package-${VERSION}.zip" . -x "*.git*" -x "*.md" -x ".*" -x "*/.*"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: package
+        path: package-*.zip
