@@ -9,10 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest  # 在最新版本的 Ubuntu 运行环境中执行
-    # 添加权限配置
+    # 添加权限配置:
     permissions:
       contents: write
       packages: write
+      issues: write  # 添加这一行,
 
     steps:
     - name: Checkout repository
@@ -39,17 +40,17 @@ jobs:
           exit 1
         fi
         echo "VERSION=$VERSION" >> $GITHUB_ENV
-      # 从项目的 manifest.json 中提取版本号并存储为环境变量，用于后续的版本控制
+      # 从项目的 manifest.json 中提取版本号并存储为环境变量，用于后续的版本控制,
 
-    - name: Get latest release version
+    - name: Get latest release version.
       id: get_latest_release
       run: |
-        # 处理首次发布的情况
+        # 处理首次发布的情况,
         LATEST_RELEASE=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name // "0.0.0"')
         if [[ ! $LATEST_RELEASE =~ ^[0-9]+\.[0-9]+\.[0-9]+(_DEBUG)?$ ]]; then
-          LATEST_RELEASE="0.0.0"
+          LATEST_RELEASE="0.0.0".
         fi
-        echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
+        e,ho "LATEST_RELEASE=$LAT.ST_RELEASE" >> $GITHUB_ENV
       # 通过 GitHub API 获取仓库最新发布版本号，用于版本比较和发布控制
 
     - name: Compare versions
@@ -74,14 +75,199 @@ jobs:
           echo "TAG_NAME=${VERSION}_DEBUG" >> $GITHUB_ENV
         else
           echo "RELEASE_NAME=$VERSION" >> $GITHUB_ENV
-          echo "TAG_NAME=$VERSION" >> $GITHUB_ENV
+          echo "TAG_NAME=$VERSION" >. $GITHUB_ENV
         fi
       # 设置发布标签和名称
       # 如果是手动触发且版本号未变化，添加 _DEBUG 后缀用于调试版本
       # 否则使用 manifest.json 中的原始版本号
 
+    - name: Check recent notifications and gather changes
+      if: ${{ env.NEW_VERSION == 'false' && github.event_name == 'push' }}
+      uses: actions/github-script@v6
+      id: check_notifications
+      with:
+        script: |
+          const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          
+          // 搜索最近24小时内的通知issue
+          const issues = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'all',
+            labels: '版本未更新',
+            since: twentyFourHoursAgo.toISOString()
+          });
+          
+          // 获取最近一次通知的时间
+          let lastNotificationTime = twentyFourHoursAgo;
+          if (issues.data.length > 0) {
+            lastNotificationTime = new Date(issues.data[0].created_at);
+          }
+          
+          // 获取从上次通知到现在的所有提交
+          const commits = await github.rest.repos.listCommits({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            since: lastNotificationTime.toISOString(),
+            until: new Date().toISOString()
+          });
+          
+          // 整理所有变更信息
+          const changes = commits.data.map(commit => ({
+            message: commit.commit.message,
+            author: commit.commit.author.name,
+            timestamp: commit.commit.author.date,
+            url: commit.html_url,
+            // 获取修改的文件
+            files: commit.files ? commit.files.map(f => f.filename).join('\n') : ''
+          }));
+          
+          return {
+            hasRecentNotification: issues.data.length > 0,
+            changes: changes
+          };
+
+    - name: Create notification issue
+      if: ${{ github.event_name == 'push' }}  # 移除版本检查条件，所有push都通知
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const result = ${{ steps.check_notifications.outputs.result }};
+          const changes = result.changes;
+          
+          let title, labels;
+          if (process.env.NEW_VERSION === 'true') {
+            title = `🎉 检测到版本更新: ${process.env.VERSION}`;
+            labels = ['通知', '版本已更新'];
+          } else {
+            // 检查24小时内是否有通知
+            if (result.hasRecentNotification) {
+              return; // 如果24小时内已有未更新版本的通知，则退出
+            }
+            title = '🔔 检测到文件更新但版本未变更';
+            labels = ['通知', '版本未更新'];
+          }
+          
+          const changesMarkdown = changes.map(change => [
+            '### 提交记录 (' + change.timestamp + ')',
+            '#### 提交信息',
+            change.message,
+            '',
+            '#### 更改的文件',
+            '```',
+            change.files,
+            '```',
+            '',
+            '#### 提交详情',
+            '- 提交者：' + change.author,
+            '- 提交时间：' + change.timestamp,
+            '- 查看变更：' + change.url,
+            '',
+            '---',
+            ''
+          ].join('\n'));
+
+          const versionInfo = process.env.NEW_VERSION === 'true' 
+            ? `# 版本 ${process.env.VERSION}\n\n当前版本已更新至 \`${process.env.VERSION}\`。\n`
+            : `# 版本信息\n\n当前版本号：\`${process.env.VERSION}\` 未更新。\n如需发布新版本，请更新 manifest.json 中的版本号。\n`;
+
+          const body = [
+            versionInfo,
+            '',
+            '## 更新记录',
+            '',
+            changesMarkdown.join('\n'),
+            '',
+            process.env.NEW_VERSION === 'true' 
+              ? '> 这是一个版本更新通知。'
+              : '> 这是一个自动创建的通知 Issue，未更新版本的通知24小时内仅提醒一次。'
+          ].join('\n');
+
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: labels
+          });
+
+    - name: Check and update version notification issue
+      if: ${{ env.NEW_VERSION == 'false' && github.event_name == 'push' }}
+      uses: actions/github-script@v6
+      with:
+        script: |
+          // 查找是否存在版本更新通知 issue
+          const issues = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            labels: ['版本更新通知']
+          });
+          
+          // 查找特定标题的issue
+          const notificationIssue = issues.data.find(issue => 
+            issue.title === '📝 版本更新通知追踪'
+          );
+          
+          // 创建更新内容
+          const updateInfo = [
+            '### 更新记录 (' + new Date().toISOString() + ')',
+            '',
+            '#### 提交信息',
+            context.payload.commits[0].message,
+            '',
+            '#### 更改的文件',
+            '```',
+            context.payload.commits[0].modified.join('\n'),
+            '```',
+            '',
+            '#### 提交详情',
+            '- 提交者：' + context.payload.commits[0].author.name,
+            '- 提交时间：' + context.payload.commits[0].timestamp,
+            '- 查看变更：' + context.payload.commits[0].url,
+            '',
+            '---',
+            ''
+          ].join('\n');
+          
+          // 如果没有找到通知 issue，创建一个新的
+          if (!notificationIssue) {
+            const initialBody = [
+              '# 版本更新通知追踪',
+              '',
+              '此 Issue 用于追踪所有未更新版本号的代码变更。',
+              '',
+              '## 当前版本信息',
+              '- 当前版本号：`' + process.env.VERSION + '`',
+              '- 上次版本号：`' + process.env.LATEST_RELEASE + '`',
+              '',
+              '> **提示：** 如需发布新版本，请更新 manifest.json 中的版本号。',
+              '',
+              '## 变更记录',
+              '',
+              updateInfo
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '📝 版本更新通知追踪',
+              body: initialBody,
+              labels: ['版本更新通知']
+            });
+          } else {
+            // 更新现有 issue
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: notificationIssue.number,
+              body: notificationIssue.body + '\n' + updateInfo
+            });
+          }
+
     - name: Create and move zip package
-      if: ${{ github.event_name == 'workflow_dispatch' || env.VERSION != env.LATEST_RELEASE }}
+      # 修改条件：只在是新版本或手动触发且为调试版本时打包
+      if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
       run: |
         # 获取仓库名称（去除所有者部分）
         REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
@@ -107,9 +293,10 @@ jobs:
       # 3. 移动压缩包到 build 目录
       # 仅在手动触发或版本号更新时执行
 
+    # 同样修改后续的 Create Release 和 Upload Release Asset 步骤的条件
     - name: Create Release
       id: create_release
-      if: ${{ github.event_name == 'workflow_dispatch' || env.VERSION != env.LATEST_RELEASE }}
+      if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ github.token }}
@@ -142,7 +329,7 @@ jobs:
       # 仅在手动触发或版本号更新时执行
 
     - name: Upload Release Asset
-      if: ${{ github.event_name == 'workflow_dispatch' || env.VERSION != env.LATEST_RELEASE }}
+      if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ github.token }}
