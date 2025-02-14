@@ -42,15 +42,15 @@ jobs:
         echo "VERSION=$VERSION" >> $GITHUB_ENV
       # 从项目的 manifest.json 中提取版本号并存储为环境变量，用于后续的版本控制,
 
-    - name: Get latest release version.
+    - name: Get latest release version
       id: get_latest_release
       run: |
-        # 处理首次发布的情况,
+        # 处理首次发布的情况
         LATEST_RELEASE=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name // "0.0.0"')
         if [[ ! $LATEST_RELEASE =~ ^[0-9]+\.[0-9]+\.[0-9]+(_DEBUG)?$ ]]; then
-          LATEST_RELEASE="0.0.0".
+          LATEST_RELEASE="0.0.0"
         fi
-        e,ho "LATEST_RELEASE=$LAT.ST_RELEASE" >> $GITHUB_ENV
+        echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
       # 通过 GitHub API 获取仓库最新发布版本号，用于版本比较和发布控制
 
     - name: Compare versions
