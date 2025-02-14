@@ -391,43 +391,37 @@ jobs:
 
     - name: Create Release
       if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
+      id: create_release  # 添加 id 以便引用输出
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         # 获取现有release的说明（如果存在）
         EXISTING_NOTES=$(gh release view ${{ env.TAG_NAME }} --json body -q .body 2>/dev/null || echo "")
         
-        # 准备新的发布说明
-        UPDATE_TIME="### 🕒 更新时间\n$(date '+%Y-%m-%d %H:%M:%S')\n\n"
-        NEW_CONTENT="### 📝 最新更新\n${MERGE_LOG:-没有最近的合并记录}\n\n"
-        BUILD_INFO="### ⚙️ 构建信息\n- 构建时间: $(date '+%Y-%m-%d %H:%M:%S')\n- 构建分支: ${GITHUB_REF#refs/heads/}\n- 构建号: ${{ github.run_number }}\n\n"
-        WARNING=$(if [ "${{ env.NEW_VERSION }}" != "true" ]; then echo "### ⚠️ 这是一个预发布版本\n\n"; fi)
+        # ... 其他现有代码 ...
         
-        # 组合发布说明
-        if [ -n "$EXISTING_NOTES" ]; then
-          # 如果存在现有的release，在顶部添加更新记录
-          RELEASE_NOTES="## 🎉 Release ${{ env.RELEASE_NAME }}\n\n${UPDATE_TIME}${NEW_CONTENT}${BUILD_INFO}${WARNING}\n### 📜 历史记录\n${EXISTING_NOTES}"
-        else
-          # 如果是新的release
-          RELEASE_NOTES="## 🎉 Release ${{ env.RELEASE_NAME }}\n\n${UPDATE_TIME}${NEW_CONTENT}${BUILD_INFO}${WARNING}"
-        fi
-        
-        # 更新或创建release
+        # 创建或更新 release 并捕获上传 URL
         if gh release view ${{ env.TAG_NAME }} &>/dev/null; then
-          # 更新现有release
+          # 更新现有 release
           gh release edit ${{ env.TAG_NAME }} \
             --title "${{ env.RELEASE_NAME }}" \
             --draft=false \
             --prerelease=${{ env.NEW_VERSION != 'true' }} \
             --notes "$RELEASE_NOTES"
+          # 获取更新后的 release URL
+          UPLOAD_URL=$(gh release view ${{ env.TAG_NAME }} --json uploadUrl -q .uploadUrl)
         else
-          # 创建新的release
-          gh release create ${{ env.TAG_NAME }} \
+          # 创建新的 release
+          RESPONSE=$(gh release create ${{ env.TAG_NAME }} \
             --title "${{ env.RELEASE_NAME }}" \
             --draft=false \
             --prerelease=${{ env.NEW_VERSION != 'true' }} \
-            --notes "$RELEASE_NOTES"
+            --notes "$RELEASE_NOTES")
+          UPLOAD_URL=$(gh release view ${{ env.TAG_NAME }} --json uploadUrl -q .uploadUrl)
         fi
+        
+        # 设置输出变量
+        echo "::set-output name=upload_url::$UPLOAD_URL"
 
     - name: Upload Release Asset
       if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
@@ -435,7 +429,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ steps.create_release.outputs.upload_url }}  # 使用前一步骤的输出
         asset_path: ./build/${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip
         asset_name: ${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip
         asset_content_type: application/zip
