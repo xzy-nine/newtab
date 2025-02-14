@@ -56,9 +56,34 @@ jobs:
     - name: Compare versions
       id: compare_versions
       run: |
+        # 添加版本号格式验证函数
+        validate_version() {
+          if [[ ! $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+(_DEBUG)?$ ]]; then
+            echo "Error: Invalid version format: $1"
+            return 1
+          fi
+          return 0
+        }
+        
+        # 验证两个版本号
+        validate_version "${{ env.VERSION }}" || exit 1
+        validate_version "${{ env.LATEST_RELEASE }}" || exit 1
+        
+        # 确保版本号存在
+        if [ -z "${{ env.VERSION }}" ] || [ -z "${{ env.LATEST_RELEASE }}" ]; then
+          echo "Error: Missing version information"
+          exit 1
+        fi
+        
         # 提取不带 _DEBUG 的版本号进行比较
         CURRENT_VER=$(echo ${{ env.VERSION }} | sed 's/_DEBUG$//')
         LATEST_VER=$(echo ${{ env.LATEST_RELEASE }} | sed 's/_DEBUG$//')
+        
+        # 确保版本号格式正确
+        if [[ ! $CURRENT_VER =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || [[ ! $LATEST_VER =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: Invalid version format"
+          exit 1
+        fi
         
         # 语义化版本号比较
         if [ $(printf '%s\n' "$LATEST_VER" "$CURRENT_VER" | sort -V | tail -n1) = "$CURRENT_VER" ]; then
@@ -128,21 +153,25 @@ jobs:
           };
 
     - name: Create notification issue
-      if: ${{ github.event_name == 'push' }}  # 移除版本检查条件，所有push都通知
+      if: ${{ github.event_name == 'push' }}
       uses: actions/github-script@v6
       with:
         script: |
-          const result = ${{ steps.check_notifications.outputs.result }};
-          const changes = result.changes;
+          let result;
+          try {
+            result = JSON.parse(process.env.CHECK_NOTIFICATIONS_RESULT || '{"changes":[]}');
+          } catch (error) {
+            result = { changes: [] };
+          }
+          const changes = result.changes || [];
           
           let title, labels;
           if (process.env.NEW_VERSION === 'true') {
             title = `🎉 检测到版本更新: ${process.env.VERSION}`;
             labels = ['通知', '版本已更新'];
           } else {
-            // 检查24小时内是否有通知
             if (result.hasRecentNotification) {
-              return; // 如果24小时内已有未更新版本的通知，则退出
+              return;
             }
             title = '🔔 检测到文件更新但版本未变更';
             labels = ['通知', '版本未更新'];
@@ -155,7 +184,7 @@ jobs:
             '',
             '#### 更改的文件',
             '```',
-            change.files,
+            change.files || '',
             '```',
             '',
             '#### 提交详情',
@@ -196,90 +225,103 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: |
-          // 查找是否存在版本更新通知 issue
-          const issues = await github.rest.issues.listForRepo({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            state: 'open',
-            labels: ['版本更新通知']
-          });
-          
-          // 查找特定标题的issue
-          const notificationIssue = issues.data.find(issue => 
-            issue.title === '📝 版本更新通知追踪'
-          );
-          
-          // 创建更新内容
-          const updateInfo = [
-            '### 更新记录 (' + new Date().toISOString() + ')',
-            '',
-            '#### 提交信息',
-            context.payload.commits[0].message,
-            '',
-            '#### 更改的文件',
-            '```',
-            context.payload.commits[0].modified.join('\n'),
-            '```',
-            '',
-            '#### 提交详情',
-            '- 提交者：' + context.payload.commits[0].author.name,
-            '- 提交时间：' + context.payload.commits[0].timestamp,
-            '- 查看变更：' + context.payload.commits[0].url,
-            '',
-            '---',
-            ''
-          ].join('\n');
-          
-          // 如果没有找到通知 issue，创建一个新的
-          if (!notificationIssue) {
-            const initialBody = [
-              '# 版本更新通知追踪',
-              '',
-              '此 Issue 用于追踪所有未更新版本号的代码变更。',
-              '',
-              '## 当前版本信息',
-              '- 当前版本号：`' + process.env.VERSION + '`',
-              '- 上次版本号：`' + process.env.LATEST_RELEASE + '`',
-              '',
-              '> **提示：** 如需发布新版本，请更新 manifest.json 中的版本号。',
-              '',
-              '## 变更记录',
-              '',
-              updateInfo
-            ].join('\n');
-
-            await github.rest.issues.create({
+          try {
+            // 查找是否存在版本更新通知 issue
+            const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: '📝 版本更新通知追踪',
-              body: initialBody,
+              state: 'open',
               labels: ['版本更新通知']
             });
-          } else {
-            // 更新现有 issue
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: notificationIssue.number,
-              body: notificationIssue.body + '\n' + updateInfo
-            });
+            
+            // 查找特定标题的issue
+            const notificationIssue = issues.data.find(issue => 
+              issue.title === '📝 版本更新通知追踪'
+            );
+            
+            // 创建更新内容
+            const modified = context.payload.commits[0].modified || [];
+            const updateInfo = [
+              '### 更新记录 (' + new Date().toISOString() + ')',
+              '',
+              '#### 提交信息',
+              context.payload.commits[0].message,
+              '',
+              '#### 更改的文件',
+              '```',
+              modified.join('\n'),
+              '```',
+              '',
+              '#### 提交详情',
+              '- 提交者：' + context.payload.commits[0].author.name,
+              '- 提交时间：' + context.payload.commits[0].timestamp,
+              '- 查看变更：' + context.payload.commits[0].url,
+              '',
+              '---',
+              ''
+            ].join('\n');
+            
+            // 如果没有找到通知 issue，创建一个新的
+            if (!notificationIssue) {
+              const initialBody = [
+                '# 版本更新通知追踪',
+                '',
+                '此 Issue 用于追踪所有未更新版本号的代码变更。',
+                '',
+                '## 当前版本信息',
+                '- 当前版本号：`' + process.env.VERSION + '`',
+                '- 上次版本号：`' + process.env.LATEST_RELEASE + '`',
+                '',
+                '> **提示：** 如需发布新版本，请更新 manifest.json 中的版本号。',
+                '',
+                '## 变更记录',
+                '',
+                updateInfo
+              ].join('\n');
+
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '📝 版本更新通知追踪',
+                body: initialBody,
+                labels: ['版本更新通知']
+              });
+            } else {
+              // 更新现有 issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: notificationIssue.number,
+                body: notificationIssue.body + '\n' + updateInfo
+              });
+            }
+          } catch (error) {
+            console.error('Error updating notification issue:', error);
+            return;
           }
+
+    - name: Set repository name
+      run: |
+        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+        echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
 
     - name: Create and move zip package
       # 修改条件：只在是新版本或手动触发且为调试版本时打包
       if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
       run: |
-        # 获取仓库名称（去除所有者部分）
-        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+        set -e  # 添加这行使脚本在遇到错误时立即退出
         
-        # 创建build目录（如果不存在）
+        # 使用环境变量 REPO_NAME
         mkdir -p build
         
-        # 创建zip包，使用仓库名称
-        zip -r "$REPO_NAME-${{ env.RELEASE_NAME }}.zip" . -x "README.md" -x "build/*" -x ".github/*" -x ".git/*"
+        zip -r "${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip" . -x "README.md" -x "build/*" -x ".github/*" -x ".git/*"
         
-        # 移动zip包到build目录
-        mv "$REPO_NAME-${{ env.RELEASE_NAME }}.zip" build/
+        mv "${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip" build/
+        
+        if [ ! -f "build/${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip" ]; then
+          echo "Error: Failed to create zip package"
+          exit 1
+        fi
         
         # 将build目录添加到git
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -335,8 +377,8 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/${{ github.event.repository.name }}-${{ env.RELEASE_NAME }}.zip
-        asset_name: ${{ github.event.repository.name }}-${{ env.RELEASE_NAME }}.zip
+        asset_path: ./build/${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip
+        asset_name: ${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip
         asset_content_type: application/zip
       continue-on-error: true
       # 上传发布资产
