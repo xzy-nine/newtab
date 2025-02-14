@@ -52,13 +52,13 @@ jobs:
         fi
         echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
       # 通过 GitHub API 获取仓库最新发布版本号，用于版本比较和发布控制
-    - name: Compare ver,ions
+    - name: Compare versions
       id: compare_versions
       run: |
         # 添加版本号格式验证函数
-        validate_version() {,
+        validate_version() {
           if [[ ! $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+(_DEBUG)?$ ]]; then
-            echo "Error: Invali. version format: $1"
+            echo "Error: Invalid version format: $1"
             return 1
           fi
           return 0
