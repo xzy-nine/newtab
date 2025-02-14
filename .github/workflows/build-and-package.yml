@@ -1,41 +1,122 @@
-name: Build and Package
+name: Build and Package  # 构建和打包工作流
 
 on:
   push:
     branches:
-      - beta
-  workflow_dispatch:
+      - main  # 当代码推送到 main 分支时自动触发
+  workflow_dispatch:  # 允许手动触发工作流
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # 在最新版本的 Ubuntu 运行环境中执行
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+      # 检出仓库代码到运行环境中，确保工作流可以访问最新的代码
 
-    - name: Setup Node.js
+    - name: Set up Node.js
       uses: actions/setup-node@v2
       with:
         node-version: '14'
+      # 配置 Node.js 运行环境，选择 v14 版本以确保项目依赖兼容性
 
     - name: Install dependencies
       run: npm install
+      # 安装项目所需的 npm 依赖包，确保构建环境完整
 
-    - name: Update version in manifest.json
-      id: update_version
+    - name: Get version from manifest.json
+      id: get_version
       run: |
         VERSION=$(jq -r '.version' manifest.json)
+        # 验证版本号格式是否符合 x.y.z 规范
+        if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: Invalid version format in manifest.json"
+          exit 1
+        fi
         echo "VERSION=$VERSION" >> $GITHUB_ENV
+      # 从项目的 manifest.json 中提取版本号并存储为环境变量，用于后续的版本控制
 
-    - name: Package files
-      env:
-        VERSION: ${{ env.VERSION }}
+    - name: Get latest release version
+      id: get_latest_release
       run: |
-        zip -r "package-${VERSION}.zip" . -x "*.git*" -x "*.md" -x ".*" -x "*/.*"
+        # 处理首次发布的情况
+        LATEST_RELEASE=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name // "0.0.0"')
+        if [[ ! $LATEST_RELEASE =~ ^[0-9]+\.[0-9]+\.[0-9]+(_DEBUG)?$ ]]; then
+          LATEST_RELEASE="0.0.0"
+        fi
+        echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
+      # 通过 GitHub API 获取仓库最新发布版本号，用于版本比较和发布控制
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
+    - name: Compare versions
+      id: compare_versions
+      run: |
+        # 提取不带 _DEBUG 的版本号进行比较
+        CURRENT_VER=$(echo ${{ env.VERSION }} | sed 's/_DEBUG$//')
+        LATEST_VER=$(echo ${{ env.LATEST_RELEASE }} | sed 's/_DEBUG$//')
+        
+        # 语义化版本号比较
+        if [ $(printf '%s\n' "$LATEST_VER" "$CURRENT_VER" | sort -V | tail -n1) = "$CURRENT_VER" ]; then
+          echo "NEW_VERSION=true" >> $GITHUB_ENV
+        else
+          echo "NEW_VERSION=false" >> $GITHUB_ENV
+        fi
+
+    - name: Set release name
+      id: set_release_name
+      run: |
+        if [ "${{ env.NEW_VERSION }}" = "false" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "RELEASE_NAME=${VERSION}_DEBUG" >> $GITHUB_ENV
+          echo "TAG_NAME=${VERSION}_DEBUG" >> $GITHUB_ENV
+        else
+          echo "RELEASE_NAME=$VERSION" >> $GITHUB_ENV
+          echo "TAG_NAME=$VERSION" >> $GITHUB_ENV
+        fi
+      # 设置发布标签和名称
+      # 如果是手动触发且版本号未变化，添加 _DEBUG 后缀用于调试版本
+      # 否则使用 manifest.json 中的原始版本号
+
+    - name: Create and move zip package
+      if: ${{ github.event_name == 'workflow_dispatch' || env.VERSION != env.LATEST_RELEASE }}
+      run: |
+        mkdir -p build
+        zip -r "newtab-${{ env.RELEASE_NAME }}.zip" . -x "README.md" -x "build/*" -x ".github/*"
+        mv "newtab-${{ env.RELEASE_NAME }}.zip" build/
+      # 打包项目文件
+      # 1. 创建 build 目录
+      # 2. 将项目文件打包成 zip，排除文档和构建相关文件
+      # 3. 移动压缩包到 build 目录
+      # 仅在手动触发或版本号更新时执行
+
+    - name: Create Release
+      id: create_release
+      if: ${{ github.event_name == 'workflow_dispatch' || env.VERSION != env.LATEST_RELEASE }}
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: package
-        path: package-*.zip
+        tag_name: ${{ env.TAG_NAME }}
+        release_name: Release ${{ env.RELEASE_NAME }}
+        draft: false
+        prerelease: true
+      # 创建 GitHub Release
+      # 1. 使用配置的版本标签和名称
+      # 2. 设置为预发布状态，允许后续更新
+      # 3. 自动使用 GitHub Token 进行认证
+      # 仅在手动触发或版本号更新时执行
+
+    - name: Upload Release Asset
+      if: ${{ github.event_name == 'workflow_dispatch' || env.VERSION != env.LATEST_RELEASE }}
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/newtab-${{ env.RELEASE_NAME }}.zip
+        asset_name: newtab-${{ env.RELEASE_NAME }}.zip
+        asset_content_type: application/zip  
+      # 上传发布资产
+      # 1. 将构建的 zip 包上传到刚创建的 Release
+      # 2. 使用前一步骤返回的上传 URL
+      # 3. 设置正确的内容类型
+      # 仅在手动触发或版本号更新时执行
