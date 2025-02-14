@@ -152,7 +152,7 @@ jobs:
             changes: changes
           };
 
-    - name: Create notification issue
+    - name: Create or update notification issue
       if: ${{ github.event_name == 'push' }}
       uses: actions/github-script@v6
       with:
@@ -165,18 +165,18 @@ jobs:
           }
           const changes = result.changes || [];
           
-          let title, labels;
-          if (process.env.NEW_VERSION === 'true') {
-            title = `🎉 检测到版本更新: ${process.env.VERSION}`;
-            labels = ['通知', '版本已更新'];
-          } else {
-            if (result.hasRecentNotification) {
-              return;
-            }
-            title = '🔔 检测到文件更新但版本未变更';
-            labels = ['通知', '版本未更新'];
-          }
+          // 搜索现有的通知 issue
+          const issues = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            labels: ['通知']
+          });
           
+          const existingIssue = issues.data.find(issue => 
+            issue.title.includes(process.env.NEW_VERSION === 'true' ? '检测到版本更新' : '检测到文件更新但版本未变更')
+          );
+
           const changesMarkdown = changes.map(change => [
             '### 提交记录 (' + change.timestamp + ')',
             '#### 提交信息',
@@ -200,25 +200,51 @@ jobs:
             ? `# 版本 ${process.env.VERSION}\n\n当前版本已更新至 \`${process.env.VERSION}\`。\n`
             : `# 版本信息\n\n当前版本号：\`${process.env.VERSION}\` 未更新。\n如需发布新版本，请更新 manifest.json 中的版本号。\n`;
 
-          const body = [
-            versionInfo,
-            '',
-            '## 更新记录',
+          const newComment = [
+            '## 新更新记录',
             '',
             changesMarkdown.join('\n'),
             '',
             process.env.NEW_VERSION === 'true' 
               ? '> 这是一个版本更新通知。'
-              : '> 这是一个自动创建的通知 Issue，未更新版本的通知24小时内仅提醒一次。'
+              : '> 这是一个自动更新的通知。'
           ].join('\n');
 
-          await github.rest.issues.create({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            title: title,
-            body: body,
-            labels: labels
-          });
+          if (existingIssue) {
+            // 在现有 issue 中添加评论
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: existingIssue.number,
+              body: newComment
+            });
+          } else {
+            // 创建新的 issue
+            let title, labels;
+            if (process.env.NEW_VERSION === 'true') {
+              title = `🎉 检测到版本更新: ${process.env.VERSION}`;
+              labels = ['通知', '版本已更新'];
+            } else {
+              title = '🔔 检测到文件更新但版本未变更';
+              labels = ['通知', '版本未更新'];
+            }
+
+            const body = [
+              versionInfo,
+              '',
+              '## 更新记录',
+              '',
+              changesMarkdown.join('\n')
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: labels
+            });
+          }
 
     - name: Check and update version notification issue
       if: ${{ env.NEW_VERSION == 'false' && github.event_name == 'push' }}
@@ -342,6 +368,7 @@ jobs:
           echo "TAG_EXISTS=true" >> $GITHUB_ENV
         else
           echo "TAG_EXISTS=false" >> $GITHUB_ENV
+        fi
 
     - name: Delete existing tag if exists
       if: ${{ env.TAG_EXISTS == 'true' }}
