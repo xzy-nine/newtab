@@ -379,39 +379,55 @@ jobs:
         git tag -d ${{ env.TAG_NAME }} || true
         git push --delete origin ${{ env.TAG_NAME }} || true
 
+    - name: Get merge commits
+      id: get_merge_commits
+      if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
+      run: |
+        # 获取最近的合并提交记录
+        MERGE_LOG=$(git log --merges --since="1 month ago" --pretty=format:"- %s%n  %b" | sed '/^[[:space:]]*$/d')
+        echo "MERGE_LOG<<EOF" >> $GITHUB_ENV
+        echo "$MERGE_LOG" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
     - name: Create Release
-      id: create_release
-      if: ${{ (env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false')) && env.TAG_EXISTS == 'false' }}
-      uses: actions/create-release@v1
+      if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
       env:
         GITHUB_TOKEN: ${{ github.token }}
-      with:
-        tag_name: ${{ env.TAG_NAME }}
-        release_name: ${{ env.RELEASE_NAME }}
-        draft: false
-        prerelease: ${{ env.NEW_VERSION != 'true' }}
-        body: |
-          ${{ env.NEW_VERSION == 'true' && format('
-          # 发布说明
-          
-          此版本将在[Microsoft Edge 扩展商店](https://microsoftedge.microsoft.com/addons/detail/xzy%E6%96%B0%E6%A0%87%E7%AD%BE%E9%A1%B5%E6%8B%93%E5%B1%95/lpdhbhkcbnhldcpcbocplhgeooabhbme)发布。
-
-          ### 更新内容
-
-          - 版本号：{0}
-          - 发布时间：{1}
-          
-          ---
-          ', env.VERSION, github.event.head_commit.timestamp) || format('
-          # 调试版本
-          
-          这是一个调试版本（{0}），仅用于测试。
-          ', env.RELEASE_NAME) }}
-      # 创建 GitHub Release
-      # 1. 使用配置的版本标签和名称
-      # 2. 设置为预发布状态，允许后续更新
-      # 3. 自动使用 GitHub Token 进行认证
-      # 仅在手动触发或版本号更新时执行
+      run: |
+        # 获取现有release的说明（如果存在）
+        EXISTING_NOTES=$(gh release view ${{ env.TAG_NAME }} --json body -q .body 2>/dev/null || echo "")
+        
+        # 准备新的发布说明
+        UPDATE_TIME="### 🕒 更新时间\n$(date '+%Y-%m-%d %H:%M:%S')\n\n"
+        NEW_CONTENT="### 📝 最新更新\n${MERGE_LOG:-没有最近的合并记录}\n\n"
+        BUILD_INFO="### ⚙️ 构建信息\n- 构建时间: $(date '+%Y-%m-%d %H:%M:%S')\n- 构建分支: ${GITHUB_REF#refs/heads/}\n- 构建号: ${{ github.run_number }}\n\n"
+        WARNING=$(if [ "${{ env.NEW_VERSION }}" != "true" ]; then echo "### ⚠️ 这是一个预发布版本\n\n"; fi)
+        
+        # 组合发布说明
+        if [ -n "$EXISTING_NOTES" ]; then
+          # 如果存在现有的release，在顶部添加更新记录
+          RELEASE_NOTES="## 🎉 Release ${{ env.RELEASE_NAME }}\n\n${UPDATE_TIME}${NEW_CONTENT}${BUILD_INFO}${WARNING}\n### 📜 历史记录\n${EXISTING_NOTES}"
+        else
+          # 如果是新的release
+          RELEASE_NOTES="## 🎉 Release ${{ env.RELEASE_NAME }}\n\n${UPDATE_TIME}${NEW_CONTENT}${BUILD_INFO}${WARNING}"
+        fi
+        
+        # 更新或创建release
+        if gh release view ${{ env.TAG_NAME }} &>/dev/null; then
+          # 更新现有release
+          gh release edit ${{ env.TAG_NAME }} \
+            --title "${{ env.RELEASE_NAME }}" \
+            --draft=false \
+            --prerelease=${{ env.NEW_VERSION != 'true' }} \
+            --notes "$RELEASE_NOTES"
+        else
+          # 创建新的release
+          gh release create ${{ env.TAG_NAME }} \
+            --title "${{ env.RELEASE_NAME }}" \
+            --draft=false \
+            --prerelease=${{ env.NEW_VERSION != 'true' }} \
+            --notes "$RELEASE_NOTES"
+        fi
 
     - name: Upload Release Asset
       if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
