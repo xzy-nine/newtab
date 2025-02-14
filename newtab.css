@@ -58,8 +58,8 @@
 }
 
 #engine-button { /* 搜索引擎切换按钮 */
-  width: 45px; /* 设置宽度为18% */
-  height: 60px; /* 设置高度为70% */
+  width: 6%; /* 设置宽度为8% */
+  aspect-ratio: 1 / 1; /* 设置宽高比为1:1，确保图标始终为正方形 */
   border: none; /* 设置无边框 */
   border-radius: 20px; /* 设置边框圆角为25px */
   background: white; /* 设置背景颜色为白色 */
@@ -67,8 +67,8 @@
 }
 
 #engine-icon { /* 搜索引擎图标 */
-  width: 32px; /* 设置宽度为43% */
-  height: 32px; /* 设置高度为52% */
+  width: 43%; /* 设置宽度为43% */
+  aspect-ratio: 1 / 1; /* 设置宽高比为1:1，确保图标始终为正方形 */
 }
 
 #search-input { /* 搜索框输入框 */
@@ -94,28 +94,46 @@
 }
 
 #folder-list { /* 文件夹列表 */
-  width: 15%; /* 设置宽度为15% */
+  width: auto; /* 设置宽度为自动 */
+  min-width: 15%; /* 设置最小宽度为15% */
   height: 100%; /* 设置高度为100% */
   display: flex; /* 设置为弹性布局 */
   flex-direction: column; /* 设置为垂直方向 */
-  align-items: center; /* 设置水平居中 */
+  align-items: flex-end; /* 设置水平靠右 */
   justify-content: flex-start; /* 设置垂直靠上 */
   overflow-y: auto; /* 设置垂直滚动 */
-  background: rgba(198, 198, 198, 0.5); /* 设置背景颜色为半透明的黑色 */
+  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的黑色 */
   border-radius: 10px; /* 设置边框圆角为10px */
+  padding: 10px; /* 设置内边距为10px */
 }
 
+.folder-children { /* 子文件夹容器 */
+  display: none; /* 默认隐藏 */
+  margin-left: 40px; /* 设置左外边距为40px */
+  align-items: flex-end; /* 设置水平靠右 */
+  white-space: nowrap; /* 防止子文件夹换行 */
+  position: relative; /* 设置相对定位 */
+}
+
+.folder-children::before { /* 子文件夹容器的伪元素 */
+  content: ''; /* 内容为空 */
+  position: absolute; /* 设置绝对定位 */
+  left: -1%; /* 设置左边距为-1% */
+  top: 0; /* 设置顶部对齐 */
+  bottom: 0; /* 设置底部对齐 */
+  width: 2px; /* 设置宽度为2px */
+  background-color: var(--primary-color); /* 设置背景颜色为主要颜色 */
+}
 .folder-button { /* 文件夹按钮 */
-  width: 100%; /* 设置宽度为100% */
-  height: 45px; /* 设置高度为45px */
-  padding: 10px; /* 设置内边距为10px */
-  border: none; /* 设置无边框 */
+  width: 85%; /* 设置宽度为85% */
+  height: 30px; /* 设置高度为45% */
   display: flex; /* 设置为弹性布局 */
-  justify-content: center; /* 水平居中 */
-  align-items: center; /* 垂直居中 */
-  border-radius: 15px; /* 设置边框圆角为15px */
+  align-items: center; /* 设置垂直居中 */
+  justify-content: center; /* 设置水平居中 */
+  border: none; /* 设置无边框 */
+  border-radius: 10px; /* 设置边框圆角为10px */
   background: white; /* 设置背景颜色为白色 */
-  box-shadow: 0 0 15px var(--secondary-color); /* 增加阴影 */
+  box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
   cursor: pointer; /* 设置鼠标样式为指针 */
   margin: 10px; /* 设置外边距为10px */
   transition: box-shadow 0.3s, border-radius 0.3s; /* 设置阴影和圆角的过渡时间为0.3秒 */
@@ -142,15 +160,19 @@
   display: flex; /* 设置为弹性布局 */
   flex-wrap: wrap; /* 设置为换行 */
   align-items: center; /* 设置垂直居中 */
-  justify-content: flex-start; /* 设置水平从左到右排列 */
+  justify-content: center; /* 设置水平居中 */
   overflow-y: auto; /* 设置垂直滚动 */
-  background: rgba(198, 198, 198, 0.5); /* 设置背景颜色为半透明的灰色 */
+  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的黑色 */
   border-radius: 10px; /* 设置边框圆角为10px */
   margin-left: 10px; /* 设置左外边距为10px */
-  padding: 10px; /* 添加内边距 */
 }
 
-.shortcut-button { /* 快捷方式按钮 */
+/* 当快捷方式列表为空时，设置背景为完全透明 */
+#shortcut-list:empty {
+  background: transparent;
+}
+
+.shortcut-button {
   width: 80px; /* 设置宽度为80px */
   height: 80px; /* 设置高度为80px */
   display: flex; /* 设置为弹性布局 */
@@ -197,7 +219,10 @@
   display: flex; /* 使用flex布局 */
   justify-content: center; /* 在主轴上居中对齐 */
   padding-top: 50px; /* 在底部添加20px的内边距来为文本留出空间 */
-  text-align: center; /* 文本居中对齐 */
+}
+
+.shortcut-button:hover { /* 当鼠标移动到快捷方式按钮时 */
+  box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
 }
 
 #background-button { /* 背景切换按钮 */
@@ -215,7 +240,6 @@
   bottom: 20px; /* 设置距离底部为20px */
   right: 20px; /* 设置距离右边为20px */
   transition: box-shadow 0.3s; /* 设置阴影的过渡时间为0.3秒 */
-  text-align: center; /* 文本居中对齐 */
 }
 
 #background-button:hover { /* 当鼠标移动到背景切换按钮时 */
@@ -255,10 +279,11 @@ html, body {
   left: 50%;
   transform: translateX(-50%);
   color: --primary-color; /* 设置字体颜色为主要颜色 */
-}
+  }
 
 .split {
   /* 移除动画，使冒号不再跳动 */
+  animation: none;
 }
 
 .hour::after {
@@ -266,7 +291,7 @@ html, body {
   content: counter(hour, decimal-leading-zero);
   animation: hour calc(var(--step) * 60 * 24) infinite steps(24);
   animation-delay: calc( -1 * var(--step) * var(--dh) * 60);
-}
+  }
 
 .minitus::after {
   counter-reset: minitus var(--m);

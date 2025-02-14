@@ -15,8 +15,7 @@ const folderList = document.getElementById("folder-list"); // 获取文件夹列
 const shortcutList = document.getElementById("shortcut-list"); // 获取快捷方式列表
 const backgroundButton = document.getElementById("background-button"); // 获取背景切换按钮
 const defaultEngine = "https://www.bing.com"; // 默认搜索引擎
-const defaultIcon = "favicon.ico"; // 默认图标
-const defaultImage = "images/bing-daily.jpg"; // 默认背景图片
+const defaultIcon = "Icon.png"; // 默认图标
 let currentEngine = defaultEngine; // 当前搜索引擎
 let currentFolder = ""; // 当前文件夹
 let currentBackground = 0; // 当前背景，0表示灰色，1表示必应每日图片
@@ -48,78 +47,72 @@ function getBackground() {
   });
 }
 
-// 从浏览器获取收藏夹，并生成文件夹和快捷方式
+// 获取并生成收藏夹
 function getBookmarks() {
-  chrome.bookmarks.getTree(tree => { // 从浏览器获取收藏夹的树形结构
-    let root = tree[0]; // 获取收藏夹的根节点
-    createFolderTree(root, folderList); // 创建文件夹层级结构
+  chrome.bookmarks.getTree(tree => {
+    let root = tree[0];
+    let folders = getAllFolders(root);
+    createFolderButtons(folders, folderList);
+    chrome.storage.local.get("folder", data => {
+      let folder = data.folder || root.id;
+      currentFolder = folder;
+      showShortcuts(folders.find(f => f.id === folder));
+    });
   });
 }
 
-// 创建文件夹层级结构
-function createFolderTree(node, parentElement) {
+// 获取一个节点下的所有文件夹节点，包括次级文件夹
+function getAllFolders(node) {
+  let folders = []; // 创建一个空数组，用于存储文件夹节点
   if (node.children) { // 如果该节点有子节点
     for (let child of node.children) { // 遍历每个子节点
-      if (child.children) { // 如果该子节点是文件夹节点
-        let folderButton = document.createElement("button"); // 创建一个文件夹按钮
-        folderButton.className = "folder-button"; // 设置文件夹按钮的类名
-        folderButton.innerText = child.title; // 设置文件夹按钮的文本为文件夹的标题
-        folderButton.onclick = function() { // 设置文件夹按钮的点击事件
-          currentFolder = child.id; // 设置当前文件夹为该文件夹的id
-          chrome.storage.local.set({folder: currentFolder}); // 将当前文件夹保存到本地存储
-        };
-
-        let folderContainer = document.createElement("div"); // 创建一个容器，用于存放文件夹按钮和子文件夹
-        folderContainer.className = "folder-container"; // 设置容器的类名
-        folderContainer.appendChild(folderButton); // 将文件夹按钮添加到容器中
-
-        let childContainer = document.createElement("div"); // 创建一个容器，用于存放子文件夹
-        childContainer.className = "child-container"; // 设置子文件夹容器的类名
-        childContainer.style.display = "none"; // 默认隐藏子文件夹
-
-                folderButton.onclick = function() { // 修改文件夹按钮的点击事件
-          showShortcuts(child); // 显示点击的文件夹的快捷方式
-          let siblingContainers = parentElement.querySelectorAll('.child-container');
-          siblingContainers.forEach(sibling => {
-            if (sibling !== childContainer) {
-              sibling.style.display = "none"; // 收起其他同级子文件夹
-            }
-          });
-          if (childContainer.style.display === "none") {
-            childContainer.style.display = "block"; // 展开子文件夹
-          } else {
-            childContainer.style.display = "none"; // 收起子文件夹
-          }
-        
-          // 将 data.folder 存储到本地存储中
-          chrome.storage.local.set({ folder: data.folder }, function() {
-            console.log('Folder has been saved to local storage.');
-          });
-        };
-
-        folderContainer.appendChild(childContainer); // 将子文件夹容器添加到文件夹容器中
-        parentElement.appendChild(folderContainer); // 将文件夹容器添加到父元素中
-
-        createFolderTree(child, childContainer); // 递归创建子文件夹层级结构
+      if (child.children && child.children.length > 0) { // 如果该子节点是文件夹节点且包含子节点
+        folders.push(child); // 将该子节点添加到文件夹数组中
       }
     }
   }
+  return folders; // 返回文件夹数组
 }
 
 // 显示指定文件夹的快捷方式
 function showShortcuts(folder) {
-  if (!folder || !folder.children) {
-    console.error("Invalid folder or folder has no children.");
-    return;
-  }
-
-  
   shortcutList.innerHTML = ""; // 清空快捷方式列表的内容
   let shortcuts = folder.children.filter(node => !node.children); // 筛选出快捷方式节点
   for (let shortcut of shortcuts) { // 遍历每个快捷方式
     let shortcutButton = document.createElement("button"); // 创建一个快捷方式按钮
     shortcutButton.className = "shortcut-button"; // 设置快捷方式按钮的类名
-    shortcutButton.style.backgroundImage = `url(${getDomain(shortcut.url)}/favicon.ico)`; // 设置背景图片为快捷方式的域名的图标
+
+    // 尝试从缓存中获取图标
+    chrome.storage.local.get(shortcut.url, data => {
+      let cachedIcon = data[shortcut.url];
+      if (cachedIcon) {
+        shortcutButton.style.backgroundImage = `url(${cachedIcon})`; // 使用缓存的图标
+      } else {
+        let iconUrl = `${getDomain(shortcut.url)}/favicon.ico`;
+        fetch(iconUrl, { mode: 'no-cors', headers: { 'cache-control': 'no-cache' } })
+          .then(response => {
+            if (response.ok) {
+              return response.blob();
+            } else {
+              throw new Error('Network response was not ok.');
+            }
+          })
+          .then(blob => {
+            let reader = new FileReader();
+            reader.onloadend = () => {
+              let base64data = reader.result;
+              shortcutButton.style.backgroundImage = `url(${base64data})`; // 使用新获取的图标
+              // 缓存图标
+              chrome.storage.local.set({ [shortcut.url]: base64data });
+            };
+            reader.readAsDataURL(blob);
+          })
+          .catch(() => {
+            shortcutButton.style.backgroundImage = `url(${defaultIcon})`; // 使用默认图标
+          });
+      }
+    });
+
     shortcutButton.innerText = shortcut.title; // 设置快捷方式按钮的文本为快捷方式的标题
     shortcutButton.onclick = function() { // 设置快捷方式按钮的点击事件
       window.open(shortcut.url, "_blank"); // 在新标签页中打开快捷方式的链接
@@ -128,29 +121,6 @@ function showShortcuts(folder) {
   }
 }
 
-window.onload = function() {
-  const defaultTitle = "收藏夹栏";
-  const folder = folders.find(f => f.title === defaultTitle); // 查找标题为"收藏夹栏"的文件夹
-  if (folder) {
-      showShortcuts(folder); // 显示该文件夹的快捷方式
-  } else {
-      console.error(`Folder with title "${defaultTitle}" not found.`);
-  }
-};
-
-// 获取一个节点下的所有文件夹节点，包括次级文件夹
-function getAllFolders(node) {
-  let folders = []; // 创建一个空数组，用于存储文件夹节点
-  if (node.children) { // 如果该节点有子节点
-    for (let child of node.children) { // 遍历每个子节点
-      if (child.children) { // 如果该子节点是文件夹节点
-        folders.push(child); // 将该子节点添加到文件夹数组中
-        folders = folders.concat(getAllFolders(child)); // 将该子节点下的所有文件夹节点也添加到文件夹数组中
-      }
-    }
-  }
-  return folders; // 返回文件夹数组
-}
 
 // 获取一个链接的域名部分
 function getDomain(url) {
@@ -161,7 +131,7 @@ function getDomain(url) {
 
 // 设置搜索引擎切换按钮的点击事件
 engineButton.onclick = function() {
-  let engine = prompt("请输入要切换的搜索引擎的官网链接，例如：https://www.google.com"); // 弹出一个输入框，提示用户输入搜索引擎的链接
+  let engine = prompt("请输入要切换的搜索引擎的官网链接,例如：https://www.google.com"); // 弹出一个输入框，提示用户输入搜索引擎的链接
   if (engine) { // 如果用户输入了内容
     currentEngine = engine; // 设置当前搜索引擎为用户输入的内容
     chrome.runtime.sendMessage({action: "setEngine", engine: currentEngine}); // 向后台脚本发送设置搜索引擎的消息
@@ -183,6 +153,47 @@ window.onload = function() {
   getBackground(); // 获取并设置背景
   getBookmarks(); // 获取并生成收藏夹
   chrome.runtime.sendMessage({action: "getImage"}); // 向后台脚本发送获取图片的消息
-  };
-  
-  
+};
+
+function createFolderButtons(folders, parentElement, level = 0) {
+  for (let folder of folders) {
+    if (folder.children) { // 确保只处理文件夹
+      let folderButton = document.createElement("div");
+      folderButton.className = "folder-button";
+      folderButton.innerHTML = `<span class="folder-icon">📁</span><span class="folder-name">${folder.title}</span>`;
+      folderButton.style.marginLeft = `${level * 20}px`; // 根据层级设置左边距
+      folderButton.onclick = function() {
+        folderButton.classList.toggle('open');
+        const children = folderButton.nextElementSibling;
+        if (children && children.classList.contains('folder-children')) {
+          children.style.display = children.style.display === 'block' ? 'none' : 'block';
+        }
+        showShortcuts(folder); // 显示快捷方式
+      };
+      parentElement.appendChild(folderButton);
+
+      let subFolderContainer = document.createElement("div");
+      subFolderContainer.className = "folder-children";
+      subFolderContainer.style.display = 'none'; // 初始隐藏子文件夹
+      parentElement.appendChild(subFolderContainer);
+
+      // 递归创建子文件夹按钮
+      createFolderButtons(folder.children, subFolderContainer, level + 1);
+    }
+  }
+}
+
+// 确保所有子文件夹在初始状态下都是隐藏的
+document.querySelectorAll('.folder-children').forEach(container => {
+  container.style.display = 'none';
+});
+
+document.querySelectorAll('.folder-button').forEach(button => {
+  button.addEventListener('click', () => {
+    button.classList.toggle('open');
+    const children = button.nextElementSibling;
+    if (children && children.classList.contains('folder-children')) {
+      children.style.display = children.style.display === 'block' ? 'none' : 'block';
+    }
+  });
+});
