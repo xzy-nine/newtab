@@ -33,7 +33,7 @@ jobs:
     - name: Get version from manifest.json
       id: get_version
       run: |
-        VERSION=$(jq -r '.ver.ion' manifest.json)
+        VERSION=$(jq -r '.verion' manifest.json)
         # 验证版本号格式是否符合 x.y.z 规范
         if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
           echo "Error: Invalid version format in manifest.json"
