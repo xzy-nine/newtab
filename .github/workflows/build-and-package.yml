@@ -83,9 +83,24 @@ jobs:
     - name: Create and move zip package
       if: ${{ github.event_name == 'workflow_dispatch' || env.VERSION != env.LATEST_RELEASE }}
       run: |
+        # 获取仓库名称（去除所有者部分）
+        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+        
+        # 创建build目录（如果不存在）
         mkdir -p build
-        zip -r "newtab-${{ env.RELEASE_NAME }}.zip" . -x "README.md" -x "build/*" -x ".github/*"
-        mv "newtab-${{ env.RELEASE_NAME }}.zip" build/
+        
+        # 创建zip包，使用仓库名称
+        zip -r "$REPO_NAME-${{ env.RELEASE_NAME }}.zip" . -x "README.md" -x "build/*" -x ".github/*" -x ".git/*"
+        
+        # 移动zip包到build目录
+        mv "$REPO_NAME-${{ env.RELEASE_NAME }}.zip" build/
+        
+        # 将build目录添加到git
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
+        git add build/
+        git commit -m "chore: update build artifacts for version ${{ env.RELEASE_NAME }}"
+        git push
       # 打包项目文件
       # 1. 创建 build 目录
       # 2. 将项目文件打包成 zip，排除文档和构建相关文件
@@ -97,13 +112,29 @@ jobs:
       if: ${{ github.event_name == 'workflow_dispatch' || env.VERSION != env.LATEST_RELEASE }}
       uses: actions/create-release@v1
       env:
-        # 使用 github.token 而不是 secrets.GITHUB_TOKEN
         GITHUB_TOKEN: ${{ github.token }}
       with:
         tag_name: ${{ env.TAG_NAME }}
-        release_name: Release ${{ env.RELEASE_NAME }}
+        release_name: ${{ env.RELEASE_NAME }}
         draft: false
-        prerelease: true
+        prerelease: ${{ env.NEW_VERSION != 'true' }}
+        body: |
+          ${{ env.NEW_VERSION == 'true' && format('
+          # 发布说明
+          
+          此版本将在[Microsoft Edge 扩展商店](https://microsoftedge.microsoft.com/addons/detail/xzy%E6%96%B0%E6%A0%87%E7%AD%BE%E9%A1%B5%E6%8B%93%E5%B1%95/lpdhbhkcbnhldcpcbocplhgeooabhbme)发布。
+
+          ### 更新内容
+
+          - 版本号：%s
+          - 发布时间：%s
+          
+          ---
+          ', env.VERSION, github.event.head_commit.timestamp) || format('
+          # 调试版本
+          
+          这是一个调试版本（%s），仅用于测试。
+          ', env.RELEASE_NAME) }}
       # 创建 GitHub Release
       # 1. 使用配置的版本标签和名称
       # 2. 设置为预发布状态，允许后续更新
@@ -117,8 +148,8 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/newtab-${{ env.RELEASE_NAME }}.zip
-        asset_name: newtab-${{ env.RELEASE_NAME }}.zip
+        asset_path: ./build/${{ github.event.repository.name }}-${{ env.RELEASE_NAME }}.zip
+        asset_name: ${{ github.event.repository.name }}-${{ env.RELEASE_NAME }}.zip
         asset_content_type: application/zip
       continue-on-error: true
       # 上传发布资产
