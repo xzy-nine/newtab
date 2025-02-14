@@ -40,5 +40,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     getBingDaily(); // 调用获取图片的函数
   }
 });
-
-// 不再定时获取必应每日图片，而是由新标签页触发

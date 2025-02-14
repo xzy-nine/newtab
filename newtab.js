@@ -30,21 +30,24 @@ function getEngine() {
   });
 }
 
-// 从本地存储获取背景，并设置背景
-function getBackground() {
-  chrome.storage.local.get("background", data => { // 从本地存储中获取背景
-    let background = data.background || 0; // 如果没有设置过，就使用默认背景
-    currentBackground = background; // 设置当前背景
-    if (background === 0) { // 如果是灰色背景
-      document.body.style.background = "gray"; // 设置背景颜色为灰色
-    } else if (background === 1) { // 如果是必应每日图片背景
-      chrome.storage.local.get("bingDaily", data => { // 从本地存储中获取必应每日图片
-        let bingDaily = data.bingDaily || defaultImage; // 如果没有缓存过，就使用默认图片
-        document.body.style.background = `url(${bingDaily}) no-repeat center center fixed`; // 设置背景图片为必应每日图片
-        document.body.style.backgroundSize = "cover"; // 设置背景图片的大小为覆盖整个网页
-      });
-    }
-  });
+async function setBackground(type) {
+  if (type === 0) {
+    document.body.style.background = "gray";
+    return;
+  }
+  
+  const data = await chrome.storage.local.get("bingDaily");
+  const imageUrl = data.bingDaily || defaultImage;
+  document.body.style.background = `url(${imageUrl}) no-repeat center center fixed`;
+  document.body.style.backgroundSize = "cover";
+}
+
+// 修改 getBackground 函数
+async function getBackground() {
+  const data = await chrome.storage.local.get("background");
+  const background = data.background || 0;
+  currentBackground = background;
+  await setBackground(background);
 }
 
 // 获取并生成收藏夹
@@ -82,36 +85,7 @@ function showShortcuts(folder) {
     let shortcutButton = document.createElement("button"); // 创建一个快捷方式按钮
     shortcutButton.className = "shortcut-button"; // 设置快捷方式按钮的类名
 
-    // 尝试从缓存中获取图标
-    chrome.storage.local.get(shortcut.url, data => {
-      let cachedIcon = data[shortcut.url];
-      if (cachedIcon) {
-        shortcutButton.style.backgroundImage = `url(${cachedIcon})`; // 使用缓存的图标
-      } else {
-        let iconUrl = `${getDomain(shortcut.url)}/favicon.ico`;
-        fetch(iconUrl, { mode: 'no-cors', headers: { 'cache-control': 'no-cache' } })
-          .then(response => {
-            if (response.ok) {
-              return response.blob();
-            } else {
-              throw new Error('Network response was not ok.');
-            }
-          })
-          .then(blob => {
-            let reader = new FileReader();
-            reader.onloadend = () => {
-              let base64data = reader.result;
-              shortcutButton.style.backgroundImage = `url(${base64data})`; // 使用新获取的图标
-              // 缓存图标
-              chrome.storage.local.set({ [shortcut.url]: base64data });
-            };
-            reader.readAsDataURL(blob);
-          })
-          .catch(() => {
-            shortcutButton.style.backgroundImage = `url(${defaultIcon})`; // 使用默认图标
-          });
-      }
-    });
+    getIconForShortcut(shortcut.url, shortcutButton);
 
     shortcutButton.innerText = shortcut.title; // 设置快捷方式按钮的文本为快捷方式的标题
     shortcutButton.onclick = function() { // 设置快捷方式按钮的点击事件
@@ -121,6 +95,39 @@ function showShortcuts(folder) {
   }
 }
 
+async function getIconForShortcut(url, button) {
+  // 尝试从缓存获取
+  const cached = await chrome.storage.local.get(url);
+  if (cached[url]) {
+    button.style.backgroundImage = `url(${cached[url]})`;
+    return;
+  }
+
+  // 获取新图标
+  const iconUrl = `${getDomain(url)}/favicon.ico`;
+  try {
+    const response = await fetch(iconUrl, { 
+      mode: 'no-cors', 
+      headers: { 'cache-control': 'no-cache' } 
+    });
+    
+    if (response.ok) {
+      const blob = await response.blob();
+      const base64data = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+      
+      button.style.backgroundImage = `url(${base64data})`;
+      chrome.storage.local.set({ [url]: base64data });
+    } else {
+      throw new Error('Failed to fetch icon');
+    }
+  } catch {
+    button.style.backgroundImage = `url(${defaultIcon})`;
+  }
+}
 
 // 获取一个链接的域名部分
 function getDomain(url) {
@@ -163,12 +170,7 @@ function createFolderButtons(folders, parentElement, level = 0) {
       folderButton.innerHTML = `<span class="folder-icon">📁</span><span class="folder-name">${folder.title}</span>`;
       folderButton.style.marginLeft = `${level * 20}px`; // 根据层级设置左边距
       folderButton.onclick = function() {
-        folderButton.classList.toggle('open');
-        const children = folderButton.nextElementSibling;
-        if (children && children.classList.contains('folder-children')) {
-          children.style.display = children.style.display === 'block' ? 'none' : 'block';
-        }
-        showShortcuts(folder); // 显示快捷方式
+        handleFolderClick(folderButton, folder);
       };
       parentElement.appendChild(folderButton);
 
@@ -183,6 +185,18 @@ function createFolderButtons(folders, parentElement, level = 0) {
   }
 }
 
+// 添加文件夹点击处理函数
+function handleFolderClick(folderButton, folder) {
+  folderButton.classList.toggle('open');
+  const children = folderButton.nextElementSibling;
+  if (children && children.classList.contains('folder-children')) {
+    children.style.display = children.style.display === 'block' ? 'none' : 'block';
+  }
+  if (folder) {
+    showShortcuts(folder);
+  }
+}
+
 // 确保所有子文件夹在初始状态下都是隐藏的
 document.querySelectorAll('.folder-children').forEach(container => {
   container.style.display = 'none';
@@ -190,10 +204,6 @@ document.querySelectorAll('.folder-children').forEach(container => {
 
 document.querySelectorAll('.folder-button').forEach(button => {
   button.addEventListener('click', () => {
-    button.classList.toggle('open');
-    const children = button.nextElementSibling;
-    if (children && children.classList.contains('folder-children')) {
-      children.style.display = children.style.display === 'block' ? 'none' : 'block';
-    }
+    handleFolderClick(button);
   });
 });

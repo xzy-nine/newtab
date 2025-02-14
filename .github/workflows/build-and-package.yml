@@ -33,7 +33,7 @@ jobs:
     - name: Get version from manifest.json
       id: get_version
       run: |
-        VERSION=$(jq -r '.version' manifest.json)
+        VERSION=$(jq -r '.ver.ion' manifest.json)
         # 验证版本号格式是否符合 x.y.z 规范
         if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
           echo "Error: Invalid version format in manifest.json"
@@ -335,10 +335,23 @@ jobs:
       # 3. 移动压缩包到 build 目录
       # 仅在手动触发或版本号更新时执行
 
-    # 同样修改后续的 Create Release 和 Upload Release Asset 步骤的条件
+    - name: Check if tag exists
+      id: check_tag
+      run: |
+        if git rev-parse "refs/tags/${{ env.TAG_NAME }}" >/dev/null 2>&1; then
+          echo "TAG_EXISTS=true" >> $GITHUB_ENV
+        else
+          echo "TAG_EXISTS=false" >> $GITHUB_ENV
+
+    - name: Delete existing tag if exists
+      if: ${{ env.TAG_EXISTS == 'true' }}
+      run: |
+        git tag -d ${{ env.TAG_NAME }} || true
+        git push --delete origin ${{ env.TAG_NAME }} || true
+
     - name: Create Release
       id: create_release
-      if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
+      if: ${{ (env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false')) && env.TAG_EXISTS == 'false' }}
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ github.token }}
@@ -355,14 +368,14 @@ jobs:
 
           ### 更新内容
 
-          - 版本号：%s
-          - 发布时间：%s
+          - 版本号：{0}
+          - 发布时间：{1}
           
           ---
           ', env.VERSION, github.event.head_commit.timestamp) || format('
           # 调试版本
           
-          这是一个调试版本（%s），仅用于测试。
+          这是一个调试版本（{0}），仅用于测试。
           ', env.RELEASE_NAME) }}
       # 创建 GitHub Release
       # 1. 使用配置的版本标签和名称
