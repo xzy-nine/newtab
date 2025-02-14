@@ -373,6 +373,7 @@ jobs:
           echo "TAG_EXISTS=true" >> $GITHUB_ENV
         else
           echo "TAG_EXISTS=false" >> $GITHUB_ENV
+        fi
 
     - name: Delete existing tag if exists
       if: ${{ env.TAG_EXISTS == 'true' }}
@@ -399,30 +400,22 @@ jobs:
         # 获取现有release的说明（如果存在）
         EXISTING_NOTES=$(gh release view ${{ env.TAG_NAME }} --json body -q .body 2>/dev/null || echo "")
         
-        # ... 其他现有代码 ...
+        # 构建发布说明
+        RELEASE_NOTES=$(cat << EOF
+## 版本 ${{ env.RELEASE_NAME }}
+
+### 合并记录
+${{ env.MERGE_LOG }}
+
+### 现有说明
+$EXISTING_NOTES
+EOF
+)
         
-        # 创建或更新 release 并捕获上传 URL
+        # 创建或更新 release
         if gh release view ${{ env.TAG_NAME }} &>/dev/null; then
-          # 更新现有 release
-          gh release edit ${{ env.TAG_NAME }} \
-            --title "${{ env.RELEASE_NAME }}" \
-            --draft=false \
-            --prerelease=${{ env.NEW_VERSION != 'true' }} \
-            --notes "$RELEASE_NOTES"
-          # 获取更新后的 release URL
-          UPLOAD_URL=$(gh release view ${{ env.TAG_NAME }} --json uploadUrl -q .uploadUrl)
-        else
-          # 创建新的 release
-          RESPONSE=$(gh release create ${{ env.TAG_NAME }} \
-            --title "${{ env.RELEASE_NAME }}" \
-            --draft=false \
-            --prerelease=${{ env.NEW_VERSION != 'true' }} \
-            --notes "$RELEASE_NOTES")
-          UPLOAD_URL=$(gh release view ${{ env.TAG_NAME }} --json uploadUrl -q .uploadUrl)
+          ...existing code...
         fi
-        
-        # 使用新的 GITHUB_OUTPUT 环境文件替代 set-output
-        echo "upload_url=$UPLOAD_URL" >> $GITHUB_OUTPUT
 
     - name: Upload Release Asset
       if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
