@@ -33,7 +33,7 @@ jobs:
     - name: Get version from manifest.json
       id: get_version
       run: |
-        VERSION=$(jq -r '.version' manifest.json)
+        VERSION=$(jq -r ',version' manifest.json)
         # 验证版本号格式是否符合 x.y.z 规范
         if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
           echo "Error: Invalid version format in manifest.json"
@@ -41,25 +41,25 @@ jobs:
         fi
         echo "VERSION=$VERSION" >> $GITHUB_ENV
       # 从项目的 manifest.json 中提取版本号并存储为环境变量，用于后续的版本控制,
-
+,
     - name: Get latest release version
       id: get_latest_release
       run: |
-        # 处理首次发布的情况
+        # 处理首次发布的情况,
         LATEST_RELEASE=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name // "0.0.0"')
-        if [[ ! $LATEST_RELEASE =~ ^[0-9]+\.[0-9]+\.[0-9]+(_DEBUG)?$ ]]; then
+        if [[ ! $LATEST,RELEASE =~ ^[0-9]+\.[0-9]+\.[0-9]+(_DEBUG)?$ ]]; then
           LATEST_RELEASE="0.0.0"
         fi
         echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
-      # 通过 GitHub API 获取仓库最新发布版本号，用于版本比较和发布控制
+      # 通过 GitHub API 获,仓库最新发布版本号，用于版本比较和发布控制
 
-    - name: Compare versions
+    - name: Compare ver,ions
       id: compare_versions
-      run: |
+      run: |,
         # 添加版本号格式验证函数
-        validate_version() {
+        validate_version() {,
           if [[ ! $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+(_DEBUG)?$ ]]; then
-            echo "Error: Invalid version format: $1"
+            echo "Error: Invali. version format: $1"
             return 1
           fi
           return 0
@@ -157,15 +157,9 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: |
-          let result;
-          try {
-            result = JSON.parse(process.env.CHECK_NOTIFICATIONS_RESULT || '{"changes":[]}');
-          } catch (error) {
-            result = { changes: [] };
-          }
-          const changes = result.changes || [];
+          const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
           
-          // 搜索现有的通知 issue
+          // 搜索现有的追踪 issue
           const issues = await github.rest.issues.listForRepo({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -173,76 +167,86 @@ jobs:
             labels: ['通知']
           });
           
-          const existingIssue = issues.data.find(issue => 
-            issue.title.includes(process.env.NEW_VERSION === 'true' ? '检测到版本更新' : '检测到文件更新但版本未变更')
-          );
-
-          const changesMarkdown = changes.map(change => [
-            '### 提交记录 (' + change.timestamp + ')',
+          const TRACKING_ISSUE_TITLE = process.env.NEW_VERSION === 'true' 
+            ? '🎉 版本更新追踪' 
+            : '📝 代码更新追踪';
+          
+          // 查找对应类型的追踪 issue
+          const existingIssue = issues.data.find(issue => issue.title === TRACKING_ISSUE_TITLE);
+          
+          // 获取当前提交的信息
+          const commit = context.payload.commits[0];
+          const updateInfo = [
+            '### 更新记录 (' + new Date().toISOString() + ')',
+            '',
             '#### 提交信息',
-            change.message,
+            `\`\`\``,
+            commit.message,
+            `\`\`\``,
             '',
             '#### 更改的文件',
             '```',
-            change.files || '',
+            (commit.modified || []).join('\n'),
             '```',
             '',
             '#### 提交详情',
-            '- 提交者：' + change.author,
-            '- 提交时间：' + change.timestamp,
-            '- 查看变更：' + change.url,
+            `- 提交者：${commit.author.name}`,
+            `- 提交时间：${commit.timestamp}`,
+            `- 提交 SHA：${commit.id}`,
+            `- 查看变更：${commit.url}`,
             '',
             '---',
             ''
-          ].join('\n'));
-
-          const versionInfo = process.env.NEW_VERSION === 'true' 
-            ? `# 版本 ${process.env.VERSION}\n\n当前版本已更新至 \`${process.env.VERSION}\`。\n`
-            : `# 版本信息\n\n当前版本号：\`${process.env.VERSION}\` 未更新。\n如需发布新版本，请更新 manifest.json 中的版本号。\n`;
-
-          const newComment = [
-            '## 新更新记录',
-            '',
-            changesMarkdown.join('\n'),
-            '',
-            process.env.NEW_VERSION === 'true' 
-              ? '> 这是一个版本更新通知。'
-              : '> 这是一个自动更新的通知。'
           ].join('\n');
 
           if (existingIssue) {
-            // 在现有 issue 中添加评论
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: existingIssue.number,
-              body: newComment
-            });
-          } else {
-            // 创建新的 issue
-            let title, labels;
-            if (process.env.NEW_VERSION === 'true') {
-              title = `🎉 检测到版本更新: ${process.env.VERSION}`;
-              labels = ['通知', '版本已更新'];
-            } else {
-              title = '🔔 检测到文件更新但版本未变更';
-              labels = ['通知', '版本未更新'];
-            }
+            const lastUpdateTime = new Date(existingIssue.updated_at);
+            if (lastUpdateTime < twentyFourHoursAgo) {
+              // 如果超过24小时，添加新评论
+              const commentBody = [
+                `## ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 的更新`,
+                '',
+                updateInfo,
+                '',
+                process.env.NEW_VERSION === 'true' 
+                  ? '> 🎉 这是一个新版本更新通知。'
+                  : '> ℹ️ 这是一个代码更新通知，但版本号未更新。'
+              ].join('\n');
 
-            const body = [
-              versionInfo,
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: commentBody
+              });
+            }
+            // 如果在24小时内，不做任何操作
+          } else {
+            // 创建新的追踪 issue
+            const initialBody = [
+              '# ' + (process.env.NEW_VERSION === 'true' ? '版本更新追踪' : '代码更新追踪'),
               '',
-              '## 更新记录',
+              '此 Issue 用于追踪代码更新，将在24小时后开始记录新的更新。',
               '',
-              changesMarkdown.join('\n')
+              '## 当前版本信息',
+              `- 当前版本号：\`${process.env.VERSION}\``,
+              `- 上次版本号：\`${process.env.LATEST_RELEASE}\``,
+              '',
+              '## 首次更新记录',
+              '',
+              updateInfo,
+              '',
+              process.env.NEW_VERSION === 'true'
+                ? '> 🎉 这是一个版本更新追踪 issue。'
+                : '> ℹ️ 这是一个代码更新追踪 issue。如需发布新版本，请更新 manifest.json 中的版本号。'
             ].join('\n');
 
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: title,
-              body: body,
-              labels: labels
+              title: TRACKING_ISSUE_TITLE,
+              body: initialBody,
+              labels: ['通知', process.env.NEW_VERSION === 'true' ? '版本更新' : '代码更新']
             });
           }
 
