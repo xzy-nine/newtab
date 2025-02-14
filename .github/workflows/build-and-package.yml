@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest  # 在最新版本的 Ubuntu 运行环境中执行
+    # 添加权限配置
+    permissions:
+      contents: write
+      packages: write
 
     steps:
     - name: Checkout repository
@@ -93,7 +97,8 @@ jobs:
       if: ${{ github.event_name == 'workflow_dispatch' || env.VERSION != env.LATEST_RELEASE }}
       uses: actions/create-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # 使用 github.token 而不是 secrets.GITHUB_TOKEN
+        GITHUB_TOKEN: ${{ github.token }}
       with:
         tag_name: ${{ env.TAG_NAME }}
         release_name: Release ${{ env.RELEASE_NAME }}
@@ -109,12 +114,13 @@ jobs:
       if: ${{ github.event_name == 'workflow_dispatch' || env.VERSION != env.LATEST_RELEASE }}
       uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/newtab-${{ env.RELEASE_NAME }}.zip
         asset_name: newtab-${{ env.RELEASE_NAME }}.zip
-        asset_content_type: application/zip  
+        asset_content_type: application/zip
+      continue-on-error: true
       # 上传发布资产
       # 1. 将构建的 zip 包上传到刚创建的 Release
       # 2. 使用前一步骤返回的上传 URL
