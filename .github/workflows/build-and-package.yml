@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main  # 当代码推送到 main 分支时自动触发
-  workflow_dispatch:  # 允许手动触发工作流
+  workflow_dispatch:  # (许手动触)工作流
 
 jobs:
   build:
@@ -14,6 +14,8 @@ jobs:
       contents: write
       packages: write
       issues: write  # 添加这一行,
+      actions: write  # 添加 actions 权限
+      deployments: write  # 添加部署权限
 
     steps:
     - name: Checkout repository
@@ -371,7 +373,6 @@ jobs:
           echo "TAG_EXISTS=true" >> $GITHUB_ENV
         else
           echo "TAG_EXISTS=false" >> $GITHUB_ENV
-        fi
 
     - name: Delete existing tag if exists
       if: ${{ env.TAG_EXISTS == 'true' }}
@@ -391,7 +392,7 @@ jobs:
 
     - name: Create Release
       if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
-      id: create_release  # 添加 id 以便引用输出
+      id: create_release
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: |
@@ -420,16 +421,16 @@ jobs:
           UPLOAD_URL=$(gh release view ${{ env.TAG_NAME }} --json uploadUrl -q .uploadUrl)
         fi
         
-        # 设置输出变量
-        echo "::set-output name=upload_url::$UPLOAD_URL"
+        # 使用新的 GITHUB_OUTPUT 环境文件替代 set-output
+        echo "upload_url=$UPLOAD_URL" >> $GITHUB_OUTPUT
 
     - name: Upload Release Asset
       if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
-      uses: actions/upload-release-asset@v1
+      uses: actions/upload-release-asset@v2  # 更新到 v2 版本
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 使用 secrets.GITHUB_TOKEN
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}  # 使用前一步骤的输出
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip
         asset_name: ${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip
         asset_content_type: application/zip
