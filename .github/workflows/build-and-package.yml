@@ -75,7 +75,7 @@ jobs:
           echo "TAG_NAME=${VERSION}_DEBUG" >> $GITHUB_ENV
         else
           echo "RELEASE_NAME=$VERSION" >> $GITHUB_ENV
-          echo "TAG_NAME=$VERSION" >. $GITHUB_ENV
+          echo "TAG_NAME=$VERSION" >> $GITHUB_ENV
         fi
       # 设置发布标签和名称
       # 如果是手动触发且版本号未变化，添加 _DEBUG 后缀用于调试版本
