@@ -1,42 +1,72 @@
-// 后台脚本，用于监听搜索引擎切换的消息，获取必应每日图片，缓存图片和搜索引擎
-const defaultEngine = "https://www.bing.com"; // 默认搜索引擎
-const defaultIcon = "favicon.ico"; // 默认图标
-const defaultImage = "images/bing-daily.jpg"; // 默认背景图片
-const dailyUrl = "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1"; // 必应每日图片的接口
+// 配置常量
+const CONFIG = {
+  DEFAULT_ENGINE: "https://www.bing.com",
+  DEFAULT_ICON: "favicon.ico",
+  DEFAULT_IMAGE: "images/bing-daily.jpg",
+  BING_API: "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1",
+  BING_BASE_URL: "https://cn.bing.com"
+};
 
-// 获取必应每日图片，并缓存到本地
-function getBingDaily() {
-  fetch(dailyUrl)
-    .then(response => response.json())
-    .then(data => {
-      if (data && data.images && data.images.length > 0) {
-        let imageUrl = "https://cn.bing.com" + data.images[0].url; // 获取图片的完整地址
-        fetch(imageUrl)
-          .then(response => response.blob())
-          .then(blob => {
-            let reader = new FileReader();
-            reader.readAsDataURL(blob); // 将图片转换为base64编码
-            reader.onloadend = function() {
-              let base64data = reader.result;
-              chrome.storage.local.set({bingDaily: base64data}); // 将图片缓存到本地存储
-            }
-          })
-      }
-    })
+/**
+ * 将Blob转换为base64
+ * @param {Blob} blob - 要转换的Blob对象
+ * @returns {Promise<string>} base64字符串
+ */
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+/**
+ * 获取并缓存必应每日图片
+ */
+async function getBingDaily() {
+  try {
+    const response = await fetch(CONFIG.BING_API);
+    if (!response.ok) throw new Error('Failed to fetch Bing API');
+    
+    const data = await response.json();
+    if (!data?.images?.[0]?.url) throw new Error('Invalid Bing API response');
+
+    const imageUrl = CONFIG.BING_BASE_URL + data.images[0].url;
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) throw new Error('Failed to fetch image');
+
+    const blob = await imageResponse.blob();
+    const base64data = await blobToBase64(blob);
+    await chrome.storage.local.set({ bingDaily: base64data });
+  } catch (error) {
+    console.error('Error fetching Bing daily image:', error);
+  }
 }
 
-// 监听来自新标签页的消息
+/**
+ * 处理消息事件
+ */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "getEngine") { // 如果是获取搜索引擎的消息
-    chrome.storage.local.get("engine", data => { // 从本地存储中获取搜索引擎
-      let engine = data.engine || defaultEngine; // 如果没有设置过，就使用默认搜索引擎
-      sendResponse({engine: engine}); // 将搜索引擎发送给新标签页
-    });
-    return true; // 表示异步响应
-  } else if (message.action === "setEngine") { // 如果是设置搜索引擎的消息
-    let engine = message.engine; // 获取要设置的搜索引擎
-    chrome.storage.local.set({engine: engine}); // 将搜索引擎保存到本地存储
-  } else if (message.action === "getImage") { // 如果是获取图片的消息
-    getBingDaily(); // 调用获取图片的函数
+  switch (message.action) {
+    case "getEngine":
+      chrome.storage.local.get("engine", data => {
+        sendResponse({ engine: data.engine || CONFIG.DEFAULT_ENGINE });
+      });
+      return true; // 异步响应
+
+    case "setEngine":
+      if (message.engine) {
+        chrome.storage.local.set({ engine: message.engine })
+          .catch(error => console.error('Error saving engine:', error));
+      }
+      break;
+
+    case "getImage":
+      getBingDaily();
+      break;
+
+    default:
+      console.warn('Unknown message action:', message.action);
   }
 });
