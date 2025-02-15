@@ -172,9 +172,9 @@
   background: transparent;
 }
 
-.shortcut-button {
+.shortcut-button { /* 快捷方式按钮 */
   width: 80px; /* 设置宽度为80px */
-  height: 80px; /* 设置高度为80px */
+  aspect-ratio: 1 / 1; /* 设置宽高比为1:1 */
   display: flex; /* 设置为弹性布局 */
   flex-direction: column; /* 设置为垂直方向 */
   align-items: center; /* 设置水平居中 */
@@ -186,44 +186,25 @@
   cursor: pointer; /* 设置鼠标样式为指针 */
   margin: 10px; /* 设置外边距为10px */
   transition: box-shadow 0.3s, transform 0.3s ease; /* 设置阴影和变换的过渡时间为0.3秒 */
-  background-size: 40%; /* 设置背景图像的大小 */
+  background-size: 70%; /* 设置背景图像的大小 */
   background-position: center; /* 设置背景图像的位置 */
   background-repeat: no-repeat; /* 设置背景图像不重复 */
   text-align: center; /* 文本居中对齐 */
+  overflow: hidden; /* 隐藏溢出的文本 */
+  justify-content: center; /* 在主轴上居中对齐 */
+  padding-top: 50px; /* 在底部添加内边距来为文本留出空间 */
+  clip-path: inset(0 round 10px); /* 添加圆角矩形遮罩 */
 }
 
 .shortcut-button:hover { /* 鼠标移动到快捷方式按钮上时 */
   box-shadow: 0 0 15px var(--secondary-color); /* 增加阴影 */
   transform: scale(1.2); /* 放大按钮 */
-}
-
-.shortcut-button img { /* 快捷方式按钮中的图标 */
-  width: 50%; /* 设置图标宽度为按钮宽度的50% */
-  height: 50%; /* 设置图标高度为按钮高度的50% */
-  transition: transform 0.3s ease; /* 添加平滑的过渡效果 */
-}
-
-.shortcut-button:hover img { /* 鼠标移动到快捷方式按钮时 */
-  transform: scale(1.2); /* 放大图标 */
-}
-
-
-
-.shortcut-button {
-  background-size: 40%;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
-.shortcut-button {
-  display: flex; /* 使用flex布局 */
-  justify-content: center; /* 在主轴上居中对齐 */
-  padding-top: 50px; /* 在底部添加20px的内边距来为文本留出空间 */
-}
-
-.shortcut-button:hover { /* 当鼠标移动到快捷方式按钮时 */
+  overflow: visible; /* 取消隐藏溢出的文本 */
   box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
+  background-size: 70%; /* 设置背景图像的大小 */
 }
+
+
 
 #background-button { /* 背景切换按钮 */
   width: 100px; /* 设置宽度为100px */
@@ -273,13 +254,14 @@ html, body {
   justify-content: center;
   --step: 60s;
   font-family: Consolas, Monaco, monospace;
-  font-size: 60px; /* 将字体大小减小一半 */
+  font-size: 700%; /* 将字体大小调整到700% */
   position: absolute;
   top: 5%; /* 调整这个值以确保在搜索框上面 */
   left: 50%;
   transform: translateX(-50%);
-  color: --primary-color; /* 设置字体颜色为主要颜色 */
-  }
+  color: rgb(0, 0, 0); /* 设置字体颜色为主要颜色 */
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.541); /* 添加白色描边 */
+}
 
 .split {
   /* 移除动画，使冒号不再跳动 */
@@ -331,5 +313,45 @@ html, body {
   }
   50% {
       opacity: 0;
+  }
+}
+
+/* 竖屏优化 - 当设备处于竖屏方向时应用以下样式 */
+@media screen and (orientation: portrait) {
+  #container {
+    flex-direction: column; /* 设置容器为纵向排列 */
+    justify-content: flex-start; /* 内容从顶部开始排列 */
+    padding-top: 20%; /* 顶部增加20%内边距 */
+  }
+
+  #search-box {
+    width: 80%; /* 搜索框宽度调整为80% */
+    height: 5%; /* 搜索框高度调整为5% */
+    top: 15%; /* 距顶部位置调整为10% */
+  }
+
+  #bookmark-box {
+    width: 90%; /* 书签盒子宽度调整为90% */
+    height: 90%; /* 高度调整为90% */
+  }
+
+  #shortcut-list {
+    width: 90%; /* 快捷方式列表宽度调整为90% */
+    height:  90%; /* 高度调整为90% */
+  }
+
+  .shortcut-button {
+    margin: 5px; /* 外边距减小到5px */
+  }
+
+  #background-button {
+    width: 80px; /* 背景切换按钮宽度减小到80px */
+    height: 40px; /* 背景切换按钮高度减小到40px */
+    font-size: 16px; /* 字体大小减小到16px */
+  }
+
+  .time {
+    font-size: 700%; /* 时钟字体大小调整为32px */
+    top: 2%; /* 距顶部位置调整为5% */
   }
 }

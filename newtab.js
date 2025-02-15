@@ -95,19 +95,38 @@ function showShortcuts(folder) {
   }
 }
 
+// 获取一个链接的域名部分
+function getDomain(url) {
+  let a = document.createElement("a"); // 创建一个a元素
+  a.href = url; // 设置a元素的href属性为链接
+  return a.origin; // 返回a元素的origin属性，即域名部分
+}
+
+
 async function getIconForShortcut(url, button) {
-  // 尝试从缓存获取
-  const cached = await chrome.storage.local.get(url);
-  if (cached[url]) {
-    button.style.backgroundImage = `url(${cached[url]})`;
-    return;
+  // 先设置为默认图标
+  button.style.backgroundImage = `url(${defaultIcon})`;
+
+  try {
+    // 尝试从本地获取
+    const cached = await chrome.storage.local.get(url);
+    if (cached[url]) {
+      if (cached[url].startsWith('data:text/html')) {
+        await chrome.storage.local.remove(url);
+      } else {
+        button.style.backgroundImage = `url(${cached[url]})`;
+        return;
+      }
+    }
+  } catch (cacheError) {
+    console.error('Error accessing local storage:', cacheError);
   }
 
-  // 获取新图标
-  const iconUrl = `${getDomain(url)}/favicon.ico`;
+  // 使用 Google Favicon API 获取高分辨率图标
+  const iconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${url}`;
   try {
     const response = await fetch(iconUrl, { 
-      mode: 'no-cors', 
+      mode: 'cors', 
       headers: { 'cache-control': 'no-cache' } 
     });
     
@@ -120,22 +139,52 @@ async function getIconForShortcut(url, button) {
       });
       
       button.style.backgroundImage = `url(${base64data})`;
-      chrome.storage.local.set({ [url]: base64data });
-    } else {
-      throw new Error('Failed to fetch icon');
+      try {
+        await chrome.storage.local.set({ [url]: base64data });
+      } catch (storageError) {
+        console.error('Error saving to local storage:', storageError);
+      }
+      return;
     }
-  } catch {
-    button.style.backgroundImage = `url(${defaultIcon})`;
+  } catch (apiError) {
+    console.error('Error fetching icon from Google Favicon API:', apiError);
   }
-}
 
-// 获取一个链接的域名部分
-function getDomain(url) {
-  let a = document.createElement("a"); // 创建一个a元素
-  a.href = url; // 设置a元素的href属性为链接
-  return a.origin; // 返回a元素的origin属性，即域名部分
-}
+  // 尝试使用域名加 /favicon.ico 获取图标
+  const domain = getDomain(url);
+  const fallbackIconUrl = `${domain}/favicon.ico`;
+  try {
+    const fallbackResponse = await fetch(fallbackIconUrl, { 
+      mode: 'cors', 
+      headers: { 'cache-control': 'no-cache' } 
+    });
 
+    if (fallbackResponse.ok) {
+      const blob = await fallbackResponse.blob();
+      const base64data = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+
+      // 检查获取到的是否为有效图标
+      if (!base64data.startsWith('data:text/html')) {
+        button.style.backgroundImage = `url(${base64data})`;
+        try {
+          await chrome.storage.local.set({ [url]: base64data });
+        } catch (storageError) {
+          console.error('Error saving to local storage:', storageError);
+        }
+        return;
+      }
+    }
+  } catch (fallbackError) {
+    console.error('Error fetching icon from fallback URL:', fallbackError);
+  }
+
+  // 如果所有尝试都失败，保持默认图像
+  button.style.backgroundImage = `url(${defaultIcon})`;
+}
 // 设置搜索引擎切换按钮的点击事件
 engineButton.onclick = function() {
   let engine = prompt("请输入要切换的搜索引擎的官网链接,例如：https://www.google.com"); // 弹出一个输入框，提示用户输入搜索引擎的链接
@@ -206,4 +255,15 @@ document.querySelectorAll('.folder-button').forEach(button => {
   button.addEventListener('click', () => {
     handleFolderClick(button);
   });
+});
+
+// 添加右键点击事件监听器
+backgroundButton.addEventListener('contextmenu', function(event) {
+  event.preventDefault(); // 阻止默认的右键菜单
+  let confirmClear = confirm("是否清除本地存储？"); // 弹出确认提示
+  if (confirmClear) {
+    chrome.storage.local.clear(() => { // 清空本地存储
+      alert("本地存储已清除"); // 提示用户本地存储已清除
+    });
+  }
 });

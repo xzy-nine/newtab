@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "xzy新标签页拓展",
-  "version": "1.1.1",
-  "description": "一个简洁美观的新标签页拓展，支持搜索引擎切换，收藏夹快捷方式，背景切换等功能。由xzy通过必应ai创作，并通过github copiot修改",
+  "version": "1.1.2",
+  "description": "一个简洁美观的新标签页拓展，支持搜索引擎切换，收藏夹快捷方式，背景切换等功能。通过必应ai创作，后续修改全部是github copiot修改的.",
   "icons": {
     "16": "favicon.ico",
     "32": "favicon.ico",
