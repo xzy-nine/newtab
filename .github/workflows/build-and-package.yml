@@ -36,10 +36,19 @@ jobs:
             echo "new_version=false" >> $GITHUB_ENV
         fi
 
+    - name: 检查标签是否存在
+      id: check_tag
+      run: |
+        if git rev-parse "refs/tags/${{ env.VERSION }}" >/dev/null 2>&1; then
+          echo "tag_exists=true" >> $GITHUB_ENV
+        else
+          echo "tag_exists=false" >> $GITHUB_ENV
+        fi
+
     - name: 生成变更日志
       id: generate_changelog
       run: |
-        if [ "${{ env.new_version }}" = "true" ]; then
+        if [ "${{ env.new_version }}" = "true" ] && [ "${{ env.tag_exists }}" = "false" ]; then
           LAST_TAG=$(git describe --tags --abbrev=0 || echo "")
           if [ -z "$LAST_TAG" ]; then
             CHANGELOG=$(git log --pretty=format:"%h - %s")
@@ -54,14 +63,14 @@ jobs:
         fi
 
     - name: 创建并移动 zip 包
-      if: env.new_version == 'true'
+      if: env.new_version == 'true' && env.tag_exists == 'false'
       run: |
         zip -r newtab-${{ env.VERSION }}.zip . -x ".*" -x "*/.*" -x "build/*" -x "README.md" -x ".github/*"
         mkdir -p build
         mv newtab-${{ env.VERSION }}.zip build/
 
     - name: 创建 Release
-      if: env.new_version == 'true'
+      if: env.new_version == 'true' && env.tag_exists == 'false'
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
@@ -73,7 +82,7 @@ jobs:
         prerelease: false
 
     - name: 上传 Release 资源
-      if: env.new_version == 'true'
+      if: env.new_version == 'true' && env.tag_exists == 'false'
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
