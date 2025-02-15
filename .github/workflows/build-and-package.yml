@@ -15,9 +15,6 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: 安装必要的依赖项
-      run: npm install
-
     - name: 从 manifest.json 获取版本信息
       id: get_version
       run: |
@@ -33,7 +30,7 @@ jobs:
     - name: 比较版本
       id: compare_versions
       run: |
-        if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -V | head -n1)" != "$VERSION" ]; then
+        if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then
           echo "new_version=true" >> $GITHUB_ENV
         else
           echo "new_version=false" >> $GITHUB_ENV
@@ -42,9 +39,14 @@ jobs:
       id: generate_changelog
       run: |
         if [ "${{ env.new_version }}" = "true" ]; then
-          CHANGELOG=$(git log --pretty=format:"%h - %s" $(git describe --tags --abbrev=0)..HEAD)
+          LAST_TAG=$(git describe --tags --abbrev=0 || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"%h - %s")
+          else
+            CHANGELOG=$(git log --pretty=format:"%h - %s" $LAST_TAG..HEAD)
+          fi
           if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="空日志"
+            CHANGELOG="没有新的变更记录"
           fi
           echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
         fi
@@ -52,7 +54,7 @@ jobs:
     - name: 创建并移动 zip 包
       if: env.new_version == 'true'
       run: |
-        zip -r newtab-${{ env.VERSION }}.zip . -x ".*" -x "*/.*" -x "build/*" -x "README.md"
+        zip -r newtab-${{ env.VERSION }}.zip . -x ".*" -x "*/.*" -x "build/*" -x "README.md" -x ".github/*"
         mkdir -p build
         mv newtab-${{ env.VERSION }}.zip build/
 
