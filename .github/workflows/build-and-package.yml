@@ -63,12 +63,13 @@ jobs:
           echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
         fi
 
-    - name: 创建并移动 zip 包
+    -    - name: 创建并复制 zip 包
       if: env.new_version == 'true' && env.tag_exists == 'false'
       run: |
         zip -r newtab-${{ env.VERSION }}.zip . -x ".*" -x "*/.*" -x "build/*" -x "README.md" -x ".github/*"
         mkdir -p build
-        mv newtab-${{ env.VERSION }}.zip build/
+        cp newtab-${{ env.VERSION }}.zip build/
+        cp newtab-${{ env.VERSION }}.zip $GITHUB_WORKSPACE/build/
 
     - name: 创建 Release
       if: env.new_version == 'true' && env.tag_exists == 'false'
