@@ -59,6 +59,7 @@ jobs:
             CHANGELOG="没有新的变更记录"
           fi
           CHANGELOG=$(echo "$CHANGELOG" | sed 's/ \([0-9a-f]\{7\} - \)/\n\1/g' | sed 's/\(fix\|add\|style\|update\)/\n\1/g')
+          CHANGELOG=$(echo "$CHANGELOG" | jq -R -s '.')
           echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
         fi
 
@@ -78,7 +79,7 @@ jobs:
       with:
         tag_name: ${{ env.VERSION }}
         release_name: Release ${{ env.VERSION }}
-        body: ${{ env.CHANGELOG }}
+        body: ${{ fromJson(env.CHANGELOG) }}
         draft: false
         prerelease: false
 
