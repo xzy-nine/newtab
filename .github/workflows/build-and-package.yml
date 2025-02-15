@@ -1,434 +1,268 @@
-name: Build and Package  # 构建和打包工作流
+name: auto Build and Package  # 自动构建和打包工作流
 
 on:
   push:
     branches:
-      - main  # 当代码推送到 main 分支时自动触发
-  workflow_dispatch:  # (许手动触)工作流
+      - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # 在最新版本的 Ubuntu 运行环境中执行
-    # 添加权限配置:
+    timeout-minutes: 15  # 添加超时设置
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
     permissions:
       contents: write
       packages: write
-      issues: write  # 添加这一行,
-      actions: write  # 添加 actions 权限
-      deployments: write  # 添加部署权限
+      actions: read
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      # 检出仓库代码到运行环境中，确保工作流可以访问最新的代码
+      # B: 检出代码
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # 获取完整历史记录用于生成变更日志
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '14'
-      # 配置 Node.js 运行环境，选择 v14 版本以确保项目依赖兼容性
+      - name: Cache Dependencies
+        uses: actions/cache@v3
+        id: cache
+        with:
+          path: |
+            build
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-    - name: Install dependencies
-      run: npm install
-      # 安装项目所需的 npm 依赖包，确保构建环境完整
+      # C: 设置 Node.js 环境
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'  # 添加缓存支持
 
-    - name: Get version from manifest.json
-      id: get_version
-      run: |
-        VERSION=$(jq -r '.version' manifest.json)
-        # 验证版本号格式是否符合 x.y.z 规范
-        if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "Error: Invalid version format in manifest.json"
-          exit 1
-        fi
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
-      # 从项目的 manifest.json 中提取版本号并存储为环境变量，用于后续的版本控制
-
-    - name: Get latest release version
-      id: get_latest_release
-      run: |
-        # 处理首次发布的情况
-        LATEST_RELEASE=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name // "0.0.0"')
-        if [[ ! $LATEST_RELEASE =~ ^[0-9]+\.[0-9]+\.[0-9]+(_DEBUG)?$ ]]; then
-          LATEST_RELEASE="0.0.0"
-        fi
-        echo "LATEST_RELEASE=$LATEST_RELEASE" >> $GITHUB_ENV
-      # 通过 GitHub API 获取仓库最新发布版本号，用于版本比较和发布控制
-    - name: Compare versions
-      id: compare_versions
-      run: |
-        # 添加版本号格式验证函数
-        validate_version() {
-          if [[ ! $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+(_DEBUG)?$ ]]; then
-            echo "Error: Invalid version format: $1"
-            return 1
+      # C: 安装依赖
+      - name: Install Dependencies
+        run: |
+          if [ ! -f "package.json" ]; then
+            echo "Error: package.json not found"
+            exit 1
           fi
-          return 0
-        }
-        
-        # 验证两个版本号
-        validate_version "${{ env.VERSION }}" || exit 1
-        validate_version "${{ env.LATEST_RELEASE }}" || exit 1
-        
-        # 确保版本号存在
-        if [ -z "${{ env.VERSION }}" ] || [ -z "${{ env.LATEST_RELEASE }}" ]; then
-          echo "Error: Missing version information"
-          exit 1
-        fi
-        
-        # 提取不带 _DEBUG 的版本号进行比较
-        CURRENT_VER=$(echo ${{ env.VERSION }} | sed 's/_DEBUG$//')
-        LATEST_VER=$(echo ${{ env.LATEST_RELEASE }} | sed 's/_DEBUG$//')
-        
-        # 确保版本号格式正确
-        if [[ ! $CURRENT_VER =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || [[ ! $LATEST_VER =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "Error: Invalid version format"
-          exit 1
-        fi
-        
-        # 语义化版本号比较
-        if [ $(printf '%s\n' "$LATEST_VER" "$CURRENT_VER" | sort -V | tail -n1) = "$CURRENT_VER" ]; then
-          echo "NEW_VERSION=true" >> $GITHUB_ENV
-        else
-          echo "NEW_VERSION=false" >> $GITHUB_ENV
-        fi
+          npm ci  # 使用 ci 替代 install 以确保一致性
 
-    - name: Set release name
-      id: set_release_name
-      run: |
-        if [ "${{ env.NEW_VERSION }}" = "false" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          echo "RELEASE_NAME=${VERSION}_DEBUG" >> $GITHUB_ENV
-          echo "TAG_NAME=${VERSION}_DEBUG" >> $GITHUB_ENV
-        else
-          echo "RELEASE_NAME=$VERSION" >> $GITHUB_ENV
-          echo "TAG_NAME=$VERSION" >> $GITHUB_ENV
-        fi
-      # 设置发布标签和名称
-      # 如果是手动触发且版本号未变化，添加 _DEBUG 后缀用于调试版本
-      # 否则使用 manifest.json 中的原始版本号
+      # D: 从 manifest.json 获取版本信息
+      - name: Get version from manifest.json
+        id: get_version
+        run: |
+          if [ ! -f "manifest.json" ]; then
+            echo "Error: manifest.json not found"
+            exit 1
+          fi
+          VERSION=$(jq -r '.version' manifest.json)
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version format in manifest.json"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-    - name: Check recent notifications and gather changes
-      if: ${{ env.NEW_VERSION == 'false' && github.event_name == 'push' }}
-      uses: actions/github-script@v6
-      id: check_notifications
-      with:
-        script: |
-          const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      # E: 获取最新发布版本
+      - name: Get Latest Release Version
+        id: get_latest_release
+        run: |
+          RESPONSE=$(curl -s -w "%{http_code}" https://api.github.com/repos/${{ github.repository }}/releases/latest)
+          HTTP_CODE=$(tail -n1 <<< "$RESPONSE")
+          CONTENT=$(sed '$ d' <<< "$RESPONSE")
           
-          // 搜索最近24小时内的通知issue
-          const issues = await github.rest.issues.listForRepo({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            state: 'all',
-            labels: '版本未更新',
-            since: twentyFourHoursAgo.toISOString()
-          });
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Warning: Failed to get latest release, using 0.0.0"
+            echo "latest_release=0.0.0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           
-          // 获取最近一次通知的时间
-          let lastNotificationTime = twentyFourHoursAgo;
-          if (issues.data.length > 0) {
-            lastNotificationTime = new Date(issues.data[0].created_at);
-          }
-          
-          // 获取从上次通知到现在的所有提交
-          const commits = await github.rest.repos.listCommits({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            since: lastNotificationTime.toISOString(),
-            until: new Date().toISOString()
-          });
-          
-          // 整理所有变更信息
-          const changes = commits.data.map(commit => ({
-            message: commit.commit.message,
-            author: commit.commit.author.name,
-            timestamp: commit.commit.author.date,
-            url: commit.html_url,
-            // 获取修改的文件
-            files: commit.files ? commit.files.map(f => f.filename).join('\n') : ''
-          }));
-          
-          return {
-            hasRecentNotification: issues.data.length > 0,
-            changes: changes
-          };
+          LATEST_RELEASE=$(echo "$CONTENT" | jq -r '.tag_name // "0.0.0"')
+          echo "latest_release=$LATEST_RELEASE" >> $GITHUB_OUTPUT
 
-    - name: Create or update notification issue
-      if: ${{ github.event_name == 'push' }}
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      # F: 比较版本
+      - name: Compare Versions
+        id: compare_versions
+        run: |
+          # 安装 semver 工具
+          npm install -g semver
           
-          // 搜索现有的追踪 issue
-          const issues = await github.rest.issues.listForRepo({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            state: 'open',
-            labels: ['通知']
-          });
+          CURRENT_VER="${{ steps.get_version.outputs.version }}"
+          LATEST_VER="${{ steps.get_latest_release.outputs.latest_release }}"
           
-          const TRACKING_ISSUE_TITLE = process.env.NEW_VERSION === 'true' 
-            ? '🎉 版本更新追踪' 
-            : '📝 代码更新追踪';
+          # 当前逻辑有重复判断，可以简化为:
+          if ! semver "$CURRENT_VER" >/dev/null 2>&1 || ! semver "$LATEST_VER" >/dev/null 2>&1; then
+            echo "Error: Invalid version format"
+            exit 1
+          fi
           
-          // 查找对应类型的追踪 issue
-          const existingIssue = issues.data.find(issue => issue.title === TRACKING_ISSUE_TITLE);
+          if semver -r "> $LATEST_VER" "$CURRENT_VER" >/dev/null; then
+            echo "Found new version, continuing workflow..."
+            echo "new_version=true" >> $GITHUB_OUTPUT
+          else
+            echo "No new version detected, stopping workflow..."
+            echo "new_version=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           
-          // 获取当前提交的信息
-          const commit = context.payload.commits[0];
-          const updateInfo = [
-            '### 更新记录 (' + new Date().toISOString() + ')',
-            '',
-            '#### 提交信息',
-            `\`\`\``,
-            commit.message,
-            `\`\`\``,
-            '',
-            '#### 更改的文件',
-            '```',
-            (commit.modified || []).join('\n'),
-            '```',
-            '',
-            '#### 提交详情',
-            `- 提交者：${commit.author.name}`,
-            `- 提交时间：${commit.timestamp}`,
-            `- 提交 SHA：${commit.id}`,
-            `- 查看变更：${commit.url}`,
-            '',
-            '---',
-            ''
-          ].join('\n');
+          # 更严格的版本格式验证
+          if [[ ! "$CURRENT_VER" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Error: Invalid current version format: $CURRENT_VER"
+            exit 1
+          fi
 
-          if (existingIssue) {
-            const lastUpdateTime = new Date(existingIssue.updated_at);
-            if (lastUpdateTime < twentyFourHoursAgo) {
-              // 如果超过24小时，添加新评论
-              const commentBody = [
-                `## ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 的更新`,
-                '',
-                updateInfo,
-                '',
-                process.env.NEW_VERSION === 'true' 
-                  ? '> 🎉 这是一个新版本更新通知。'
-                  : '> ℹ️ 这是一个代码更新通知，但版本号未更新。'
-              ].join('\n');
+      # G: 生成变更日志
+      - name: Generate Changelog
+        if: steps.compare_versions.outputs.new_version == 'true'
+        id: changelog
+        run: |
+          LATEST_TAG="${{ steps.get_latest_release.outputs.latest_release }}"
+          REPO_URL="https://github.com/${{ github.repository }}"
+          
+          if [ -z "$LATEST_TAG" ]; then
+            echo "Error: Latest release version is empty"
+            exit 1
+          fi
+          
+          if ! git rev-parse "$LATEST_TAG" >/dev/null 2>&1; then
+            echo "Warning: Tag $LATEST_TAG not found, using first commit"
+            LATEST_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+          
+          if ! CHANGELOG=$(git log "$LATEST_TAG"..HEAD --merges --pretty=format:"[#%h]($REPO_URL/commit/%H) - %s"); then
+            echo "Warning: Failed to generate changelog"
+            CHANGELOG="No changes"
+          fi
+          
+          # 如果日志为空,显示"No changes"而不是使用所有提交
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="No changes"
+          fi
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existingIssue.number,
-                body: commentBody
-              });
-            }
-            // 如果在24小时内，不做任何操作
-          } else {
-            // 创建新的追踪 issue
-            const initialBody = [
-              '# ' + (process.env.NEW_VERSION === 'true' ? '版本更新追踪' : '代码更新追踪'),
-              '',
-              '此 Issue 用于追踪代码更新，将在24小时后开始记录新的更新。',
-              '',
-              '## 当前版本信息',
-              `- 当前版本号：\`${process.env.VERSION}\``,
-              `- 上次版本号：\`${process.env.LATEST_RELEASE}\``,
-              '',
-              '## 首次更新记录',
-              '',
-              updateInfo,
-              '',
-              process.env.NEW_VERSION === 'true'
-                ? '> 🎉 这是一个版本更新追踪 issue。'
-                : '> ℹ️ 这是一个代码更新追踪 issue。如需发布新版本，请更新 manifest.json 中的版本号。'
-            ].join('\n');
+      # H: 验证必要文件
+      - name: Verify Required Files
+        if: steps.compare_versions.outputs.new_version == 'true'
+        run: |
+          required_files=("manifest.json" "package.json")
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Error: Required file $file not found"
+              exit 1
+            fi
+          done
 
+      # I: 创建并移动 zip 包
+      - name: Create and Move Zip Package
+        if: steps.compare_versions.outputs.new_version == 'true'
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          
+          # 清理并创建构建目录
+          rm -rf build
+          mkdir -p build
+          
+          # 创建临时目录用于打包
+          TMP_DIR=$(mktemp -d)
+          cp -r . "$TMP_DIR/"
+          cd "$TMP_DIR"
+          
+          # 移除不需要的文件和目录
+          rm -rf \
+            README.md \
+            build \
+            .github \
+            .git \
+            node_modules \
+            *.log \
+            .gitignore \
+            package-lock.json
+          
+          # 创建 zip 包
+          zip -r "$REPO_NAME-$VERSION.zip" .
+          mv "$REPO_NAME-$VERSION.zip" ../build/
+          cd ..
+          rm -rf "$TMP_DIR"
+          
+          # 验证 zip 包
+          if [ ! -f "build/$REPO_NAME-$VERSION.zip" ]; then
+            echo "Error: Failed to create zip package"
+            exit 1
+          fi
+
+      # J: 创建 Release
+      - name: Set Release Time
+        run: echo "RELEASE_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
+
+      - name: Create Release
+        if: steps.compare_versions.outputs.new_version == 'true'
+        id: create_release  # 添加这行
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            Release ${{ steps.get_version.outputs.version }}
+            
+            Changes in this release:
+            ${{ steps.changelog.outputs.changelog }}
+            
+            自动发布时间: ${{ env.RELEASE_TIME }}
+          draft: false
+          prerelease: false
+
+      # K: 上传 Release 资源
+      - name: Upload Release Asset
+        if: steps.compare_versions.outputs.new_version == 'true'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/${{ github.event.repository.name }}-${{ steps.get_version.outputs.version }}.zip
+          asset_name: ${{ github.event.repository.name }}-${{ steps.get_version.outputs.version }}.zip
+          asset_content_type: application/zip
+
+      # L: 错误通知
+      - name: Notify on Failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { repo, owner } = context.repo;
+            const run_id = context.runId;
+            const run_url = `https://github.com/${owner}/${repo}/actions/runs/${run_id}`;
+            const workflow_name = context.workflow;
+            const run_number = context.runNumber;
+            const message = `⚠️ Workflow failed!
+              Repository: ${owner}/${repo}
+              Workflow: ${workflow_name}
+              Run #: ${run_number}
+              Run URL: ${run_url}
+              Failure Time: ${new Date().toISOString()}`;
+            
             await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: TRACKING_ISSUE_TITLE,
-              body: initialBody,
-              labels: ['通知', process.env.NEW_VERSION === 'true' ? '版本更新' : '代码更新']
+              owner,
+              repo,
+              title: `🚨 Workflow Failed - Run #${run_number}`,
+              body: message,
+              labels: ['workflow-failed', 'automated-report']
             });
-          }
 
-    - name: Check and update version notification issue
-      if: ${{ env.NEW_VERSION == 'false' && github.event_name == 'push' }}
-      uses: actions/github-script@v6
-      with:
-        script: |
-          try {
-            // 查找是否存在版本更新通知 issue
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: ['版本更新通知']
-            });
-            
-            // 查找特定标题的issue
-            const notificationIssue = issues.data.find(issue => 
-              issue.title === '📝 版本更新通知追踪'
-            );
-            
-            // 创建更新内容
-            const modified = context.payload.commits[0].modified || [];
-            const updateInfo = [
-              '### 更新记录 (' + new Date().toISOString() + ')',
-              '',
-              '#### 提交信息',
-              context.payload.commits[0].message,
-              '',
-              '#### 更改的文件',
-              '```',
-              modified.join('\n'),
-              '```',
-              '',
-              '#### 提交详情',
-              '- 提交者：' + context.payload.commits[0].author.name,
-              '- 提交时间：' + context.payload.commits[0].timestamp,
-              '- 查看变更：' + context.payload.commits[0].url,
-              '',
-              '---',
-              ''
-            ].join('\n');
-            
-            // 如果没有找到通知 issue，创建一个新的
-            if (!notificationIssue) {
-              const initialBody = [
-                '# 版本更新通知追踪',
-                '',
-                '此 Issue 用于追踪所有未更新版本号的代码变更。',
-                '',
-                '## 当前版本信息',
-                '- 当前版本号：`' + process.env.VERSION + '`',
-                '- 上次版本号：`' + process.env.LATEST_RELEASE + '`',
-                '',
-                '> **提示：** 如需发布新版本，请更新 manifest.json 中的版本号。',
-                '',
-                '## 变更记录',
-                '',
-                updateInfo
-              ].join('\n');
-
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: '📝 版本更新通知追踪',
-                body: initialBody,
-                labels: ['版本更新通知']
-              });
-            } else {
-              // 更新现有 issue
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: notificationIssue.number,
-                body: notificationIssue.body + '\n' + updateInfo
-              });
-            }
-          } catch (error) {
-            console.error('Error updating notification issue:', error);
-            return;
-          }
-
-    - name: Set repository name
-      run: |
-        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
-        echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
-
-    - name: Create and move zip package
-      # 修改条件：只在是新版本或手动触发且为调试版本时打包
-      if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
-      run: |
-        set -e  # 添加这行使脚本在遇到错误时立即退出
-        
-        # 使用环境变量 REPO_NAME
-        mkdir -p build
-        
-        zip -r "${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip" . -x "README.md" -x "build/*" -x ".github/*" -x ".git/*"
-        
-        mv "${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip" build/
-        
-        if [ ! -f "build/${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip" ]; then
-          echo "Error: Failed to create zip package"
-          exit 1
-        fi
-        
-        # 将build目录添加到git
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git config --global user.name "github-actions[bot]"
-        git add build/
-        git commit -m "chore: update build artifacts for version ${{ env.RELEASE_NAME }}"
-        git push
-      # 打包项目文件
-      # 1. 创建 build 目录
-      # 2. 将项目文件打包成 zip，排除文档和构建相关文件
-      # 3. 移动压缩包到 build 目录
-      # 仅在手动触发或版本号更新时执行
-
-    - name: Check if tag exists
-      id: check_tag
-      run: |
-        if git rev-parse "refs/tags/${{ env.TAG_NAME }}" >/dev/null 2>&1; then
-          echo "TAG_EXISTS=true" >> $GITHUB_ENV
-        else
-          echo "TAG_EXISTS=false" >> $GITHUB_ENV
-        fi
-
-    - name: Delete existing tag if exists
-      if: ${{ env.TAG_EXISTS == 'true' }}
-      run: |
-        git tag -d ${{ env.TAG_NAME }} || true
-        git push --delete origin ${{ env.TAG_NAME }} || true
-
-    - name: Get merge commits
-      id: get_merge_commits
-      if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
-      run: |
-        # 获取最近的合并提交记录
-        MERGE_LOG=$(git log --merges --since="1 month ago" --pretty=format:"- %s%n  %b" | sed '/^[[:space:]]*$/d')
-        echo "MERGE_LOG<<EOF" >> $GITHUB_ENV
-        echo "$MERGE_LOG" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
-
-    - name: Create Release
-      if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
-      id: create_release
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: |
-        # 获取现有release的说明（如果存在）
-        EXISTING_NOTES=$(gh release view ${{ env.TAG_NAME }} --json body -q .body 2>/dev/null || echo "")
-        
-        # 构建发布说明
-        RELEASE_NOTES=$(cat << EOF
-## 版本 ${{ env.RELEASE_NAME }}
-
-### 合并记录
-${{ env.MERGE_LOG }}
-
-### 现有说明
-$EXISTING_NOTES
-EOF
-)
-        
-        # 创建或更新 release
-        if gh release view ${{ env.TAG_NAME }} &>/dev/null; then
-          ...existing code...
-        fi
-
-    - name: Upload Release Asset
-      if: ${{ env.NEW_VERSION == 'true' || (github.event_name == 'workflow_dispatch' && env.NEW_VERSION == 'false') }}
-      uses: softprops/action-gh-release@v1
-      with:
-        files: ./build/${{ env.REPO_NAME }}-${{ env.RELEASE_NAME }}.zip
-        tag_name: ${{ env.TAG_NAME }}
-        name: ${{ env.RELEASE_NAME }}
-        draft: false
-        prerelease: ${{ env.NEW_VERSION != 'true' }}
-        token: ${{ secrets.GITHUB_TOKEN }}
-      # 上传发布资产
-      # 1. 将构建的 zip 包上传到刚创建的 Release
-      # 2. 使用前一步骤返回的上传 URL
-      # 3. 设置正确的内容类型
-      # 仅在手动触发或版本号更新时执行
+      - name: Cache build
+        uses: actions/cache@v3
+        with:
+          path: |
+            build
+            node_modules
+          key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
