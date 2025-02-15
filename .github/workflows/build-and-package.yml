@@ -64,7 +64,7 @@ jobs:
       if: env.new_version == 'true'
       uses: actions/create-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
       with:
         tag_name: ${{ env.VERSION }}
         release_name: Release ${{ env.VERSION }}
@@ -76,7 +76,7 @@ jobs:
       if: env.new_version == 'true'
       uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: build/newtab-${{ env.VERSION }}.zip
