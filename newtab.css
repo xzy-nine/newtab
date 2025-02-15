@@ -335,10 +335,7 @@ html, body {
     height: 90%; /* 高度调整为90% */
   }
 
-  #shortcut-list {
-    width: 90%; /* 快捷方式列表宽度调整为90% */
-    height:  90%; /* 高度调整为90% */
-  }
+
 
   .shortcut-button {
     margin: 5px; /* 外边距减小到5px */
