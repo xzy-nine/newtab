@@ -1,4 +1,4 @@
-name: auto Build and Package  # 自动构建和打包工作流
+name: Build and Package
 
 on:
   push:
@@ -7,226 +7,74 @@ on:
 
 jobs:
   build:
-    timeout-minutes: 15  # 添加超时设置
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-    permissions:
-      contents: write
-      packages: write
-      actions: read
-      id-token: write  # 添加 id-token 权限
 
     steps:
-      # B: 检出代码
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # 获取完整历史记录用于生成变更日志
+    - name: 检出代码
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
-      # 安装必要的依赖项
-      - name: Install Required Tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq curl zip
+    - name: 安装必要的依赖项
+      run: npm install
 
-      # C: 设置 Node.js 环境
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
+    - name: 从 manifest.json 获取版本信息
+      id: get_version
+      run: |
+        VERSION=$(jq -r '.version' manifest.json)
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      # C: 安装依赖
-      - name: Install Dependencies
-        run: |
-          npm install
+    - name: 获取最新发布版本
+      id: get_latest_release
+      run: |
+        LATEST_VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name' || echo "0.0.0")
+        echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
 
-      # E: 从 manifest.json 获取版本信息
-      - name: Get version from manifest.json
-        id: get_version
-        run: |
-          VERSION=$(jq -r '.version' manifest.json)
-          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Error: Invalid version format in manifest.json"
-            exit 1
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+    - name: 比较版本
+      id: compare_versions
+      run: |
+        if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -V | head -n1)" != "$VERSION" ]; then
+          echo "new_version=true" >> $GITHUB_ENV
+        else
+          echo "new_version=false" >> $GITHUB_ENV
 
-      # F: 获取最新发布版本
-      - name: Get Latest Release Version
-        id: get_latest_release
-        run: |
-          RESPONSE=$(curl -s -w "%{http_code}" https://api.github.com/repos/${{ github.repository }}/releases/latest)
-          HTTP_CODE=$(tail -n1 <<< "$RESPONSE")
-          CONTENT=$(sed '$ d' <<< "$RESPONSE")
-          
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "Warning: Failed to get latest release, using 0.0.0"
-            echo "latest_release=0.0.0" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          LATEST_RELEASE=$(echo "$CONTENT" | jq -r '.tag_name // "0.0.0"')
-          echo "latest_release=$LATEST_RELEASE" >> $GITHUB_OUTPUT
-
-      # G: 比较版本
-      - name: Compare Versions
-        id: compare_versions
-        run: |
-          npm install -g semver
-          CURRENT_VER="${{ steps.get_version.outputs.version }}"
-          LATEST_VER="${{ steps.get_latest_release.outputs.latest_release }}"
-          
-          if ! semver "$CURRENT_VER" >/dev/null 2>&1 || ! semver "$LATEST_VER" >/dev/null 2>&1; then
-            echo "Error: Invalid version format"
-            exit 1
-          fi
-          
-          if semver -r "> $LATEST_VER" "$CURRENT_VER" >/dev/null; then
-            echo "Found new version, continuing workflow..."
-            echo "new_version=true" >> $GITHUB_OUTPUT
-          else
-            echo "No new version detected, stopping workflow..."
-            echo "new_version=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          if [[ ! "$CURRENT_VER" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-            echo "Error: Invalid current version format: $CURRENT_VER"
-            exit 1
-          fi
-
-      # H: 生成变更日志
-      - name: Generate Changelog
-        if: steps.compare_versions.outputs.new_version == 'true'
-        id: changelog
-        run: |
-          LATEST_TAG="${{ steps.get_latest_release.outputs.latest_release }}"
-          REPO_URL="https://github.com/${{ github.repository }}"
-          
-          if [ -z "$LATEST_TAG" ]; then
-            echo "Error: Latest release version is empty"
-            exit 1
-          fi
-          
-          if ! git rev-parse "$LATEST_TAG" >/dev/null 2>&1; then
-            echo "Warning: Tag $LATEST_TAG not found, using first commit"
-            LATEST_TAG=$(git rev-list --max-parents=0 HEAD)
-          fi
-          
-          if ! CHANGELOG=$(git log "$LATEST_TAG"..HEAD --merges --pretty=format:"[#%h]($REPO_URL/commit/%H) - %s"); then
-            echo "Warning: Failed to generate changelog"
-            CHANGELOG="No changes"
-          fi
-          
-          # 如果日志为空,显示"No changes"而不是使用所有提交
+    - name: 生成变更日志
+      id: generate_changelog
+      run: |
+        if [ "${{ env.new_version }}" = "true" ]; then
+          CHANGELOG=$(git log --pretty=format:"%h - %s" $(git describe --tags --abbrev=0)..HEAD)
           if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="No changes"
+            CHANGELOG="空日志"
           fi
-          
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
+        fi
 
-      # I: 验证必要文件
-      - name: Verify Required Files
-        if: steps.compare_versions.outputs.new_version == 'true'
-        run: |
-          required_files=("manifest.json" )
-          for file in "${required_files[@]}"; do
-            if [ ! -f "$file" ]; then
-              echo "Error: Required file $file not found"
-              exit 1
-            fi
-          done
+    - name: 创建并移动 zip 包
+      if: env.new_version == 'true'
+      run: |
+        zip -r newtab-${{ env.VERSION }}.zip . -x ".*" -x "*/.*" -x "build/*" -x "README.md"
+        mkdir -p build
+        mv newtab-${{ env.VERSION }}.zip build/
 
-      # J: 创建并移动 zip 包
-      - name: Create and Move Zip Package
-        if: steps.compare_versions.outputs.new_version == 'true'
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
-          
-          rm -rf build
-          mkdir -p build
-          
-          TMP_DIR=$(mktemp -d)
-          cp -r . "$TMP_DIR/"
-          cd "$TMP_DIR"
-          
-          rm -rf \
-            README.md \
-            build \
-            .github \
-            .git \
-            node_modules \
-            *.log \
-            .gitignore
-          
-          zip -r "$REPO_NAME-$VERSION.zip" .
-          mv "$REPO_NAME-$VERSION.zip" ../build/
-          cd ..
-          rm -rf "$TMP_DIR"
-          
-          if [ ! -f "build/$REPO_NAME-$VERSION.zip" ]; then
-            echo "Error: Failed to create zip package"
-            exit 1
-          fi
-          echo "Zip package created successfully: build/$REPO_NAME-$VERSION.zip"
+    - name: 创建 Release
+      if: env.new_version == 'true'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.VERSION }}
+        release_name: Release ${{ env.VERSION }}
+        body: ${{ env.CHANGELOG }}
+        draft: false
+        prerelease: false
 
-      # K: 创建 Release
-      - name: Set Release Time
-        run: echo "RELEASE_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
-
-      - name: Create Release
-        if: steps.compare_versions.outputs.new_version == 'true'
-        id: create_release  # 添加这行
-        uses: actions/create-release@v1
-        with:
-          tag_name: ${{ steps.get_version.outputs.version }}
-          release_name: Release ${{ steps.get_version.outputs.version }}
-          body: |
-            Release ${{ steps.get_version.outputs.version }}
-            
-            Changes in this release:
-            ${{ steps.changelog.outputs.changelog }}
-            
-            自动发布时间: ${{ env.RELEASE_TIME }}
-          draft: false
-          prerelease: false
-
-      # L: 上传 Release 资源
-      - name: Upload Release Asset
-        if: steps.compare_versions.outputs.new_version == 'true'
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/${{ github.event.repository.name }}-${{ steps.get_version.outputs.version }}.zip
-          asset_name: ${{ github.event.repository.name }}-${{ steps.get_version.outputs.version }}.zip
-          asset_content_type: application/zip
-
-      # M: 错误通知
-      - name: Notify on Failure
-        if: failure()
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { repo, owner } = context.repo;
-            const run_id = context.runId;
-            const run_url = `https://github.com/${owner}/${repo}/actions/runs/${run_id}`;
-            const workflow_name = context.workflow;
-            const run_number = context.runNumber;
-            const message = `⚠️ Workflow failed!
-              Repository: ${owner}/${repo}
-              Workflow: ${workflow_name}
-              Run #: ${run_number}
-              Run URL: ${run_url}
-              Failure Time: ${new Date().toISOString()}`;
-            
-            await github.rest.issues.create({
-              owner,
-              repo,
-              title: `🚨 Workflow Failed - Run #${run_number}`,
-              body: message,
-              labels: ['workflow-failed', 'automated-report']
-            });
+    - name: 上传 Release 资源
+      if: env.new_version == 'true'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: build/newtab-${{ env.VERSION }}.zip
+        asset_name: newtab-${{ env.VERSION }}.zip
+        asset_content_type: application/zip
