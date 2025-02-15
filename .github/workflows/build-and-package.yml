@@ -49,6 +49,7 @@ jobs:
           if [ -z "$CHANGELOG" ]; then
             CHANGELOG="没有新的变更记录"
           fi
+          CHANGELOG=$(echo "$CHANGELOG" | tr '\n' ' ')
           echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
         fi
 
