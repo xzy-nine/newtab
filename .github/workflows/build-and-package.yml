@@ -71,6 +71,7 @@ jobs:
 
     - name: 创建 Release
       if: env.new_version == 'true' && env.tag_exists == 'false'
+      id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
