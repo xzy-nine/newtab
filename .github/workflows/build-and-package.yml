@@ -15,6 +15,7 @@ jobs:
       contents: write
       packages: write
       actions: read
+      id-token: write  # 添加 id-token 权限
 
     steps:
       # B: 检出代码
@@ -23,59 +24,27 @@ jobs:
         with:
           fetch-depth: 0  # 获取完整历史记录用于生成变更日志
 
-      - name: Cache Dependencies
-        uses: actions/cache@v3
-        id: cache
-        with:
-          path: |
-            build
-            node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+      # 安装必要的依赖项
+      - name: Install Required Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl zip
 
       # C: 设置 Node.js 环境
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
-          cache: 'npm'  # 添加缓存支持
 
       # C: 安装依赖
       - name: Install Dependencies
         run: |
-          if [ ! -f "package.json" ]; then
-            echo "Error: package.json not found"
-            exit 1
-          fi
-          if [ ! -f "package-lock.json" ]; then
-            echo "package-lock.json not found, generating..."
-            npm install
-          elif [ ! -s "package-lock.json" ]; then
-            echo "package-lock.json is empty, regenerating..."
-            rm package-lock.json
-            npm install
-          else
-            npm ci  # 使用 ci 替代 install 以确保一致性
-
-      # D: 提交更新的 package-lock.json 文件
-      - name: Commit package-lock.json
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add package-lock.json
-          git commit -m 'Update package-lock.json'
-          git push
+          npm install
 
       # E: 从 manifest.json 获取版本信息
       - name: Get version from manifest.json
         id: get_version
         run: |
-          if [ ! -f "manifest.json" ]; then
-            echo "Error: manifest.json not found"
-            exit 1
-          fi
           VERSION=$(jq -r '.version' manifest.json)
           if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Error: Invalid version format in manifest.json"
@@ -104,13 +73,10 @@ jobs:
       - name: Compare Versions
         id: compare_versions
         run: |
-          # 安装 semver 工具
           npm install -g semver
-          
           CURRENT_VER="${{ steps.get_version.outputs.version }}"
           LATEST_VER="${{ steps.get_latest_release.outputs.latest_release }}"
           
-          # 当前逻辑有重复判断，可以简化为:
           if ! semver "$CURRENT_VER" >/dev/null 2>&1 || ! semver "$LATEST_VER" >/dev/null 2>&1; then
             echo "Error: Invalid version format"
             exit 1
@@ -125,7 +91,6 @@ jobs:
             exit 0
           fi
           
-          # 更严格的版本格式验证
           if [[ ! "$CURRENT_VER" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "Error: Invalid current version format: $CURRENT_VER"
             exit 1
@@ -167,7 +132,7 @@ jobs:
       - name: Verify Required Files
         if: steps.compare_versions.outputs.new_version == 'true'
         run: |
-          required_files=("manifest.json" "package.json")
+          required_files=("manifest.json" )
           for file in "${required_files[@]}"; do
             if [ ! -f "$file" ]; then
               echo "Error: Required file $file not found"
@@ -182,16 +147,13 @@ jobs:
           VERSION="${{ steps.get_version.outputs.version }}"
           REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
           
-          # 清理并创建构建目录
           rm -rf build
           mkdir -p build
           
-          # 创建临时目录用于打包
           TMP_DIR=$(mktemp -d)
           cp -r . "$TMP_DIR/"
           cd "$TMP_DIR"
           
-          # 移除不需要的文件和目录
           rm -rf \
             README.md \
             build \
@@ -199,20 +161,18 @@ jobs:
             .git \
             node_modules \
             *.log \
-            .gitignore \
-            package-lock.json
+            .gitignore
           
-          # 创建 zip 包
           zip -r "$REPO_NAME-$VERSION.zip" .
           mv "$REPO_NAME-$VERSION.zip" ../build/
           cd ..
           rm -rf "$TMP_DIR"
           
-          # 验证 zip 包
           if [ ! -f "build/$REPO_NAME-$VERSION.zip" ]; then
             echo "Error: Failed to create zip package"
             exit 1
           fi
+          echo "Zip package created successfully: build/$REPO_NAME-$VERSION.zip"
 
       # K: 创建 Release
       - name: Set Release Time
@@ -222,8 +182,6 @@ jobs:
         if: steps.compare_versions.outputs.new_version == 'true'
         id: create_release  # 添加这行
         uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
           release_name: Release ${{ steps.get_version.outputs.version }}
@@ -241,8 +199,6 @@ jobs:
       - name: Upload Release Asset
         if: steps.compare_versions.outputs.new_version == 'true'
         uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./build/${{ github.event.repository.name }}-${{ steps.get_version.outputs.version }}.zip
@@ -274,13 +230,3 @@ jobs:
               body: message,
               labels: ['workflow-failed', 'automated-report']
             });
-
-      - name: Cache build
-        uses: actions/cache@v3
-        with:
-          path: |
-            build
-            node_modules
-          key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-
