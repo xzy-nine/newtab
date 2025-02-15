@@ -48,9 +48,27 @@ jobs:
             echo "Error: package.json not found"
             exit 1
           fi
-          npm ci  # 使用 ci 替代 install 以确保一致性
+          if [ ! -f "package-lock.json" ]; then
+            echo "package-lock.json not found, generating..."
+            npm install
+          elif [ ! -s "package-lock.json" ]; then
+            echo "package-lock.json is empty, regenerating..."
+            rm package-lock.json
+            npm install
+          else
+            npm ci  # 使用 ci 替代 install 以确保一致性
 
-      # D: 从 manifest.json 获取版本信息
+      # D: 提交更新的 package-lock.json 文件
+      - name: Commit package-lock.json
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          git commit -m 'Update package-lock.json'
+          git push
+
+      # E: 从 manifest.json 获取版本信息
       - name: Get version from manifest.json
         id: get_version
         run: |
@@ -65,7 +83,7 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # E: 获取最新发布版本
+      # F: 获取最新发布版本
       - name: Get Latest Release Version
         id: get_latest_release
         run: |
@@ -82,7 +100,7 @@ jobs:
           LATEST_RELEASE=$(echo "$CONTENT" | jq -r '.tag_name // "0.0.0"')
           echo "latest_release=$LATEST_RELEASE" >> $GITHUB_OUTPUT
 
-      # F: 比较版本
+      # G: 比较版本
       - name: Compare Versions
         id: compare_versions
         run: |
@@ -113,7 +131,7 @@ jobs:
             exit 1
           fi
 
-      # G: 生成变更日志
+      # H: 生成变更日志
       - name: Generate Changelog
         if: steps.compare_versions.outputs.new_version == 'true'
         id: changelog
@@ -145,7 +163,7 @@ jobs:
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # H: 验证必要文件
+      # I: 验证必要文件
       - name: Verify Required Files
         if: steps.compare_versions.outputs.new_version == 'true'
         run: |
@@ -157,7 +175,7 @@ jobs:
             fi
           done
 
-      # I: 创建并移动 zip 包
+      # J: 创建并移动 zip 包
       - name: Create and Move Zip Package
         if: steps.compare_versions.outputs.new_version == 'true'
         run: |
@@ -196,7 +214,7 @@ jobs:
             exit 1
           fi
 
-      # J: 创建 Release
+      # K: 创建 Release
       - name: Set Release Time
         run: echo "RELEASE_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
 
@@ -219,7 +237,7 @@ jobs:
           draft: false
           prerelease: false
 
-      # K: 上传 Release 资源
+      # L: 上传 Release 资源
       - name: Upload Release Asset
         if: steps.compare_versions.outputs.new_version == 'true'
         uses: actions/upload-release-asset@v1
@@ -231,7 +249,7 @@ jobs:
           asset_name: ${{ github.event.repository.name }}-${{ steps.get_version.outputs.version }}.zip
           asset_content_type: application/zip
 
-      # L: 错误通知
+      # M: 错误通知
       - name: Notify on Failure
         if: failure()
         uses: actions/github-script@v6
