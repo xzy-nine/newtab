@@ -137,6 +137,7 @@
   cursor: pointer; /* 设置鼠标样式为指针 */
   margin: 10px; /* 设置外边距为10px */
   transition: box-shadow 0.3s, border-radius 0.3s; /* 设置阴影和圆角的过渡时间为0.3秒 */
+  user-select: none; /* 禁止选择文本 */
 }
 
 .folder-button:hover { /* 鼠标移动到文件夹按钮上时 */
