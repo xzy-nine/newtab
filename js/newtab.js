@@ -118,143 +118,96 @@ function getDomain(url) {
 
 
 async function getIconForShortcut(url, button) {
-  // 先设置为默认图标
+  // 先设置默认图标作为背景
   button.style.backgroundImage = `url(${defaultIcon})`;
 
   try {
-    // 尝试从本地获取
+    // 尝试从浏览器本地存储获取缓存的图标
     const cached = await chrome.storage.local.get(url);
-    if (cached[url]) {
-      if (cached[url].startsWith('data:text/html')) {
-        await chrome.storage.local.remove(url);
-      } else {
-        button.style.backgroundImage = `url(${cached[url]})`;
-        return;
-      }
+    if (cached[url] && !cached[url].startsWith('data:text/html')) {
+      button.style.backgroundImage = `url(${cached[url]})`;
+      return;
     }
-  } catch (cacheError) {
-    console.error('Error accessing local storage:', cacheError);
-  }
 
+    // 定义多个可能的图标URL来源:favicon.ico、Google API、faviconkit API和Yandex API
+    const iconUrls = [
+      `${getDomain(url)}/favicon.ico`,
+      `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${url}&size=64`,
+      `https://api.faviconkit.com/${new URL(url).hostname}/64`,
+      `https://favicon.yandex.net/favicon/${new URL(url).hostname}`
+    ];
 
-  // 尝试使用域名加 /favicon.ico 获取图标
-  const domain = getDomain(url);
-  const fallbackIconUrl = `${domain}/favicon.ico`;
-  try {
-    const fallbackResponse = await fetch(fallbackIconUrl, { 
-      mode: 'cors', 
-      headers: { 'cache-control': 'no-cache' } 
-    });
-
-    if (fallbackResponse.ok) {
-      const blob = await fallbackResponse.blob();
-      const base64data = await new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-      });
-
-      // 检查获取到的是否为有效图标
-      if (!base64data.startsWith('data:text')) {
-        button.style.backgroundImage = `url(${base64data})`;
-        try {
-          await chrome.storage.local.set({ [url]: base64data });
-        } catch (storageError) {
-          console.error('Error saving to local storage:', storageError);
+    // 尝试从网页HTML中获取图标链接
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (response.ok) {
+        const text = await response.text();
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        const iconLink = doc.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+        if (iconLink) {
+          // 如果在HTML中找到图标链接，将其添加到图标URL列表的开头
+          iconUrls.unshift(new URL(iconLink.getAttribute('href'), url).href);
         }
-        return;
       }
+    } catch (error) {
+      console.error('获取HTML页面失败:', error);
     }
-  } catch (fallbackError) {
-    console.error('Error fetching icon from fallback URL:', fallbackError);
-  }  
-  
 
-  // 使用 FaviconKit API 获取高分辨率图标
-  const iconUrl = `https://api.faviconkit.com/${new URL(url).hostname}/64`;
-  try {
-    const response = await fetch(iconUrl, { 
-      mode: 'cors', 
-      headers: { 'cache-control': 'no-cache' } 
-    });
-    if (response.ok) {
-      const blob = await response.blob();
-      const base64data = await new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-      });
-      
-      button.style.backgroundImage = `url(${base64data})`;
+    // 依次尝试获取每个图标URL的内容
+    for (const iconUrl of iconUrls) {
       try {
-        await chrome.storage.local.set({ [url]: base64data });
-      } catch (storageError) {
-        console.error('Error saving to local storage:', storageError);
-      }
-      return;
-    }
-  } catch (apiError) {
-    console.error('Error fetching icon from FaviconKit API:', apiError);
-  }
-
-  // 使用 Google Favicon API 获取图标
-  const googleIconUrl = `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${url}&size=64`;
-  try {
-    const response = await fetch(googleIconUrl, { 
-      mode: 'cors', 
-      headers: { 'cache-control': 'no-cache' } 
-    });
-
-    if (response.ok) {
-      const blob = await response.blob();
-      const base64data = await new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
+      const response = await fetch(iconUrl, {
+        mode: 'cors',
+        headers: { 'cache-control': 'no-cache' }
       });
 
-      button.style.backgroundImage = `url(${base64data})`;
-      try {
-      await chrome.storage.local.set({ [url]: base64data });
-      } catch (storageError) {
-      console.error('Error saving to local storage:', storageError);
+      if (response.ok) {
+        // 将图标转换为blob对象，再转为base64格式
+        const blob = await response.blob();
+        const base64data = await convertBlobToBase64(blob);
+        
+        // 确保不是文本数据且图片尺寸不小于5x5
+        if (!base64data.startsWith('data:text')) {
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = base64data;
+        });
+        
+        if (img.width >= 5 && img.height >= 5) {
+          // 将成功获取的图标保存到本地存储
+          await chrome.storage.local.set({ [url]: base64data });
+          button.style.backgroundImage = `url(${base64data})`;
+          return;
+        }
+        }
       }
-      return;
-    }
-  } catch (googleApiError) {
-    console.error('Error fetching icon from Google Favicon API:', googleApiError);
-  }
-
-  // 使用 Yandex Favicon API 获取图标
-  const yandexIconUrl = `https://favicon.yandex.net/favicon/${new URL(url).hostname}`;
-  try {
-    const response = await fetch(yandexIconUrl, { 
-      mode: 'cors', 
-      headers: { 'cache-control': 'no-cache' } 
-    });
-  
-    if (response.ok) {
-      const blob = await response.blob();
-      const base64data = await new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-      });
-  
-      button.style.backgroundImage = `url(${base64data})`;
-      try {
-        await chrome.storage.local.set({ [url]: base64data });
-      } catch (storageError) {
-        console.error('Error saving to local storage:', storageError);
+      } catch (error) {
+      console.error(`从 ${iconUrl} 获取图标失败:`, error);
       }
-      return;
     }
-  } catch (yandexApiError) {
-    console.error('Error fetching icon from Yandex Favicon API:', yandexApiError);
-  }
 
-  // 如果所有尝试都失败，保持默认图像
-  button.style.backgroundImage = `url(${defaultIcon})`;
+    // 如果所有获取图标的尝试都失败，使用默认图标
+    button.style.backgroundImage = `url(${defaultIcon})`;
+
+  } catch (error) {
+    console.error('获取快捷方式图标时出错:', error);
+    button.style.backgroundImage = `url(${defaultIcon})`;
+  }
+}
+
+// 异步函数：将Blob对象转换为Base64字符串
+async function convertBlobToBase64(blob) {
+  // 返回一个Promise对象，用于异步处理转换过程
+  return new Promise(resolve => {
+    // 创建一个FileReader实例用于读取文件
+    const reader = new FileReader();
+    // 设置读取完成后的回调函数，返回转换结果
+    reader.onloadend = () => resolve(reader.result);
+    // 开始读取Blob对象并转换为DataURL格式
+    reader.readAsDataURL(blob);
+  });
 }
 
 // 引入 i18n.js
