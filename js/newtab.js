@@ -18,7 +18,7 @@ const defaultEngine = "https://www.bing.com"; // 默认搜索引擎
 const defaultIcon = "../Icon.png"; // 默认图标
 let currentEngine = defaultEngine; // 当前搜索引擎
 let currentFolder = ""; // 当前文件夹
-let currentBackground = 0; // 当前背景，0表示灰色，1表示必应每日图片
+let currentBackground = 0; // 当前背景，0表示灰色，1表示必应每日图片，2表示自定义图片
 
 // 从后台脚本获取搜索引擎，并设置图标和链接
 function getEngine() {
@@ -35,11 +35,21 @@ async function setBackground(type) {
     document.body.style.background = "gray";
     return;
   }
-  
-  const data = await chrome.storage.local.get("bingDaily");
-  const imageUrl = data.bingDaily || defaultImage;
-  document.body.style.background = `url(${imageUrl}) no-repeat center center fixed`;
-  document.body.style.backgroundSize = "cover";
+  if (type === 1) {
+    const data = await chrome.storage.local.get("bingDaily");
+    const imageUrl = data.bingDaily || defaultImage;
+    document.body.style.background = `url(${imageUrl}) no-repeat center center fixed`;
+    document.body.style.backgroundSize = "cover";
+    return;
+  }
+  if (type === 2) {
+    const data = await chrome.storage.local.get("DIYBackground");
+    const imageUrl = data.DIYBackground;
+    if (imageUrl) {
+      document.body.style.background = `url(${imageUrl}) no-repeat center center fixed`;
+      document.body.style.backgroundSize = "cover";
+    }
+  }
 }
 
 // 修改 getBackground 函数
@@ -225,23 +235,15 @@ script.onload = function() {
   backgroundButton.textContent = getMessage("backgroundButton");
 };
 
-// 设置搜索引擎切换按钮的点击事件
-engineButton.onclick = function() {
-  let engine = prompt(getMessage("enterEngineUrl")); // 弹出一个输入框，提示用户输入搜索引擎的链接
-  if (engine) { // 如果用户输入了内容
-    currentEngine = engine; // 设置当前搜索引擎为用户输入的内容
-    chrome.runtime.sendMessage({action: "setEngine", engine: currentEngine}); // 向后台脚本发送设置搜索引擎的消息
-    engineIcon.src = engine + "/favicon.ico"; // 设置搜索引擎图标
-    searchBox.action = engine + "/search"; // 设置搜索框的链接
+document.addEventListener('DOMContentLoaded', function() {
+  // 确保 i18n.js 文件已加载
+  if (typeof getMessage === 'function') {
+    document.getElementById('search-input').placeholder = getMessage('searchPlaceholder');
+    document.getElementById('background-button').textContent = getMessage('backgroundButton');
+  } else {
+    console.error('i18n.js 文件未正确加载');
   }
-};
-
-// 设置背景切换按钮的点击事件
-backgroundButton.onclick = function() {
-  currentBackground = 1 - currentBackground; // 切换当前背景
-  chrome.storage.local.set({background: currentBackground}); // 将当前背景保存到本地存储
-  getBackground(); // 获取并设置背景
-};
+});
 
 // 在新标签页加载时，执行以下函数
 window.onload = function() {
@@ -297,8 +299,19 @@ document.querySelectorAll('.folder-button').forEach(button => {
   });
 });
 
-// 添加右键点击事件监听器
-backgroundButton.addEventListener('contextmenu', function(event) {
+// 设置搜索引擎切换按钮的点击事件
+engineButton.onclick = function() {
+  let engine = prompt(getMessage("enterEngineUrl")); // 弹出一个输入框，提示用户输入搜索引擎的链接
+  if (engine) { // 如果用户输入了内容
+    currentEngine = engine; // 设置当前搜索引擎为用户输入的内容
+    chrome.runtime.sendMessage({action: "setEngine", engine: currentEngine}); // 向后台脚本发送设置搜索引擎的消息
+    engineIcon.src = engine + "/favicon.ico"; // 设置搜索引擎图标
+    searchBox.action = engine + "/search"; // 设置搜索框的链接
+  }
+};
+
+// 添加右键点击事件监听器到搜索引擎按钮
+engineButton.addEventListener('contextmenu', function(event) {
   event.preventDefault(); // 阻止默认的右键菜单
   let confirmClear = confirm(getMessage("confirmClear")); // 弹出确认提示
   if (confirmClear) {
@@ -306,4 +319,37 @@ backgroundButton.addEventListener('contextmenu', function(event) {
       alert(getMessage("storageCleared")); // 提示用户本地存储已清除
     });
   }
+});
+
+// 设置背景切换按钮的点击事件
+backgroundButton.onclick = function() {
+  currentBackground = (currentBackground + 1) % 3; // 切换当前背景，循环0,1,2
+  chrome.storage.local.set({background: currentBackground}); // 将当前背景保存到本地存储
+  getBackground(); // 获取并设置背景
+};
+
+// 添加右键点击事件监听器到背景按钮
+backgroundButton.addEventListener('contextmenu', function(event) {
+  event.preventDefault(); // 阻止默认的右键菜单
+  let fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.onchange = function(event) {
+    let file = event.target.files[0];
+    if (file) {
+      let reader = new FileReader();
+      reader.onload = function(e) {
+        let base64Image = e.target.result;
+        chrome.storage.local.set({DIYBackground: base64Image, background: 2}, () => {
+          if (chrome.runtime.lastError) {
+            alert(getMessage("backgroundSetFailed")); // 设置背景图片失败，请重试。
+          } else {
+            getBackground(); // 获取并设置背景
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  fileInput.click();
 });
