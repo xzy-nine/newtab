@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "Bookmark New Tab Extension",
+    "description": "应用程序的名称"
+  },
+  "appDescription": {
+    "message": "A clean and beautiful new tab extension with search engine switching, bookmark shortcuts, and background switching.",
+    "description": "应用程序的描述"
+  }
+}
