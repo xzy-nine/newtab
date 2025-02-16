@@ -7,7 +7,7 @@
   <title>new-tab</title>
   <link rel="stylesheet" href="../css/newtab.css"> <!-- 引入网页样式文件 -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="../js/i18n.js"></script> <!-- 引入多语言脚本文件 -->
+  <script src="../html/js/i18n.js"></script> <!-- 引入多语言脚本文件 -->
 </head>
 <body>
   <div id="container"> <!-- 网页容器 -->
@@ -34,17 +34,6 @@
     <a class="split">:</a>
     <span class="seconds"></span>
   </div>
-  <script src="../js/newtab.js"></script> <!-- 引入网页脚本文件 -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // 确保 i18n.js 文件已加载
-      if (typeof getMessage === 'function') {
-        document.getElementById('search-input').placeholder = getMessage('searchPlaceholder');
-        document.getElementById('background-button').textContent = getMessage('backgroundButton');
-      } else {
-        console.error('i18n.js 文件未正确加载');
-      }
-    });
-  </script>
+  <script src="../html/js/newtab.js"></script> <!-- 引入网页脚本文件 -->
 </body>
 </html>
