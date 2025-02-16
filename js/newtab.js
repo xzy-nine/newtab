@@ -136,6 +136,7 @@ async function getIconForShortcut(url, button) {
     console.error('Error accessing local storage:', cacheError);
   }
 
+
   // 尝试使用域名加 /favicon.ico 获取图标
   const domain = getDomain(url);
   const fallbackIconUrl = `${domain}/favicon.ico`;
@@ -169,7 +170,6 @@ async function getIconForShortcut(url, button) {
   }  
   
 
-
   // 使用 FaviconKit API 获取高分辨率图标
   const iconUrl = `https://api.faviconkit.com/${new URL(url).hostname}/64`;
   try {
@@ -177,7 +177,6 @@ async function getIconForShortcut(url, button) {
       mode: 'cors', 
       headers: { 'cache-control': 'no-cache' } 
     });
-    
     if (response.ok) {
       const blob = await response.blob();
       const base64data = await new Promise(resolve => {
@@ -197,6 +196,7 @@ async function getIconForShortcut(url, button) {
   } catch (apiError) {
     console.error('Error fetching icon from FaviconKit API:', apiError);
   }
+
   // 使用 Google Favicon API 获取图标
   const googleIconUrl = `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${url}&size=64`;
   try {
@@ -252,9 +252,6 @@ async function getIconForShortcut(url, button) {
   } catch (yandexApiError) {
     console.error('Error fetching icon from Yandex Favicon API:', yandexApiError);
   }
-
-
-
 
   // 如果所有尝试都失败，保持默认图像
   button.style.backgroundImage = `url(${defaultIcon})`;
