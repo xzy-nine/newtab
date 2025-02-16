@@ -20,6 +20,16 @@
   justify-content: center; /* 设置垂直居中 */
 }
 
+
+
+body {
+  background-size: cover; /* 覆盖整个视口 */
+  overflow: hidden; /* 防止出现滚动条 */
+  background-position: center; /* 背景图片居中 */
+  min-height: 100vh; /* 确保至少占满整个视口高度 */
+}
+
+
 #search-box { /* 搜索框容器 */
   width: 61%; /* 设置宽度为61% */
   height: 9%; /* 设置高度为9% */
@@ -27,7 +37,8 @@
   align-items: center; /* 设置垂直居中 */
   border: 1px solid var(--secondary-color); /* 设置边框为1px的次要颜色 */
   border-radius: 10px; /* 设置边框圆角为10px */
-  background: #ffffff; /* 设置背景颜色为白色 */
+  background: rgba(255, 255, 255, 0.5); /* 设置背景颜色为半透明白色 */
+  transition: background 0.3s; /* 添加背景色过渡效果 */
   box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
   transition: box-shadow 0.3s; /* 设置阴影的过渡时间为0.3秒 */
 }
@@ -62,7 +73,7 @@
   aspect-ratio: 1 / 1; /* 设置宽高比为1:1，确保图标始终为正方形 */
   border: none; /* 设置无边框 */
   border-radius: 20px; /* 设置边框圆角为25px */
-  background: white; /* 设置背景颜色为白色 */
+  background: transparent; /* 设置背景颜色为透明 */
   cursor: pointer; /* 设置鼠标样式为指针 */
 }
 
@@ -76,7 +87,7 @@
   height: 70%; /* 设置高度为70% */
   border: none; /* 设置无边框 */
   border-radius: 25px; /* 设置边框圆角为10px */
-  background: white; /* 设置背景颜色为白色 */
+  background: transparent; /* 设置背景颜色为透明 */
   font-size: 20px; /* 设置字体大小为20px */
   font-family: var(--font-family); /* 设置字体族为根元素的字体族 */
   padding-left: 20px; /* 设置左内边距为20px */

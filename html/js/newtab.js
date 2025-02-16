@@ -1,4 +1,6 @@
-// 新标签页的网页脚本，用于实现搜索引擎切换，收藏夹快捷方式，背景切换等能
+// 新标签页的网页脚本，用于实现搜索引擎切换，收藏夹快捷方式，背景切换等功能
+
+// 抄的时钟
 const d = new Date()
   const h = d.getHours();
   const m = d.getMinutes();
@@ -6,6 +8,7 @@ const d = new Date()
   time.style.setProperty('--ds', s)
   time.style.setProperty('--dm', m + s/60)
   time.style.setProperty('--dh', h + m/60 + s/3600)  
+
 const searchBox = document.getElementById("search-box"); // 获取搜索框容器
 const engineButton = document.getElementById("engine-button"); // 获取搜索引擎切换按钮
 const engineIcon = document.getElementById("engine-icon"); // 获取搜索引擎图标
@@ -18,7 +21,12 @@ const defaultEngine = "https://www.bing.com"; // 默认搜索引擎
 const defaultIcon = "../Icon.png"; // 默认图标
 let currentEngine = defaultEngine; // 当前搜索引擎
 let currentFolder = ""; // 当前文件夹
-let currentBackground = 0; // 当前背景，0表示灰色，1表示必应每日图片，2表示自定义图片
+let currentBackground = 0; // 当前背景，0表示必应每日图片，1表示自定义图片
+
+// 引入 i18n.js
+const script = document.createElement('script');
+script.src = 'js/i18n.js';
+document.head.appendChild(script);
 
 // 从后台脚本获取搜索引擎，并设置图标和链接
 function getEngine() {
@@ -30,32 +38,50 @@ function getEngine() {
   });
 }
 
+// 异步函数：设置背景函数，接受一个类型参数
 async function setBackground(type) {
+  console.log(getMessage("settingBackgroundType"), type);
+  
   if (type === 0) {
-    document.body.style.background = "gray";
-    return;
+    try {
+      let data = await chrome.storage.local.get("bingDaily");
+      if (!data.bingDaily) {
+        console.log(getMessage("localStorageImageFailed"));
+        await new Promise((resolve) => {
+          chrome.runtime.sendMessage({ action: "getWallpaper" }, response => {
+            if (response && response.status === "success") {
+              resolve();
+            } else {
+              console.log(getMessage("backgroundFetchFailed"));
+            }
+          });
+        });
+        data = await chrome.storage.local.get("bingDaily");
+      }
+      if (data.bingDaily) {
+        document.body.style.background = `url(${data.bingDaily}) center center fixed`; // 设置背景图片
+      }
+    } catch (error) {
+      console.log(getMessage("bingDailyBackgroundFailed"), error);
+    }
   }
+  
   if (type === 1) {
-    const data = await chrome.storage.local.get("bingDaily");
-    const imageUrl = data.bingDaily || defaultImage;
-    document.body.style.background = `url(${imageUrl}) no-repeat center center fixed`;
-    document.body.style.backgroundSize = "cover";
-    return;
-  }
-  if (type === 2) {
     const data = await chrome.storage.local.get("DIYBackground");
     const imageUrl = data.DIYBackground;
     if (imageUrl) {
-      document.body.style.background = `url(${imageUrl}) no-repeat center center fixed`;
-      document.body.style.backgroundSize = "cover";
+      console.log(getMessage("customBackgroundExists"), !!imageUrl);
+      document.body.style.background = `url(${imageUrl}) center center fixed`;
+    } else {
+      document.body.style.background = '#808080';  // 设置灰色背景
     }
   }
 }
 
-// 修改 getBackground 函数
 async function getBackground() {
   const data = await chrome.storage.local.get("background");
   const background = data.background || 0;
+  console.log(getMessage("currentBackgroundType"), background);
   currentBackground = background;
   await setBackground(background);
 }
@@ -115,6 +141,45 @@ function showShortcuts(folder) {
     shortcutButton.onclick = function() { // 设置快捷方式按钮的点击事件
       window.open(shortcut.url, "_blank"); // 在新标签页中打开快捷方式的链接
     };
+
+    // 添加右键点击事件监听器到快捷方式按钮
+    shortcutButton.addEventListener('contextmenu', function(event) {
+      event.preventDefault(); // 阻止默认的右键菜单
+
+      let confirmAction = confirm(getMessage("confirmSetNewIcon")); // 使用 i18n 获取自定义文本
+      if (confirmAction) {
+        let fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.onchange = function(event) {
+          let file = event.target.files[0];
+          if (file) {
+            let reader = new FileReader();
+            reader.onload = function(e) {
+              let base64Image = e.target.result;
+              chrome.storage.local.set({ [shortcut.url]: base64Image }, () => {
+                if (chrome.runtime.lastError) {
+                  alert(getMessage("setIconFailed")); // 使用 i18n 获取错误提示文本
+                } else {
+                  shortcutButton.style.backgroundImage = `url(${base64Image})`; // 设置新的图标
+                }
+              });
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+        fileInput.click();
+      } else {
+        chrome.storage.local.remove(shortcut.url, () => {
+          if (chrome.runtime.lastError) {
+            alert(getMessage("deleteIconFailed")); // 使用 i18n 获取错误提示文本
+          } else {
+            getIconForShortcut(shortcut.url, shortcutButton); // 重新获取图标
+          }
+        });
+      }
+    });
+
     shortcutList.appendChild(shortcutButton); // 将快捷方式按钮添加到快捷方式列表中
   }
 }
@@ -160,7 +225,7 @@ async function getIconForShortcut(url, button) {
         }
       }
     } catch (error) {
-      console.error('获取HTML页面失败:', error);
+      console.log('获取HTML页面失败:', error);
     }
 
     // 依次尝试获取每个图标URL的内容
@@ -194,7 +259,7 @@ async function getIconForShortcut(url, button) {
         }
       }
       } catch (error) {
-      console.error(`从 ${iconUrl} 获取图标失败:`, error);
+      console.log(`从 ${iconUrl} 获取图标失败:`, error);
       }
     }
 
@@ -202,7 +267,7 @@ async function getIconForShortcut(url, button) {
     button.style.backgroundImage = `url(${defaultIcon})`;
 
   } catch (error) {
-    console.error('获取快捷方式图标时出错:', error);
+    console.log('获取快捷方式图标时出错:', error);
     button.style.backgroundImage = `url(${defaultIcon})`;
   }
 }
@@ -220,10 +285,7 @@ async function convertBlobToBase64(blob) {
   });
 }
 
-// 引入 i18n.js
-const script = document.createElement('script');
-script.src = 'js/i18n.js';
-document.head.appendChild(script);
+
 
 script.onload = function() {
   // 设置搜索框的占位符文本
@@ -235,24 +297,17 @@ script.onload = function() {
   backgroundButton.textContent = getMessage("backgroundButton");
 };
 
-document.addEventListener('DOMContentLoaded', function() {
-  // 确保 i18n.js 文件已加载
-  if (typeof getMessage === 'function') {
-    document.getElementById('search-input').placeholder = getMessage('searchPlaceholder');
-    document.getElementById('background-button').textContent = getMessage('backgroundButton');
-  } else {
-    console.error('i18n.js 文件未正确加载');
-  }
-});
+
 
 // 在新标签页加载时，执行以下函数
 window.onload = function() {
   getEngine(); // 获取并设置搜索引擎
   getBackground(); // 获取并设置背景
   getBookmarks(); // 获取并生成收藏夹
-  chrome.runtime.sendMessage({action: "getImage"}); // 向后台脚本发送获取图片的消息
+  chrome.runtime.sendMessage({action: "getWallpaper"}); // 向后台脚本发送获取图片的消息
 };
 
+// 获取并生成收藏夹文件夹按钮
 function createFolderButtons(folders, parentElement, level = 0) {
   for (let folder of folders) {
     if (folder.children) { // 确保只处理文件夹
@@ -299,7 +354,12 @@ document.querySelectorAll('.folder-button').forEach(button => {
   });
 });
 
-// 设置搜索引擎切换按钮的点击事件
+
+
+
+/*
+设置搜索引擎切换按钮的点击事件
+*/
 engineButton.onclick = function() {
   let engine = prompt(getMessage("enterEngineUrl")); // 弹出一个输入框，提示用户输入搜索引擎的链接
   if (engine) { // 如果用户输入了内容
@@ -323,7 +383,7 @@ engineButton.addEventListener('contextmenu', function(event) {
 
 // 设置背景切换按钮的点击事件
 backgroundButton.onclick = function() {
-  currentBackground = (currentBackground + 1) % 3; // 切换当前背景，循环0,1,2
+  currentBackground = (currentBackground + 1) % 2; // 切换当前背景，循环0,1
   chrome.storage.local.set({background: currentBackground}); // 将当前背景保存到本地存储
   getBackground(); // 获取并设置背景
 };
@@ -331,6 +391,8 @@ backgroundButton.onclick = function() {
 // 添加右键点击事件监听器到背景按钮
 backgroundButton.addEventListener('contextmenu', function(event) {
   event.preventDefault(); // 阻止默认的右键菜单
+
+  // 当背景为1时允许上传自定义图片
   let fileInput = document.createElement('input');
   fileInput.type = 'file';
   fileInput.accept = 'image/*';
@@ -340,7 +402,7 @@ backgroundButton.addEventListener('contextmenu', function(event) {
       let reader = new FileReader();
       reader.onload = function(e) {
         let base64Image = e.target.result;
-        chrome.storage.local.set({DIYBackground: base64Image, background: 2}, () => {
+        chrome.storage.local.set({DIYBackground: base64Image, background: 1}, () => {
           if (chrome.runtime.lastError) {
             alert(getMessage("backgroundSetFailed")); // 设置背景图片失败，请重试。
           } else {

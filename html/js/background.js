@@ -1,59 +1,66 @@
-// 基础配置常量对象
-// 包含默认搜索引擎、图标、图片路径和必应API相关配置
-const CONFIG = {
-  DEFAULT_ENGINE: "https://www.bing.com",     // 默认搜索引擎URL
-  DEFAULT_ICON: "favicon.ico",                // 默认图标文件
-  DEFAULT_IMAGE: "images/bing-daily.jpg",     // 默认背景图片路径
-  BING_API: "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1", // 必应每日图片API
-  BING_BASE_URL: "https://cn.bing.com"       // 必应基础URL
-};
+self.addEventListener('install', (event) => {
+  console.log('Service Worker 安装');
+});
 
-/**
- * 将Blob对象转换为base64字符串的工具函数
- * @param {Blob} blob - 需要转换的Blob对象（通常是图片数据）
- * @returns {Promise<string>} 返回一个Promise，解析为base64编码的字符串
- */
-const blobToBase64 = (blob) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();                    // 创建文件读取器实例
-    reader.onloadend = () => resolve(reader.result);    // 读取完成时返回结果
-    reader.onerror = reject;                           // 读取错误时返回错误信息
-    reader.readAsDataURL(blob);                        // 开始读取blob并转换为Data URL
-  });
-};
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker 激活');
+});
 
 /**
  * 获取必应每日图片并存储到本地
  * 包含以下步骤：
- * 1. 从必应API获取图片信息
- * 2. 下载实际图片
- * 3. 转换为base64格式
- * 4. 存储到Chrome本地存储
+ * 1. 检查现有图片是否在12小时内
+ * 2. 从必应API获取图片信息
+ * 3. 下载实际图片
+ * 4. 转换为base64格式
+ * 5. 存储到Chrome本地存储
  */
 async function getBingDaily() {
   try {
-    // 获取必应API响应
+    // 检查是否存在未过期的图片
+    const data = await chrome.storage.local.get(['bingDaily', 'bingDailyTimestamp']);
+    const now = Date.now();
+    const twelveHours = 12 * 60 * 60 * 1000;
+
+    if (data.bingDaily && data.bingDailyTimestamp && 
+        (now - data.bingDailyTimestamp) < twelveHours) {
+      const timeLeft = twelveHours - (now - data.bingDailyTimestamp);
+      const hoursLeft = Math.floor(timeLeft / (60 * 60 * 1000));
+      const minutesLeft = Math.floor((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
+      console.log(`使用缓存的必应每日图片,还有${hoursLeft}小时${minutesLeft}分钟过期`);
+      return;
+    }
+
+    console.log("正在获取必应每日图片...");
     const response = await fetch(CONFIG.BING_API);
-    if (!response.ok) throw new Error('Failed to fetch Bing API');
+    if (!response.ok) throw new Error(`获取必应API失败: ${response.status}`);
     
-    // 解析API响应数据
-    const data = await response.json();
-    if (!data?.images?.[0]?.url) throw new Error('Invalid Bing API response');
+    const bingData = await response.json();
+    if (!bingData?.images?.[0]?.url) throw new Error('无效的必应API响应');
 
-    // 构建完整的图片URL并获取图片
-    const imageUrl = CONFIG.BING_BASE_URL + data.images[0].url;
+    const imageUrl = CONFIG.BING_BASE_URL + bingData.images[0].url;
+    console.log("必应每日图片URL:", imageUrl);
     const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) throw new Error('Failed to fetch image');
+    if (!imageResponse.ok) throw new Error('获取图片失败');
 
-    // 将图片转换为blob，然后转为base64
     const blob = await imageResponse.blob();
     const base64data = await blobToBase64(blob);
-    // 将base64数据存储到Chrome本地存储
-    await chrome.storage.local.set({ bingDaily: base64data });
+    console.log("必应每日图片base64是否生成:", !!base64data);
+    await chrome.storage.local.set({ bingDaily: base64data, bingDailyTimestamp: now })
+      .catch(error => console.error('Error saving to local storage:', error));
   } catch (error) {
-    console.error('Error fetching Bing daily image:', error);
+    console.error('获取必应每日图片时出错:', error);
   }
 }
+
+// 基础配置常量对象
+// 包含默认搜索引擎、图标、图片路径和必应API相关配置
+const CONFIG = {
+  DEFAULT_ENGINE: "https://www.bing.com",     // 默认搜索引擎URL
+  DEFAULT_ICON: "favicon.png",                // 默认图标文件
+  BING_API: "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1", // 必应每日图片API
+  BING_BASE_URL: "https://cn.bing.com" // 必应基础URL
+};
 
 /**
  * Chrome扩展消息监听器
@@ -76,13 +83,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       break;
 
-    case "getImage":
-      // 触发获取新的必应每日图片
-      getBingDaily();
-      break;
+    case "getWallpaper":
+      // 获取必应每日图片并存储到本地
+      (async () => {
+        try {
+          await getBingDaily();
+          sendResponse({ status: "success" });
+        } catch (error) {
+          sendResponse({ status: "error", message: error.message });
+        }
+      })();
+      return true; // 返回true表示将异步发送响应
 
-    default:
-      // 处理未知的消息类型
-      console.warn('Unknown message action:', message.action);
   }
 });
+
+/**
+ * 将Blob对象转换为base64字符串的工具函数
+ * @param {Blob} blob - 需要转换的Blob对象（通常是图片数据）
+ * @returns {Promise<string>} 返回一个Promise，解析为base64编码的字符串
+ */
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader(); // 创建文件读取器实例
+    reader.onloadend = () => resolve(reader.result); // 读取完成时返回结果
+    reader.onerror = reject; // 读取错误时返回错误信息
+    reader.readAsDataURL(blob); // 开始读取blob并转换为Data URL
+  });
+};
+
