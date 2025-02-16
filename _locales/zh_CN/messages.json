@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "收藏夹新标签页拓展",
+    "description": "应用程序的名称"
+  },
+  "appDescription": {
+    "message": "一个简洁美观的新标签页拓展，支持搜索引擎切换，收藏夹快捷方式，背景切换等功能。",
+    "description": "应用程序的描述"
+  }
+}

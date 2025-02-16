@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "xzy新标签页拓展",
+  "name": "Bookmark New Tab Extension",
   "version": "1.1.2",
-  "description": "一个简洁美观的新标签页拓展，支持搜索引擎切换，收藏夹快捷方式，背景切换等功能。通过必应ai创作，后续修改全部是github copiot修改的.",
+  "description": "A clean and beautiful new tab extension that supports search engine switching, bookmark shortcuts, background switching and other features. Created through Bing AI, with all subsequent modifications made by GitHub Copilot.",
   "icons": {
     "16": "favicon.ico",
     "32": "favicon.ico",
@@ -10,10 +10,10 @@
     "128": "favicon.ico"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "js/background.js"
   },
   "chrome_url_overrides": {
-    "newtab": "newtab.html"
+    "newtab": "html/newtab.html"
   },
   "permissions": [
     "storage",
@@ -22,5 +22,6 @@
   ],
   "host_permissions": [
     "https://*/*"
-  ]
+  ],
+  "default_locale": "zh_CN"
 }
