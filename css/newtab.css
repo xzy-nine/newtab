@@ -201,7 +201,6 @@
   transform: scale(1.2); /* 放大按钮 */
   overflow: visible; /* 取消隐藏溢出的文本 */
   box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
-  background-size: 70%; /* 设置背景图像的大小 */
 }
 
 
