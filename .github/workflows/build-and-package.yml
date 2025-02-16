@@ -67,6 +67,8 @@ jobs:
       if: env.new_version == 'true' && env.tag_exists == 'false'
       run: |
         zip -r newtab-${{ env.VERSION }}.zip . -x ".*" -x "*/.*" -x "build/*" -x "README.md" -x ".github/*"
+        mkdir -p build
+        cp newtab-${{ env.VERSION }}.zip build/
 
     - name: 创建 Release
       if: env.new_version == 'true' && env.tag_exists == 'false'
