@@ -67,15 +67,6 @@ jobs:
       if: env.new_version == 'true' && env.tag_exists == 'false'
       run: |
         zip -r newtab-${{ env.VERSION }}.zip . -x ".*" -x "*/.*" -x "build/*" -x "README.md" -x ".github/*"
-        mkdir -p build
-        cp newtab-${{ env.VERSION }}.zip build/
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git remote set-url origin https://github.com/${{ github.repository }}.git
-        git pull origin main --rebase
-        git add build/newtab-${{ env.VERSION }}.zip
-        git commit -m "Add newtab-${{ env.VERSION }}.zip"
-        git push origin main
 
     - name: 创建 Release
       if: env.new_version == 'true' && env.tag_exists == 'false'
