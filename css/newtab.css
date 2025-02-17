@@ -185,7 +185,7 @@ body {
 }
 
 .shortcut-button { /* 快捷方式按钮 */
-  width: 80px; /* 设置宽度为80px */
+  width: 45px; /* 设置宽度为45px */
   aspect-ratio: 1 / 1; /* 设置宽高比为1:1 */
   display: flex; /* 设置为弹性布局 */
   flex-direction: column; /* 设置为垂直方向 */
