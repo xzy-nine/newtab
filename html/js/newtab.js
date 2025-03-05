@@ -1,40 +1,44 @@
+// 首先放置所有导入语句
+import { loadBookmarks } from './bookmarks.js';
+import { loadBingImage } from './backgroundImage.js';
+
 // 新标签页的网页脚本，用于实现搜索引擎切换，收藏夹快捷方式，背景切换等功能
 
-// 抄的时钟
-const d = new Date()
-  const h = d.getHours();
-  const m = d.getMinutes();
-  const s = d.getSeconds();
-  time.style.setProperty('--ds', s)
-  time.style.setProperty('--dm', m + s/60)
-  time.style.setProperty('--dh', h + m/60 + s/3600)  
-
-const searchBox = document.getElementById("search-box"); // 获取搜索框容器
-const engineButton = document.getElementById("engine-button"); // 获取搜索引擎切换按钮
-const engineIcon = document.getElementById("engine-icon"); // 获取搜索引擎图标
-const searchInput = document.getElementById("search-input"); // 获取搜索框输入框
-const bookmarkBox = document.getElementById("bookmark-box"); // 获取收藏夹容器
-const folderList = document.getElementById("folder-list"); // 获取文件夹列表
-const shortcutList = document.getElementById("shortcut-list"); // 获取快捷方式列表
-const backgroundButton = document.getElementById("background-button"); // 获取背景切换按钮
+// 定义全局变量
 const defaultEngine = "https://www.bing.com"; // 默认搜索引擎
 const defaultIcon = "../Icon.png"; // 默认图标
 let currentEngine = defaultEngine; // 当前搜索引擎
 let currentFolder = ""; // 当前文件夹
 let currentBackground = 0; // 当前背景，0表示必应每日图片，1表示自定义图片
 
-// 引入 i18n.js
-const script = document.createElement('script');
-script.src = 'js/i18n.js';
-document.head.appendChild(script);
+// 添加全局DOM元素引用
+let searchBox; 
+let engineButton;
+let engineIcon;
+let searchInput;
+let bookmarkBox;
+let folderList;
+let shortcutList;
+let backgroundButton;
 
 // 从后台脚本获取搜索引擎，并设置图标和链接
 function getEngine() {
-  chrome.runtime.sendMessage({action: "getEngine"}, response => { // 向后台脚本发送获取搜索引擎的消息
-    let engine = response.engine; // 获取后台脚本返回的搜索引擎
-    currentEngine = engine; // 设置当前搜索引擎
-    engineIcon.src = engine + "/favicon.ico"; // 设置搜索引擎图标
-    searchBox.action = engine + "/search"; // 设置搜索框的链接
+  chrome.runtime.sendMessage({action: "getEngine"}, response => { 
+    let engineInfo = response.engine; 
+    currentEngine = engineInfo; 
+    
+    // 从engineInfo中提取域名用于加载图标
+    let iconDomain;
+    try {
+      const urlObj = new URL(engineInfo.baseUrl);
+      iconDomain = urlObj.origin; // 获取域名部分
+    } catch (e) {
+      iconDomain = engineInfo.baseUrl;
+    }
+    
+    engineIcon.src = iconDomain + "/favicon.ico"; 
+    searchBox.action = engineInfo.baseUrl; 
+    searchInput.name = engineInfo.searchParam;
   });
 }
 
@@ -59,7 +63,7 @@ async function setBackground(type) {
         data = await chrome.storage.local.get("bingDaily");
       }
       if (data.bingDaily) {
-        document.body.style.background = `url(${data.bingDaily}) center center fixed`; // 设置背景图片
+        document.body.style.background = `url(${data.bingDaily}) center center fixed`; 
       }
     } catch (error) {
       console.log(getMessage("bingDailyBackgroundFailed"), error);
@@ -285,27 +289,190 @@ async function convertBlobToBase64(blob) {
   });
 }
 
-
-
-script.onload = function() {
-  // 设置搜索框的占位符文本
-  const searchInput = document.getElementById("search-input");
+// 统一使用DOMContentLoaded事件来初始化
+document.addEventListener('DOMContentLoaded', async () => {
+  // 初始化时钟
+  const d = new Date()
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const s = d.getSeconds();
+  const time = document.getElementById("time");
+  time.style.setProperty('--ds', s)
+  time.style.setProperty('--dm', m + s/60)
+  time.style.setProperty('--dh', h + m/60 + s/3600)
+  
+  // 获取DOM元素并赋值给全局变量
+  searchBox = document.getElementById("search-box"); 
+  engineButton = document.getElementById("engine-button"); 
+  engineIcon = document.getElementById("engine-icon"); 
+  searchInput = document.getElementById("search-input"); 
+  bookmarkBox = document.getElementById("bookmark-box"); 
+  folderList = document.getElementById("folder-list"); 
+  shortcutList = document.getElementById("shortcut-list"); 
+  backgroundButton = document.getElementById("background-button"); 
+  
+  // 直接设置i18n内容，不依赖于动态加载的脚本
   searchInput.placeholder = getMessage("searchPlaceholder");
-
-  // 设置背景按钮的文本
-  const backgroundButton = document.getElementById("background-button");
   backgroundButton.textContent = getMessage("backgroundButton");
-};
+  
+  // 传递参数给函数
+  setupEventHandlers(engineButton, searchBox, engineIcon, searchInput, backgroundButton);
+  
+  // 初始化应用
+  await loadBookmarks();
+  await loadBingImage();
+  getEngine(); 
+  getBackground(); 
+  getBookmarks(); 
+  chrome.runtime.sendMessage({action: "getWallpaper"});
+  
+  // 确保所有子文件夹在初始状态下都是隐藏的
+  document.querySelectorAll('.folder-children').forEach(container => {
+    container.style.display = 'none';
+  });
 
+  document.querySelectorAll('.folder-button').forEach(button => {
+    button.addEventListener('click', () => {
+      handleFolderClick(button);
+    });
+  });
+});
 
+// 设置事件处理程序
+function setupEventHandlers(engineButton, searchBox, engineIcon, searchInput, backgroundButton) {
+  // 设置搜索引擎切换按钮的点击事件
+  engineButton.onclick = function() {
+    let engineUrl = prompt(getMessage("enterEngineUrl")); 
+    if (engineUrl) { 
+      try {
+        // 检查URL是否包含'='字符，表示这可能是一个搜索URL
+        if (engineUrl.includes('=')) {
+          // 尝试从输入的URL中解析出搜索引擎信息
+          const urlObj = new URL(engineUrl);
+          // 获取查询参数
+          const params = new URLSearchParams(urlObj.search);
+          
+          // 查找可能的搜索参数名
+          let searchParamName = '';
+          for (const [name, value] of params.entries()) {
+            // 找出最可能是搜索关键词的参数
+            if (['q', 'query', 'word', 'text', 'w', 's', 'search', 'wd', 'kw', 'keyword'].includes(name)) {
+              searchParamName = name;
+              break;
+            }
+          }
+          
+          // 如果没有找到明确的搜索参数，使用第一个参数
+          if (!searchParamName && params.keys().next().value) {
+            searchParamName = params.keys().next().value;
+          } else if (!searchParamName) {
+            // 如果完全没有参数，默认使用'q'
+            searchParamName = 'q';
+          }
+          
+          // 提取搜索引擎的基础URL（去除查询参数部分）
+          const baseUrl = urlObj.origin + urlObj.pathname;
+          
+          // 保存搜索引擎信息
+          const engineInfo = {
+            baseUrl: baseUrl,
+            searchParam: searchParamName
+          };
+          
+          // 更新当前搜索引擎
+          currentEngine = engineInfo;
+          
+          // 设置图标和表单提交
+          engineIcon.src = urlObj.origin + "/favicon.ico";
+          searchBox.action = baseUrl;
+          searchInput.name = searchParamName;
+          
+          // 保存到本地存储
+          chrome.runtime.sendMessage({
+            action: "setEngine", 
+            engine: engineInfo
+          });
+        } else {
+          // 如果URL不包含'='，按原来的方式处理
+          if (!engineUrl.startsWith('http')) {
+            engineUrl = 'https://' + engineUrl;
+          }
+          
+          engineIcon.src = engineUrl + "/favicon.ico";
+          searchBox.action = engineUrl + "/search";
+          searchInput.name = "q";
+          
+          // 保存到本地存储
+          chrome.runtime.sendMessage({
+            action: "setEngine", 
+            engine: { baseUrl: engineUrl + "/search", searchParam: "q" }
+          });
+        }
+      } catch (e) {
+        console.error("解析搜索引擎URL失败:", e);
+        // 如果URL解析失败，尝试作为纯域名处理
+        if (!engineUrl.startsWith('http')) {
+          engineUrl = 'https://' + engineUrl;
+        }
+        
+        engineIcon.src = engineUrl + "/favicon.ico";
+        searchBox.action = engineUrl + "/search";
+        searchInput.name = "q";
+        
+        // 保存到本地存储
+        chrome.runtime.sendMessage({
+          action: "setEngine", 
+          engine: { baseUrl: engineUrl + "/search", searchParam: "q" }
+        });
+      }
+    }
+  };
 
-// 在新标签页加载时，执行以下函数
-window.onload = function() {
-  getEngine(); // 获取并设置搜索引擎
-  getBackground(); // 获取并设置背景
-  getBookmarks(); // 获取并生成收藏夹
-  chrome.runtime.sendMessage({action: "getWallpaper"}); // 向后台脚本发送获取图片的消息
-};
+  // 添加右键点击事件监听器到搜索引擎按钮
+  engineButton.addEventListener('contextmenu', function(event) {
+    event.preventDefault();
+    let confirmClear = confirm(getMessage("confirmClear"));
+    if (confirmClear) {
+      chrome.storage.local.clear(() => {
+        alert(getMessage("storageCleared"));
+      });
+    }
+  });
+
+  // 设置背景切换按钮的点击事件
+  backgroundButton.onclick = function() {
+    currentBackground = (currentBackground + 1) % 2;
+    chrome.storage.local.set({background: currentBackground});
+    getBackground();
+  };
+
+  // 添加右键点击事件监听器到背景按钮
+  backgroundButton.addEventListener('contextmenu', function(event) {
+    event.preventDefault();
+
+    let fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = function(event) {
+      let file = event.target.files[0];
+      if (file) {
+        let reader = new FileReader();
+        reader.onload = function(e) {
+          let base64Image = e.target.result;
+          chrome.storage.local.set({DIYBackground: base64Image, background: 1}, () => {
+            if (chrome.runtime.lastError) {
+              alert(getMessage("backgroundSetFailed"));
+            } else {
+              getBackground();
+            }
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    fileInput.click();
+  });
+}
 
 // 获取并生成收藏夹文件夹按钮
 function createFolderButtons(folders, parentElement, level = 0) {
@@ -343,75 +510,13 @@ function handleFolderClick(folderButton, folder) {
   }
 }
 
-// 确保所有子文件夹在初始状态下都是隐藏的
-document.querySelectorAll('.folder-children').forEach(container => {
-  container.style.display = 'none';
-});
-
-document.querySelectorAll('.folder-button').forEach(button => {
-  button.addEventListener('click', () => {
-    handleFolderClick(button);
-  });
-});
-
-
-
-
-/*
-设置搜索引擎切换按钮的点击事件
-*/
-engineButton.onclick = function() {
-  let engine = prompt(getMessage("enterEngineUrl")); // 弹出一个输入框，提示用户输入搜索引擎的链接
-  if (engine) { // 如果用户输入了内容
-    currentEngine = engine; // 设置当前搜索引擎为用户输入的内容
-    chrome.runtime.sendMessage({action: "setEngine", engine: currentEngine}); // 向后台脚本发送设置搜索引擎的消息
-    engineIcon.src = engine + "/favicon.ico"; // 设置搜索引擎图标
-    searchBox.action = engine + "/search"; // 设置搜索框的链接
+// 导出工具函数
+export async function fetchData(url) {
+  try {
+    const response = await fetch(url);
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch data from', url, error);
+    throw error;
   }
-};
-
-// 添加右键点击事件监听器到搜索引擎按钮
-engineButton.addEventListener('contextmenu', function(event) {
-  event.preventDefault(); // 阻止默认的右键菜单
-  let confirmClear = confirm(getMessage("confirmClear")); // 弹出确认提示
-  if (confirmClear) {
-    chrome.storage.local.clear(() => { // 清空本地存储
-      alert(getMessage("storageCleared")); // 提示用户本地存储已清除
-    });
-  }
-});
-
-// 设置背景切换按钮的点击事件
-backgroundButton.onclick = function() {
-  currentBackground = (currentBackground + 1) % 2; // 切换当前背景，循环0,1
-  chrome.storage.local.set({background: currentBackground}); // 将当前背景保存到本地存储
-  getBackground(); // 获取并设置背景
-};
-
-// 添加右键点击事件监听器到背景按钮
-backgroundButton.addEventListener('contextmenu', function(event) {
-  event.preventDefault(); // 阻止默认的右键菜单
-
-  // 当背景为1时允许上传自定义图片
-  let fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.accept = 'image/*';
-  fileInput.onchange = function(event) {
-    let file = event.target.files[0];
-    if (file) {
-      let reader = new FileReader();
-      reader.onload = function(e) {
-        let base64Image = e.target.result;
-        chrome.storage.local.set({DIYBackground: base64Image, background: 1}, () => {
-          if (chrome.runtime.lastError) {
-            alert(getMessage("backgroundSetFailed")); // 设置背景图片失败，请重试。
-          } else {
-            getBackground(); // 获取并设置背景
-          }
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  fileInput.click();
-});
+}

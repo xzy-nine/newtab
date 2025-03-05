@@ -20,15 +20,12 @@
   justify-content: center; /* 设置垂直居中 */
 }
 
-
-
 body {
   background-size: cover; /* 覆盖整个视口 */
   overflow: hidden; /* 防止出现滚动条 */
   background-position: center; /* 背景图片居中 */
   min-height: 100vh; /* 确保至少占满整个视口高度 */
 }
-
 
 #search-box { /* 搜索框容器 */
   width: 61%; /* 设置宽度为61% */
@@ -185,7 +182,7 @@ body {
 }
 
 .shortcut-button { /* 快捷方式按钮 */
-  width: 45px; /* 设置宽度为45px */
+  width: 80px; /* 设置宽度为80px📏 */
   aspect-ratio: 1 / 1; /* 设置宽高比为1:1 */
   display: flex; /* 设置为弹性布局 */
   flex-direction: column; /* 设置为垂直方向 */
@@ -198,7 +195,7 @@ body {
   cursor: pointer; /* 设置鼠标样式为指针 */
   margin: 10px; /* 设置外边距为10px */
   transition: box-shadow 0.3s, transform 0.3s ease; /* 设置阴影和变换的过渡时间为0.3秒 */
-  background-size: 70%; /* 设置背景图像的大小 */
+  background-size: 60%; /* 设置背景图像的大小 */
   background-position: center; /* 设置背景图像的位置 */
   background-repeat: no-repeat; /* 设置背景图像不重复 */
   text-align: center; /* 文本居中对齐 */
@@ -214,8 +211,6 @@ body {
   overflow: visible; /* 取消隐藏溢出的文本 */
   box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
 }
-
-
 
 #background-button { /* 背景切换按钮 */
   width: 120px; /* 设置宽度 */
@@ -284,7 +279,7 @@ html, body {
   content: counter(hour, decimal-leading-zero);
   animation: hour calc(var(--step) * 60 * 24) infinite steps(24);
   animation-delay: calc( -1 * var(--step) * var(--dh) * 60);
-  }
+}
 
 .minitus::after {
   counter-reset: minitus var(--m);
@@ -360,4 +355,22 @@ html, body {
     font-size: 700%; /* 时钟字体大小调整为32px */
     top: 2%; /* 距顶部位置调整为5% */
   }
+}
+
+/* 动画效果：背景按钮点击时的缩放动画 */
+#background-button:active {
+  transform: scale(0.95); /* 缩小按钮 */
+  transition: transform 0.1s; /* 设置缩放动画的过渡时间为0.1秒 */
+}
+
+/* 动画效果：文件夹按钮点击时的缩放动画 */
+.folder-button:active {
+  transform: scale(0.95); /* 缩小按钮 */
+  transition: transform 0.1s; /* 设置缩放动画的过渡时间为0.1秒 */
+}
+
+/* 动画效果：快捷方式按钮点击时的缩放动画 */
+.shortcut-button:active {
+  transform: scale(0.95); /* 缩小按钮 */
+  transition: transform 0.1s; /* 设置缩放动画的过渡时间为0.1秒 */
 }

@@ -10,7 +10,8 @@
     "128": "/favicon.png"
   },
   "background": {
-    "service_worker": "html/js/background.js"
+    "service_worker": "html/js/background.js",
+    "type": "module"
   },
   "chrome_url_overrides": {
     "newtab": "html/newtab.html"

@@ -1,3 +1,5 @@
+import { fetchData, blobToBase64 } from './utils.js';
+
 self.addEventListener('install', (event) => {
   console.log('Service Worker 安装');
 });
@@ -56,11 +58,34 @@ async function getBingDaily() {
 // 基础配置常量对象
 // 包含默认搜索引擎、图标、图片路径和必应API相关配置
 const CONFIG = {
-  DEFAULT_ENGINE: "https://www.bing.com",     // 默认搜索引擎URL
-  DEFAULT_ICON: "favicon.png",                // 默认图标文件
-  BING_API: "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1", // 必应每日图片API
-  BING_BASE_URL: "https://cn.bing.com" // 必应基础URL
+  DEFAULT_ENGINE: {
+    baseUrl: "https://www.bing.com/search",
+    searchParam: "q"
+  },
+  DEFAULT_ICON: "favicon.png",
+  BING_API: "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1",
+  BING_BASE_URL: "https://cn.bing.com"
 };
+
+const CACHE_KEY = 'bingImageCache';
+const CACHE_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
+
+// 添加export关键字导出fetchBingImage函数
+export async function fetchBingImage() {
+    const cachedData = await chrome.storage.local.get(CACHE_KEY);
+    const now = Date.now();
+
+    if (cachedData[CACHE_KEY] && (now - cachedData[CACHE_KEY].timestamp < CACHE_EXPIRATION)) {
+        return cachedData[CACHE_KEY].imageUrl;
+    }
+
+    const data = await fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1');
+    const imageUrl = `https://www.bing.com${data.images[0].url}`;
+
+    await chrome.storage.local.set({ [CACHE_KEY]: { imageUrl, timestamp: now } });
+
+    return imageUrl;
+}
 
 /**
  * Chrome扩展消息监听器
@@ -97,18 +122,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   }
 });
-
-/**
- * 将Blob对象转换为base64字符串的工具函数
- * @param {Blob} blob - 需要转换的Blob对象（通常是图片数据）
- * @returns {Promise<string>} 返回一个Promise，解析为base64编码的字符串
- */
-const blobToBase64 = (blob) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader(); // 创建文件读取器实例
-    reader.onloadend = () => resolve(reader.result); // 读取完成时返回结果
-    reader.onerror = reject; // 读取错误时返回错误信息
-    reader.readAsDataURL(blob); // 开始读取blob并转换为Data URL
-  });
-};
 
