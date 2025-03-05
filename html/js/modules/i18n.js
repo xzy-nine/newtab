@@ -1,3 +1,112 @@
+/**
+ * 国际化处理模块
+ */
+
+let translations = {};
+let currentLanguage = 'en';
+
+/**
+ * 初始化国际化设置
+ * @returns {Promise<void>}
+ */
+export async function initI18n() {
+    // 设置用户语言
+    await setUserLanguage();
+    
+    // 加载翻译文件
+    await loadTranslations();
+    
+    // 应用翻译到UI
+    applyTranslations();
+}
+
+/**
+ * 设置用户语言
+ * @returns {Promise<void>}
+ */
+async function setUserLanguage() {
+    try {
+        // 尝试从存储中获取语言设置
+        const result = await chrome.storage.sync.get('language');
+        if (result.language) {
+            currentLanguage = result.language;
+        } else {
+            // 如果没有保存的语言设置，使用浏览器语言设置
+            const browserLang = navigator.language.slice(0, 2);
+            currentLanguage = ['en', 'zh', 'ja'].includes(browserLang) ? browserLang : 'en';
+            await chrome.storage.sync.set({ language: currentLanguage });
+        }
+    } catch (error) {
+        console.error('Failed to set user language:', error);
+        currentLanguage = 'en'; // 默认回退到英文
+    }
+}
+
+/**
+ * 加载翻译文件
+ * @returns {Promise<void>}
+ */
+async function loadTranslations() {
+    try {
+        const response = await fetch(`_locales/${currentLanguage}/messages.json`);
+        translations = await response.json();
+    } catch (error) {
+        console.error('Failed to load translations:', error);
+        translations = {}; // 如果加载失败，使用空对象
+    }
+}
+
+/**
+ * 获取指定key的翻译文本
+ * @param {string} key - 翻译键值
+ * @returns {string} - 翻译后的文本
+ */
+export function getI18nMessage(key) {
+    if (translations[key] && translations[key].message) {
+        return translations[key].message;
+    }
+    return key; // 如果翻译不存在，返回键值本身
+}
+
+/**
+ * 应用翻译到UI元素
+ */
+export function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        element.textContent = getI18nMessage(key);
+    });
+    
+    // 更新页面标题
+    document.title = getI18nMessage('newTab');
+    
+    // 更新占位符文本
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+        const key = element.getAttribute('data-i18n-placeholder');
+        element.placeholder = getI18nMessage(key);
+    });
+}
+
+/**
+ * 获取当前设置的语言
+ * @returns {string} - 当前语言代码
+ */
+export function getCurrentLanguage() {
+    return currentLanguage;
+}
+
+/**
+ * 更改语言设置
+ * @param {string} language - 新的语言代码
+ * @returns {Promise<void>}
+ */
+export async function changeLanguage(language) {
+    currentLanguage = language;
+    await chrome.storage.sync.set({ language });
+    await loadTranslations();
+    applyTranslations();
+}
+
 function getBrowserLanguage() {
   return navigator.language || navigator.userLanguage;
 }

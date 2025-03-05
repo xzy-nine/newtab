@@ -1,522 +1,334 @@
-// 首先放置所有导入语句
-import { loadBookmarks } from './bookmarks.js';
-import { loadBingImage } from './backgroundImage.js';
+/**
+ * 新标签页主要程序
+ * 负责协调各模块的初始化和交互
+ */
 
-// 新标签页的网页脚本，用于实现搜索引擎切换，收藏夹快捷方式，背景切换等功能
+import { initI18n, getI18nMessage } from './modules/i18n.js';
+import { initBackgroundImage } from './modules/backgroundImage.js';
+import { initSearchEngine } from './modules/searchEngine.js';
+import { initBookmarks } from './modules/bookmarks.js';
+import { initIconManager, preloadIcons } from './modules/iconManager.js';
+import { initEventHandlers } from './modules/eventHandlers.js';
 
-// 定义全局变量
-const defaultEngine = "https://www.bing.com"; // 默认搜索引擎
-const defaultIcon = "../Icon.png"; // 默认图标
-let currentEngine = defaultEngine; // 当前搜索引擎
-let currentFolder = ""; // 当前文件夹
-let currentBackground = 0; // 当前背景，0表示必应每日图片，1表示自定义图片
+// 当前版本号
+const VERSION = '1.0.0';
 
-// 添加全局DOM元素引用
-let searchBox; 
-let engineButton;
-let engineIcon;
-let searchInput;
-let bookmarkBox;
-let folderList;
-let shortcutList;
-let backgroundButton;
+// 全局状态标志
+let isInitialized = false;
 
-// 从后台脚本获取搜索引擎，并设置图标和链接
-function getEngine() {
-  chrome.runtime.sendMessage({action: "getEngine"}, response => { 
-    let engineInfo = response.engine; 
-    currentEngine = engineInfo; 
-    
-    // 从engineInfo中提取域名用于加载图标
-    let iconDomain;
+/**
+ * 初始化应用
+ */
+async function init() {
     try {
-      const urlObj = new URL(engineInfo.baseUrl);
-      iconDomain = urlObj.origin; // 获取域名部分
-    } catch (e) {
-      iconDomain = engineInfo.baseUrl;
-    }
-    
-    engineIcon.src = iconDomain + "/favicon.ico"; 
-    searchBox.action = engineInfo.baseUrl; 
-    searchInput.name = engineInfo.searchParam;
-  });
-}
-
-// 异步函数：设置背景函数，接受一个类型参数
-async function setBackground(type) {
-  console.log(getMessage("settingBackgroundType"), type);
-  
-  if (type === 0) {
-    try {
-      let data = await chrome.storage.local.get("bingDaily");
-      if (!data.bingDaily) {
-        console.log(getMessage("localStorageImageFailed"));
-        await new Promise((resolve) => {
-          chrome.runtime.sendMessage({ action: "getWallpaper" }, response => {
-            if (response && response.status === "success") {
-              resolve();
-            } else {
-              console.log(getMessage("backgroundFetchFailed"));
-            }
-          });
-        });
-        data = await chrome.storage.local.get("bingDaily");
-      }
-      if (data.bingDaily) {
-        document.body.style.background = `url(${data.bingDaily}) center center fixed`; 
-      }
+        // 显示加载指示器
+        showLoadingIndicator();
+        
+        // 初始化各模块 (按依赖顺序)
+        console.log('Initializing new tab page...');
+        
+        // 1. 首先初始化国际化，因为其他模块可能需要翻译文本
+        await initI18n();
+        console.log('Internationalization initialized');
+        
+        // 2. 初始化图标管理器
+        await initIconManager();
+        console.log('Icon manager initialized');
+        
+        // 3. 初始化背景图像
+        await initBackgroundImage();
+        console.log('Background image initialized');
+        
+        // 4. 初始化搜索引擎
+        await initSearchEngine();
+        console.log('Search engine initialized');
+        
+        // 5. 初始化书签
+        await initBookmarks();
+        console.log('Bookmarks initialized');
+        
+        // 6. 初始化事件处理
+        initEventHandlers();
+        console.log('Event handlers initialized');
+        
+        // 7. 执行应用启动后的额外操作
+        await performPostInitTasks();
+        
+        // 标记初始化完成
+        isInitialized = true;
+        console.log('New tab page initialization complete');
+        
     } catch (error) {
-      console.log(getMessage("bingDailyBackgroundFailed"), error);
+        // 处理初始化错误
+        console.error('Failed to initialize new tab page:', error);
+        showErrorMessage('初始化失败，请刷新页面重试。');
+    } finally {
+        // 无论成功或失败，都隐藏加载指示器
+        hideLoadingIndicator();
     }
-  }
-  
-  if (type === 1) {
-    const data = await chrome.storage.local.get("DIYBackground");
-    const imageUrl = data.DIYBackground;
-    if (imageUrl) {
-      console.log(getMessage("customBackgroundExists"), !!imageUrl);
-      document.body.style.background = `url(${imageUrl}) center center fixed`;
-    } else {
-      document.body.style.background = '#808080';  // 设置灰色背景
+}
+
+/**
+ * 启动后执行的任务
+ */
+async function performPostInitTasks() {
+    try {
+        // 检查更新或首次安装
+        await checkForUpdates();
+        
+        // 预加载常用网站图标
+        await preloadCommonIcons();
+        
+        // 清理过期的缓存数据
+        await cleanupCacheData();
+        
+    } catch (error) {
+        console.error('Error in post-initialization tasks:', error);
     }
-  }
 }
 
-async function getBackground() {
-  const data = await chrome.storage.local.get("background");
-  const background = data.background || 0;
-  console.log(getMessage("currentBackgroundType"), background);
-  currentBackground = background;
-  await setBackground(background);
-}
-
-// 获取并生成收藏夹
-function getBookmarks() {
-  chrome.bookmarks.getTree(tree => {
-    let root = tree[0];
-    let folders = getAllFolders(root);
-    createFolderButtons(folders, folderList);
-    chrome.storage.local.get("folder", data => {
-      let folder = data.folder || root.id;
-      currentFolder = folder;
-      showShortcuts(folders.find(f => f.id === folder));
-    });
-  });
-}
-
-// 获取一个节点下的所有文件夹节点，包括次级文件夹
-function getAllFolders(node) {
-  let folders = []; // 创建一个空数组，用于存储文件夹节点
-  if (node.children) { // 如果该节点有子节点
-    for (let child of node.children) { // 遍历每个子节点
-      if (child.children && child.children.length > 0) { // 如果该子节点是文件夹节点且包含子节点
-        folders.push(child); // 将该子节点添加到文件夹数组中
-      }
+/**
+ * 检查更新或首次安装
+ */
+async function checkForUpdates() {
+    try {
+        const result = await chrome.storage.sync.get('version');
+        const oldVersion = result.version;
+        
+        if (!oldVersion) {
+            // 首次安装
+            console.log('First install detected');
+            showWelcomeMessage();
+        } else if (oldVersion !== VERSION) {
+            // 更新
+            console.log('Update detected:', oldVersion, '->', VERSION);
+            showUpdateMessage(oldVersion, VERSION);
+        }
+        
+        // 存储当前版本
+        await chrome.storage.sync.set({ version: VERSION });
+        
+    } catch (error) {
+        console.error('Failed to check for updates:', error);
     }
-  }
-  return folders; // 返回文件夹数组
 }
 
-// 显示指定文件夹的快捷方式
-function showShortcuts(folder) {
-  shortcutList.innerHTML = ""; // 清空快捷方式列表的内容
-
-  if (!folder || !folder.children || folder.children.length === 0) {
-    shortcutList.style.display = "none"; // 隐藏快捷方式列表容器
-    return;
-  }
-
-  let shortcuts = folder.children.filter(node => !node.children); // 筛选出快捷方式节点
-
-  if (shortcuts.length === 0) {
-    shortcutList.style.display = "none"; // 隐藏快捷方式列表容器
-    return;
-  }
-
-  shortcutList.style.display = "flex"; // 显示快捷方式列表容器
-
-  for (let shortcut of shortcuts) { // 遍历每个快捷方式
-    let shortcutButton = document.createElement("button"); // 创建一个快捷方式按钮
-    shortcutButton.className = "shortcut-button"; // 设置快捷方式按钮的类名
-
-    getIconForShortcut(shortcut.url, shortcutButton);
-
-    shortcutButton.innerText = shortcut.title; // 设置快捷方式按钮的文本为快捷方式的标题
-    shortcutButton.onclick = function() { // 设置快捷方式按钮的点击事件
-      window.open(shortcut.url, "_blank"); // 在新标签页中打开快捷方式的链接
-    };
-
-    // 添加右键点击事件监听器到快捷方式按钮
-    shortcutButton.addEventListener('contextmenu', function(event) {
-      event.preventDefault(); // 阻止默认的右键菜单
-
-      let confirmAction = confirm(getMessage("confirmSetNewIcon")); // 使用 i18n 获取自定义文本
-      if (confirmAction) {
-        let fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.onchange = function(event) {
-          let file = event.target.files[0];
-          if (file) {
-            let reader = new FileReader();
-            reader.onload = function(e) {
-              let base64Image = e.target.result;
-              chrome.storage.local.set({ [shortcut.url]: base64Image }, () => {
-                if (chrome.runtime.lastError) {
-                  alert(getMessage("setIconFailed")); // 使用 i18n 获取错误提示文本
-                } else {
-                  shortcutButton.style.backgroundImage = `url(${base64Image})`; // 设置新的图标
-                }
-              });
-            };
-            reader.readAsDataURL(file);
-          }
-        };
-        fileInput.click();
-      } else {
-        chrome.storage.local.remove(shortcut.url, () => {
-          if (chrome.runtime.lastError) {
-            alert(getMessage("deleteIconFailed")); // 使用 i18n 获取错误提示文本
-          } else {
-            getIconForShortcut(shortcut.url, shortcutButton); // 重新获取图标
-          }
-        });
-      }
-    });
-
-    shortcutList.appendChild(shortcutButton); // 将快捷方式按钮添加到快捷方式列表中
-  }
-}
-
-// 获取一个链接的域名部分
-function getDomain(url) {
-  let a = document.createElement("a"); // 创建一个a元素
-  a.href = url; // 设置a元素的href属性为链接
-  return a.origin; // 返回a元素的origin属性，即域名部分
-}
-
-
-async function getIconForShortcut(url, button) {
-  // 先设置默认图标作为背景
-  button.style.backgroundImage = `url(${defaultIcon})`;
-
-  try {
-    // 尝试从浏览器本地存储获取缓存的图标
-    const cached = await chrome.storage.local.get(url);
-    if (cached[url] && !cached[url].startsWith('data:text/html')) {
-      button.style.backgroundImage = `url(${cached[url]})`;
-      return;
-    }
-
-    // 定义多个可能的图标URL来源:favicon.ico、Google API、faviconkit API和Yandex API
-    const iconUrls = [
-      `${getDomain(url)}/favicon.ico`,
-      `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${url}&size=64`,
-      `https://api.faviconkit.com/${new URL(url).hostname}/64`,
-      `https://favicon.yandex.net/favicon/${new URL(url).hostname}`
+/**
+ * 预加载常用网站图标
+ */
+async function preloadCommonIcons() {
+    // 常用网站列表
+    const commonSites = [
+        'https://www.google.com',
+        'https://www.youtube.com',
+        'https://www.facebook.com',
+        'https://www.twitter.com',
+        'https://www.github.com',
+        'https://www.amazon.com',
+        'https://www.wikipedia.org',
+        'https://www.reddit.com'
     ];
+    
+    // 预加载图标
+    await preloadIcons(commonSites);
+}
 
-    // 尝试从网页HTML中获取图标链接
-    try {
-      const response = await fetch(url, { mode: 'cors' });
-      if (response.ok) {
-        const text = await response.text();
-        const doc = new DOMParser().parseFromString(text, 'text/html');
-        const iconLink = doc.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
-        if (iconLink) {
-          // 如果在HTML中找到图标链接，将其添加到图标URL列表的开头
-          iconUrls.unshift(new URL(iconLink.getAttribute('href'), url).href);
-        }
-      }
-    } catch (error) {
-      console.log('获取HTML页面失败:', error);
+/**
+ * 清理过期的缓存数据
+ */
+async function cleanupCacheData() {
+    // 这里可以清理各种缓存数据
+    // 例如过期的背景图片、搜索建议缓存等
+}
+
+/**
+ * 显示加载指示器
+ */
+function showLoadingIndicator() {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        loadingScreen.style.display = 'flex';
     }
+}
 
-    // 依次尝试获取每个图标URL的内容
-    for (const iconUrl of iconUrls) {
-      try {
-      const response = await fetch(iconUrl, {
-        mode: 'cors',
-        headers: { 'cache-control': 'no-cache' }
-      });
+/**
+ * 隐藏加载指示器
+ */
+function hideLoadingIndicator() {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        loadingScreen.style.opacity = '0';
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
+        }, 500); // 500ms过渡动画
+    }
+}
 
-      if (response.ok) {
-        // 将图标转换为blob对象，再转为base64格式
-        const blob = await response.blob();
-        const base64data = await convertBlobToBase64(blob);
+/**
+ * 显示错误消息
+ * @param {string} message - 错误消息
+ */
+function showErrorMessage(message) {
+    const errorContainer = document.getElementById('error-container');
+    if (!errorContainer) {
+        // 如果不存在错误容器，创建一个
+        const container = document.createElement('div');
+        container.id = 'error-container';
+        container.style.cssText = 'position:fixed;top:10px;right:10px;background:#f44336;color:white;padding:10px 20px;border-radius:5px;z-index:1000;box-shadow:0 2px 5px rgba(0,0,0,0.2);';
         
-        // 确保不是文本数据且图片尺寸不小于5x5
-        if (!base64data.startsWith('data:text')) {
-        const img = new Image();
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = base64data;
+        const messageElement = document.createElement('span');
+        messageElement.textContent = message;
+        
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '&times;';
+        closeButton.style.cssText = 'margin-left:10px;background:none;border:none;color:white;font-size:16px;cursor:pointer;';
+        closeButton.addEventListener('click', () => {
+            container.style.display = 'none';
         });
         
-        if (img.width >= 5 && img.height >= 5) {
-          // 将成功获取的图标保存到本地存储
-          await chrome.storage.local.set({ [url]: base64data });
-          button.style.backgroundImage = `url(${base64data})`;
-          return;
-        }
-        }
-      }
-      } catch (error) {
-      console.log(`从 ${iconUrl} 获取图标失败:`, error);
-      }
+        container.appendChild(messageElement);
+        container.appendChild(closeButton);
+        document.body.appendChild(container);
+    } else {
+        // 如果存在，更新消息
+        const messageElement = errorContainer.querySelector('span') || errorContainer;
+        messageElement.textContent = message;
+        errorContainer.style.display = 'block';
     }
-
-    // 如果所有获取图标的尝试都失败，使用默认图标
-    button.style.backgroundImage = `url(${defaultIcon})`;
-
-  } catch (error) {
-    console.log('获取快捷方式图标时出错:', error);
-    button.style.backgroundImage = `url(${defaultIcon})`;
-  }
 }
 
-// 异步函数：将Blob对象转换为Base64字符串
-async function convertBlobToBase64(blob) {
-  // 返回一个Promise对象，用于异步处理转换过程
-  return new Promise(resolve => {
-    // 创建一个FileReader实例用于读取文件
-    const reader = new FileReader();
-    // 设置读取完成后的回调函数，返回转换结果
-    reader.onloadend = () => resolve(reader.result);
-    // 开始读取Blob对象并转换为DataURL格式
-    reader.readAsDataURL(blob);
-  });
+/**
+ * 显示欢迎消息
+ */
+function showWelcomeMessage() {
+    const welcomeModal = document.getElementById('welcome-modal');
+    if (welcomeModal) {
+        welcomeModal.style.display = 'block';
+        
+        // 添加关闭事件
+        const closeBtn = welcomeModal.querySelector('.modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                welcomeModal.style.display = 'none';
+            });
+        }
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', (e) => {
+            if (e.target === welcomeModal) {
+                welcomeModal.style.display = 'none';
+            }
+        });
+    } else {
+        // 如果没有预定义的欢迎模态框，使用通知
+        showNotification(
+            getI18nMessage('welcomeTitle'), 
+            getI18nMessage('welcomeMessage')
+        );
+    }
 }
 
-// 统一使用DOMContentLoaded事件来初始化
-document.addEventListener('DOMContentLoaded', async () => {
-  // 初始化时钟
-  const d = new Date()
-  const h = d.getHours();
-  const m = d.getMinutes();
-  const s = d.getSeconds();
-  const time = document.getElementById("time");
-  time.style.setProperty('--ds', s)
-  time.style.setProperty('--dm', m + s/60)
-  time.style.setProperty('--dh', h + m/60 + s/3600)
-  
-  // 获取DOM元素并赋值给全局变量
-  searchBox = document.getElementById("search-box"); 
-  engineButton = document.getElementById("engine-button"); 
-  engineIcon = document.getElementById("engine-icon"); 
-  searchInput = document.getElementById("search-input"); 
-  bookmarkBox = document.getElementById("bookmark-box"); 
-  folderList = document.getElementById("folder-list"); 
-  shortcutList = document.getElementById("shortcut-list"); 
-  backgroundButton = document.getElementById("background-button"); 
-  
-  // 直接设置i18n内容，不依赖于动态加载的脚本
-  searchInput.placeholder = getMessage("searchPlaceholder");
-  backgroundButton.textContent = getMessage("backgroundButton");
-  
-  // 传递参数给函数
-  setupEventHandlers(engineButton, searchBox, engineIcon, searchInput, backgroundButton);
-  
-  // 初始化应用
-  await loadBookmarks();
-  await loadBingImage();
-  getEngine(); 
-  getBackground(); 
-  getBookmarks(); 
-  chrome.runtime.sendMessage({action: "getWallpaper"});
-  
-  // 确保所有子文件夹在初始状态下都是隐藏的
-  document.querySelectorAll('.folder-children').forEach(container => {
-    container.style.display = 'none';
-  });
+/**
+ * 显示更新消息
+ * @param {string} oldVersion - 旧版本号
+ * @param {string} newVersion - 新版本号
+ */
+function showUpdateMessage(oldVersion, newVersion) {
+    showNotification(
+        getI18nMessage('updateTitle'), 
+        getI18nMessage('updateMessage').replace('{oldVersion}', oldVersion).replace('{newVersion}', newVersion)
+    );
+}
 
-  document.querySelectorAll('.folder-button').forEach(button => {
-    button.addEventListener('click', () => {
-      handleFolderClick(button);
+/**
+ * 显示通知
+ * @param {string} title - 通知标题
+ * @param {string} message - 通知内容
+ * @param {number} [duration=5000] - 显示持续时间(毫秒)
+ */
+function showNotification(title, message, duration = 5000) {
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.classList.add('notification');
+    notification.style.cssText = 'position:fixed;bottom:20px;right:20px;width:300px;background:white;border-radius:5px;box-shadow:0 2px 10px rgba(0,0,0,0.2);overflow:hidden;z-index:1000;transform:translateY(100%);transition:transform 0.3s;';
+    
+    // 添加通知内容
+    notification.innerHTML = `
+        <div style="padding:15px;border-bottom:1px solid #eee;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="margin:0;font-size:16px;">${title}</h3>
+                <button class="close-btn" style="background:none;border:none;font-size:16px;cursor:pointer;">&times;</button>
+            </div>
+            <p style="margin:10px 0 0;font-size:14px;">${message}</p>
+        </div>
+    `;
+    
+    // 添加到文档
+    document.body.appendChild(notification);
+    
+    // 显示通知
+    setTimeout(() => {
+        notification.style.transform = 'translateY(0)';
+    }, 100);
+    
+    // 添加关闭按钮事件
+    const closeBtn = notification.querySelector('.close-btn');
+    closeBtn.addEventListener('click', () => {
+        closeNotification();
     });
-  });
-});
-
-// 设置事件处理程序
-function setupEventHandlers(engineButton, searchBox, engineIcon, searchInput, backgroundButton) {
-  // 设置搜索引擎切换按钮的点击事件
-  engineButton.onclick = function() {
-    let engineUrl = prompt(getMessage("enterEngineUrl")); 
-    if (engineUrl) { 
-      try {
-        // 检查URL是否包含'='字符，表示这可能是一个搜索URL
-        if (engineUrl.includes('=')) {
-          // 尝试从输入的URL中解析出搜索引擎信息
-          const urlObj = new URL(engineUrl);
-          // 获取查询参数
-          const params = new URLSearchParams(urlObj.search);
-          
-          // 查找可能的搜索参数名
-          let searchParamName = '';
-          for (const [name, value] of params.entries()) {
-            // 找出最可能是搜索关键词的参数
-            if (['q', 'query', 'word', 'text', 'w', 's', 'search', 'wd', 'kw', 'keyword'].includes(name)) {
-              searchParamName = name;
-              break;
-            }
-          }
-          
-          // 如果没有找到明确的搜索参数，使用第一个参数
-          if (!searchParamName && params.keys().next().value) {
-            searchParamName = params.keys().next().value;
-          } else if (!searchParamName) {
-            // 如果完全没有参数，默认使用'q'
-            searchParamName = 'q';
-          }
-          
-          // 提取搜索引擎的基础URL（去除查询参数部分）
-          const baseUrl = urlObj.origin + urlObj.pathname;
-          
-          // 保存搜索引擎信息
-          const engineInfo = {
-            baseUrl: baseUrl,
-            searchParam: searchParamName
-          };
-          
-          // 更新当前搜索引擎
-          currentEngine = engineInfo;
-          
-          // 设置图标和表单提交
-          engineIcon.src = urlObj.origin + "/favicon.ico";
-          searchBox.action = baseUrl;
-          searchInput.name = searchParamName;
-          
-          // 保存到本地存储
-          chrome.runtime.sendMessage({
-            action: "setEngine", 
-            engine: engineInfo
-          });
-        } else {
-          // 如果URL不包含'='，按原来的方式处理
-          if (!engineUrl.startsWith('http')) {
-            engineUrl = 'https://' + engineUrl;
-          }
-          
-          engineIcon.src = engineUrl + "/favicon.ico";
-          searchBox.action = engineUrl + "/search";
-          searchInput.name = "q";
-          
-          // 保存到本地存储
-          chrome.runtime.sendMessage({
-            action: "setEngine", 
-            engine: { baseUrl: engineUrl + "/search", searchParam: "q" }
-          });
-        }
-      } catch (e) {
-        console.error("解析搜索引擎URL失败:", e);
-        // 如果URL解析失败，尝试作为纯域名处理
-        if (!engineUrl.startsWith('http')) {
-          engineUrl = 'https://' + engineUrl;
-        }
+    
+    // 定时关闭
+    const timeoutId = setTimeout(() => {
+        closeNotification();
+    }, duration);
+    
+    // 关闭通知函数
+    function closeNotification() {
+        notification.style.transform = 'translateY(100%)';
+        clearTimeout(timeoutId);
         
-        engineIcon.src = engineUrl + "/favicon.ico";
-        searchBox.action = engineUrl + "/search";
-        searchInput.name = "q";
-        
-        // 保存到本地存储
-        chrome.runtime.sendMessage({
-          action: "setEngine", 
-          engine: { baseUrl: engineUrl + "/search", searchParam: "q" }
-        });
-      }
-    }
-  };
-
-  // 添加右键点击事件监听器到搜索引擎按钮
-  engineButton.addEventListener('contextmenu', function(event) {
-    event.preventDefault();
-    let confirmClear = confirm(getMessage("confirmClear"));
-    if (confirmClear) {
-      chrome.storage.local.clear(() => {
-        alert(getMessage("storageCleared"));
-      });
-    }
-  });
-
-  // 设置背景切换按钮的点击事件
-  backgroundButton.onclick = function() {
-    currentBackground = (currentBackground + 1) % 2;
-    chrome.storage.local.set({background: currentBackground});
-    getBackground();
-  };
-
-  // 添加右键点击事件监听器到背景按钮
-  backgroundButton.addEventListener('contextmenu', function(event) {
-    event.preventDefault();
-
-    let fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.onchange = function(event) {
-      let file = event.target.files[0];
-      if (file) {
-        let reader = new FileReader();
-        reader.onload = function(e) {
-          let base64Image = e.target.result;
-          chrome.storage.local.set({DIYBackground: base64Image, background: 1}, () => {
-            if (chrome.runtime.lastError) {
-              alert(getMessage("backgroundSetFailed"));
-            } else {
-              getBackground();
+        // 动画结束后移除DOM
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
             }
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-    fileInput.click();
-  });
-}
-
-// 获取并生成收藏夹文件夹按钮
-function createFolderButtons(folders, parentElement, level = 0) {
-  for (let folder of folders) {
-    if (folder.children) { // 确保只处理文件夹
-      let folderButton = document.createElement("div");
-      folderButton.className = "folder-button";
-      folderButton.innerHTML = `<span class="folder-icon">📁</span><span class="folder-name">${folder.title}</span>`;
-      folderButton.style.marginLeft = `${level * 20}px`; // 根据层级设置左边距
-      folderButton.onclick = function() {
-        handleFolderClick(folderButton, folder);
-      };
-      parentElement.appendChild(folderButton);
-
-      let subFolderContainer = document.createElement("div");
-      subFolderContainer.className = "folder-children";
-      subFolderContainer.style.display = 'none'; // 初始隐藏子文件夹
-      parentElement.appendChild(subFolderContainer);
-
-      // 递归创建子文件夹按钮
-      createFolderButtons(folder.children, subFolderContainer, level + 1);
+        }, 300);
     }
-  }
 }
 
-// 添加文件夹点击处理函数
-function handleFolderClick(folderButton, folder) {
-  folderButton.classList.toggle('open');
-  const children = folderButton.nextElementSibling;
-  if (children && children.classList.contains('folder-children')) {
-    children.style.display = children.style.display === 'block' ? 'none' : 'block';
-  }
-  if (folder) {
-    showShortcuts(folder);
-  }
+/**
+ * 处理页面可见性变化
+ * 当页面从隐藏变为可见时，可能需要刷新某些数据
+ */
+function handleVisibilityChange() {
+    if (!document.hidden && isInitialized) {
+        // 如果页面变为可见且已初始化，执行刷新操作
+        refreshPageContent();
+    }
 }
 
-// 导出工具函数
-export async function fetchData(url) {
-  try {
-    const response = await fetch(url);
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to fetch data from', url, error);
-    throw error;
-  }
+/**
+ * 刷新页面内容
+ * 用于在标签页重新激活时更新内容
+ */
+async function refreshPageContent() {
+    try {
+        // 这里可以添加需要刷新的内容
+        // 例如刷新背景图片、更新时间等
+    } catch (error) {
+        console.error('Failed to refresh page content:', error);
+    }
 }
+
+// 添加可见性变化事件监听
+document.addEventListener('visibilitychange', handleVisibilityChange);
+
+// 页面加载完成后初始化应用
+document.addEventListener('DOMContentLoaded', init);
+
+// 导出一些可能在外部使用的函数
+export {
+    VERSION,
+    showNotification,
+    showErrorMessage
+};
