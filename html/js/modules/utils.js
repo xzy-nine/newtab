@@ -30,3 +30,32 @@ export function blobToBase64(blob) {
         reader.readAsDataURL(blob);
     });
 }
+
+/**
+ * 获取URL的域名部分
+ * @param {string} url - 完整URL
+ * @returns {string} - URL的域名部分
+ */
+export function getDomain(url) {
+    try {
+        let a = document.createElement("a");
+        a.href = url;
+        return a.origin;
+    } catch (error) {
+        console.error('获取域名失败:', url, error);
+        return url;
+    }
+}
+
+/**
+ * 异步函数：将Blob对象转换为Base64字符串
+ * @param {Blob} blob - Blob对象
+ * @returns {Promise<string>} - Base64字符串
+ */
+export async function convertBlobToBase64(blob) {
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+    });
+}
