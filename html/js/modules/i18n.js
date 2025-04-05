@@ -176,7 +176,13 @@ const messages = {
         editBookmark: "编辑书签",
         addBookmark: "添加书签",
         confirmDeleteBookmark: "确定要删除此书签吗？",
-        pleaseCompleteAllFields: "请完成所有必填字段"
+        pleaseCompleteAllFields: "请完成所有必填字段",
+        addCustomSearchEngine: "添加自定义搜索引擎",
+        engineName: "名称",
+        engineSearchUrl: "搜索URL (包含 %s 作为搜索词占位符)",
+        engineIconUrl: "图标URL (可选)",
+        cancel: "取消",
+        confirm: "确认"
     },
     en_US: {
         newTab: "New Tab", // 添加页面标题的翻译
@@ -213,6 +219,12 @@ const messages = {
         editBookmark: "Edit Bookmark", 
         addBookmark: "Add Bookmark",
         confirmDeleteBookmark: "Are you sure you want to delete this bookmark?",
-        pleaseCompleteAllFields: "Please complete all required fields"
+        pleaseCompleteAllFields: "Please complete all required fields",
+        addCustomSearchEngine: "Add Custom Search Engine",
+        engineName: "Name",
+        engineSearchUrl: "Search URL (include %s as search term placeholder)",
+        engineIconUrl: "Icon URL (optional)",
+        cancel: "Cancel",
+        confirm: "Confirm"
     }
 };
