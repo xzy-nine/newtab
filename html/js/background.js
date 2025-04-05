@@ -16,19 +16,6 @@ async function fetchData(url) {
     }
 }
 
-/**
- * 将Blob对象转换为base64字符串
- * @param {Blob} blob - 需要转换的Blob对象
- * @returns {Promise<string>} - 转换后的base64字符串
- */
-function blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-}
 
 self.addEventListener('install', (event) => {
   console.log('Service Worker 安装');

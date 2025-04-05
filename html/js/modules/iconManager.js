@@ -6,9 +6,14 @@ import { getDomain } from './utils.js';
 
 // 图标缓存对象
 const iconCache = new Map();
+// 添加尺寸相关的缓存对象
+const iconSizeCache = new Map();
 
 // 默认图标URL
 const DEFAULT_ICON = 'images/default_favicon.png';
+
+// 尺寸缓存大小限制
+const SIZE_CACHE_LIMIT = 300;
 
 // Google Favicon API
 const GOOGLE_FAVICON_API = 'https://www.google.com/s2/favicons?domain=';
@@ -70,6 +75,15 @@ async function saveIconCache() {
  * 清理过期的图标缓存
  * @returns {Promise<void>}
  */
+function cleanupSizeCache() {
+    if (iconSizeCache.size > SIZE_CACHE_LIMIT) {
+        // 删除最旧的缓存项
+        const keysToRemove = [...iconSizeCache.keys()].slice(0, Math.floor(SIZE_CACHE_LIMIT / 3));
+        keysToRemove.forEach(key => iconSizeCache.delete(key));
+    }
+}
+
+// 将原有的 cleanupIconCache 函数扩展为同时清理尺寸缓存
 export async function cleanupIconCache() {
     const now = Date.now();
     const expirationTime = 7 * 24 * 60 * 60 * 1000; // 7天过期时间
@@ -86,6 +100,9 @@ export async function cleanupIconCache() {
     if (hasChanges) {
         await saveIconCache();
     }
+    
+    // 同时清理尺寸缓存
+    cleanupSizeCache();
 }
 
 /**
@@ -326,9 +343,14 @@ async function generateInitialBasedIcon(domain) {
     return canvas.toDataURL('image/png');
 }
 
-// 为了兼容性，保留旧的函数名，直接调用新的实现
-export async function getIconForShortcut(url, button) {
-    return getIconUrl(url, button);
+/**
+ * 获取快捷方式的图标 - getIconUrl的别名，用于保持代码兼容性
+ * @param {string} url - 网站URL
+ * @param {HTMLElement} element - 要设置图标的DOM元素
+ * @returns {Promise<string>} - 图标的URL或Base64数据
+ */
+export async function getIconForShortcut(url, element) {
+    return getIconUrl(url, element);
 }
 
 /**
@@ -370,24 +392,42 @@ async function cacheIcon(domain, iconData) {
 export async function preloadIcons(urls) {
     if (!Array.isArray(urls) || urls.length === 0) return;
     
-    // 创建任务队列，批量处理
-    const tasks = urls.map(url => {
+    // 先过滤掉已缓存的URL，减少不必要的请求
+    const uncachedUrls = urls.filter(url => {
         const domain = getDomain(url);
-        if (!iconCache.has(domain)) {
-            return getIconUrl(url);
-        }
-        return Promise.resolve();
+        return !iconCache.has(domain);
     });
+    
+    if (uncachedUrls.length === 0) return;
+    
+    // 创建任务队列，批量处理
+    const tasks = uncachedUrls.map(url => getIconUrl(url));
     
     // 并发执行，但限制并发数为5
     const batchSize = 5;
+    const total = tasks.length;
+    
+    // 添加进度跟踪功能（可选，用于调试）
+    let completed = 0;
+    
     for (let i = 0; i < tasks.length; i += batchSize) {
         const batch = tasks.slice(i, i + batchSize);
-        await Promise.all(batch);
+        await Promise.allSettled(batch).then(results => {
+            completed += batch.length;
+            console.debug(`Icon preloading: ${completed}/${total}`);
+        });
+        
+        // 每批次后稍微延迟，避免过度占用资源
+        if (i + batchSize < tasks.length) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
     }
     
     // 保存全部缓存
     await saveIconCache();
+    
+    // 清理尺寸缓存
+    cleanupSizeCache();
 }
 
 /**
@@ -433,14 +473,39 @@ export async function setIconForElement(img, url) {
         // 保存原始URL以便错误处理
         img.dataset.originalUrl = url;
         
+        // 避免多次请求相同URL
+        if (img.dataset.processingUrl === url) {
+            return;
+        }
+        
+        img.dataset.processingUrl = url;
+        
         // 设置错误处理
         img.onerror = () => handleIconError(img);
         
-        // 获取图标URL
-        const iconUrl = await getIconUrl(url);
-        img.src = iconUrl;
+        // 先检查内存缓存，减少等待感
+        const domain = getDomain(url);
+        if (iconCache.has(domain)) {
+            img.src = iconCache.get(domain).data;
+        } else {
+            // 临时显示占位图标
+            img.src = DEFAULT_ICON;
+            
+            // 获取图标URL
+            const iconUrl = await getIconUrl(url);
+            
+            // 确保图像元素仍在页面上并且URL没有被更改
+            if (img.isConnected && img.dataset.processingUrl === url) {
+                img.src = iconUrl;
+            }
+        }
+        
+        // 请求完成，删除处理标记
+        delete img.dataset.processingUrl;
     } catch (error) {
+        console.error('设置图标时出错:', error);
         img.src = DEFAULT_ICON;
+        delete img.dataset.processingUrl;
     }
 }
 
@@ -452,12 +517,22 @@ export async function setIconForElement(img, url) {
  * @returns {Promise<string>} - 图标的数据URL
  */
 export async function generateIconDataUrl(url, size = 16, isDirectUrl = false) {
+    // 生成缓存键
+    const cacheKey = `${url}_${size}`;
+    
+    // 检查是否已有相同尺寸的缓存
+    if (iconSizeCache.has(cacheKey)) {
+        return iconSizeCache.get(cacheKey);
+    }
+    
     try {
         // 如果不是直接提供的图标URL，则获取网站的图标URL
         const iconUrl = isDirectUrl ? url : await getIconUrl(url);
         
         // 如果已经是数据URL则直接返回
         if (iconUrl.startsWith('data:')) {
+            // 缓存结果
+            iconSizeCache.set(cacheKey, iconUrl);
             return iconUrl;
         }
         
@@ -474,20 +549,41 @@ export async function generateIconDataUrl(url, size = 16, isDirectUrl = false) {
                 img.onload = resolve;
                 img.onerror = reject;
                 img.crossOrigin = 'anonymous'; // 处理跨域问题
+                
+                // 添加超时处理
+                const timeout = setTimeout(() => reject(new Error('Icon load timeout')), 3000);
+                
+                img.onload = () => {
+                    clearTimeout(timeout);
+                    resolve();
+                };
+                
                 img.src = iconUrl;
             });
             
             // 绘制到canvas
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, 0, 0, size, size);
             
             // 转换为数据URL
-            return canvas.toDataURL('image/png');
+            const dataUrl = canvas.toDataURL('image/png', 0.9);
+            
+            // 缓存结果
+            iconSizeCache.set(cacheKey, dataUrl);
+            return dataUrl;
         } catch (error) {
-            return generateDefaultIconDataUrl(url, size);
+            const fallbackIcon = generateDefaultIconDataUrl(url, size);
+            // 缓存结果
+            iconSizeCache.set(cacheKey, fallbackIcon);
+            return fallbackIcon;
         }
     } catch (error) {
         console.error('Error generating icon data URL:', error);
-        return generateDefaultIconDataUrl(url, size);
+        const fallbackIcon = generateDefaultIconDataUrl(url, size);
+        // 缓存结果
+        iconSizeCache.set(cacheKey, fallbackIcon);
+        return fallbackIcon;
     }
 }
 
