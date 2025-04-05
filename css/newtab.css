@@ -164,11 +164,15 @@ input:-webkit-autofill:active {
   margin: 10px; /* 设置外边距为10px */
   transition: box-shadow 0.3s, border-radius 0.3s; /* 设置阴影和圆角的过渡时间为0.3秒 */
   user-select: none; /* 禁止选择文本 */
+  position: relative;
+  margin: 4px 0;
+  transition: background-color 0.2s;
 }
 
 .folder-button:hover { /* 鼠标移动到文件夹按钮上时 */
   box-shadow: 0 0 15px var(--secondary-color); /* 增加阴影 */
   border-radius: 10px; /* 减小圆角 */
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .child-container { /* 子文件夹容器 */
@@ -538,4 +542,204 @@ html, body {
 /* 模态框样式 */
 .modal {
     display: none;
+}
+
+/* 书签相关样式 */
+#custom-bookmark-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.bookmark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 0 10px var(--secondary-color);
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.bookmark:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px var(--secondary-color);
+}
+
+.bookmark-icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 5px;
+}
+
+.bookmark-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.bookmark-title {
+    font-size: 12px;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+}
+
+/* 添加书签按钮样式 */
+.add-bookmark {
+    background: rgba(0, 120, 212, 0.2);
+    border: 2px dashed var(--primary-color);
+}
+
+.add-icon {
+    font-size: 24px;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+/* 书签模态框专用样式 */
+#bookmark-modal .form-group input[type="file"] {
+    padding: 5px 0;
+    border: none;
+}
+
+#bookmark-modal .image-preview {
+    width: 48px;
+    height: 48px;
+    margin-top: 5px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#bookmark-modal .image-preview img {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* 书签上下文菜单 */
+#bookmark-context-menu {
+    min-width: 150px;
+    border: 1px solid #ddd;
+}
+
+/* 拖放相关样式 */
+.bookmark.dragging {
+    opacity: 0.5;
+    position: absolute;
+    pointer-events: none;
+}
+
+/* 书签列表占位符 */
+.bookmark-placeholder {
+    border: 2px dashed #ccc;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 快捷方式上下文菜单 */
+#shortcut-context-menu {
+    min-width: 150px;
+    border: 1px solid #ddd;
+}
+
+/* 图标选择对话框 */
+#icon-selector-modal .icon-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+#icon-selector-modal .icon-option {
+    width: 48px;
+    height: 48px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+#icon-selector-modal .icon-option:hover {
+    border-color: var(--primary-color);
+    background-color: #f0f7ff;
+}
+
+#icon-selector-modal .icon-option img {
+    max-width: 80%;
+    max-height: 80%;
+}
+
+/* 文件夹展开/收起指示器 */
+.folder-button .folder-icon {
+    /* 使用内容替换而非伪元素添加 */
+    width: 24px;
+    height: 24px;
+    margin-right: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 移除之前的伪元素样式 */
+.folder-button.open .folder-icon::before,
+.folder-button:not(.open) .folder-icon::before {
+    content: none; /* 禁用伪元素 */
+}
+
+.folder-content {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+}
+
+.folder-arrow {
+  font-size: 10px;
+  margin-right: 6px;
+  transition: transform 0.2s;
+  color: #666;
+  width: 12px;
+  text-align: center;
+}
+
+.folder-icon {
+  margin-right: 6px;
+}
+
+.folder-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder-button.open {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.folder-children {
+  transition: max-height 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.shortcut-title {
+    font-size: 12px;
+    color: #333;
+    margin-top: 5px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

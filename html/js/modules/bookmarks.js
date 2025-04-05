@@ -113,24 +113,36 @@ function getAllFolders(node) {
 function createFolderButtons(folders, parentElement, level = 0) {
     for (let folder of folders) {
         if (folder.children) {
+            // 创建文件夹按钮元素
             let folderButton = document.createElement("div");
             folderButton.className = "folder-button";
-            folderButton.innerHTML = `<span class="folder-icon">📁</span><span class="folder-name">${folder.title}</span>`;
-            folderButton.style.marginLeft = `${level * 20}px`;
+            
+            // 添加层级标识和展开/折叠指示器
+            folderButton.innerHTML = `
+                <div class="folder-content" style="margin-left: ${level * 20}px">
+                    <span class="folder-arrow">▶</span>
+                    <span class="folder-icon">📁</span>
+                    <span class="folder-name">${folder.title}</span>
+                </div>
+            `;
+            
             // 存储文件夹数据到按钮元素上
             folderButton.folderData = folder;
-            folderButton.onclick = function() {
-                handleFolderClick(folderButton, folder);
-            };
+            
+            // 添加按钮到父元素
             parentElement.appendChild(folderButton);
 
+            // 创建子文件夹容器
             let subFolderContainer = document.createElement("div");
             subFolderContainer.className = "folder-children";
             subFolderContainer.style.display = 'none';
             parentElement.appendChild(subFolderContainer);
 
-            // 创建子文件夹
-            createFolderButtons(folder.children.filter(child => child.children), subFolderContainer, level + 1);
+            // 创建该文件夹下的子文件夹，并将它们添加到当前文件夹的子容器中
+            const subFolders = folder.children.filter(child => child.children && child.children.length > 0);
+            if (subFolders.length > 0) {
+                createFolderButtons(subFolders, subFolderContainer, level + 1);
+            }
         }
     }
 }
@@ -143,6 +155,18 @@ function createFolderButtons(folders, parentElement, level = 0) {
 function handleFolderClick(folderButton, folder) {
     // 切换文件夹展开/收起状态
     folderButton.classList.toggle('open');
+    
+    // 更新箭头方向
+    const arrowElement = folderButton.querySelector('.folder-arrow');
+    if (arrowElement) {
+        if (folderButton.classList.contains('open')) {
+            arrowElement.textContent = '▼';
+        } else {
+            arrowElement.textContent = '▶';
+        }
+    }
+    
+    // 获取对应的子文件夹容器并切换其显示状态
     const children = folderButton.nextElementSibling;
     if (children && children.classList.contains('folder-children')) {
         children.style.display = children.style.display === 'block' ? 'none' : 'block';
@@ -224,6 +248,9 @@ function showShortcuts(folder) {
  * @param {Object} shortcut - 快捷方式数据
  */
 function showShortcutContextMenu(event, shortcut) {
+    // 保存被右键点击的按钮元素引用
+    const shortcutButton = event.currentTarget;
+    
     // 创建上下文菜单
     let contextMenu = document.getElementById('shortcut-context-menu');
     if (!contextMenu) {
@@ -255,27 +282,37 @@ function showShortcutContextMenu(event, shortcut) {
         fileInput.onchange = async function(e) {
             let file = e.target.files[0];
             if (file) {
-                let reader = new FileReader();
-                reader.onload = async function(e) {
-                    let base64Image = e.target.result;
-                    // 使用 iconManager 模块进行设置
-                    await setCustomIcon(shortcut.url, base64Image);
-                    // 修复这里，确保正确传递按钮元素
-                    getIconForShortcut(shortcut.url, event.currentTarget);
-                    contextMenu.style.display = 'none';
-                };
-                reader.readAsDataURL(file);
+                try {
+                    let reader = new FileReader();
+                    reader.onload = async function(e) {
+                        let base64Image = e.target.result;
+                        // 使用 iconManager 模块进行设置
+                        await setCustomIcon(shortcut.url, base64Image);
+                        // 修复：传递正确保存的按钮元素
+                        getIconForShortcut(shortcut.url, shortcutButton);
+                        contextMenu.style.display = 'none';
+                    };
+                    reader.readAsDataURL(file);
+                } catch (error) {
+                    console.error('设置图标失败:', error);
+                    alert(getI18nMessage('setIconFailed') || '设置图标失败');
+                }
             }
         };
         fileInput.click();
     });
     
     document.getElementById('reset-icon').addEventListener('click', async () => {
-        // 使用 iconManager 模块进行重置
-        await resetIcon(shortcut.url);
-        // 修复这里，确保正确传递按钮元素
-        getIconForShortcut(shortcut.url, event.currentTarget);
-        contextMenu.style.display = 'none';
+        try {
+            // 使用 iconManager 模块进行重置
+            await resetIcon(shortcut.url);
+            // 修复：传递正确保存的按钮元素
+            getIconForShortcut(shortcut.url, shortcutButton);
+            contextMenu.style.display = 'none';
+        } catch (error) {
+            console.error('重置图标失败:', error);
+            alert(getI18nMessage('deleteIconFailed') || '删除图标失败');
+        }
     });
     
     // 点击其他区域关闭菜单
@@ -307,25 +344,6 @@ function renderBookmarks() {
         const bookmarkElement = createBookmarkElement(bookmark, index);
         bookmarkContainer.appendChild(bookmarkElement);
     });
-    
-    // 添加"添加书签"按钮
-    const addBookmark = document.createElement('div');
-    addBookmark.classList.add('bookmark', 'add-bookmark');
-    
-    const addIcon = document.createElement('div');
-    addIcon.classList.add('add-icon');
-    addIcon.innerHTML = '<i class="fas fa-plus"></i>';
-    
-    const addText = document.createElement('div');
-    addText.classList.add('bookmark-title');
-    addText.textContent = getI18nMessage('addBookmark');
-    
-    addBookmark.appendChild(addIcon);
-    addBookmark.appendChild(addText);
-    
-    addBookmark.addEventListener('click', () => showBookmarkModal());
-    
-    bookmarkContainer.appendChild(addBookmark);
 }
 
 /**
@@ -337,16 +355,35 @@ function initBookmarkEvents() {
         container.style.display = 'none';
     });
 
-    // 添加文件夹按钮点击事件
+    // 移除原来的事件监听器后再添加新的
     document.querySelectorAll('.folder-button').forEach(button => {
-        if (!button.hasEventListener) {
-            button.hasEventListener = true;
-            button.addEventListener('click', () => {
-                const folderData = button.folderData;
-                if (folderData) {
-                    handleFolderClick(button, folderData);
-                }
-            });
+        // 克隆按钮以移除所有事件监听器
+        const newButton = button.cloneNode(true);
+        newButton.folderData = button.folderData; // 保留文件夹数据
+        button.parentNode.replaceChild(newButton, button);
+        
+        // 为新按钮添加点击事件
+        newButton.addEventListener('click', (event) => {
+            event.stopPropagation(); // 防止事件冒泡
+            if (newButton.folderData) {
+                handleFolderClick(newButton, newButton.folderData);
+            }
+        });
+    });
+    
+    // 同步按钮状态和箭头方向
+    document.querySelectorAll('.folder-button').forEach(button => {
+        const arrowElement = button.querySelector('.folder-arrow');
+        const children = button.nextElementSibling;
+        
+        if (arrowElement && children && children.classList.contains('folder-children')) {
+            if (button.classList.contains('open')) {
+                arrowElement.textContent = '▼';
+                children.style.display = 'block';
+            } else {
+                arrowElement.textContent = '▶';
+                children.style.display = 'none';
+            }
         }
     });
     
@@ -417,100 +454,19 @@ function createBookmarkElement(bookmark, index) {
         showContextMenu(e, index);
     });
     
-    // 使书签可拖动
-    bookmarkElement.setAttribute('draggable', 'true');
-    bookmarkElement.addEventListener('dragstart', handleDragStart);
-    bookmarkElement.addEventListener('dragover', handleDragOver);
-    bookmarkElement.addEventListener('drop', handleDrop);
-    
     return bookmarkElement;
 }
 
 /**
- * 显示书签编辑/添加模态框
- * @param {number} [index] - 如果是编辑书签，传入书签索引
+ * 显示添加书签的模态框
  */
-function showBookmarkModal(index = -1) {
+function showBookmarkModal() {
+    // 获取模态框元素
     const modal = document.getElementById('bookmark-modal');
-    const titleField = document.getElementById('bookmark-title');
-    const urlField = document.getElementById('bookmark-url');
-    const iconField = document.getElementById('bookmark-icon');
-    const modalTitle = document.getElementById('bookmark-modal-title');
-    
-    if (!modal || !titleField || !urlField) return;
-    
-    // 设置模态框标题
-    if (modalTitle) {
-        modalTitle.textContent = index >= 0 ? 
-            getI18nMessage('editBookmark') : 
-            getI18nMessage('addBookmark');
-    }
-    
-    // 如果是编辑，填入已有数据
-    if (index >= 0 && index < bookmarks.length) {
-        const bookmark = bookmarks[index];
-        titleField.value = bookmark.title || '';
-        urlField.value = bookmark.url || '';
-        iconField.value = bookmark.customIcon || '';
-    } else {
-        // 新增书签，清空字段
-        titleField.value = '';
-        urlField.value = '';
-        iconField.value = '';
-    }
+    if (!modal) return;
     
     // 显示模态框
     modal.style.display = 'block';
-    
-    // 设置确认按钮的点击事件
-    const confirmBtn = document.getElementById('bookmark-confirm');
-    if (confirmBtn) {
-        // 移除旧的事件监听器
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        
-        newConfirmBtn.addEventListener('click', async () => {
-            // 获取输入的数据
-            const title = titleField.value.trim();
-            const url = urlField.value.trim();
-            const customIcon = iconField.value.trim();
-            
-            if (!title || !url) {
-                alert(getI18nMessage('pleaseCompleteAllFields'));
-                return;
-            }
-            
-            // 确保URL格式正确
-            let formattedUrl = url;
-            if (!/^https?:\/\//i.test(url)) {
-                formattedUrl = 'http://' + url;
-            }
-            
-            // 创建或更新书签
-            const bookmark = {
-                title,
-                url: formattedUrl,
-                customIcon: customIcon || null
-            };
-            
-            if (index >= 0) {
-                // 更新现有书签
-                bookmarks[index] = bookmark;
-            } else {
-                // 添加新书签
-                bookmarks.push(bookmark);
-            }
-            
-            // 保存书签数据
-            await saveBookmarks();
-            
-            // 重新渲染书签
-            renderBookmarks();
-            
-            // 关闭模态框
-            modal.style.display = 'none';
-        });
-    }
     
     // 设置取消按钮的点击事件
     const cancelBtn = document.getElementById('bookmark-cancel');
@@ -532,8 +488,6 @@ function showBookmarkModal(index = -1) {
     });
 }
 
-// 将 showBookmarkModal 导出，这是缺少的部分
-export { showBookmarkModal };
 
 /**
  * 显示书签上下文菜单
@@ -552,39 +506,75 @@ function showContextMenu(e, index) {
     // 设置当前操作的书签索引
     contextMenu.dataset.index = index;
     
-    // 移除旧的事件监听器
-    const editBtn = document.getElementById('bookmark-edit');
-    const deleteBtn = document.getElementById('bookmark-delete');
+    // 阻止冒泡和默认行为
+    e.preventDefault();
+    e.stopPropagation();
     
-    if (editBtn) {
-        const newEditBtn = editBtn.cloneNode(true);
-        editBtn.parentNode.replaceChild(newEditBtn, editBtn);
-        
-        newEditBtn.addEventListener('click', () => {
-            contextMenu.style.display = 'none';
-            showBookmarkModal(index);
-        });
-    }
+    // 构建上下文菜单项
+    contextMenu.innerHTML = `
+        <div id="bookmark-delete" class="context-menu-item">${getI18nMessage('delete') || '删除'}</div>
+        <div id="bookmark-move-up" class="context-menu-item ${index === 0 ? 'disabled' : ''}">${getI18nMessage('moveUp') || '上移'}</div>
+        <div id="bookmark-move-down" class="context-menu-item ${index === bookmarks.length - 1 ? 'disabled' : ''}">${getI18nMessage('moveDown') || '下移'}</div>
+    `;
     
-    if (deleteBtn) {
-        const newDeleteBtn = deleteBtn.cloneNode(true);
-        deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
-        
-        newDeleteBtn.addEventListener('click', async () => {
-            const confirmed = confirm(getI18nMessage('confirmDeleteBookmark'));
-            if (confirmed) {
-                // 删除书签
-                bookmarks.splice(index, 1);
-                
-                // 保存更改
-                await saveBookmarks();
-                
-                // 重新渲染
-                renderBookmarks();
-            }
+    // 删除按钮事件
+    document.getElementById('bookmark-delete').addEventListener('click', async () => {
+        const confirmed = confirm(getI18nMessage('confirmDeleteBookmark') || '确定要删除此书签吗？');
+        if (confirmed) {
+            // 删除书签
+            bookmarks.splice(index, 1);
+            
+            // 保存更改
+            await saveBookmarks();
+            
+            // 重新渲染
+            renderBookmarks();
+        }
+        contextMenu.style.display = 'none';
+    });
+    
+    // 上移按钮事件
+    document.getElementById('bookmark-move-up').addEventListener('click', async () => {
+        if (index > 0) {
+            // 交换位置
+            [bookmarks[index - 1], bookmarks[index]] = [bookmarks[index], bookmarks[index - 1]];
+            
+            // 保存更改
+            await saveBookmarks();
+            
+            // 重新渲染
+            renderBookmarks();
+        }
+        contextMenu.style.display = 'none';
+    });
+    
+    // 下移按钮事件
+    document.getElementById('bookmark-move-down').addEventListener('click', async () => {
+        if (index < bookmarks.length - 1) {
+            // 交换位置
+            [bookmarks[index], bookmarks[index + 1]] = [bookmarks[index + 1], bookmarks[index]];
+            
+            // 保存更改
+            await saveBookmarks();
+            
+            // 重新渲染
+            renderBookmarks();
+        }
+        contextMenu.style.display = 'none';
+    });
+    
+    // 点击其他区域关闭菜单
+    const closeMenuHandler = function(e) {
+        if (!contextMenu.contains(e.target)) {
             contextMenu.style.display = 'none';
-        });
-    }
+            document.removeEventListener('click', closeMenuHandler);
+        }
+    };
+    
+    // 延迟添加事件监听，防止触发刚刚的右键点击
+    setTimeout(() => {
+        document.addEventListener('click', closeMenuHandler);
+    }, 100);
 }
 
 /**
@@ -597,83 +587,6 @@ async function saveBookmarks() {
     } catch (error) {
         console.error('Failed to save bookmarks:', error);
     }
-}
-
-/**
- * 处理拖动开始事件
- * @param {DragEvent} e - 拖动事件
- */
-function handleDragStart(e) {
-    e.dataTransfer.setData('text/plain', e.target.dataset.index);
-    e.target.classList.add('dragging');
-}
-
-/**
- * 处理拖动经过事件
- * @param {DragEvent} e - 拖动事件
- */
-function handleDragOver(e) {
-    e.preventDefault();
-    const draggable = document.querySelector('.dragging');
-    if (!draggable) return;
-    
-    const container = document.getElementById('custom-bookmark-container');
-    if (!container) return;
-    
-    const afterElement = getDragAfterElement(container, e.clientX);
-    
-    if (afterElement == null) {
-        container.appendChild(draggable);
-    } else {
-        container.insertBefore(draggable, afterElement);
-    }
-}
-
-/**
- * 处理放置事件
- * @param {DragEvent} e - 拖动事件
- */
-async function handleDrop(e) {
-    e.preventDefault();
-    const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
-    const targetIndex = parseInt(e.target.closest('.bookmark').dataset.index);
-    
-    if (isNaN(draggedIndex) || isNaN(targetIndex) || draggedIndex === targetIndex) {
-        document.querySelector('.dragging')?.classList.remove('dragging');
-        return;
-    }
-    
-    // 更新书签顺序
-    const draggedBookmark = bookmarks[draggedIndex];
-    bookmarks.splice(draggedIndex, 1);
-    bookmarks.splice(targetIndex, 0, draggedBookmark);
-    
-    // 保存更改
-    await saveBookmarks();
-    
-    // 重新渲染书签
-    renderBookmarks();
-}
-
-/**
- * 获取拖动后的元素
- * @param {HTMLElement} container - 容器元素
- * @param {number} x - 鼠标X坐标
- * @returns {HTMLElement|null} - 目标元素
- */
-function getDragAfterElement(container, x) {
-    const draggableElements = [...container.querySelectorAll('.bookmark:not(.dragging):not(.add-bookmark)')];
-    
-    return draggableElements.reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = x - box.left - box.width / 2;
-        
-        if (offset < 0 && offset > closest.offset) {
-            return { offset, element: child };
-        } else {
-            return closest;
-        }
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 /**
