@@ -49,13 +49,10 @@ export function getDomain(url) {
 
 /**
  * 异步函数：将Blob对象转换为Base64字符串
+ * 保留此函数以保持兼容性，内部调用blobToBase64实现
  * @param {Blob} blob - Blob对象
  * @returns {Promise<string>} - Base64字符串
  */
-export async function convertBlobToBase64(blob) {
-    return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-    });
+export function convertBlobToBase64(blob) {
+    return blobToBase64(blob);
 }

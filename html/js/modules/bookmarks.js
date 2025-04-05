@@ -1,26 +1,44 @@
 /**
  * 书签管理模块
+ * 负责处理Chrome书签和自定义书签的显示和交互
  */
 
 import { getDomain } from './utils.js';
 import { getI18nMessage } from './i18n.js';
+import { 
+    preloadIcons, 
+    getIconForShortcut, 
+    setCustomIcon, 
+    resetIcon
+} from './iconManager.js';
 
 // 书签数据
 let bookmarks = [];
+let currentFolder = "";
 
 /**
  * 初始化书签功能
  * @returns {Promise<void>}
  */
 export async function initBookmarks() {
-    // 从存储中加载书签
-    await loadBookmarks();
-    
-    // 渲染书签列表
-    renderBookmarks();
-    
-    // 初始化书签相关事件
-    initBookmarkEvents();
+    try {
+        // 从存储中加载自定义书签
+        await loadBookmarks();
+        
+        // 获取Chrome浏览器书签
+        await getChromeBookmarks();
+        
+        // 渲染书签列表
+        renderBookmarks();
+        
+        // 初始化书签相关事件
+        initBookmarkEvents();
+        
+        console.log('Bookmarks initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize bookmarks:', error);
+        throw error;
+    }
 }
 
 /**
@@ -38,10 +56,247 @@ async function loadBookmarks() {
 }
 
 /**
- * 渲染书签列表
+ * 获取Chrome浏览器书签
+ * @returns {Promise<void>}
  */
-export function renderBookmarks() {
-    const bookmarkContainer = document.getElementById('bookmark-container');
+async function getChromeBookmarks() {
+    try {
+        const tree = await chrome.bookmarks.getTree();
+        const root = tree[0];
+        const folders = getAllFolders(root);
+        
+        // 创建文件夹按钮
+        const folderList = document.getElementById('folder-list');
+        if (folderList) {
+            createFolderButtons(folders, folderList);
+        }
+        
+        // 从存储中获取上次选中的文件夹
+        const data = await chrome.storage.local.get("folder");
+        let folder = data.folder || root.id;
+        currentFolder = folder;
+        
+        // 显示默认文件夹的快捷方式
+        const selectedFolder = folders.find(f => f.id === folder);
+        if (selectedFolder) {
+            showShortcuts(selectedFolder);
+        }
+    } catch (error) {
+        console.error('Failed to get Chrome bookmarks:', error);
+    }
+}
+
+/**
+ * 获取一个节点下的所有文件夹节点
+ * @param {Object} node - 书签节点
+ * @returns {Array} - 文件夹节点数组
+ */
+function getAllFolders(node) {
+    let folders = [];
+    if (node.children) {
+        for (let child of node.children) {
+            if (child.children && child.children.length > 0) {
+                folders.push(child);
+                folders = [...folders, ...getAllFolders(child)];
+            }
+        }
+    }
+    return folders;
+}
+
+/**
+ * 创建文件夹按钮
+ * @param {Array} folders - 文件夹数组
+ * @param {HTMLElement} parentElement - 父元素
+ * @param {number} level - 嵌套层级
+ */
+function createFolderButtons(folders, parentElement, level = 0) {
+    for (let folder of folders) {
+        if (folder.children) {
+            let folderButton = document.createElement("div");
+            folderButton.className = "folder-button";
+            folderButton.innerHTML = `<span class="folder-icon">📁</span><span class="folder-name">${folder.title}</span>`;
+            folderButton.style.marginLeft = `${level * 20}px`;
+            // 存储文件夹数据到按钮元素上
+            folderButton.folderData = folder;
+            folderButton.onclick = function() {
+                handleFolderClick(folderButton, folder);
+            };
+            parentElement.appendChild(folderButton);
+
+            let subFolderContainer = document.createElement("div");
+            subFolderContainer.className = "folder-children";
+            subFolderContainer.style.display = 'none';
+            parentElement.appendChild(subFolderContainer);
+
+            // 创建子文件夹
+            createFolderButtons(folder.children.filter(child => child.children), subFolderContainer, level + 1);
+        }
+    }
+}
+
+/**
+ * 处理文件夹点击事件
+ * @param {HTMLElement} folderButton - 文件夹按钮元素
+ * @param {Object} folder - 文件夹数据
+ */
+function handleFolderClick(folderButton, folder) {
+    // 切换文件夹展开/收起状态
+    folderButton.classList.toggle('open');
+    const children = folderButton.nextElementSibling;
+    if (children && children.classList.contains('folder-children')) {
+        children.style.display = children.style.display === 'block' ? 'none' : 'block';
+    }
+    
+    // 显示该文件夹的快捷方式
+    if (folder) {
+        showShortcuts(folder);
+        currentFolder = folder.id;
+        
+        // 保存当前选中的文件夹
+        chrome.storage.local.set({ folder: folder.id });
+    }
+}
+
+/**
+ * 显示指定文件夹的快捷方式
+ * @param {Object} folder - 文件夹数据
+ */
+function showShortcuts(folder) {
+    const shortcutList = document.getElementById("shortcut-list");
+    if (!shortcutList) return;
+    
+    shortcutList.innerHTML = "";
+
+    if (!folder || !folder.children || folder.children.length === 0) {
+        shortcutList.style.display = "none";
+        return;
+    }
+
+    let shortcuts = folder.children.filter(node => !node.children);
+
+    if (shortcuts.length === 0) {
+        shortcutList.style.display = "none";
+        return;
+    }
+
+    shortcutList.style.display = "flex";
+    
+    // 预加载所有快捷方式的URL
+    const urls = shortcuts.map(shortcut => shortcut.url).filter(Boolean);
+    preloadIcons(urls);
+
+    // 创建快捷方式按钮
+    for (let shortcut of shortcuts) {
+        if (!shortcut.url) continue;
+        
+        let shortcutButton = document.createElement("button");
+        shortcutButton.className = "shortcut-button";
+        shortcutButton.title = shortcut.title;
+
+        // 获取图标
+        getIconForShortcut(shortcut.url, shortcutButton);
+
+        // 添加文本标签
+        let titleSpan = document.createElement("span");
+        titleSpan.className = "shortcut-title";
+        titleSpan.textContent = shortcut.title;
+        shortcutButton.appendChild(titleSpan);
+
+        // 点击事件 - 打开链接
+        shortcutButton.addEventListener('click', function() {
+            window.open(shortcut.url, "_blank");
+        });
+
+        // 右键菜单 - 自定义图标
+        shortcutButton.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+            showShortcutContextMenu(event, shortcut);
+        });
+
+        shortcutList.appendChild(shortcutButton);
+    }
+}
+
+/**
+ * 显示快捷方式上下文菜单
+ * @param {Event} event - 事件对象
+ * @param {Object} shortcut - 快捷方式数据
+ */
+function showShortcutContextMenu(event, shortcut) {
+    // 创建上下文菜单
+    let contextMenu = document.getElementById('shortcut-context-menu');
+    if (!contextMenu) {
+        contextMenu = document.createElement('div');
+        contextMenu.id = 'shortcut-context-menu';
+        contextMenu.className = 'context-menu';
+        document.body.appendChild(contextMenu);
+    }
+    
+    // 设置菜单内容
+    contextMenu.innerHTML = `
+        <div class="context-menu-item" id="custom-icon">${getI18nMessage('customIcon') || '自定义图标'}</div>
+        <div class="context-menu-item" id="reset-icon">${getI18nMessage('resetIcon') || '重置图标'}</div>
+    `;
+    
+    // 设置菜单位置
+    contextMenu.style.left = `${event.pageX}px`;
+    contextMenu.style.top = `${event.pageY}px`;
+    contextMenu.style.display = 'block';
+    
+    // 阻止事件冒泡
+    event.stopPropagation();
+    
+    // 添加点击事件
+    document.getElementById('custom-icon').addEventListener('click', () => {
+        let fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.onchange = async function(e) {
+            let file = e.target.files[0];
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = async function(e) {
+                    let base64Image = e.target.result;
+                    // 使用 iconManager 模块进行设置
+                    await setCustomIcon(shortcut.url, base64Image);
+                    // 修复这里，确保正确传递按钮元素
+                    getIconForShortcut(shortcut.url, event.currentTarget);
+                    contextMenu.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        fileInput.click();
+    });
+    
+    document.getElementById('reset-icon').addEventListener('click', async () => {
+        // 使用 iconManager 模块进行重置
+        await resetIcon(shortcut.url);
+        // 修复这里，确保正确传递按钮元素
+        getIconForShortcut(shortcut.url, event.currentTarget);
+        contextMenu.style.display = 'none';
+    });
+    
+    // 点击其他区域关闭菜单
+    const closeMenuHandler = function(e) {
+        if (!contextMenu.contains(e.target)) {
+            contextMenu.style.display = 'none';
+            document.removeEventListener('click', closeMenuHandler);
+        }
+    };
+    
+    // 延迟添加事件监听，防止触发刚刚的右键点击
+    setTimeout(() => {
+        document.addEventListener('click', closeMenuHandler);
+    }, 100);
+}
+
+/**
+ * 渲染自定义书签列表
+ */
+function renderBookmarks() {
+    const bookmarkContainer = document.getElementById('custom-bookmark-container');
     if (!bookmarkContainer) return;
     
     // 清空现有书签
@@ -74,6 +329,43 @@ export function renderBookmarks() {
 }
 
 /**
+ * 初始化书签相关事件
+ */
+function initBookmarkEvents() {
+    // 确保所有子文件夹在初始状态下都是隐藏的
+    document.querySelectorAll('.folder-children').forEach(container => {
+        container.style.display = 'none';
+    });
+
+    // 添加文件夹按钮点击事件
+    document.querySelectorAll('.folder-button').forEach(button => {
+        if (!button.hasEventListener) {
+            button.hasEventListener = true;
+            button.addEventListener('click', () => {
+                const folderData = button.folderData;
+                if (folderData) {
+                    handleFolderClick(button, folderData);
+                }
+            });
+        }
+    });
+    
+    // 添加其他书签相关事件
+    window.addEventListener('click', (e) => {
+        // 关闭上下文菜单
+        const contextMenu = document.getElementById('bookmark-context-menu');
+        if (contextMenu && !contextMenu.contains(e.target)) {
+            contextMenu.style.display = 'none';
+        }
+        
+        const shortcutContextMenu = document.getElementById('shortcut-context-menu');
+        if (shortcutContextMenu && !shortcutContextMenu.contains(e.target)) {
+            shortcutContextMenu.style.display = 'none';
+        }
+    });
+}
+
+/**
  * 创建单个书签元素
  * @param {Object} bookmark - 书签数据
  * @param {number} index - 书签索引
@@ -98,8 +390,7 @@ function createBookmarkElement(bookmark, index) {
     if (bookmark.customIcon) {
         iconImg.src = bookmark.customIcon;
     } else {
-        const domain = getDomain(bookmark.url);
-        iconImg.src = `${domain}/favicon.ico`;
+        iconImg.src = `${getDomain(bookmark.url)}/favicon.ico`;
     }
     
     icon.appendChild(iconImg);
@@ -136,24 +427,10 @@ function createBookmarkElement(bookmark, index) {
 }
 
 /**
- * 初始化书签相关事件
- */
-function initBookmarkEvents() {
-    // 添加书签相关事件
-    window.addEventListener('click', (e) => {
-        // 关闭上下文菜单
-        const contextMenu = document.getElementById('bookmark-context-menu');
-        if (contextMenu && !contextMenu.contains(e.target)) {
-            contextMenu.style.display = 'none';
-        }
-    });
-}
-
-/**
  * 显示书签编辑/添加模态框
  * @param {number} [index] - 如果是编辑书签，传入书签索引
  */
-export function showBookmarkModal(index = -1) {
+function showBookmarkModal(index = -1) {
     const modal = document.getElementById('bookmark-modal');
     const titleField = document.getElementById('bookmark-title');
     const urlField = document.getElementById('bookmark-url');
@@ -255,6 +532,9 @@ export function showBookmarkModal(index = -1) {
     });
 }
 
+// 将 showBookmarkModal 导出，这是缺少的部分
+export { showBookmarkModal };
+
 /**
  * 显示书签上下文菜单
  * @param {Event} e - 事件对象
@@ -337,7 +617,9 @@ function handleDragOver(e) {
     const draggable = document.querySelector('.dragging');
     if (!draggable) return;
     
-    const container = document.getElementById('bookmark-container');
+    const container = document.getElementById('custom-bookmark-container');
+    if (!container) return;
+    
     const afterElement = getDragAfterElement(container, e.clientX);
     
     if (afterElement == null) {
@@ -428,4 +710,44 @@ export async function importBookmarks(importedBookmarks) {
  */
 export function exportBookmarks() {
     return { bookmarks };
+}
+
+/**
+ * 设置书签相关事件
+ */
+export function setupBookmarkEvents() {
+    // 初始化书签相关事件
+    initBookmarkEvents();
+    
+    // 添加右键菜单处理
+    document.addEventListener('contextmenu', handleContextMenu);
+    
+    // 添加书签按钮
+    const addBookmarkBtn = document.getElementById('add-bookmark-btn');
+    if (addBookmarkBtn) {
+        addBookmarkBtn.addEventListener('click', () => {
+            showBookmarkModal();
+        });
+    }
+}
+
+/**
+ * 处理右键菜单事件
+ * @param {Event} e - 事件对象
+ */
+function handleContextMenu(e) {
+    // 如果不是在特定的可编辑元素上，阻止默认行为
+    if (!e.target.matches('input, textarea, [contenteditable="true"]')) {
+        // 在此可以实现自定义右键菜单
+        
+        // 如果是在书签元素上，显示特定的右键菜单
+        if (e.target.closest('.shortcut-button')) {
+            // 处理短径菜单，此功能已在showShortcutContextMenu中实现
+        } else if (e.target.closest('.bookmark')) {
+            // 处理书签菜单，此功能已在showContextMenu中实现
+        } else {
+            // 暂时只阻止默认行为，避免显示浏览器默认菜单
+            // e.preventDefault();
+        }
+    }
 }

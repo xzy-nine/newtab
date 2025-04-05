@@ -89,11 +89,12 @@ export async function cleanupIconCache() {
 }
 
 /**
- * 获取网站图标URL
+ * 获取网站图标URL - 合并了getIconUrl和getIconForShortcut功能
  * @param {string} url - 网站URL
+ * @param {HTMLElement} [element] - 可选的DOM元素，用于直接设置图标
  * @returns {Promise<string>} - 图标的URL或Base64数据
  */
-export async function getIconUrl(url) {
+export async function getIconUrl(url, element = null) {
     if (!url) return DEFAULT_ICON;
     
     // 获取域名
@@ -101,46 +102,122 @@ export async function getIconUrl(url) {
     
     // 检查缓存
     if (iconCache.has(domain)) {
-        return iconCache.get(domain).data;
+        const iconData = iconCache.get(domain).data;
+        if (element) {
+            element.style.backgroundImage = `url(${iconData})`;
+        }
+        return iconData;
     }
     
-    // 尝试从不同来源获取图标
+    // 设置默认图标
+    if (element) {
+        element.style.backgroundImage = `url(${DEFAULT_ICON})`;
+    }
+
     try {
-        // 首先尝试从网站直接获取favicon
-        const directIcon = await tryGetDirectFavicon(domain);
-        if (directIcon) {
-            await cacheIcon(domain, directIcon);
-            return directIcon;
+        // 尝试从浏览器本地存储获取缓存的图标
+        const cached = await chrome.storage.local.get(url);
+        if (cached[url] && !cached[url].startsWith('data:text/html')) {
+            if (element) {
+                element.style.backgroundImage = `url(${cached[url]})`;
+            }
+            await cacheIcon(domain, cached[url]);
+            return cached[url];
         }
-        
-        // 如果直接获取失败，使用Google的favicon服务
-        const googleIcon = GOOGLE_FAVICON_API + encodeURIComponent(domain);
-        await cacheIcon(domain, googleIcon);
-        return googleIcon;
+
+        // 定义多个可能的图标URL来源
+        const iconUrls = [
+            `${domain}/favicon.ico`,
+            `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${url}&size=64`,
+            `https://api.faviconkit.com/${new URL(url).hostname}/64`,
+            `https://favicon.yandex.net/favicon/${new URL(url).hostname}`,
+            GOOGLE_FAVICON_API + encodeURIComponent(domain)
+        ];
+
+        // 尝试从网页HTML中获取图标链接
+        try {
+            const response = await fetch(url, { 
+                mode: 'cors',
+                headers: { 'cache-control': 'no-cache' }
+            });
+            if (response.ok) {
+                const text = await response.text();
+                const doc = new DOMParser().parseFromString(text, 'text/html');
+                const iconLink = doc.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+                if (iconLink) {
+                    iconUrls.unshift(new URL(iconLink.getAttribute('href'), url).href);
+                }
+            }
+        } catch (error) {
+            console.log(`获取HTML页面失败: ${url}`, error);
+        }
+
+        // 依次尝试获取每个图标URL的内容
+        for (const iconUrl of iconUrls) {
+            try {
+                const response = await fetch(iconUrl, {
+                    mode: 'cors',
+                    headers: { 'cache-control': 'no-cache' }
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const base64data = await convertBlobToBase64(blob);
+                    
+                    // 确保不是文本数据且图片尺寸不小于5x5
+                    if (!base64data.startsWith('data:text')) {
+                        const img = new Image();
+                        try {
+                            await new Promise((resolve, reject) => {
+                                img.onload = resolve;
+                                img.onerror = reject;
+                                img.src = base64data;
+                            });
+                            
+                            if (img.width >= 5 && img.height >= 5) {
+                                await chrome.storage.local.set({ [url]: base64data });
+                                if (element) {
+                                    element.style.backgroundImage = `url(${base64data})`;
+                                }
+                                await cacheIcon(domain, base64data);
+                                return base64data;
+                            }
+                        } catch (imgError) {
+                            console.log(`图标检验失败: ${iconUrl}`, imgError);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log(`从 ${iconUrl} 获取图标失败:`, error);
+            }
+        }
+
+        // 如果所有获取图标的尝试都失败，使用默认图标
+        await cacheIcon(domain, DEFAULT_ICON);
+        return DEFAULT_ICON;
+
     } catch (error) {
         console.error('Error fetching icon for:', domain, error);
         return DEFAULT_ICON;
     }
 }
 
+// 为了兼容性，保留旧的函数名，直接调用新的实现
+export async function getIconForShortcut(url, button) {
+    return getIconUrl(url, button);
+}
+
 /**
- * 尝试直接从网站获取favicon
- * @param {string} domain - 网站域名
- * @returns {Promise<string|null>} - 图标URL或null
+ * 将Blob对象转换为Base64字符串 - 从bookmarks.js移植
+ * @param {Blob} blob - Blob对象
+ * @returns {Promise<string>} Base64字符串
  */
-async function tryGetDirectFavicon(domain) {
-    try {
-        const iconUrl = `${domain}/favicon.ico`;
-        
-        // 检查图标是否存在且可访问
-        const response = await fetch(iconUrl, { method: 'HEAD' });
-        if (response.ok) {
-            return iconUrl;
-        }
-        return null;
-    } catch (error) {
-        return null;
-    }
+export async function convertBlobToBase64(blob) {
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+    });
 }
 
 /**
@@ -190,11 +267,13 @@ export async function preloadIcons(urls) {
 }
 
 /**
- * 处理图标加载错误
+ * 处理图标加载错误并清理相关缓存
  * @param {HTMLImageElement} img - 图像元素
+ * @param {string} [fallbackIcon=DEFAULT_ICON] - 备用图标路径
  */
-export function handleIconError(img) {
-    img.src = DEFAULT_ICON;
+export async function handleIconError(img, fallbackIcon = DEFAULT_ICON) {
+    // 设置默认图标
+    img.src = fallbackIcon;
     
     // 如果有原始URL，从缓存中移除失败的图标
     const originalUrl = img.dataset.originalUrl;
@@ -202,6 +281,17 @@ export function handleIconError(img) {
         const domain = getDomain(originalUrl);
         if (iconCache.has(domain)) {
             iconCache.delete(domain);
+            
+            // 从浏览器存储中也移除该图标
+            try {
+                await chrome.storage.local.remove(originalUrl);
+                console.log(`已从缓存中移除失效图标: ${domain}`);
+                
+                // 保存更新后的缓存
+                await saveIconCache();
+            } catch (error) {
+                console.error('清除失效图标缓存时出错:', error);
+            }
         }
     }
 }
@@ -232,14 +322,16 @@ export async function setIconForElement(img, url) {
 
 /**
  * 生成网站图标的数据URL
- * @param {string} url - 网站URL
+ * @param {string} url - 网站URL或图标URL
  * @param {number} [size=16] - 图标大小
+ * @param {boolean} [isDirectUrl=false] - 是否直接提供的是图标URL而非网站URL
  * @returns {Promise<string>} - 图标的数据URL
  */
-export async function generateIconDataUrl(url, size = 16) {
-    const iconUrl = await getIconUrl(url);
-    
+export async function generateIconDataUrl(url, size = 16, isDirectUrl = false) {
     try {
+        // 如果不是直接提供的图标URL，则获取网站的图标URL
+        const iconUrl = isDirectUrl ? url : await getIconUrl(url);
+        
         // 如果已经是数据URL则直接返回
         if (iconUrl.startsWith('data:')) {
             return iconUrl;
@@ -253,38 +345,50 @@ export async function generateIconDataUrl(url, size = 16) {
         
         // 加载图标
         const img = new Image();
-        await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.crossOrigin = 'anonymous'; // 处理跨域问题
-            img.src = iconUrl;
-        });
-        
-        // 绘制到canvas
-        ctx.drawImage(img, 0, 0, size, size);
-        
-        // 转换为数据URL
-        return canvas.toDataURL('image/png');
+        try {
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.crossOrigin = 'anonymous'; // 处理跨域问题
+                img.src = iconUrl;
+            });
+            
+            // 绘制到canvas
+            ctx.drawImage(img, 0, 0, size, size);
+            
+            // 转换为数据URL
+            return canvas.toDataURL('image/png');
+        } catch (error) {
+            return generateDefaultIconDataUrl(url, size);
+        }
     } catch (error) {
         console.error('Error generating icon data URL:', error);
-        
-        // 创建一个默认图标
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        
-        // 绘制简单的默认图标
-        ctx.fillStyle = '#E0E0E0';
-        ctx.fillRect(0, 0, size, size);
-        ctx.fillStyle = '#A0A0A0';
-        ctx.font = `${Math.floor(size/2)}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(url.charAt(0).toUpperCase(), size/2, size/2);
-        
-        return canvas.toDataURL('image/png');
+        return generateDefaultIconDataUrl(url, size);
     }
+}
+
+/**
+ * 生成默认图标的数据URL
+ * @param {string} url - 网站URL
+ * @param {number} size - 图标大小
+ * @returns {string} - 数据URL
+ */
+function generateDefaultIconDataUrl(url, size) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    
+    // 绘制简单的默认图标
+    ctx.fillStyle = '#E0E0E0';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#A0A0A0';
+    ctx.font = `${Math.floor(size/2)}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(url.charAt(0).toUpperCase(), size/2, size/2);
+    
+    return canvas.toDataURL('image/png');
 }
 
 /**
@@ -297,4 +401,29 @@ export function getAllCachedIcons() {
         result[key] = value.data;
     });
     return result;
+}
+
+/**
+ * 自定义图标
+ * @param {string} url - 网站URL
+ * @param {string} base64Image - Base64格式的图标数据
+ * @returns {Promise<void>}
+ */
+export async function setCustomIcon(url, base64Image) {
+    await chrome.storage.local.set({ [url]: base64Image });
+    const domain = getDomain(url);
+    await cacheIcon(domain, base64Image);
+}
+
+/**
+ * 重置图标为默认
+ * @param {string} url - 网站URL
+ * @returns {Promise<void>}
+ */
+export async function resetIcon(url) {
+    await chrome.storage.local.remove(url);
+    const domain = getDomain(url);
+    if (iconCache.has(domain)) {
+        iconCache.delete(domain);
+    }
 }
