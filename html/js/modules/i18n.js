@@ -116,6 +116,29 @@ export async function changeLanguage(language) {
     applyTranslations();
 }
 
+/**
+ * 设置i18n相关的事件
+ */
+export function setupI18nEvents() {
+    // 初始化语言选择器
+    initLanguageSelector();
+}
+
+/**
+ * 初始化语言选择器
+ */
+function initLanguageSelector() {
+    const languageSelect = document.getElementById('language-select');
+    if (!languageSelect) return;
+    
+    languageSelect.addEventListener('change', async (e) => {
+        const selectedLang = e.target.value;
+        await changeLanguage(selectedLang);
+        // 刷新页面以应用新语言
+        location.reload();
+    });
+}
+
 // 保留以下内部翻译表
 const messages = {
     zh_CN: {
@@ -143,7 +166,17 @@ const messages = {
         imageDownloadError: "图片下载失败",
         base64Generated: "base64数据生成状态:",
         localStorageError: "保存到本地存储时出错:",
-        bingImageError: "获取必应图片时出错:"
+        bingImageError: "获取必应图片时出错:",
+        welcomeTitle: "欢迎使用",
+        welcomeMessage: "感谢您安装收藏夹新标签页拓展！",
+        updateTitle: "已更新",
+        updateMessage: "扩展已从 {oldVersion} 更新至 {newVersion}",
+        customIcon: "自定义图标",
+        resetIcon: "重置图标",
+        editBookmark: "编辑书签",
+        addBookmark: "添加书签",
+        confirmDeleteBookmark: "确定要删除此书签吗？",
+        pleaseCompleteAllFields: "请完成所有必填字段"
     },
     en_US: {
         newTab: "New Tab", // 添加页面标题的翻译
@@ -170,6 +203,16 @@ const messages = {
         imageDownloadError: "Image download error",
         base64Generated: "base64 data generated:",
         localStorageError: "Error saving to local storage:",
-        bingImageError: "Error fetching Bing image:"  
+        bingImageError: "Error fetching Bing image:",
+        welcomeTitle: "Welcome",
+        welcomeMessage: "Thank you for installing the Bookmark New Tab Extension!",
+        updateTitle: "Updated",
+        updateMessage: "Extension updated from {oldVersion} to {newVersion}",
+        customIcon: "Custom Icon",
+        resetIcon: "Reset Icon",
+        editBookmark: "Edit Bookmark", 
+        addBookmark: "Add Bookmark",
+        confirmDeleteBookmark: "Are you sure you want to delete this bookmark?",
+        pleaseCompleteAllFields: "Please complete all required fields"
     }
 };

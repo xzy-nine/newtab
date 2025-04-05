@@ -374,3 +374,26 @@ html, body {
   transform: scale(0.95); /* 缩小按钮 */
   transition: transform 0.1s; /* 设置缩放动画的过渡时间为0.1秒 */
 }
+
+/* 上下文菜单样式 */
+.context-menu {
+  position: absolute;
+  background: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  padding: 5px 0;
+  min-width: 120px;
+  z-index: 1000;
+  display: none;
+}
+
+.context-menu-item {
+  padding: 8px 15px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.context-menu-item:hover {
+  background-color: #f0f0f0;
+}

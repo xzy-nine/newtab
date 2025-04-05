@@ -10,6 +10,10 @@
 </head>
 <body>
   <div id="container"> <!-- 网页容器 -->
+    <!-- 添加背景元素 -->
+    <div id="background"></div>
+    <div id="background-overlay"></div>
+    
     <form id="search-box" method="get"> <!-- 搜索框容器，修改为表单元素，以支持回车搜索 -->
       <button id="engine-button" type="button"> <!-- 搜索引擎切换按钮，设置类型为按钮，以防止提交表单 -->
         <img id="engine-icon" src="../favicon.png" alt="搜索引擎图标"> <!-- 搜索引擎图标 -->
@@ -33,6 +37,101 @@
     <a class="split">:</a>
     <span class="seconds"></span>
   </div>
+
+  <!-- 加载指示器 -->
+  <div id="loading-screen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.95);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;transition:opacity 0.5s;">
+    <div class="loader-icon">
+        <!-- 可以在这里添加一个旋转的图标或动画 -->
+        <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="20" cy="20" r="18" fill="none" stroke="#ddd" stroke-width="4"></circle>
+            <path d="M20 2 A18 18 0 0 1 38 20" fill="none" stroke="#4285f4" stroke-width="4" stroke-linecap="round">
+                <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"></animateTransform>
+            </path>
+        </svg>
+    </div>
+    <h3>新标签页加载中...</h3>
+    <!-- 进度条和状态文本将由JS动态添加 -->
+  </div>
+
+  <!-- 欢迎模态框 -->
+  <div id="welcome-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="modal-close">&times;</span>
+      <h2 data-i18n="welcomeTitle">欢迎使用</h2>
+      <p data-i18n="welcomeMessage">感谢您安装收藏夹新标签页拓展！</p>
+    </div>
+  </div>
+
+  <!-- 书签模态框 -->
+  <div id="bookmark-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="modal-close">&times;</span>
+      <h2 id="bookmark-modal-title" data-i18n="addBookmark">添加书签</h2>
+      <div class="modal-form">
+        <div class="form-group">
+          <label for="bookmark-title" data-i18n="bookmarkTitle">标题</label>
+          <input type="text" id="bookmark-title" required>
+        </div>
+        <div class="form-group">
+          <label for="bookmark-url" data-i18n="bookmarkUrl">网址</label>
+          <input type="url" id="bookmark-url" required>
+        </div>
+        <div class="form-group">
+          <label for="bookmark-icon" data-i18n="customIconUrl">自定义图标URL（可选）</label>
+          <input type="url" id="bookmark-icon">
+        </div>
+        <div class="form-actions">
+          <button id="bookmark-cancel" class="btn" data-i18n="cancel">取消</button>
+          <button id="bookmark-confirm" class="btn btn-primary" data-i18n="confirm">确认</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 书签右键菜单 -->
+  <div id="bookmark-context-menu" class="context-menu" style="display: none;">
+    <div id="bookmark-edit" class="context-menu-item" data-i18n="edit">编辑</div>
+    <div id="bookmark-delete" class="context-menu-item" data-i18n="delete">删除</div>
+  </div>
+
+  <!-- 添加模态框样式 -->
+  <style>
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1001;
+  }
+
+  .modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    width: 80%;
+    max-width: 500px;
+    position: relative;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    font-size: 20px;
+  }
+  </style>
+
   <script type="module" src="js/newtab.js"></script>
 </body>
 </html>

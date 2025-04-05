@@ -3,6 +3,7 @@
  */
 
 import { fetchData, blobToBase64 } from './utils.js';
+import { getI18nMessage } from './i18n.js';
 
 // 背景图像设置
 let bgSettings = {
@@ -25,6 +26,119 @@ export async function initBackgroundImage() {
 
     // 初始化背景图像控制UI
     initBackgroundControls();
+    
+    // 绑定背景按钮事件
+    bindBackgroundButtonEvent();
+}
+
+/**
+ * 设置背景相关的事件处理
+ * 在初始化之后调用此函数以确保所有事件正确绑定
+ */
+export function setupBackgroundEvents() {
+    // 确保背景按钮事件被绑定
+    bindBackgroundButtonEvent();
+    
+    // 设置背景设置面板的事件
+    setupBackgroundSettingsEvents();
+    
+    console.log('Background events setup complete');
+}
+
+/**
+ * 设置背景设置面板的事件
+ */
+function setupBackgroundSettingsEvents() {
+    // 背景类型选择
+    const bgTypeSelect = document.getElementById('bg-type');
+    if (bgTypeSelect) {
+        bgTypeSelect.addEventListener('change', async (e) => {
+            bgSettings.type = e.target.value;
+            await chrome.storage.local.set({ bgType: bgSettings.type });
+            await setBackgroundImage();
+        });
+    }
+    
+    // 模糊效果滑块
+    const blurControl = document.getElementById('blur-control');
+    if (blurControl) {
+        blurControl.addEventListener('input', async (e) => {
+            bgSettings.blur = parseInt(e.target.value);
+            await chrome.storage.local.set({ backgroundBlur: bgSettings.blur });
+            applyBackgroundEffects();
+        });
+    }
+    
+    // 暗化效果滑块
+    const darkControl = document.getElementById('dark-control');
+    if (darkControl) {
+        darkControl.addEventListener('input', async (e) => {
+            bgSettings.dark = parseInt(e.target.value);
+            await chrome.storage.local.set({ backgroundDark: bgSettings.dark });
+            applyBackgroundEffects();
+        });
+    }
+}
+
+/**
+ * 绑定背景按钮事件
+ */
+function bindBackgroundButtonEvent() {
+    const bgButton = document.getElementById('background-button');
+    if (bgButton) {
+        // 清除已有的事件监听器以避免重复绑定
+        const newButton = bgButton.cloneNode(true);
+        if (bgButton.parentNode) {
+            bgButton.parentNode.replaceChild(newButton, bgButton);
+        }
+        
+        // 左键点击事件 - 切换背景类型
+        newButton.addEventListener('click', async () => {
+            // 切换背景类型
+            const types = ['default', 'bing', 'unsplash', 'custom'];
+            const currentIndex = types.indexOf(bgSettings.type);
+            const nextIndex = (currentIndex + 1) % types.length;
+            bgSettings.type = types[nextIndex];
+            
+            // 保存设置
+            await chrome.storage.local.set({ bgType: bgSettings.type });
+            
+            // 应用新背景
+            await setBackgroundImage();
+            
+            // 更新任何背景类型选择器
+            const bgTypeSelect = document.getElementById('bg-type');
+            if (bgTypeSelect) {
+                bgTypeSelect.value = bgSettings.type;
+            }
+        });
+        
+        // 右键点击事件 - 上传自定义背景
+        newButton.addEventListener('contextmenu', (e) => {
+            // 阻止默认的上下文菜单
+            e.preventDefault();
+            
+            // 创建一个隐藏的文件输入元素
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.style.display = 'none';
+            document.body.appendChild(fileInput);
+            
+            // 监听文件选择
+            fileInput.addEventListener('change', async (event) => {
+                if (event.target.files && event.target.files[0]) {
+                    await handleCustomBackground(event);
+                }
+                
+                // 选择完成后移除元素
+                document.body.removeChild(fileInput);
+            });
+            
+            // 模拟点击文件选择器
+            fileInput.click();
+        });
+    }
 }
 
 /**
@@ -55,7 +169,10 @@ async function loadBackgroundSettings() {
  */
 export async function setBackgroundImage() {
     const container = document.getElementById('background');
-    if (!container) return;
+    if (!container) {
+        console.error('Background container not found');
+        return;
+    }
 
     try {
         let bgUrl = '';
@@ -81,11 +198,21 @@ export async function setBackgroundImage() {
                 break;
         }
 
-        // 应用背景图片
+        // 应用背景样式
+        container.style.position = 'fixed';
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.width = '100%';
+        container.style.height = '100%';
+        container.style.zIndex = '-2';
         container.style.backgroundImage = `url(${bgUrl})`;
+        container.style.backgroundSize = 'cover';
+        container.style.backgroundPosition = 'center';
         
         // 应用背景效果
         applyBackgroundEffects();
+        
+        console.log('Background set successfully:', bgSettings.type);
     } catch (error) {
         console.error('Failed to set background image:', error);
         // 出错时使用默认背景
@@ -108,15 +235,18 @@ function applyBackgroundEffects() {
     }
     
     // 应用暗化效果
-    if (bgSettings.dark > 0) {
-        const overlay = document.getElementById('background-overlay');
-        if (overlay) {
+    const overlay = document.getElementById('background-overlay');
+    if (overlay) {
+        if (bgSettings.dark > 0) {
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.zIndex = '-1';
             overlay.style.backgroundColor = `rgba(0, 0, 0, ${bgSettings.dark / 100})`;
             overlay.style.display = 'block';
-        }
-    } else {
-        const overlay = document.getElementById('background-overlay');
-        if (overlay) {
+        } else {
             overlay.style.display = 'none';
         }
     }
@@ -127,21 +257,43 @@ function applyBackgroundEffects() {
  * @returns {Promise<string>} - 图片URL
  */
 async function getBingImage() {
-    const response = await fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-US');
-    if (response && response.images && response.images.length > 0) {
-        return `https://www.bing.com${response.images[0].url}`;
+    try {
+        // 先检查缓存
+        const cacheName = 'bingImageCache';
+        const cacheData = await chrome.storage.local.get(cacheName);
+        const now = Date.now();
+        const cacheExpiration = 12 * 60 * 60 * 1000; // 12小时
+        
+        if (cacheData[cacheName] && (now - cacheData[cacheName].timestamp < cacheExpiration)) {
+            console.log('Using cached Bing image');
+            return cacheData[cacheName].imageData;
+        }
+        
+        console.log('Fetching new Bing image');
+        const response = await fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-US');
+        if (response && response.images && response.images.length > 0) {
+            const imageUrl = `https://www.bing.com${response.images[0].url}`;
+            
+            // 下载图片并转换为base64
+            const imgResponse = await fetch(imageUrl);
+            const blob = await imgResponse.blob();
+            const base64Data = await blobToBase64(blob);
+            
+            // 保存到缓存
+            await chrome.storage.local.set({ 
+                [cacheName]: {
+                    imageData: base64Data,
+                    timestamp: now
+                }
+            });
+            
+            return base64Data;
+        }
+        throw new Error('Invalid response from Bing API');
+    } catch (error) {
+        console.error('Failed to get Bing image:', error);
+        throw error;
     }
-    throw new Error('Failed to get Bing image');
-}
-
-/**
- * 获取Unsplash随机图片
- * @returns {Promise<string>} - 图片URL
- */
-async function getUnsplashImage() {
-    // 这里可以实现Unsplash API调用
-    // 暂时返回一个示例URL
-    return 'https://source.unsplash.com/random/1920x1080';
 }
 
 /**
