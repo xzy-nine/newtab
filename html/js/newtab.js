@@ -409,12 +409,14 @@ function showLoadingIndicator() {
  * 隐藏加载指示器
  */
 function hideLoadingIndicator() {
+    console.log('Hiding loading indicator');
     const loadingScreen = document.getElementById('loading-screen');
     if (loadingScreen) {
         loadingScreen.style.opacity = '0';
         setTimeout(() => {
             loadingScreen.style.display = 'none';
-        }, 500); // 500ms过渡动画
+            console.log('Loading screen hidden');
+        }, 500);
     }
 }
 
@@ -597,6 +599,21 @@ document.addEventListener('visibilitychange', handleVisibilityChange);
 
 // 页面加载完成后初始化应用
 document.addEventListener('DOMContentLoaded', init);
+
+// 在 newtab.js 文件中添加
+document.addEventListener('DOMContentLoaded', () => {
+  // 加载超时保护
+  setTimeout(function() {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen && loadingScreen.style.display !== 'none') {
+      console.warn('Loading timeout - force hiding loading screen');
+      loadingScreen.style.opacity = '0';
+      setTimeout(() => {
+        loadingScreen.style.display = 'none';
+      }, 500);
+    }
+  }, 10000);
+});
 
 // 导出一些可能在外部使用的函数
 export {

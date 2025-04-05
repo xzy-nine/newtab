@@ -14,12 +14,17 @@
     <div id="background"></div>
     <div id="background-overlay"></div>
     
-    <form id="search-box" method="get"> <!-- 搜索框容器，修改为表单元素，以支持回车搜索 -->
-      <button id="engine-button" type="button"> <!-- 搜索引擎切换按钮，设置类型为按钮，以防止提交表单 -->
-        <img id="engine-icon" src="../favicon.png" alt="搜索引擎图标"> <!-- 搜索引擎图标 -->
-      </button>
-      <input id="search-input" type="text" name="q" placeholder="." autocomplete="off" data-i18n-placeholder="searchPlaceholder"> <!-- 添加i18n占位符 -->
-    </form>
+    <div id="search-box" class="search-box">
+      <img id="search-engine-icon" src="..." alt="Search Engine">
+      <form id="search-form">
+        <input type="text" id="search-input" placeholder="搜索..." 
+               autocomplete="off" 
+               autocorrect="off" 
+               autocapitalize="off" 
+               spellcheck="false">
+      </form>
+      <div id="search-engine-menu" style="display: none;"></div>
+    </div>
     <div id="bookmark-box"> <!-- 收藏夹容器 -->
       <div id="folder-list"> <!-- 文件夹列表 -->
         <!-- 文件夹按钮将由脚本动态生成 -->
@@ -133,5 +138,6 @@
   </style>
 
   <script type="module" src="js/newtab.js"></script>
+  <script src="js/loadingTimeout.js"></script>
 </body>
 </html>

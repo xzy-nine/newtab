@@ -125,6 +125,46 @@ export async function getIconUrl(url, element = null) {
             return cached[url];
         }
 
+        // 针对常见搜索引擎的特殊处理
+        const searchEngines = {
+            'www.google.com': 'https://www.google.com/favicon.ico',
+            'www.bing.com': 'https://www.bing.com/favicon.ico',
+            'www.baidu.com': 'https://www.baidu.com/favicon.ico',
+            'duckduckgo.com': 'https://duckduckgo.com/favicon.ico',
+            'search.yahoo.com': 'https://search.yahoo.com/favicon.ico',
+            'yandex.com': 'https://yandex.com/favicon.ico',
+            'www.sogou.com': 'https://www.sogou.com/favicon.ico',
+            '360.cn': 'https://360.cn/favicon.ico',
+            'www.so.com': 'https://www.so.com/favicon.ico'
+        };
+        
+        // 如果是已知的搜索引擎，使用直接的图标URL
+        if (searchEngines[domain]) {
+            try {
+                const response = await fetch(searchEngines[domain], { 
+                    mode: 'no-cors',
+                    cache: 'no-store'
+                });
+                
+                if (response.ok || response.type === 'opaque') {
+                    const blob = await response.blob();
+                    const base64data = await convertBlobToBase64(blob);
+                    
+                    if (!base64data.startsWith('data:text')) {
+                        await chrome.storage.local.set({ [url]: base64data });
+                        if (element) {
+                            element.style.backgroundImage = `url(${base64data})`;
+                        }
+                        await cacheIcon(domain, base64data);
+                        return base64data;
+                    }
+                }
+            } catch (error) {
+                console.log(`获取搜索引擎图标失败: ${domain}`, error);
+                // 继续尝试其他方法
+            }
+        }
+
         // 定义多个可能的图标URL来源
         const iconUrls = [
             `${domain}/favicon.ico`,
@@ -134,18 +174,48 @@ export async function getIconUrl(url, element = null) {
             GOOGLE_FAVICON_API + encodeURIComponent(domain)
         ];
 
+        // 添加常用 CDN 作为备选
+        iconUrls.push(`https://cdn.staticfile.org/favicon/${domain}.ico`);
+        iconUrls.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+
         // 尝试从网页HTML中获取图标链接
         try {
+            const controller = new AbortController();
+            // 设置超时，避免长时间等待
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            
             const response = await fetch(url, { 
                 mode: 'cors',
-                headers: { 'cache-control': 'no-cache' }
+                headers: { 'cache-control': 'no-cache' },
+                signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
+            
             if (response.ok) {
                 const text = await response.text();
                 const doc = new DOMParser().parseFromString(text, 'text/html');
-                const iconLink = doc.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
-                if (iconLink) {
-                    iconUrls.unshift(new URL(iconLink.getAttribute('href'), url).href);
+                
+                // 更全面地查找各种可能的图标链接
+                const iconSelectors = [
+                    'link[rel="icon"]', 
+                    'link[rel="shortcut icon"]',
+                    'link[rel="apple-touch-icon"]',
+                    'link[rel="apple-touch-icon-precomposed"]',
+                    'meta[name="msapplication-TileImage"]'
+                ];
+                
+                for (const selector of iconSelectors) {
+                    const iconLink = doc.querySelector(selector);
+                    if (iconLink) {
+                        const iconHref = selector.includes('meta') ? 
+                            iconLink.getAttribute('content') : 
+                            iconLink.getAttribute('href');
+                            
+                        if (iconHref && !iconHref.startsWith('data:')) {
+                            iconUrls.unshift(new URL(iconHref, url).href);
+                        }
+                    }
                 }
             }
         } catch (error) {
@@ -157,7 +227,9 @@ export async function getIconUrl(url, element = null) {
             try {
                 const response = await fetch(iconUrl, {
                     mode: 'cors',
-                    headers: { 'cache-control': 'no-cache' }
+                    headers: { 'cache-control': 'no-cache' },
+                    // 添加超时处理
+                    signal: AbortSignal.timeout(3000)
                 });
 
                 if (response.ok) {
@@ -192,14 +264,66 @@ export async function getIconUrl(url, element = null) {
             }
         }
 
-        // 如果所有获取图标的尝试都失败，使用默认图标
-        await cacheIcon(domain, DEFAULT_ICON);
-        return DEFAULT_ICON;
+        // 生成基于域名的替代图标
+        const fallbackIcon = await generateInitialBasedIcon(domain);
+        await cacheIcon(domain, fallbackIcon);
+        if (element) {
+            element.style.backgroundImage = `url(${fallbackIcon})`;
+        }
+        return fallbackIcon;
 
     } catch (error) {
         console.error('Error fetching icon for:', domain, error);
         return DEFAULT_ICON;
     }
+}
+
+/**
+ * 生成基于域名首字母的替代图标
+ * @param {string} domain - 网站域名
+ * @returns {Promise<string>} - 生成的图标数据URL
+ */
+async function generateInitialBasedIcon(domain) {
+    // 提取域名中的首个非www部分作为标识
+    const domainParts = domain.split('.');
+    const siteName = domainParts[0] === 'www' && domainParts.length > 1 ? 
+        domainParts[1] : domainParts[0];
+    
+    const initial = siteName.charAt(0).toUpperCase();
+    
+    // 生成随机但确定的颜色（基于域名）
+    const getColorCode = (str) => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        const mainColor = `hsl(${Math.abs(hash) % 360}, 70%, 60%)`;
+        return mainColor;
+    };
+    
+    const bgColor = getColorCode(domain);
+    
+    // 创建canvas并绘制
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    
+    // 绘制圆形背景
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.arc(32, 32, 32, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 绘制文本
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 36px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(initial, 32, 32);
+    
+    return canvas.toDataURL('image/png');
 }
 
 // 为了兼容性，保留旧的函数名，直接调用新的实现

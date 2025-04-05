@@ -88,10 +88,28 @@ body {
   font-size: 20px; /* 设置字体大小为20px */
   font-family: var(--font-family); /* 设置字体族为根元素的字体族 */
   padding-left: 20px; /* 设置左内边距为20px */
+  -webkit-appearance: none; /* 移除Webkit浏览器默认样式 */
+  appearance: none; /* 移除默认样式 */
+  box-shadow: none !important; /* 禁用输入框阴影 */
+  outline: none !important; /* 禁用输入框轮廓 */
 }
 
 #search-input:focus { /* 当搜索框输入框获得焦点时 */
   outline: none; /* 设置无轮廓 */
+  box-shadow: none; /* 禁用输入框阴影 */
+  border: none; /* 设置无边框 */
+  -webkit-appearance: none; /* 移除Webkit浏览器默认样式 */
+  appearance: none; /* 移除默认样式 */
+}
+
+/* 禁用浏览器的自动填充样式 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  transition: background-color 5000s ease-in-out 0s !important;
+  -webkit-text-fill-color: inherit !important;
+  box-shadow: none !important;
 }
 
 #bookmark-box { /* 收藏夹容器 */
@@ -396,4 +414,128 @@ html, body {
 
 .context-menu-item:hover {
   background-color: #f0f0f0;
+}
+
+/* 搜索引擎相关样式 */
+
+/* 搜索引擎菜单 */
+.search-engine-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    display: none;
+    overflow: auto;
+    max-height: 300px;
+}
+
+/* 搜索引擎菜单项 */
+.search-engine-item {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.search-engine-item.active {
+    background-color: #f0f0f0;
+}
+
+.search-engine-item img {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+
+/* 添加搜索引擎按钮 */
+.search-engine-add {
+    padding: 10px;
+    border-top: 1px solid #eee;
+    text-align: center;
+    cursor: pointer;
+}
+
+/* 删除搜索建议容器相关样式 */
+
+/* 删除搜索建议项相关样式 */
+
+/* 模态框样式 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 400px;
+    max-width: 90%;
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.modal h2 {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* 模态框样式 */
+.modal {
+    display: none;
 }

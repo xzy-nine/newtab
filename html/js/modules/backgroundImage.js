@@ -183,14 +183,25 @@ export async function setBackgroundImage() {
                 if (bgSettings.customImageData) {
                     bgUrl = bgSettings.customImageData;
                 } else {
+                    console.log('No custom image found, using default');
                     bgUrl = 'images/default.jpg';
                 }
                 break;
             case 'bing':
-                bgUrl = await getBingImage();
+                try {
+                    bgUrl = await getBingImage();
+                } catch (error) {
+                    console.error('Failed to get Bing image, using default:', error);
+                    bgUrl = 'images/default.jpg';
+                }
                 break;
             case 'unsplash':
-                bgUrl = await getUnsplashImage();
+                try {
+                    bgUrl = await getUnsplashImage();
+                } catch (error) {
+                    console.error('Failed to get Unsplash image, using default:', error);
+                    bgUrl = 'images/default.jpg';
+                }
                 break;
             case 'default':
             default:
@@ -293,6 +304,48 @@ async function getBingImage() {
     } catch (error) {
         console.error('Failed to get Bing image:', error);
         throw error;
+    }
+}
+
+/**
+ * 获取Unsplash随机图片
+ * @returns {Promise<string>} - 图片URL
+ */
+async function getUnsplashImage() {
+    try {
+        // 检查缓存
+        const cacheName = 'unsplashImageCache';
+        const cacheData = await chrome.storage.local.get(cacheName);
+        const now = Date.now();
+        const cacheExpiration = 24 * 60 * 60 * 1000; // 24小时
+        
+        if (cacheData[cacheName] && (now - cacheData[cacheName].timestamp < cacheExpiration)) {
+            console.log('Using cached Unsplash image');
+            return cacheData[cacheName].imageData;
+        }
+        
+        console.log('Fetching new Unsplash image');
+        // 从Unsplash获取随机图片
+        const imageUrl = 'https://source.unsplash.com/random/1920x1080/?nature,landscape';
+        
+        // 下载图片并转换为base64
+        const imgResponse = await fetch(imageUrl);
+        const blob = await imgResponse.blob();
+        const base64Data = await blobToBase64(blob);
+        
+        // 保存到缓存
+        await chrome.storage.local.set({ 
+            [cacheName]: {
+                imageData: base64Data,
+                timestamp: now
+            }
+        });
+        
+        return base64Data;
+    } catch (error) {
+        console.error('Failed to get Unsplash image:', error);
+        // 出错时返回默认图片的路径
+        return 'images/default.jpg';
     }
 }
 
