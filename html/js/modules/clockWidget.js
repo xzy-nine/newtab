@@ -2,7 +2,8 @@
  * 时钟组件模块
  */
 
-import { getI18nMessage } from './i18n.js';
+// 移除未使用的导入
+// import { getI18nMessage } from './i18n.js';
 
 // 时钟组件配置
 let clockConfig = {
@@ -19,6 +20,11 @@ export function initClockWidget() {
     loadClockSettings();
     updateClock(); // 初始化时更新一次时钟显示
     setInterval(updateClock, 1000);
+    
+    // 添加窗口大小变化监听，以调整时钟大小
+    window.addEventListener('resize', adjustClockSize);
+    // 初始调整
+    adjustClockSize();
 }
 
 /**
@@ -30,22 +36,46 @@ function createClockElement() {
     const timeDiv = document.createElement('div');
     timeDiv.className = 'time';
     timeDiv.id = 'time';
+    
+    // 创建一个内部容器来强制单行布局
+    const innerContainer = document.createElement('div');
+    innerContainer.className = 'time-inner-container';
+    timeDiv.appendChild(innerContainer);
 
-    // 创建小时、分钟、秒钟的数码管
+    // 创建小时组
+    const hourGroup = document.createElement('div');
+    hourGroup.className = 'hour-group';
     const hourTens = createDigit();
     const hourOnes = createDigit();
+    hourGroup.append(hourTens, hourOnes);
+
+    // 创建第一个冒号
     const colon1 = createColon();
+    colon1.classList.add('blink');
+    
+    // 创建分钟组
+    const minuteGroup = document.createElement('div');
+    minuteGroup.className = 'minute-group';
     const minuteTens = createDigit();
     const minuteOnes = createDigit();
+    minuteGroup.append(minuteTens, minuteOnes);
+    
+    // 创建第二个冒号
     const colon2 = createColon();
+    colon2.classList.add('blink');
+    
+    // 创建秒钟组
+    const secondGroup = document.createElement('div');
+    secondGroup.className = 'second-group';
     const secondTens = createDigit();
     const secondOnes = createDigit();
+    secondGroup.append(secondTens, secondOnes);
 
-    timeDiv.append(
-        hourTens, hourOnes, colon1, 
-        minuteTens, minuteOnes, colon2,
-        secondTens, secondOnes
+    // 按顺序添加所有元素到内部容器
+    innerContainer.append(
+        hourGroup, colon1, minuteGroup, colon2, secondGroup
     );
+    
     document.body.appendChild(timeDiv);
 }
 
@@ -53,12 +83,17 @@ function createDigit() {
     const digit = document.createElement('div');
     digit.className = 'digit';
     
-    // 创建8段数码管
+    // 创建7段数码管加小数点，共8个部分
     const segments = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'];
     segments.forEach(seg => {
         const segment = document.createElement('div');
         segment.className = `segment segment-${seg}`;
-        segment.classList.add(seg.includes('h') ? 'segment-h' : 'segment-v');
+        // 根据段的类型应用水平或垂直样式
+        if (seg === 'a' || seg === 'd' || seg === 'g') {
+            segment.classList.add('segment-h');
+        } else if (seg !== 'dp') {
+            segment.classList.add('segment-v');
+        }
         digit.appendChild(segment);
     });
     
@@ -112,25 +147,29 @@ export function updateClock() {
     const timeElement = document.getElementById('time');
     if (!timeElement) return;
     
+    const innerContainer = timeElement.querySelector('.time-inner-container');
+    if (!innerContainer) return;
+    
     // 更新小时显示
-    updateDigit(timeElement.children[0], Math.floor(hours / 10));
-    updateDigit(timeElement.children[1], hours % 10);
+    updateDigit(innerContainer.children[0].children[0], Math.floor(hours / 10));
+    updateDigit(innerContainer.children[0].children[1], hours % 10);
     
     // 更新分钟显示
-    updateDigit(timeElement.children[3], Math.floor(minutes / 10));
-    updateDigit(timeElement.children[4], minutes % 10);
+    updateDigit(innerContainer.children[2].children[0], Math.floor(minutes / 10));
+    updateDigit(innerContainer.children[2].children[1], minutes % 10);
     
-    // 更新秒钟显示
+    // 更新秒钟显示和冒号显示
     if (clockConfig.showSeconds) {
-        updateDigit(timeElement.children[6], Math.floor(seconds / 10));
-        updateDigit(timeElement.children[7], seconds % 10);
-        timeElement.children[5].style.display = 'block';
-        timeElement.children[6].style.display = 'block';
-        timeElement.children[7].style.display = 'block';
+        updateDigit(innerContainer.children[4].children[0], Math.floor(seconds / 10));
+        updateDigit(innerContainer.children[4].children[1], seconds % 10);
+        
+        // 显示秒钟和第二个冒号
+        innerContainer.children[3].style.display = 'inline-block';
+        innerContainer.children[4].style.display = 'inline-block';
     } else {
-        timeElement.children[5].style.display = 'none';
-        timeElement.children[6].style.display = 'none';
-        timeElement.children[7].style.display = 'none';
+        // 隐藏秒钟和第二个冒号
+        innerContainer.children[3].style.display = 'none';
+        innerContainer.children[4].style.display = 'none';
     }
 }
 
@@ -139,6 +178,34 @@ function updateDigit(digitElement, number) {
     digitElement.className = digitElement.className.replace(/\bdigit-\d\b/g, '');
     // 添加新的数字类
     digitElement.classList.add(`digit-${number}`);
+    
+    // 直接设置段的可见性
+    // 定义每个数字应显示的段
+    const segmentMap = {
+        0: { a: true, b: true, c: true, d: true, e: true, f: true, g: false },
+        1: { a: false, b: true, c: true, d: false, e: false, f: false, g: false },
+        2: { a: true, b: true, c: false, d: true, e: true, f: false, g: true },
+        3: { a: true, b: true, c: true, d: true, e: false, f: false, g: true },
+        4: { a: false, b: true, c: true, d: false, e: false, f: true, g: true },
+        5: { a: true, b: false, c: true, d: true, e: false, f: true, g: true },
+        6: { a: true, b: false, c: true, d: true, e: true, f: true, g: true },
+        7: { a: true, b: true, c: true, d: false, e: false, f: false, g: false },
+        8: { a: true, b: true, c: true, d: true, e: true, f: true, g: true },
+        9: { a: true, b: true, c: true, d: true, e: false, f: true, g: true }
+    };
+    
+    const segments = digitElement.querySelectorAll('.segment');
+    segments.forEach(segment => {
+        // 从类名中提取段名称(a-g)
+        const segmentName = Array.from(segment.classList)
+            .find(cls => cls.startsWith('segment-') && cls !== 'segment-h' && cls !== 'segment-v')
+            ?.replace('segment-', '');
+            
+        if (segmentName && segmentName.length === 1 && segmentMap[number]?.[segmentName] !== undefined) {
+            // 设置段的透明度
+            segment.style.opacity = segmentMap[number][segmentName] ? '1' : '0.1';
+        }
+    });
 }
 
 /**
@@ -182,4 +249,25 @@ export async function saveClockSettings(settings) {
  */
 export function getClockSettings() {
     return {...clockConfig};
+}
+
+/**
+ * 调整时钟大小以适应窗口宽度
+ */
+function adjustClockSize() {
+    const timeElement = document.getElementById('time');
+    if (!timeElement) return;
+    
+    const windowWidth = window.innerWidth;
+    // 根据窗口宽度调整时钟大小
+    if (windowWidth < 768) { // 移动设备
+        // 计算合适的缩放比例
+        const scale = Math.min(1, (windowWidth - 40) / 450);
+        timeElement.style.transform = `translateX(-50%) scale(${scale})`;
+        // 确保缩放后依然水平居中
+        timeElement.style.transformOrigin = 'center center';
+    } else {
+        // 恢复正常大小
+        timeElement.style.transform = 'translateX(-50%)';
+    }
 }

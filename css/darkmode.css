@@ -95,7 +95,6 @@
   .time {
     color: rgba(255, 255, 255, 0.9);
     -webkit-text-stroke-color: rgba(0, 0, 0, 0.3);
-    background-color: rgba(30, 30, 30, 0.3);
   }
   
   /* 文件夹列表样式调整 */
