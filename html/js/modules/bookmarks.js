@@ -295,26 +295,16 @@ function createFolderButtons(folders, parentElement, level = 0) {
  * @param {Object} folder - 文件夹数据
  */
 function handleFolderClick(folderButton, folder) {
-    // 首先移除所有文件夹的选中状态
-    document.querySelectorAll('.folder-button.selected').forEach(btn => {
-        btn.classList.remove('selected');
-    });
-    
-    // 为当前点击的文件夹添加选中状态
-    folderButton.classList.add('selected');
-    
-    // 检查是否有子文件夹容器
-    const children = folderButton.nextElementSibling;
-    
-    // 如果当前文件夹已经是打开状态，则只需关闭当前文件夹
-    if (folderButton.classList.contains('open')) {
-        // 关闭当前文件夹
-        closeFolder(folderButton, children);
-    } else {
-        // 在同一层级关闭其他已打开的文件夹
+    // 合并相同功能代码
+    if (folderButton && folder) {
         const parent = folderButton.parentElement;
-        const siblings = parent.querySelectorAll(':scope > .folder-button.open');
+        const children = folderButton.nextElementSibling;
         
+        // 判断是展开还是折叠
+        const isOpen = folderButton.classList.contains('open');
+        
+        // 关闭同级展开的文件夹
+        const siblings = parent.querySelectorAll(':scope > .folder-button.open');
         siblings.forEach(openButton => {
             if (openButton !== folderButton) {
                 const openChildren = openButton.nextElementSibling;
@@ -324,36 +314,27 @@ function handleFolderClick(folderButton, folder) {
             }
         });
         
-        // 打开当前文件夹时，确保子文件夹可见
-        if (children && children.classList.contains('folder-children')) {
-            // 切换文件夹展开状态
-            folderButton.classList.add('open');
+        // 根据当前状态执行展开或折叠操作
+        if (isOpen) {
+            closeFolder(folderButton, children);
+        } else {
+            // 打开当前文件夹
+            openFolder(folderButton, children);
             
-            // 更新箭头方向
-            const arrowElement = folderButton.querySelector('.folder-arrow');
-            if (arrowElement) {
-                arrowElement.textContent = '▼';
-                
-                // 使用CSS类而非内联样式控制显示状态
-                children.classList.remove('folder-children-closed');
-                children.classList.remove('folder-children-initial');
-                children.classList.add('folder-children-open');
-                
-                // 确保视图滚动以显示新展开的内容
-                setTimeout(() => {
-                    ensureChildrenVisibility(folderButton);
-                }, 300);
-            }
+            // 确保视图滚动以显示新展开的内容
+            setTimeout(() => {
+                ensureChildrenVisibility(folderButton);
+            }, 300);
         }
-    }
-    
-    // 显示该文件夹的快捷方式
-    if (folder) {
-        showShortcuts(folder);
-        currentFolder = folder.id;
         
-        // 保存当前选中的文件夹
-        chrome.storage.local.set({ folder: folder.id });
+        // 显示该文件夹的快捷方式
+        if (folder) {
+            showShortcuts(folder);
+            currentFolder = folder.id;
+            
+            // 保存当前选中的文件夹
+            chrome.storage.local.set({ folder: folder.id });
+        }
     }
 }
 

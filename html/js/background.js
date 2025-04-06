@@ -1,21 +1,4 @@
-// 移除以下导入语句
-
-// 改为内联实现这些函数
-/**
- * 从URL获取数据并解析为JSON
- * @param {string} url - 请求的URL
- * @returns {Promise<Object>} - 解析后的JSON对象
- */
-async function fetchData(url) {
-    try {
-        const response = await fetch(url);
-        return await response.json();
-    } catch (error) {
-        console.error('Failed to fetch data from', url, error);
-        throw error;
-    }
-}
-
+import { fetchData } from './modules/utils.js';
 
 self.addEventListener('install', (event) => {
   console.log('Service Worker 安装');
@@ -28,7 +11,10 @@ self.addEventListener('activate', (event) => {
 const CACHE_KEY = 'bingImageCache';
 const CACHE_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
 
-// 添加export关键字导出fetchBingImage函数
+/**
+ * 获取必应每日图片
+ * @returns {Promise<string>} - 图片URL
+ */
 export async function fetchBingImage() {
     const cachedData = await chrome.storage.local.get(CACHE_KEY);
     const now = Date.now();

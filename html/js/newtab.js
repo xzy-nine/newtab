@@ -19,7 +19,8 @@ import {
 } from './modules/bookmarks.js';
 import { 
     initIconManager, 
-    preloadIcons 
+    preloadIcons,
+    cleanupIconCache
 } from './modules/iconManager.js';
 import { 
     updateClock,
@@ -32,12 +33,14 @@ import {
     showErrorMessage,
     showNotification,
     initUIEvents,
-    handleKeyDown,
     showModal
 } from './modules/utils.js';
 
-// 版本号，从manifest.json读取
-let VERSION = '0.0.0'; // 默认值，将在初始化时更新
+// 版本号
+let VERSION = '0.0.0'; 
+
+// 全局状态标志
+let isInitialized = false;
 
 /**
  * 从manifest.json获取扩展版本号
@@ -45,20 +48,14 @@ let VERSION = '0.0.0'; // 默认值，将在初始化时更新
  */
 async function getExtensionVersion() {
     try {
-        const manifestResponse = await fetch('/manifest.json');
-        if (!manifestResponse.ok) {
-            throw new Error(`无法加载manifest.json: ${manifestResponse.status}`);
-        }
-        const manifest = await manifestResponse.json();
+        const response = await fetch('/manifest.json');
+        const manifest = await response.json();
         return manifest.version || '0.0.0';
     } catch (error) {
-        console.error('读取版本号失败:', error);
+        console.error('获取版本信息失败', error);
         return '0.0.0';
     }
 }
-
-// 全局状态标志
-let isInitialized = false;
 
 /**
  * 带超时的异步函数执行
@@ -83,21 +80,18 @@ async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
  */
 async function init() {
     try {
-        // 显示加载指示器
+        // 显示加载界面
         showLoadingIndicator();
         
-        // 首先读取版本号
+        // 获取扩展版本
         VERSION = await getExtensionVersion();
-        console.log(`初始化新标签页，版本: ${VERSION}`);
+        console.log(`New Tab Page v${VERSION} initializing...`);
         
-        // 初始化各模块 (按依赖顺序)
-        console.log('Initializing new tab page...');
-        
-        // 定义模块总数，用于计算进度
-        const totalModules = 7; // 包括 i18n, 图标, 背景, 搜索, 书签, 时钟, 事件初始化
+        // 初始化步骤计数
+        const totalModules = 7; // 总模块数
         let completedModules = 0;
         
-        // 定义初始化步骤数组，使代码更统一
+        // 定义初始化步骤
         const initSteps = [
             {
                 name: '国际化',
@@ -136,10 +130,7 @@ async function init() {
             },
             {
                 name: '时钟组件',
-                action: () => {
-                    initClockWidget(); // 将 initClock() 改为 initClockWidget()
-                    return Promise.resolve();
-                },
+                action: initClockWidget,
                 message: '正在加载时钟组件...',
                 completeMessage: '时钟组件加载完成',
                 timeout: 5000
@@ -214,9 +205,6 @@ async function performPostInitTasks() {
         // 检查更新或首次安装
         await checkForUpdates();
         
-        // 预加载常用网站图标
-        await preloadCommonIcons();
-        
         // 清理过期的缓存数据
         await cleanupCacheData();
         
@@ -230,53 +218,35 @@ async function performPostInitTasks() {
  */
 async function checkForUpdates() {
     try {
-        const result = await chrome.storage.sync.get('version');
-        const oldVersion = result.version;
+        const result = await chrome.storage.local.get('version');
+        const oldVersion = result.version || null;
+        
+        // 保存当前版本
+        await chrome.storage.local.set({ version: VERSION });
         
         if (!oldVersion) {
             // 首次安装
-            console.log('First install detected');
             showWelcomeMessage();
         } else if (oldVersion !== VERSION) {
-            // 更新
-            console.log('Update detected:', oldVersion, '->', VERSION);
+            // 版本更新
             showUpdateMessage(oldVersion, VERSION);
         }
-        
-        // 存储当前版本
-        await chrome.storage.sync.set({ version: VERSION });
-        
     } catch (error) {
-        console.error('Failed to check for updates:', error);
+        console.error('Error checking for updates:', error);
     }
 }
 
-/**
- * 预加载常用网站图标
- */
-async function preloadCommonIcons() {
-    // 常用网站列表
-    const commonSites = [
-        'https://www.google.com',
-        'https://www.youtube.com',
-        'https://www.facebook.com',
-        'https://www.twitter.com',
-        'https://www.github.com',
-        'https://www.amazon.com',
-        'https://www.wikipedia.org',
-        'https://www.reddit.com'
-    ];
-    
-    // 预加载图标
-    await preloadIcons(commonSites);
-}
 
 /**
  * 清理过期的缓存数据
  */
 async function cleanupCacheData() {
-    // 这里可以清理各种缓存数据
-    // 例如过期的背景图片、搜索建议缓存等
+    try {
+        // 清理图标缓存
+        await cleanupIconCache();
+    } catch (error) {
+        console.error('Failed to cleanup cache data:', error);
+    }
 }
 
 /**
@@ -354,16 +324,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// 导出一些可能在外部使用的函数
-export {
-    VERSION
-};
-
-function initPage() {
-    // ...现有的代码...
-    
-    // 初始化时钟组件
-    initClockWidget();
-    
-    // ...其他初始化代码...
-}
+// 导出版本号
+export { VERSION };

@@ -4,7 +4,7 @@
 
 import { getI18nMessage } from './i18n.js';
 import { setIconForElement, handleIconError, preloadIcons } from './iconManager.js';
-import { getDomain } from './utils.js';
+import { getDomain, showModal } from './utils.js';
 
 // 默认搜索引擎配置
 const defaultEngines = [
@@ -377,34 +377,28 @@ function initSearchEventHandlers() {
  * @param {number} index - 搜索引擎索引
  */
 export async function setCurrentSearchEngine(index) {
-    if (index < 0 || index >= searchEngines.length) return;
+    if (index < 0 || index >= searchEngines.length) {
+        console.error('无效的搜索引擎索引:', index);
+        return;
+    }
     
     currentEngineIndex = index;
     
-    // 直接保存到存储
+    // 保存当前引擎选择
     try {
         await saveToStorage({
             [STORAGE_KEYS.CURRENT_ENGINE]: {
-                baseUrl: searchEngines[currentEngineIndex].url,
-                name: searchEngines[currentEngineIndex].name,
-                searchParam: getSearchParamFromUrl(searchEngines[currentEngineIndex].url)
+                baseUrl: searchEngines[index].url,
+                name: searchEngines[index].name,
+                searchParam: getSearchParamFromUrl(searchEngines[index].url)
             }
         });
+        
+        // 更新UI
+        renderSearchEngineSelector();
     } catch (error) {
-        console.warn("无法保存当前搜索引擎:", error);
+        console.error('设置当前搜索引擎失败:', error);
     }
-    
-    // 更新UI
-    renderSearchEngineSelector();
-    
-    // 确保搜索菜单在选择后关闭
-    const searchEngineMenu = document.getElementById('search-engine-menu');
-    if (searchEngineMenu) {
-        searchEngineMenu.style.display = 'none';
-    }
-    
-    // 注意：由于renderSearchEngineSelector中已经重置过事件绑定，这里不需要再调用initSearch
-    // 移除这行代码以避免多次绑定事件: initSearch();
 }
 
 /**

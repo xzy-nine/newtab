@@ -50,14 +50,27 @@ export function getDomain(url) {
 }
 
 /**
- * 异步函数：将Blob对象转换为Base64字符串
- * 保留此函数以保持兼容性，内部调用blobToBase64实现
- * @param {Blob} blob - Blob对象
- * @returns {Promise<string>} - Base64字符串
+ * 创建DOM元素的通用函数
+ * @param {string} tag - 标签名
+ * @param {string} className - 类名
+ * @param {Object} attributes - 属性对象
+ * @param {string} content - 内容
+ * @returns {HTMLElement} - 创建的DOM元素
  */
-export function convertBlobToBase64(blob) {
-    return blobToBase64(blob);
+export function createElement(tag, className, attributes = {}, content = '') {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    
+    Object.entries(attributes).forEach(([key, value]) => {
+        element.setAttribute(key, value);
+    });
+    
+    if (content) element.innerHTML = content;
+    return element;
 }
+
+// UI相关函数集中管理
+// 加载指示器、通知、模态框等功能
 
 /**
  * 显示加载指示器

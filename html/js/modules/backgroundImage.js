@@ -4,6 +4,7 @@
 
 import { fetchData, blobToBase64 } from './utils.js';
 import { getI18nMessage } from './i18n.js';
+import { fetchBingImage } from '../background.js';
 
 // 背景图像设置
 let bgSettings = {
@@ -293,43 +294,7 @@ function applyBackgroundEffects() {
  * @returns {Promise<string>} - 图片URL
  */
 async function getBingImage() {
-    try {
-        // 先检查缓存
-        const cacheName = 'bingImageCache';
-        const cacheData = await chrome.storage.local.get(cacheName);
-        const now = Date.now();
-        const cacheExpiration = 12 * 60 * 60 * 1000; // 12小时
-        
-        if (cacheData[cacheName] && (now - cacheData[cacheName].timestamp < cacheExpiration)) {
-            console.log('Using cached Bing image');
-            return cacheData[cacheName].imageData;
-        }
-        
-        console.log('Fetching new Bing image');
-        const response = await fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-US');
-        if (response && response.images && response.images.length > 0) {
-            const imageUrl = `https://www.bing.com${response.images[0].url}`;
-            
-            // 下载图片并转换为base64
-            const imgResponse = await fetch(imageUrl);
-            const blob = await imgResponse.blob();
-            const base64Data = await blobToBase64(blob);
-            
-            // 保存到缓存
-            await chrome.storage.local.set({ 
-                [cacheName]: {
-                    imageData: base64Data,
-                    timestamp: now
-                }
-            });
-            
-            return base64Data;
-        }
-        throw new Error('Invalid response from Bing API');
-    } catch (error) {
-        console.error('Failed to get Bing image:', error);
-        throw error;
-    }
+    return await fetchBingImage(); // 调用background.js中的函数
 }
 
 /**
