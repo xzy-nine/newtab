@@ -71,10 +71,25 @@ function loadTranslationsFromInternal() {
  * @returns {string} - 翻译后的文本
  */
 export function getI18nMessage(key) {
+    if (!key) return '';
+    
+    try {
+        // 首先尝试从Chrome i18n API获取
+        if (chrome && chrome.i18n) {
+            const message = chrome.i18n.getMessage(key);
+            if (message) return message;
+        }
+    } catch (e) {
+        // Chrome i18n API不可用，忽略错误
+    }
+    
+    // 从内部翻译表获取
     if (translations[key] && translations[key].message) {
         return translations[key].message;
     }
-    return key; // 如果翻译不存在，返回键值本身
+    
+    // 返回键名作为默认值
+    return key;
 }
 
 /**
