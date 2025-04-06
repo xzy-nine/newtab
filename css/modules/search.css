@@ -64,7 +64,7 @@
 }
 
 #search-input { /* 搜索框输入框 */
-  width: calc(100% - 50px); /* 设置宽度为剩余空间 */
+  flex: 1; /* 使用flex:1让输入框占据所有剩余空间 */
   height: 100%; /* 设置高度为100% */
   border: none; /* 设置无边框 */
   border-radius: 24px; /* 设置边框圆角为24px */
@@ -76,8 +76,9 @@
   -webkit-appearance: none; /* 移除Webkit浏览器默认样式 */
   appearance: none; /* 移除默认样式 */
   box-shadow: none !important; /* 禁用输入框阴影 */
-  outline: none !important; /* 禁用输入框轮廓 */
+  outline: none !重要; /* 禁用输入框轮廓 */
   transition: background 0.3s;
+  margin-right: 10px; /* 增加右侧间距，与搜索引擎按钮分隔 */
 }
 
 #search-input:focus { /* 当搜索框输入框获得焦点时 */

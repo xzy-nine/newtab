@@ -83,7 +83,8 @@ export function showLoadingIndicator() {
         if (!progressBar) {
             progressBar = document.createElement('div');
             progressBar.id = 'loading-progress-bar';
-            progressBar.style.cssText = 'width:0%;height:4px;background:linear-gradient(90deg,#4285f4,#34a853,#fbbc05,#ea4335);position:absolute;bottom:0;left:0;transition:width 0.3s;border-radius:0 2px 2px 0;';
+            // 添加背景色和边框以确保在透明背景上可见
+            progressBar.style.cssText = 'width:0%;height:4px;background:linear-gradient(90deg,#4285f4,#34a853,#fbbc05,#ea4335);position:absolute;bottom:0;left:0;transition:width 0.3s;border-radius:0 2px 2px 0;box-shadow:0 0 5px rgba(0,0,0,0.3);';
             loadingScreen.appendChild(progressBar);
         }
         
@@ -92,7 +93,8 @@ export function showLoadingIndicator() {
         if (!statusText) {
             statusText = document.createElement('div');
             statusText.id = 'loading-status-text';
-            statusText.style.cssText = 'margin-top:10px;font-size:14px;color:#666;';
+            // 添加文字阴影确保在透明背景上可见
+            statusText.style.cssText = 'margin-top:10px;font-size:14px;color:#333;background:rgba(255,255,255,0.7);padding:5px 10px;border-radius:4px;text-shadow:0 0 2px #fff;';
             statusText.textContent = '准备加载...';
             loadingScreen.appendChild(statusText);
         }
