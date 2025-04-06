@@ -7,7 +7,7 @@ import { getI18nMessage } from './i18n.js';
 
 // 背景图像设置
 let bgSettings = {
-    type: 'default',
+    type: 'bing',  // 默认使用必应作为背景
     customImageData: null,
     blur: 0,
     dark: 0
@@ -94,11 +94,14 @@ function bindBackgroundButtonEvent() {
         
         // 左键点击事件 - 切换背景类型
         newButton.addEventListener('click', async () => {
-            // 切换背景类型
-            const types = ['default', 'bing', 'unsplash', 'custom'];
-            const currentIndex = types.indexOf(bgSettings.type);
-            const nextIndex = (currentIndex + 1) % types.length;
-            bgSettings.type = types[nextIndex];
+            // 根据是否有自定义图片决定切换类型
+            if (bgSettings.customImageData) {
+                // 有自定义图片时，在bing和custom之间切换
+                bgSettings.type = bgSettings.type === 'bing' ? 'custom' : 'bing';
+            } else {
+                // 没有自定义图片时，在bing和default之间切换
+                bgSettings.type = bgSettings.type === 'bing' ? 'default' : 'bing';
+            }
             
             // 保存设置
             await chrome.storage.local.set({ bgType: bgSettings.type });
@@ -129,9 +132,21 @@ function bindBackgroundButtonEvent() {
             fileInput.addEventListener('change', async (event) => {
                 if (event.target.files && event.target.files[0]) {
                     await handleCustomBackground(event);
+                } else if (bgSettings.customImageData) {
+                    // 如果有自定义图片但用户没有选择新图片，则清除自定义图片
+                    await clearCustomBackground();
                 }
                 
                 // 选择完成后移除元素
+                document.body.removeChild(fileInput);
+            });
+            
+            // 添加取消选择事件监听器
+            fileInput.addEventListener('cancel', async () => {
+                if (bgSettings.customImageData) {
+                    // 如果有自定义图片但用户取消选择，则清除自定义图片
+                    await clearCustomBackground();
+                }
                 document.body.removeChild(fileInput);
             });
             
@@ -154,12 +169,22 @@ async function loadBackgroundSettings() {
             'backgroundDark'
         ]);
         
-        bgSettings.type = result.bgType || 'default';
-        bgSettings.customImageData = result.customImage || null;
+        // 如果有自定义图片，只允许在 'bing' 和 'custom' 之间切换
+        // 如果没有自定义图片，只允许在 'bing' 和 'default'(白色) 之间切换
+        if (result.customImage) {
+            bgSettings.customImageData = result.customImage;
+            bgSettings.type = result.bgType === 'custom' ? 'custom' : 'bing';
+        } else {
+            bgSettings.customImageData = null;
+            bgSettings.type = result.bgType === 'default' ? 'default' : 'bing';
+        }
+        
         bgSettings.blur = result.backgroundBlur !== undefined ? result.backgroundBlur : 0;
         bgSettings.dark = result.backgroundDark !== undefined ? result.backgroundDark : 0;
     } catch (error) {
         console.error('Failed to load background settings:', error);
+        // 出错时默认使用必应
+        bgSettings.type = 'bing';
     }
 }
 
@@ -405,7 +430,7 @@ async function handleCustomBackground(e) {
         const reader = new FileReader();
         reader.onload = async (event) => {
             bgSettings.customImageData = event.target.result;
-            bgSettings.type = 'custom';
+            bgSettings.type = 'custom';  // 上传后立即切换到自定义图片
             
             await chrome.storage.local.set({ 
                 customImage: bgSettings.customImageData,
@@ -424,6 +449,30 @@ async function handleCustomBackground(e) {
     } catch (error) {
         console.error('Failed to handle custom background:', error);
     }
+}
+
+/**
+ * 清除自定义背景图片
+ * @returns {Promise<void>}
+ */
+async function clearCustomBackground() {
+    bgSettings.customImageData = null;
+    bgSettings.type = 'bing';  // 切换回必应背景
+    
+    await chrome.storage.local.set({ 
+        customImage: null,
+        bgType: 'bing'
+    });
+    
+    await setBackgroundImage();
+    
+    // 更新下拉框选项
+    const bgTypeSelect = document.getElementById('bg-type');
+    if (bgTypeSelect) {
+        bgTypeSelect.value = 'bing';
+    }
+    
+    console.log('Custom background cleared');
 }
 
 /**
@@ -460,10 +509,40 @@ export async function updateBackgroundSettings(newSettings) {
  * 用于在标签页重新激活时更新背景图片
  */
 export async function refreshBackgroundImage() {
-    // 检查是否需要刷新背景图片
-    // 例如，如果设置了每天或每小时更换图片
     try {
-        // 这里可以添加刷新背景的逻辑
+        // 检查是否需要刷新背景图片
+        if (bgSettings.type !== 'bing') {
+            // 非Bing背景不需要刷新
+            return;
+        }
+        
+        // 检查Bing图片缓存是否过期
+        const cacheName = 'bingImageCache';
+        const cacheData = await chrome.storage.local.get(cacheName);
+        const now = Date.now();
+        
+        // 检查是否是新的一天（而不是仅仅12小时）
+        // 获取缓存时间的日期部分
+        let needRefresh = true;
+        
+        if (cacheData[cacheName]) {
+            const cacheDate = new Date(cacheData[cacheName].timestamp);
+            const currentDate = new Date(now);
+            
+            // 如果是同一天，不需要刷新
+            if (cacheDate.getDate() === currentDate.getDate() && 
+                cacheDate.getMonth() === currentDate.getMonth() &&
+                cacheDate.getFullYear() === currentDate.getFullYear()) {
+                needRefresh = false;
+            }
+        }
+        
+        if (needRefresh) {
+            console.log('Refreshing Bing background for a new day');
+            // 强制清除缓存，获取新的Bing图片
+            await chrome.storage.local.remove(cacheName);
+            await setBackgroundImage();
+        }
     } catch (error) {
         console.error('Failed to refresh background image:', error);
     }
