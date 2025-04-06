@@ -90,9 +90,7 @@
 
 /* 搜索引擎菜单 */
 .search-engine-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
+  position: fixed; /* 改为fixed定位 */
   background: white;
   border-radius: 5px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.2);
@@ -100,6 +98,7 @@
   display: none;
   overflow: auto;
   max-height: 300px;
+  width: 200px;
 }
 
 /* 搜索引擎菜单项 */
@@ -126,30 +125,4 @@
   border-top: 1px solid #eee;
   text-align: center;
   cursor: pointer;
-}
-
-/* 深色模式支持 */
-@media (prefers-color-scheme: dark) {
-  #search-box {
-    background: rgba(30, 30, 30, 0.8);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  #search-input {
-    color: rgba(255, 255, 255, 0.9);
-  }
-  
-  .search-engine-menu {
-    background: #2a2a2a;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .search-engine-item.active {
-    background-color: #3a3a3a;
-  }
-  
-  .search-engine-add {
-    border-top: 1px solid #444;
-    color: rgba(255, 255, 255, 0.9);
-  }
 }
