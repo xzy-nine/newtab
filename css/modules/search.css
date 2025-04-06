@@ -153,20 +153,3 @@
     color: rgba(255, 255, 255, 0.9);
   }
 }
-
-/* 响应式设计优化 */
-@media screen and (max-width: 768px) {
-  #search-box {
-    width: 85%;
-    height: 42px;
-  }
-}
-
-/* 竖屏优化 - 当设备处于竖屏方向时应用以下样式 */
-@media screen and (orientation: portrait) {
-  #search-box {
-    width: 80%; /* 搜索框宽度调整为80% */
-    height: 5%; /* 搜索框高度调整为5% */
-    top: 15%; /* 距顶部位置调整为10% */
-  }
-}

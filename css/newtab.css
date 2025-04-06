@@ -1,9 +1,11 @@
 /* 主CSS文件 - 导入所有拆分的CSS模块 */
-@import 'search.css';     /* 搜索框相关样式 */
-@import 'clock.css';      /* 时钟相关样式 */
-@import 'folders.css';    /* 文件夹相关样式 */
-@import 'shortcuts.css';  /* 快捷方式按钮相关样式 */
-@import 'modals.css';     /* 模态框相关样式 */
+@import 'modules/search.css';     /* 搜索框相关样式 */
+@import 'modules/clock.css';      /* 时钟相关样式 */
+@import 'modules/folders.css';    /* 文件夹相关样式 */
+@import 'modules/shortcuts.css';  /* 快捷方式按钮相关样式 */
+@import 'modules/modals.css';     /* 模态框相关样式 */
+@import 'darkmode.css';   /* 暗黑模式相关样式 */
+@import 'responsive.css'; /* 响应式设计相关样式 */
 
 
 
@@ -204,36 +206,3 @@
     }
   }
   
-  /* 响应式设计优化 */
-  @media screen and (max-width: 768px) {
-    #bookmark-box {
-      flex-direction: column;
-      align-items: center;
-    }
-    
-    #background-button {
-      width: 80px;
-      height: 40px;
-      font-size: 16px;
-    }
-  }
-  
-  /* 竖屏优化 - 当设备处于竖屏方向时应用以下样式 */
-  @media screen and (orientation: portrait) {
-    #container {
-      flex-direction: column; /* 设置容器为纵向排列 */
-      justify-content: flex-start; /* 内容从顶部开始排列 */
-      padding-top: 20%; /* 顶部增加20%内边距 */
-    }
-  
-    #bookmark-box {
-      width: 90%; /* 书签盒子宽度调整为90% */
-      height: 90%; /* 高度调整为90% */
-    }
-  
-    #background-button {
-      width: 80px; /* 背景切换按钮宽度减小到80px */
-      height: 40px; /* 背景切换按钮高度减小到40px */
-      font-size: 16px; /* 字体大小减小到16px */
-    }
-  }

@@ -1,0 +1,159 @@
+/* 暗黑模式相关样式 */
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  /* 根变量调整 */
+  :root {
+    --primary-color: #3aa0ff;
+    --secondary-color: rgba(255, 255, 255, 0.5);
+  }
+  
+  /* 加载指示器样式调整 */
+  #loading-overlay {
+    background-color: rgba(30, 30, 30, 0.9);
+  }
+  
+  #loading-progress {
+    background-color: #333;
+  }
+  
+  #loading-message {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  /* 上下文菜单样式调整 */
+  .context-menu {
+    background: #2a2a2a;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+  
+  .context-menu-item {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .context-menu-item:hover {
+    background-color: #3a3a3a;
+  }
+  
+  /* 搜索框样式调整 */
+  #search-box {
+    background: rgba(30, 30, 30, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  #search-input {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .search-engine-menu {
+    background: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .search-engine-item.active {
+    background-color: #3a3a3a;
+  }
+  
+  .search-engine-add {
+    border-top: 1px solid #444;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  /* 时钟样式调整 */
+  .time {
+    color: rgba(255, 255, 255, 0.9);
+    -webkit-text-stroke: 1px rgba(0, 0, 0, 0.3);
+    background-color: rgba(30, 30, 30, 0.3);
+  }
+  
+  /* 文件夹列表样式调整 */
+  #folder-list {
+    background: rgba(40, 40, 40, 0.7);
+  }
+  
+  .folder-button {
+    background: rgba(40, 40, 40, 0.9);
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .folder-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .child-container {
+    border-left-color: #555;
+  }
+  
+  .folder-arrow {
+    color: #aaa;
+  }
+  
+  /* 快捷方式样式调整 */
+  #shortcut-list {
+    background: rgba(40, 40, 40, 0.7);
+  }
+  
+  .shortcut-button {
+    background: rgba(50, 50, 50, 0.7);
+  }
+  
+  .shortcut-title {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .bookmark {
+    background: rgba(50, 50, 50, 0.7);
+  }
+  
+  .bookmark-title {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  #shortcut-context-menu,
+  #bookmark-context-menu {
+    border-color: #444;
+    background: #2a2a2a;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  /* 模态框样式调整 */
+  .modal-content, 
+  .notification {
+    background-color: #2a2a2a;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .form-group input {
+    background-color: #333;
+    color: rgba(255, 255, 255, 0.9);
+    border-color: #444;
+  }
+  
+  .btn {
+    background-color: #444;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .notification-header {
+    border-bottom-color: #444;
+  }
+  
+  .notification-close {
+    color: #aaa;
+  }
+  
+  #bookmark-modal .image-preview {
+    border-color: #444;
+    background-color: #333;
+  }
+  
+  #icon-selector-modal .icon-option {
+    border-color: #444;
+    background-color: #333;
+  }
+  
+  #icon-selector-modal .icon-option:hover {
+    border-color: var(--primary-color);
+    background-color: #2a3f5a;
+  }
+}

@@ -180,24 +180,3 @@
     color: rgba(255, 255, 255, 0.9);
   }
 }
-
-/* 响应式设计优化 */
-@media screen and (max-width: 768px) {
-  #shortcut-list {
-    width: 100%;
-    margin-left: 0;
-    margin-top: 10px;
-  }
-  
-  .shortcut-button {
-    width: 70px;
-    margin: 5px;
-  }
-}
-
-/* 竖屏优化 - 当设备处于竖屏方向时应用以下样式 */
-@media screen and (orientation: portrait) {
-  .shortcut-button {
-    margin: 5px; /* 外边距减小到5px */
-  }
-}
