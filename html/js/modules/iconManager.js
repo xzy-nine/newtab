@@ -385,11 +385,12 @@ async function cacheIcon(domain, iconData) {
 }
 
 /**
- * 预加载图标
+ * 预加载图标 - 优化版本
  * @param {string[]} urls - 需要预加载图标的URL数组
+ * @param {boolean} [highPriority=false] - 是否为高优先级
  * @returns {Promise<void>}
  */
-export async function preloadIcons(urls) {
+export async function preloadIcons(urls, highPriority = false) {
     if (!Array.isArray(urls) || urls.length === 0) return;
     
     // 先过滤掉已缓存的URL，减少不必要的请求
@@ -400,34 +401,26 @@ export async function preloadIcons(urls) {
     
     if (uncachedUrls.length === 0) return;
     
-    // 创建任务队列，批量处理
-    const tasks = uncachedUrls.map(url => getIconUrl(url));
-    
-    // 并发执行，但限制并发数为5
-    const batchSize = 5;
-    const total = tasks.length;
-    
-    // 添加进度跟踪功能（可选，用于调试）
-    let completed = 0;
-    
-    for (let i = 0; i < tasks.length; i += batchSize) {
-        const batch = tasks.slice(i, i + batchSize);
-        await Promise.allSettled(batch).then(results => {
-            completed += batch.length;
-            console.debug(`Icon preloading: ${completed}/${total}`);
-        });
-        
-        // 每批次后稍微延迟，避免过度占用资源
-        if (i + batchSize < tasks.length) {
-            await new Promise(resolve => setTimeout(resolve, 50));
+    // 高优先级任务立即执行，低优先级任务延迟执行
+    if (highPriority) {
+        // 立即并行获取所有图标(数量较少的高优先级图标)
+        await Promise.allSettled(uncachedUrls.map(url => getIconUrl(url)));
+    } else {
+        // 批量处理普通预加载请求
+        const batchSize = 3;
+        for (let i = 0; i < uncachedUrls.length; i += batchSize) {
+            const batch = uncachedUrls.slice(i, i + batchSize);
+            await Promise.allSettled(batch.map(url => getIconUrl(url)));
+            
+            // 每批次后稍微延迟，避免过度占用资源
+            if (i + batchSize < uncachedUrls.length) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
         }
     }
     
     // 保存全部缓存
     await saveIconCache();
-    
-    // 清理尺寸缓存
-    cleanupSizeCache();
 }
 
 /**
@@ -470,6 +463,9 @@ export async function setIconForElement(img, url) {
     if (!img || !url) return;
     
     try {
+        // 使用CSS过渡效果
+        const originalOpacity = img.style.opacity || '1';
+        
         // 保存原始URL以便错误处理
         img.dataset.originalUrl = url;
         
@@ -486,10 +482,12 @@ export async function setIconForElement(img, url) {
         // 先检查内存缓存，减少等待感
         const domain = getDomain(url);
         if (iconCache.has(domain)) {
+            img.style.opacity = '0.7';  // 淡入淡出效果
             img.src = iconCache.get(domain).data;
+            setTimeout(() => { img.style.opacity = originalOpacity; }, 50);
         } else {
-            // 临时显示占位图标
-            img.src = DEFAULT_ICON;
+            // 设置淡入效果
+            if (img.src) img.style.opacity = '0.7'; 
             
             // 获取图标URL
             const iconUrl = await getIconUrl(url);
@@ -497,6 +495,8 @@ export async function setIconForElement(img, url) {
             // 确保图像元素仍在页面上并且URL没有被更改
             if (img.isConnected && img.dataset.processingUrl === url) {
                 img.src = iconUrl;
+                // 图片加载完成后恢复透明度
+                setTimeout(() => { img.style.opacity = originalOpacity; }, 50);
             }
         }
         

@@ -3,7 +3,7 @@
  */
 
 import { getI18nMessage } from './i18n.js';
-import { setIconForElement, handleIconError } from './iconManager.js';
+import { setIconForElement, handleIconError, preloadIcons } from './iconManager.js';
 import { getDomain } from './utils.js';
 
 // 默认搜索引擎配置
@@ -32,8 +32,12 @@ export async function initSearchEngine() {
     // 从存储中加载搜索引擎配置
     await loadSearchEngines();
     
-    // 渲染搜索引擎选择器
-    renderSearchEngineSelector();
+    // 预加载所有搜索引擎图标
+    const engineUrls = searchEngines.map(engine => engine.url);
+    preloadIcons(engineUrls);
+    
+    // 渲染搜索引擎选择器，标记为首次渲染
+    renderSearchEngineSelector(true);
     
     // 初始化搜索功能
     initSearch();
@@ -172,19 +176,35 @@ function getSearchParamFromUrl(url) {
 
 /**
  * 渲染搜索引擎选择器
+ * @param {boolean} [firstRender=false] - 是否是首次渲染
  */
-function renderSearchEngineSelector() {
+function renderSearchEngineSelector(firstRender = false) {
     const searchEngineIcon = document.getElementById('search-engine-icon');
     const searchEngineMenu = document.getElementById('search-engine-menu');
     
     if (!searchEngineIcon) return;
     
-    // 设置当前搜索引擎图标
-    setIconForElement(searchEngineIcon, searchEngines[currentEngineIndex].url);
-    searchEngineIcon.onerror = () => handleIconError(searchEngineIcon, 'images/search_engines/custom.png');
+    // 首次渲染时先设置一个占位图标，避免闪烁
+    if (firstRender) {
+        // 设置默认图标作为占位，避免空白导致的闪烁
+        searchEngineIcon.src = 'images/search_engines/custom.png';
+        searchEngineIcon.style.cssText = 'width:24px;height:24px;margin:0 15px;cursor:pointer;object-fit:contain;opacity:0.7;transition:opacity 0.3s;';
+    }
     
-    // 修复：添加固定尺寸和样式
-    searchEngineIcon.style.cssText = 'width:24px;height:24px;margin:0 15px;cursor:pointer;object-fit:contain;';
+    // 异步加载实际图标，完成后平滑过渡显示
+    setTimeout(() => {
+        // 设置当前搜索引擎图标
+        setIconForElement(searchEngineIcon, searchEngines[currentEngineIndex].url);
+        searchEngineIcon.onerror = () => handleIconError(searchEngineIcon, 'images/search_engines/custom.png');
+        
+        // 图片加载完成后淡入显示
+        searchEngineIcon.onload = () => {
+            searchEngineIcon.style.opacity = '1';
+        };
+    
+        // 修复：添加固定尺寸和样式
+        searchEngineIcon.style.cssText = 'width:24px;height:24px;margin:0 15px;cursor:pointer;object-fit:contain;transition:opacity 0.3s;';
+    }, firstRender ? 100 : 0); // 首次渲染时稍微延迟，确保DOM已完全准备好
     
     // 如果没有菜单，创建一个
     if (!searchEngineMenu) {
@@ -250,12 +270,30 @@ function renderSearchEngineSelector() {
     setIconForElement(iconElement, searchEngines[currentEngineIndex].url);
     iconElement.onerror = () => handleIconError(iconElement, 'images/search_engines/custom.png');
     iconElement.style.cssText = 'width:24px;height:24px;margin:0 15px;cursor:pointer;object-fit:contain;';
-    
+
     // 为搜索引擎图标添加点击事件
     iconElement.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         menuElement.style.display = menuElement.style.display === 'block' ? 'none' : 'block';
+    });
+
+    // 为搜索引擎图标添加右键点击事件以清除存储
+    iconElement.addEventListener('contextmenu', (e) => {
+        e.preventDefault(); // 阻止默认右键菜单
+        e.stopPropagation();
+        
+        if (confirm(getI18nMessage('clearStorageConfirm') || '确定要清除所有存储数据吗？此操作不可恢复。')) {
+            clearExtensionStorage()
+                .then(() => {
+                    alert(getI18nMessage('clearStorageSuccess') || '存储已成功清除，页面将刷新。');
+                    window.location.reload(); // 刷新页面以应用更改
+                })
+                .catch(error => {
+                    console.error('清除存储失败:', error);
+                    alert(getI18nMessage('clearStorageError') || '清除存储失败，请查看控制台了解详情。');
+                });
+        }
     });
     
     // 点击其他区域关闭菜单
@@ -636,3 +674,25 @@ async function updateSearchEngines(newEngines, activeIndex = null) {
 export function setupSearchEvents() {
     initSearch();
 }
+
+/**
+ * 清除扩展存储的所有数据
+ * @returns {Promise<void>} - 操作完成的Promise
+ */
+async function clearExtensionStorage() {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.clear(() => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                // 重置内存中的搜索引擎数据
+                searchEngines = [...defaultEngines];
+                currentEngineIndex = 0;
+                resolve();
+            }
+        });
+    });
+}
+
+// 导出此函数以便其他模块可以使用
+export { clearExtensionStorage };

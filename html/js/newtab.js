@@ -87,13 +87,19 @@ async function init() {
             throw new Error('背景图像加载失败: ' + error.message);
         }
         
+        // 在 init 函数内，可以添加一个标记确保只初始化一次
+        let searchEngineInitialized = false;
+
         try {
             // 4. 初始化搜索引擎
-            updateLoadingProgress((completedModules / totalModules) * 100, '正在加载搜索引擎...');
-            await executeWithTimeout(initSearchEngine, 5000, '搜索引擎');
-            completedModules++;
-            updateLoadingProgress((completedModules / totalModules) * 100, '搜索引擎加载完成');
-            console.log('Search engine initialized');
+            if (!searchEngineInitialized) {
+                updateLoadingProgress((completedModules / totalModules) * 100, '正在加载搜索引擎...');
+                await executeWithTimeout(initSearchEngine, 5000, '搜索引擎');
+                searchEngineInitialized = true;
+                completedModules++;
+                updateLoadingProgress((completedModules / totalModules) * 100, '搜索引擎加载完成');
+                console.log('Search engine initialized');
+            }
         } catch (error) {
             console.error('Failed to initialize search engine:', error);
             throw new Error('搜索引擎加载失败: ' + error.message);
@@ -613,6 +619,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 500);
     }
   }, 10000);
+});
+document.addEventListener('DOMContentLoaded', () => {
+    // 首先初始化核心功能
+    initCoreFeatures();
+    
+    // 延迟加载非核心功能
+    setTimeout(() => {
+        initNonCriticalFeatures();
+    }, 500);
 });
 
 // 导出一些可能在外部使用的函数
