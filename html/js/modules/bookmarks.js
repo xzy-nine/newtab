@@ -63,12 +63,18 @@ async function getChromeBookmarks() {
     try {
         const tree = await chrome.bookmarks.getTree();
         const root = tree[0];
-        const folders = getAllFolders(root);
         
         // 创建文件夹按钮
         const folderList = document.getElementById('folder-list');
         if (folderList) {
-            createFolderButtons(folders, folderList);
+            // 清空现有内容
+            folderList.innerHTML = '';
+            // 只处理根节点的直接子文件夹
+            if (root.children) {
+                for (let child of root.children) {
+                    createFolderButtonsRecursive(child, folderList, 0);
+                }
+            }
         }
         
         // 从存储中获取上次选中的文件夹
@@ -76,14 +82,90 @@ async function getChromeBookmarks() {
         let folder = data.folder || root.id;
         currentFolder = folder;
         
-        // 显示默认文件夹的快捷方式
-        const selectedFolder = folders.find(f => f.id === folder);
+        // 通过ID查找选中的文件夹
+        const selectedFolder = findFolderById(root, folder);
         if (selectedFolder) {
             showShortcuts(selectedFolder);
         }
     } catch (error) {
         console.error('Failed to get Chrome bookmarks:', error);
     }
+}
+
+/**
+ * 递归查找指定ID的文件夹
+ * @param {Object} node - 当前节点
+ * @param {string} id - 要查找的ID
+ * @returns {Object|null} - 找到的文件夹或null
+ */
+function findFolderById(node, id) {
+    if (node.id === id) {
+        return node;
+    }
+    
+    if (node.children) {
+        for (let child of node.children) {
+            const found = findFolderById(child, id);
+            if (found) {
+                return found;
+            }
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * 递归创建文件夹按钮
+ * @param {Object} folder - 文件夹数据
+ * @param {HTMLElement} parentElement - 父元素
+ * @param {number} level - 缩进级别
+ */
+function createFolderButtonsRecursive(folder, parentElement, level) {
+    // 跳过没有children属性的项目或空文件夹
+    if (!folder.children) return;
+    
+    // 创建文件夹按钮
+    let folderButton = document.createElement("div");
+    folderButton.className = "folder-button";
+    
+    // 添加层级标识和展开/折叠指示器
+    folderButton.innerHTML = `
+        <div class="folder-content" style="margin-left: ${level * 20}px">
+            <span class="folder-arrow">▶</span>
+            <span class="folder-icon">📁</span>
+            <span class="folder-name">${folder.title}</span>
+        </div>
+    `;
+    
+    // 存储文件夹数据到按钮元素
+    folderButton.folderData = folder;
+    
+    // 添加按钮到父元素
+    parentElement.appendChild(folderButton);
+
+    // 创建子文件夹容器
+    let subFolderContainer = document.createElement("div");
+    subFolderContainer.className = "folder-children";
+    subFolderContainer.style.display = 'none';
+    parentElement.appendChild(subFolderContainer);
+    
+    // 检查是否有子文件夹
+    const subFolders = folder.children.filter(child => child.children);
+    
+    // 如果有子文件夹，递归创建
+    if (subFolders.length > 0) {
+        // 递归为每个子文件夹创建按钮
+        for (let subFolder of subFolders) {
+            createFolderButtonsRecursive(subFolder, subFolderContainer, level + 1);
+        }
+    }
+    
+    // 添加点击事件监听
+    folderButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        handleFolderClick(folderButton, folder);
+    });
 }
 
 /**
