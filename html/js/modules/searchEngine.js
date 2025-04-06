@@ -180,7 +180,6 @@ function getSearchParamFromUrl(url) {
  */
 function renderSearchEngineSelector(firstRender = false) {
     const searchEngineIcon = document.getElementById('search-engine-icon');
-    const searchEngineMenu = document.getElementById('search-engine-menu');
     
     if (!searchEngineIcon) return;
     
@@ -206,16 +205,23 @@ function renderSearchEngineSelector(firstRender = false) {
         searchEngineIcon.style.cssText = 'width:24px;height:24px;margin:0 15px;cursor:pointer;object-fit:contain;transition:opacity 0.3s;';
     }, firstRender ? 100 : 0); // 首次渲染时稍微延迟，确保DOM已完全准备好
     
-    // 如果没有菜单，创建一个
+    // 如果没有菜单，创建一个，并添加到body
+    let searchEngineMenu = document.getElementById('search-engine-menu');
     if (!searchEngineMenu) {
         const menu = document.createElement('div');
         menu.id = 'search-engine-menu';
         menu.className = 'search-engine-menu';
-        menu.style.cssText = 'position:absolute;top:100%;left:0;background:white;border-radius:5px;box-shadow:0 2px 10px rgba(0,0,0,0.2);z-index:1000;display:none;overflow:auto;max-height:300px;width:200px;';
-        document.getElementById('search-box')?.appendChild(menu);
+        menu.style.cssText = 'display:none;position:fixed;overflow:auto;max-height:300px;width:200px;z-index:1000;';
+        document.body.appendChild(menu); // 添加到body
+        searchEngineMenu = menu;
+    } else {
+        // 如果已存在但是在搜索框内，移动到body下
+        if (searchEngineMenu.parentElement && searchEngineMenu.parentElement.id === 'search-box') {
+            document.body.appendChild(searchEngineMenu);
+        }
     }
     
-    // 获取菜单元素（可能是刚创建的）
+    // 获取菜单元素
     const menuElement = document.getElementById('search-engine-menu');
     if (!menuElement) return;
     
@@ -275,7 +281,20 @@ function renderSearchEngineSelector(firstRender = false) {
     iconElement.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        menuElement.style.display = menuElement.style.display === 'block' ? 'none' : 'block';
+        
+        const menuElement = document.getElementById('search-engine-menu');
+        if (menuElement.style.display === 'block') {
+            menuElement.style.display = 'none';
+        } else {
+            // 获取图标元素的位置信息
+            const iconRect = iconElement.getBoundingClientRect();
+            
+            // 设置菜单位置在图标下方
+            menuElement.style.left = iconRect.left + 'px';
+            menuElement.style.top = (iconRect.bottom + 5) + 'px'; // 在图标下方留出5px间距
+            
+            menuElement.style.display = 'block';
+        }
     });
 
     // 为搜索引擎图标添加右键点击事件以清除存储

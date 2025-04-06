@@ -28,6 +28,9 @@
   left: 50%;
   transform: translateX(-50%);
   color: rgb(0, 0, 0); /* 设置字体颜色为主要颜色 */
+  background-color: rgba(255, 255, 255, 0.3);
+  padding: 5px 15px;
+  border-radius: 10px;
   -webkit-text-stroke: 2px rgba(255, 255, 255, 0.541); /* 添加白色描边 */
 }
 
@@ -40,21 +43,21 @@
   counter-reset: hour var(--h);
   content: counter(hour, decimal-leading-zero);
   animation: hour calc(var(--step) * 60 * 24) infinite steps(24);
-  animation-delay: calc( -1 * var(--step) * var(--dh) * 60);
+  animation-delay: calc(-1 * var(--step) * var(--dh) * 60);
 }
 
 .minitus::after {
   counter-reset: minitus var(--m);
   content: counter(minitus, decimal-leading-zero);
   animation: minitus calc(var(--step) * 60) infinite steps(60);
-  animation-delay: calc( -1 * var(--step) * var(--dm));
+  animation-delay: calc(-1 * var(--step) * var(--dm));
 }
 
 .seconds::after {
   counter-reset: seconds var(--s);
   content: counter(seconds, decimal-leading-zero);
   animation: seconds var(--step) infinite steps(60);
-  animation-delay: calc( -1 * var(--step) * var(--ds) / 60 );
+  animation-delay: calc(-1 * var(--step) * var(--ds));
 }
 
 @keyframes hour {

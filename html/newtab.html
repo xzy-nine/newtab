@@ -23,7 +23,6 @@
                autocapitalize="off" 
                spellcheck="false">
       </form>
-      <div id="search-engine-menu" style="display: none;"></div>
     </div>
     <div id="bookmark-box"> <!-- 收藏夹容器 -->
       <div id="folder-list"> <!-- 文件夹列表 -->
@@ -35,16 +34,9 @@
     </div>
     <button id="background-button" data-i18n="backgroundButton"></button> <!-- 背景切换按钮 -->
   </div>
-  <div class="time" id="time">
-    <span class="hour"></span>
-    <a class="split">:</a>
-    <span class="minitus"></span>
-    <a class="split">:</a>
-    <span class="seconds"></span>
-  </div>
 
   <!-- 加载指示器 -->
-  <div id="loading-screen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.95);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;transition:opacity 0.5s;">
+  <div id="loading-screen">
     <div class="loader-icon">
         <!-- 可以在这里添加一个旋转的图标或动画 -->
         <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
@@ -59,7 +51,7 @@
   </div>
 
   <!-- 欢迎模态框 -->
-  <div id="welcome-modal" class="modal" style="display: none;">
+  <div id="welcome-modal" class="modal">
     <div class="modal-content">
       <span class="modal-close">&times;</span>
       <h2 data-i18n="welcomeTitle">欢迎使用</h2>
@@ -68,7 +60,7 @@
   </div>
 
   <!-- 书签模态框 -->
-  <div id="bookmark-modal" class="modal" style="display: none;">
+  <div id="bookmark-modal" class="modal">
     <div class="modal-content">
       <span class="modal-close">&times;</span>
       <h2 id="bookmark-modal-title" data-i18n="addBookmark">添加书签</h2>
@@ -94,50 +86,11 @@
   </div>
 
   <!-- 书签右键菜单 -->
-  <div id="bookmark-context-menu" class="context-menu" style="display: none;">
+  <div id="bookmark-context-menu" class="context-menu">
     <div id="bookmark-edit" class="context-menu-item" data-i18n="edit">编辑</div>
     <div id="bookmark-delete" class="context-menu-item" data-i18n="delete">删除</div>
   </div>
 
-  <!-- 添加模态框样式 -->
-  <style>
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  .modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1001;
-  }
-
-  .modal-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 5px;
-    width: 80%;
-    max-width: 500px;
-    position: relative;
-  }
-
-  .modal-close {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    cursor: pointer;
-    font-size: 20px;
-  }
-  </style>
-
   <script type="module" src="js/newtab.js"></script>
-  <script src="js/loadingTimeout.js"></script>
 </body>
 </html>

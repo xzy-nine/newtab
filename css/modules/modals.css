@@ -159,3 +159,9 @@
   cursor: pointer;
   color: #666;
 }
+
+/* 添加从HTML移过来的动画和模态框样式 */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

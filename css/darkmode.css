@@ -39,15 +39,43 @@
   #search-box {
     background: rgba(30, 30, 30, 0.8);
     border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  #search-box:hover {
+    background: rgba(40, 40, 40, 0.9);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  }
+  
+  #search-box:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(58, 160, 255, 0.4);
+  }
+  
+  #engine-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
   }
   
   #search-input {
     color: rgba(255, 255, 255, 0.9);
   }
   
+  #search-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+  
   .search-engine-menu {
     background: #2a2a2a;
-    border-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+  
+  .search-engine-item {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .search-engine-item:hover {
+    background-color: #3a3a3a;
   }
   
   .search-engine-item.active {
@@ -55,8 +83,12 @@
   }
   
   .search-engine-add {
-    border-color: #444;
+    border-top: 1px solid #444;
     color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .search-engine-add:hover {
+    background-color: #3a3a3a;
   }
   
   /* 时钟样式调整 */
@@ -135,7 +167,7 @@
   /* 模态框样式调整 */
   .modal-content, 
   .notification {
-    background-color: #2a2a2a;
+    background-color: rgba(30, 30, 30, 0.9);
     color: rgba(255, 255, 255, 0.9);
   }
   

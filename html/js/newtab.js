@@ -22,8 +22,8 @@ import {
     preloadIcons 
 } from './modules/iconManager.js';
 import { 
-    initClock, 
-    updateClock 
+    updateClock,
+    initClockWidget   
 } from './modules/clockWidget.js';
 import { 
     showLoadingIndicator,
@@ -137,7 +137,7 @@ async function init() {
             {
                 name: '时钟组件',
                 action: () => {
-                    initClock();
+                    initClockWidget(); // 将 initClock() 改为 initClockWidget()
                     return Promise.resolve();
                 },
                 message: '正在加载时钟组件...',
@@ -358,3 +358,12 @@ document.addEventListener('DOMContentLoaded', () => {
 export {
     VERSION
 };
+
+function initPage() {
+    // ...现有的代码...
+    
+    // 初始化时钟组件
+    initClockWidget();
+    
+    // ...其他初始化代码...
+}
