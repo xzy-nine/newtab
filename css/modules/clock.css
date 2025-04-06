@@ -1,32 +1,57 @@
 /* 时钟相关样式 */
 
-@property --h { /* 时钟属性 */
-  syntax: '<integer>';
-  inherits: false;
-  initial-value: 0;
-}
-
-@property --m { 
-  syntax: '<integer>';
-  inherits: false;
-  initial-value: 0;
-}
-
-@property --s { 
-  syntax: '<integer>';
-  inherits: false;
-  initial-value: 0;
-}
-
 /* 八段数码管样式 */
 .time {
-  display: flex;
+  display: flex; /* 使用标准flex布局 */
+  flex-direction: row !important; /* 强制水平排列 */
   align-items: center;
-  justify-content: center;
+  justify-content: center; /* 内部内容居中 */
   position: absolute;
   top: 5%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%); /* 元素本身居中 */
+  width: auto;
+  min-width: 450px; /* 确保有足够宽度 */
+  height: 80px;
+  flex-wrap: nowrap !important; /* 强制不换行 */
+  white-space: nowrap;
+  /* 添加以下属性解决换行问题 */
+  max-width: 100vw; /* 最大宽度不超过视口宽度 */
+  overflow: visible; /* 允许内容溢出而不裁剪 */
+  
+  /* 添加以下属性确保居中 */
+  text-align: center; /* 文本居中 */
+  margin: 0 auto; /* 自动外边距帮助居中 */
+  position: absolute; /* 确保绝对定位正确 */
+  transform-origin: center center; /* 变换原点在中心 */
+}
+
+/* 创建内部容器来确保对齐 */
+.time-inner-container {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+/* 创建时钟分组 */
+.hour-group, .minute-group, .second-group {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* 将时钟分组成小组，确保组内元素不会分开 */
+.time::before {
+  content: "";
+  display: table;
+}
+
+.time::after {
+  content: "";
+  display: table;
+  clear: both;
 }
 
 /* 数码管容器 */
@@ -34,14 +59,16 @@
   position: relative;
   width: 40px;
   height: 80px;
-  margin: 0 5px;
+  margin: 0 2px;
+  display: inline-block;
+  flex-shrink: 0; /* 防止压缩 */
 }
 
 /* 数码管段样式 - 共8段(a-g, dp) */
 .segment {
   position: absolute;
-  background-color: #ff0000;
-  box-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;
+  background-color: #000000; 
+  box-shadow: 0 0 10px #ffffff, 0 0 20px #535353; 
   opacity: 0.1;
   transition: opacity 0.1s;
 }
@@ -51,30 +78,33 @@
   width: 30px;
   height: 6px;
   left: 5px;
+  background-color: #000000;
 }
 
 /* 垂直段 */
 .segment-v {
   width: 6px;
-  height: 30px;
+  height: 34px; /* 增加高度 */
 }
 
 /* 定义各段位置 */
 .segment-a { top: 0; left: 5px; }                  /* 上横 */
-.segment-b { top: 5px; right: 0; }      /* 右上竖 */
-.segment-c { bottom: 5px; right: 0; }   /* 右下竖 */
+.segment-b { top: 3px; right: 0; }      /* 右上竖 */
+.segment-c { bottom: 3px; right: 0; }   /* 右下竖 */
 .segment-d { bottom: 0; left: 5px; }               /* 下横 */
-.segment-e { bottom: 5px; left: 0; }    /* 左下竖 */
-.segment-f { top: 5px; left: 0; }       /* 左上竖 */
+.segment-e { bottom: 3px; left: 0; }    /* 左下竖 */
+.segment-f { top: 3px; left: 0; }       /* 左上竖 */
 .segment-g { top: 37px; left: 5px; }               /* 中横 */
 .segment-dp { right: -10px; bottom: 0; width: 6px; height: 6px; } /* 小数点 */
 
 /* 冒号样式 */
 .split {
+  height: 80px; /* 调整高度与数字一致 */
+  margin: 0 5px; /* 左右边距 */
   position: relative;
   width: 10px;
-  height: 10px;
-  margin: 0 5px;
+  flex-shrink: 0; /* 防止压缩 */
+  display: inline-block; /* 确保显示为行内块 */
 }
 
 .split::before, .split::after {
@@ -82,8 +112,8 @@
   position: absolute;
   width: 6px;
   height: 6px;
-  background-color: #ff0000;
-  box-shadow: 0 0 5px #ff0000, 0 0 10px #ff0000;
+  background-color: #000000;
+  box-shadow: 0 0 5px #000000, 0 0 10px #000000;
   border-radius: 50%;
 }
 
@@ -172,82 +202,7 @@
 .digit-9 .segment-g { opacity: 1; }
 .digit-9 .segment-e { opacity: 0; }
 
-/* 数字时钟样式 */
-.clock {
-  --step: 60s;
-  font-family: monospace;
-  font-size: 700%;
-  position: absolute;
-  top: 5%;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #ff0000;
-  background-color: transparent;
-  text-shadow: 
-    0 0 5px #ff0000,
-    0 0 10px #ff0000,
-    0 0 20px #ff0000;
-}
-
-.hour::after,
-.minitus::after,
-.seconds::after {
-  display: inline-block;
-  padding: 0.1em 0.2em;
-  margin: 0 0.05em;
-  background: #220000;
-  border-radius: 0.1em;
-  box-shadow: 
-    0 0 2px #ff0000,
-    inset 0 0 5px #ff0000;
-}
-
-.split {
-  color: #ff0000;
-  text-shadow: 
-    0 0 5px #ff0000,
-    0 0 10px #ff0000;
-}
-
-.hour::after {
-  counter-reset: hour var(--h);
-  content: counter(hour, decimal-leading-zero);
-  animation: hour calc(var(--step) * 60 * 24) infinite steps(24);
-  animation-delay: calc(-1 * var(--step) * var(--dh) * 60);
-}
-
-.minitus::after {
-  counter-reset: minitus var(--m);
-  content: counter(minitus, decimal-leading-zero);
-  animation: minitus calc(var(--step) * 60) infinite steps(60);
-  animation-delay: calc(-1 * var(--step) * var(--dm));
-}
-
-.seconds::after {
-  counter-reset: seconds var(--s);
-  content: counter(seconds, decimal-leading-zero);
-  animation: seconds var(--step) infinite steps(60);
-  animation-delay: calc(-1 * var(--step) * var(--ds));
-}
-
-@keyframes hour {
-  to {
-      --h: 24
-  }
-}
-
-@keyframes minitus {
-  to {
-      --m: 60
-  }
-}
-
-@keyframes seconds {
-  to {
-      --s: 60
-  }
-}
-
+/* 保留闪烁动画，这个是使用的 */
 @keyframes shark {
   0%, 100% {
       opacity: 1;
