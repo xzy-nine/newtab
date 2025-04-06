@@ -3,7 +3,7 @@
  * 负责处理Chrome书签和自定义书签的显示和交互
  */
 
-import { getDomain } from './utils.js';
+import { getDomain, showModal } from './utils.js';
 import { getI18nMessage } from './i18n.js';
 import { 
     preloadIcons, 
@@ -543,33 +543,9 @@ function createBookmarkElement(bookmark, index) {
  * 显示添加书签的模态框
  */
 function showBookmarkModal() {
-    // 获取模态框元素
-    const modal = document.getElementById('bookmark-modal');
-    if (!modal) return;
-    
-    // 显示模态框
-    modal.style.display = 'block';
-    
-    // 设置取消按钮的点击事件
-    const cancelBtn = document.getElementById('bookmark-cancel');
-    if (cancelBtn) {
-        // 移除旧的事件监听器
-        const newCancelBtn = cancelBtn.cloneNode(true);
-        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-        
-        newCancelBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-    }
-    
-    // 点击模态框外关闭
-    window.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.style.display = 'none';
-        }
-    });
+    // 使用utils.js中的函数显示模态框
+    showModal('bookmark-modal');
 }
-
 
 /**
  * 显示书签上下文菜单

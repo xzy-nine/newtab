@@ -24,16 +24,33 @@ export function initClock() {
     root.style.setProperty('--ds', now.getSeconds());
     
     // 使用JavaScript更新时间
-    updateClock();
+    updateClockDisplay();
     
     // 定期更新时间
-    setInterval(updateClock, 1000);
+    setInterval(updateClockDisplay, 1000);
+}
+
+/**
+ * 更新时钟显示
+ */
+export function updateClockDisplay() {
+    // 保持现有代码不变
+    // ...
 }
 
 /**
  * 更新时钟
+ * 用于在需要时更新时钟
  */
-function updateClock() {
+export function updateClock() {
+    // 调用内部实现
+    updateClockDisplayInternal();
+}
+
+/**
+ * 更新时钟显示
+ */
+function updateClockDisplayInternal() {
     const timeElement = document.getElementById('time');
     if (!timeElement) return;
     
@@ -64,4 +81,13 @@ function updateClock() {
     timeElement.style.webkitTextStroke = '2px rgba(255, 255, 255, 0.541)';
     timeElement.style.zIndex = '1'; // 确保时钟在背景之上
     timeElement.style.fontSize = '700%';
+}
+
+/**
+ * 更新时钟显示
+ * 用于在标签页重新激活时更新时间
+ */
+export function refreshClock() {
+    // 更新时钟显示
+    updateClockDisplayInternal();
 }

@@ -454,3 +454,17 @@ export async function updateBackgroundSettings(newSettings) {
     
     await setBackgroundImage();
 }
+
+/**
+ * 刷新背景图片
+ * 用于在标签页重新激活时更新背景图片
+ */
+export async function refreshBackgroundImage() {
+    // 检查是否需要刷新背景图片
+    // 例如，如果设置了每天或每小时更换图片
+    try {
+        // 这里可以添加刷新背景的逻辑
+    } catch (error) {
+        console.error('Failed to refresh background image:', error);
+    }
+}
