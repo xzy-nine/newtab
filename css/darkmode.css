@@ -47,7 +47,7 @@
   
   .search-engine-menu {
     background: #2a2a2a;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.1);
   }
   
   .search-engine-item.active {
@@ -55,14 +55,14 @@
   }
   
   .search-engine-add {
-    border-top: 1px solid #444;
+    border-color: #444;
     color: rgba(255, 255, 255, 0.9);
   }
   
   /* 时钟样式调整 */
   .time {
     color: rgba(255, 255, 255, 0.9);
-    -webkit-text-stroke: 1px rgba(0, 0, 0, 0.3);
+    -webkit-text-stroke-color: rgba(0, 0, 0, 0.3);
     background-color: rgba(30, 30, 30, 0.3);
   }
   
@@ -94,7 +94,10 @@
   }
   
   .shortcut-button {
-    background: rgba(50, 50, 50, 0.7);
+    background-color: rgba(60, 60, 60, 0.7);
+    background-blend-mode: lighten;  /* 使用lighten混合模式让图标更清晰 */
+    filter: brightness(1.15) contrast(1.1); /* 轻微增加亮度和对比度 */
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.2); /* 轻微的发光效果以增强可见性 */
   }
   
   .shortcut-title {
@@ -107,6 +110,19 @@
   
   .bookmark-title {
     color: rgba(255, 255, 255, 0.9);
+  }
+  
+  /* 修复书签图标在深色模式下的显示 */
+  .bookmark-icon img {
+    filter: brightness(1.2) contrast(1.1);
+  }
+  
+  .add-bookmark {
+    background: rgba(40, 100, 150, 0.3); /* 修改添加书签按钮的背景色以适应深色模式 */
+  }
+  
+  .add-icon {
+    filter: brightness(1.5); /* 增加图标亮度 */
   }
   
   #shortcut-context-menu,

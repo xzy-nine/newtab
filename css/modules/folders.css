@@ -1,66 +1,73 @@
 /* 文件夹相关样式 */
 
-#folder-list { /* 文件夹列表 */
-  width: auto; /* 设置宽度为自动 */
-  min-width: 15%; /* 设置最小宽度为15% */
-  height: 100%; /* 设置高度为100% */
-  display: flex; /* 设置为弹性布局 */
-  flex-direction: column; /* 设置为垂直方向 */
-  align-items: flex-end; /* 设置水平靠右 */
-  justify-content: flex-start; /* 设置垂直靠上 */
-  overflow-y: auto; /* 设置垂直滚动 */
-  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的黑色 */
-  border-radius: 10px; /* 设置边框圆角为10px */
-  padding: 10px; /* 设置内边距为10px */
+/* 文件夹列表容器 - 控制整个文件夹区域的主要样式和布局 */
+#folder-list { 
+  min-width: 200px; /* 设置最小宽度为200px，确保容器不会过窄 */
+  max-width: 280px; /* 设置最大宽度为280px，限制容器宽度 */
+  height: 100%; /* 设置高度为100%，占据父容器的全部高度 */
+  display: flex; /* 使用弹性布局 */
+  flex-direction: column; /* 设置子元素垂直排列 */
+  align-items: flex-start; /* 子元素左对齐 */
+  justify-content: flex-start; /* 子元素从顶部开始排列 */
+  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明灰色 */
+  border-radius: 10px; /* 设置圆角为10px */
+  padding: 10px 10px 20px; /* 设置内边距，上下左右分别为10px和20px */
+  position: relative; /* 设置相对定位 */
+  overflow-y: auto; /* 允许垂直滚动 */
+  overflow-x: hidden; /* 隐藏水平滚动条 */
 }
 
-.folder-children { /* 子文件夹容器 */
-  display: none; /* 默认隐藏 */
-  margin-left: 20px; /* 设置左外边距为20px */
-  border-left: 2px solid var(--primary-color);
-  padding-left: 8px;
-  opacity: 0;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin 0.3s ease-out;
+/* 子文件夹容器样式 - 控制每个折叠子文件夹的容器 */
+/* 默认状态下子文件夹不可见且不可交互 */
+.folder-children {
+  display: block; /* 设置为块级元素 */
+  transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out; /* 添加高度和透明度的过渡效果 */
+  overflow: hidden; /* 隐藏超出容器的内容 */
+  padding-left: 8px; /* 设置左内边距为8px */
+  margin-left: 10px; /* 左外边距，这里保留以确保子文件夹按钮整体缩进 */
+  position: relative; /* 保持相对定位 */
+  z-index: 1; /* 设置堆叠顺序为1 */
+  pointer-events: none; /* 禁用鼠标事件 */
+  width: calc(100% - 10px); /* 设置宽度，防止溢出 */
+  box-sizing: border-box; /* 确保padding计入总宽度 */
 }
 
+/* 当文件夹打开时，使子文件夹可见且可交互 */
 .folder-button.open + .folder-children {
-  display: block;
-  opacity: 1;
-  max-height: 2000px; /* 设置足够大的高度以容纳所有内容 */
+  opacity: 1; /* 设置透明度为1，使其可见 */
+  max-height: none; /* 使用auto替代固定高度 */
+  pointer-events: auto; /* 启用鼠标事件 */
+  z-index: 2; /* 设置堆叠顺序为2，确保其显示在其他元素之上 */
+  overflow: visible; /* 允许内容溢出 */
 }
 
-.folder-children::before { /* 子文件夹容器的伪元素 */
-  content: ''; /* 内容为空 */
-  position: absolute; /* 设置绝对定位 */
-  left: -1%; /* 设置左边距为-1% */
-  top: 0; /* 设置顶部对齐 */
-  bottom: 0; /* 设置底部对齐 */
-  width: 2px; /* 设置宽度为2px */
-  background-color: var(--primary-color); /* 设置背景颜色为主要颜色 */
+/* 删除子文件夹容器的竖线装饰，简化视觉层次 */
+.folder-children::before { 
+  display: none; /* 移除竖线 */
 }
 
-.folder-button { /* 文件夹按钮 */
-  width: 85%; /* 设置宽度为85% */
-  height: 30px; /* 设置高度为45% */
+/* 文件夹按钮基础样式 - 控制每个文件夹的点击区域和视觉外观 */
+/* 确保文件夹按钮具有一致的样式和交互行为 */
+.folder-button { 
+  width: calc(100% - 5px); /* 稍微减小宽度 */
+  min-height: 30px; /* 使用min-height替代固定高度 */
   display: flex; /* 设置为弹性布局 */
   align-items: center; /* 设置垂直居中 */
-  justify-content: center; /* 设置水平居中 */
-  border: none; /* 设置无边框 */
+  justify-content: flex-start; /* 将内容左对齐 */
+  border: 1px solid rgba(0, 0, 0, 0.1); /* 添加边框以明确元素边界 */
   border-radius: 10px; /* 设置边框圆角为10px */
   background: white; /* 设置背景颜色为白色 */
   box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
   cursor: pointer; /* 设置鼠标样式为指针 */
-  margin: 10px; /* 设置外边距为10px */
-  transition: box-shadow 0.3s, border-radius 0.3s; /* 设置阴影和圆角的过渡时间为0.3秒 */
-  user-select: none; /* 禁止选择文本 */
-  position: relative;
-  margin: 4px 0;
+  margin: 4px 0; /* 设置上下外边距 */
   transition: background-color 0.2s;
   overflow: hidden;
+  z-index: 2; /* 按钮z-index高于折叠的子容器 */
+  padding: 0; /* 移除内边距，让内容通过folder-content控制 */
+  box-sizing: border-box;
 }
 
+/* 文件夹按钮底部指示条 - 当文件夹打开时会显示一条底部横线 */
 .folder-button::after {
   content: '';
   position: absolute;
@@ -72,71 +79,114 @@
   transition: width 0.3s ease;
 }
 
+/* 打开状态下文件夹按钮的底部指示条动画 */
 .folder-button.open::after {
   width: 100%;
 }
 
-.folder-button:hover { /* 鼠标移动到文件夹按钮上时 */
-  box-shadow: 0 0 15px var(--secondary-color); /* 增加阴影 */
-  border-radius: 10px; /* 减小圆角 */
+/* 删除第一个hover样式，保留第二个更具体的hover样式 */
+/* 文件夹按钮悬停状态 - 改变阴影效果增强用户体验 */
+.folder-button:hover { 
+  box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-.child-container { /* 子文件夹容器 */
+/* 子文件夹嵌套视觉效果 - 通过缩进和竖线表示层次结构 */
+.child-container { 
   margin-left: 20px; /* 设置左外边距为20px */
   border-left: 2px solid #ccc; /* 设置左边框为2px的浅灰色实线 */
   padding-left: 10px; /* 设置左内边距为10px */
 }
 
-.folder-button:hover { /* 当鼠标移动到文件夹按钮时 */
-  box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
-}
-
+/* 文件夹按钮点击动画效果 - 提供触觉反馈 */
 .folder-button:active {
   transform: scale(0.95); /* 缩小按钮 */
   transition: transform 0.1s; /* 设置缩放动画的过渡时间为0.1秒 */
 }
 
+/* 文件夹内容布局 - 控制文件夹按钮内部的元素排列 */
 .folder-content {
   display: flex;
   align-items: center;
-  padding: 6px 8px;
+  padding: 6px;
+  justify-content: flex-start; /* 确保内容左对齐 */
+  width: 100%; /* 占据整个按钮宽度 */
+  overflow: hidden; /* 防止内容溢出 */
 }
 
+/* 文件夹展开/折叠箭头 - 指示文件夹状态的视觉元素 */
 .folder-arrow {
-  font-size: 10px;
+  font-size: 14px; /* 进一步增大字体大小以提高可见性 */
   margin-right: 6px;
-  transition: transform 0.3s ease, color 0.3s ease;
-  color: #666;
+  transition: transform 0.3s ease;
   width: 12px;
   text-align: center;
+  /* 改进反色效果 */
+  color: #222; /* 更深的基础颜色提高对比度 */
+  mix-blend-mode: difference;
+  filter: invert(0.9); /* 增强反色效果 */
+  font-weight: bold; /* 加粗箭头 */
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.8); /* 添加白色文字阴影 */
 }
 
+/* 文件夹打开状态下箭头的旋转动画 - 移除颜色变化 */
 .folder-button.open > .folder-content .folder-arrow {
   transform: rotate(90deg);
-  color: var(--primary-color);
+  /* 移除颜色变化 */
+  color: #222; /* 保持与默认状态相同的颜色 */
+  filter: invert(0.9);
 }
 
+/* 文件夹按钮悬停状态下箭头的效果增强但不改变基本颜色 */
+.folder-button:hover .folder-arrow {
+  filter: invert(1); /* 悬停时增强反色效果 */
+  text-shadow: 0 0 2px rgba(255, 255, 255, 1); /* 增强文字阴影 */
+}
+
+/* 选中状态下箭头的颜色 - 使用反色而非白色 */
+.folder-button.selected .folder-arrow {
+  /* 使用黑色而不是白色，在蓝色背景上更醒目 */
+  color: #000;
+  filter: invert(0.7) brightness(5); /* 调整反色和亮度 */
+  text-shadow: 0 0 2px rgba(255, 255, 255, 1); /* 增强白色阴影 */
+  opacity: 0.9; /* 适当降低不透明度增加对比 */
+}
+
+/* 文件夹图标容器 - 确保图标大小一致且对齐 */
 .folder-icon {
-  margin-right: 6px;
+  flex-shrink: 0; /* 防止图标被压缩 */
+  width: 24px;
+  height: 24px;
+  margin-right: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* 文件夹名称样式 - 处理长文本溢出和对齐问题 */
 .folder-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  max-width: 180px; /* 减小宽度以适应布局 */
+  text-align: left; /* 确保文本左对齐 */
+  padding-right: 5px; /* 右侧添加间距 */
+  font-size: 14px; /* 调整字体大小 */
 }
 
+/* 打开状态的文件夹按钮背景色变化 - 视觉状态指示 */
 .folder-button.open {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
+/* 子文件夹容器过渡效果 - 控制展开/折叠的平滑动画 */
 .folder-children {
   transition: max-height 0.3s ease-in-out;
   overflow: hidden;
 }
 
-/* 文件夹展开/收起指示器 */
+/* 文件夹图标样式 - 作为文件夹类型的视觉标识 */
 .folder-button .folder-icon {
   /* 使用内容替换而非伪元素添加 */
   width: 24px;
@@ -147,9 +197,104 @@
   justify-content: center;
 }
 
-/* 移除之前的伪元素样式 */
+/* 禁用旧的伪元素图标样式，改为使用内容替换方案 */
 .folder-button.open .folder-icon::before,
 .folder-button:not(.open) .folder-icon::before {
   content: none; /* 禁用伪元素 */
+}
+
+/* 文件夹按钮边框样式 - 用于调试和明确元素边界 */
+.folder-button {
+  border: 1px solid rgba(0, 0, 0, 0.1); /* 添加边框以明确元素边界 */
+}
+
+/* 文件夹列表容器响应式调整 - 确保在不同视口尺寸下正常工作 */
+#folder-list {
+  min-width: 15%; /* 确保宽度足够 */
+  max-height: 100%; /* 确保高度足够 */
+  overflow-y: auto; /* 允许垂直滚动 */
+}
+
+/* 文件夹名称文本处理 - 防止长名称破坏布局 */
+.folder-name {
+  flex: 1;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 200px; /* 防止超长文本导致布局问题 */
+}
+
+/* 关闭状态的子文件夹容器样式 - 控制折叠状态的视觉效果 */
+.folder-children-closed {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+/* 打开状态的子文件夹容器样式 - 控制展开状态的视觉效果和过渡 */
+.folder-children-open {
+  display: block;
+  max-height: none;
+  opacity: 1;
+  transition: max-height 0.3s, opacity 0.3s;
+  overflow: visible; /* 允许子元素溢出可见 */
+}
+
+/* 添加新样式以替代内联样式 */
+/* 文件夹内容缩进样式 - 根据层级设置不同的缩进值 */
+.folder-indent-0,
+.folder-indent-1,
+.folder-indent-2,
+.folder-indent-3,
+.folder-indent-4,
+.folder-indent-5,
+.folder-indent-6 {
+  margin-left: 0px; /* 移除所有内容的缩进 */
+}
+
+/* 初始隐藏状态样式 */
+.folder-children-initial {
+  max-height: 0;
+  opacity: 0;
+  display: block;
+  overflow: hidden;
+}
+
+/* 快捷方式列表样式 */
+#shortcut-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+#shortcut-list.hidden {
+  display: none;
+}
+
+/* 用于height计算的克隆元素 */
+.height-calculation-clone {
+  max-height: none;
+  opacity: 0;
+  position: absolute;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* 文件夹按钮选中状态 */
+.folder-button.selected {
+  background-color: var(--primary-color, #4285f4);
+  box-shadow: 0 0 12px rgba(66, 133, 244, 0.5);
+}
+
+.folder-button.selected .folder-name,
+.folder-button.selected .folder-icon,
+.folder-button.selected .folder-arrow {
+  color: white;
+}
+
+/* 选中状态悬停效果 */
+.folder-button.selected:hover {
+  background-color: var(--primary-color-dark, #3367d6);
+  box-shadow: 0 0 15px rgba(66, 133, 244, 0.7);
 }
 
