@@ -179,11 +179,17 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0); /* 将背景改为完全透明 */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 9999;
     transition: opacity 0.5s;
+    pointer-events: none; /* 使元素不接收任何鼠标事件，允许点击穿透 */
+  }
+  
+  /* 加载屏幕中需要接收点击事件的元素 */
+  #loading-screen .clickable {
+    pointer-events: auto; /* 恢复特定元素的点击事件 */
   }
