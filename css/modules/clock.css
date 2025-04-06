@@ -83,28 +83,3 @@
       opacity: 0;
   }
 }
-
-/* 深色模式支持 */
-@media (prefers-color-scheme: dark) {
-  .time {
-    color: rgba(255, 255, 255, 0.9);
-    -webkit-text-stroke: 1px rgba(0, 0, 0, 0.3);
-    background-color: rgba(30, 30, 30, 0.3);
-  }
-}
-
-/* 响应式设计优化 */
-@media screen and (max-width: 768px) {
-  .time {
-    font-size: clamp(1.5rem, 6vw, 3rem);
-    padding: 3px 10px;
-  }
-}
-
-/* 竖屏优化 - 当设备处于竖屏方向时应用以下样式 */
-@media screen and (orientation: portrait) {
-  .time {
-    font-size: 700%; /* 时钟字体大小调整为700% */
-    top: 2%; /* 距顶部位置调整为5% */
-  }
-}
