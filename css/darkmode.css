@@ -108,9 +108,7 @@
     color: rgba(255, 255, 255, 0.9);
   }
   
-  .folder-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
+
   
   .child-container {
     border-left-color: #555;
@@ -122,64 +120,32 @@
   
   /* 快捷方式样式调整 */
   #shortcut-list {
-    background: rgba(40, 40, 40, 0.7);
-  }
-  
-  .shortcut-button {
-    background-color: rgba(60, 60, 60, 0.7);
-    background-blend-mode: lighten;  /* 使用lighten混合模式让图标更清晰 */
-    filter: brightness(1.15) contrast(1.1); /* 轻微增加亮度和对比度 */
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.2); /* 轻微的发光效果以增强可见性 */
-  }
-  
-  .shortcut-title {
-    color: rgba(255, 255, 255, 0.9);
-  }
-  
-  .bookmark {
     background: rgba(50, 50, 50, 0.7);
   }
   
-  .bookmark-title {
-    color: rgba(255, 255, 255, 0.9);
+  .shortcut-button {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    color: #333;
   }
   
-  /* 修复书签图标在深色模式下的显示 */
-  .bookmark-icon img {
-    filter: brightness(1.2) contrast(1.1);
+  .shortcut-button:hover, 
+  .shortcut-button:focus {
+    background-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 0 15px rgba(58, 160, 255, 0.6);
+    transform: scale(1.1);
   }
   
-  .add-bookmark {
-    background: rgba(40, 100, 150, 0.3); /* 修改添加书签按钮的背景色以适应深色模式 */
+  /* 调整图标亮度 */
+  .shortcut-button img {
+    filter: brightness(0.8) contrast(1.2);
   }
   
-  .add-icon {
-    filter: brightness(1.5); /* 增加图标亮度 */
-  }
-  
-  #shortcut-context-menu,
-  #bookmark-context-menu {
-    border-color: #444;
-    background: #2a2a2a;
-    color: rgba(255, 255, 255, 0.9);
-  }
-  
-  /* 模态框样式调整 */
-  .modal-content, 
-  .notification {
-    background-color: rgba(30, 30, 30, 0.9);
-    color: rgba(255, 255, 255, 0.9);
-  }
-  
-  .form-group input {
-    background-color: #333;
-    color: rgba(255, 255, 255, 0.9);
-    border-color: #444;
-  }
-  
-  .btn {
-    background-color: #444;
-    color: rgba(255, 255, 255, 0.9);
+  .shortcut-title {
+    color: inherit;
+    text-shadow: none;
   }
   
   .notification-header {
@@ -203,5 +169,125 @@
   #icon-selector-modal .icon-option:hover {
     border-color: var(--primary-color);
     background-color: #2a3f5a;
+  }
+}
+
+/* 暗黑模式相关样式补充 */
+
+/* 滚动条样式调整 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(40, 40, 40, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 100, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.7);
+}
+
+/* 输入框选中文本颜色 */
+::selection {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* 工具提示样式调整 */
+.tooltip {
+  background-color: #2a2a2a;
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid #444;
+}
+
+/* 标签样式调整 */
+.tag {
+  background-color: #3a3a3a;
+  color: rgba(255, 255, 255, 0.9);
+  border-color: #555;
+}
+
+.tag:hover {
+  background-color: #4a4a4a;
+}
+
+/* 开关控件样式调整 */
+.switch {
+  background-color: #444;
+}
+
+.switch::before {
+  background-color: #aaa;
+}
+
+.switch:checked {
+  background-color: var(--primary-color);
+}
+
+/* 进度条样式调整 */
+.progress-bar {
+  background-color: #333;
+}
+
+.progress-value {
+  background-color: var(--primary-color);
+}
+
+/* 分隔线样式调整 */
+.divider {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 下拉选择框样式调整 */
+.select-dropdown {
+  background-color: #2a2a2a;
+  border-color: #444;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.select-dropdown:hover {
+  background-color: #3a3a3a;
+}
+
+/* 选项卡样式调整 */
+.tab {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.tab:hover:not(.active) {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 加载动画颜色调整 */
+@keyframes loading-pulse {
+  0%, 100% {
+    background-color: rgba(58, 160, 255, 0.3);
+  }
+  50% {
+    background-color: rgba(58, 160, 255, 0.7);
+  }
+}
+
+/* 骨架屏加载动画 */
+@keyframes skeleton-loading {
+  0% {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  50% {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  100% {
+    background-color: rgba(255, 255, 255, 0.05);
   }
 }

@@ -160,7 +160,7 @@ const messages = {
         newTab: "新标签页",
         enterEngineUrl: "请输入搜索引擎官网链接，例如：https://www.google.com",
         searchPlaceholder: "请在此搜索",
-        backgroundButton: "背景设置",
+        backgroundButton: "背景",
         backgroundSetFailed: "背景图片设置失败，请检查文件名是否包含空格或特殊字符",
         settingBackgroundType: "正在设置背景类型：",
         localStorageImageFailed: "从本地存储获取图片失败",
