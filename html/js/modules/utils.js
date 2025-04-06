@@ -432,3 +432,19 @@ export function initUIEvents() {
     // 初始化模态框事件
     initModalEvents();
 }
+
+/**
+ * 强制隐藏加载指示器
+ * @returns {boolean} - 是否成功隐藏
+ */
+export function forceHideLoading() {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+        return true;
+    }
+    return false;
+}
+
+// 在 newtab.js 末尾添加以下代码使其成为全局函数
+window.forceHideLoading = forceHideLoading;

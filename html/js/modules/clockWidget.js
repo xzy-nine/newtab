@@ -25,37 +25,50 @@ export function initClockWidget() {
  * 创建时钟DOM元素
  */
 function createClockElement() {
-    // 检查是否已经存在时钟元素
     if (document.getElementById('time')) return;
 
-    // 创建时钟容器
     const timeDiv = document.createElement('div');
     timeDiv.className = 'time';
     timeDiv.id = 'time';
 
-    // 创建时钟内部元素
-    const hourSpan = document.createElement('span');
-    hourSpan.className = 'hour';
+    // 创建小时、分钟、秒钟的数码管
+    const hourTens = createDigit();
+    const hourOnes = createDigit();
+    const colon1 = createColon();
+    const minuteTens = createDigit();
+    const minuteOnes = createDigit();
+    const colon2 = createColon();
+    const secondTens = createDigit();
+    const secondOnes = createDigit();
 
-    const splitElement1 = document.createElement('a');
-    splitElement1.className = 'split';
-    splitElement1.textContent = ':';
-
-    const minuteSpan = document.createElement('span');
-    minuteSpan.className = 'minitus';
-
-    const splitElement2 = document.createElement('a');
-    splitElement2.className = 'split';
-    splitElement2.textContent = ':';
-
-    const secondsSpan = document.createElement('span');
-    secondsSpan.className = 'seconds';
-
-    // 将元素添加到时钟容器中
-    timeDiv.append(hourSpan, splitElement1, minuteSpan, splitElement2, secondsSpan);
-
-    // 将时钟添加到body
+    timeDiv.append(
+        hourTens, hourOnes, colon1, 
+        minuteTens, minuteOnes, colon2,
+        secondTens, secondOnes
+    );
     document.body.appendChild(timeDiv);
+}
+
+function createDigit() {
+    const digit = document.createElement('div');
+    digit.className = 'digit';
+    
+    // 创建8段数码管
+    const segments = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'];
+    segments.forEach(seg => {
+        const segment = document.createElement('div');
+        segment.className = `segment segment-${seg}`;
+        segment.classList.add(seg.includes('h') ? 'segment-h' : 'segment-v');
+        digit.appendChild(segment);
+    });
+    
+    return digit;
+}
+
+function createColon() {
+    const colon = document.createElement('div');
+    colon.className = 'split';
+    return colon;
 }
 
 /**
@@ -92,7 +105,6 @@ export function updateClock() {
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
     
-    // 处理12小时制
     if (!clockConfig.format24h) {
         hours = hours % 12 || 12;
     }
@@ -100,31 +112,33 @@ export function updateClock() {
     const timeElement = document.getElementById('time');
     if (!timeElement) return;
     
-    // 更新CSS变量
-    const props = {
-        '--h': hours, 
-        '--m': minutes, 
-        '--s': seconds,
-        '--dh': hours,
-        '--dm': minutes,
-        '--ds': seconds
-    };
+    // 更新小时显示
+    updateDigit(timeElement.children[0], Math.floor(hours / 10));
+    updateDigit(timeElement.children[1], hours % 10);
     
-    Object.entries(props).forEach(([prop, value]) => {
-        timeElement.style.setProperty(prop, value);
-    });
+    // 更新分钟显示
+    updateDigit(timeElement.children[3], Math.floor(minutes / 10));
+    updateDigit(timeElement.children[4], minutes % 10);
     
-    // 处理秒的显示/隐藏
-    const secondsElement = document.querySelector('.seconds');
-    const secondColon = document.querySelectorAll('.split')[1];
-    
-    if (secondsElement) {
-        secondsElement.style.display = clockConfig.showSeconds ? 'inline' : 'none';
+    // 更新秒钟显示
+    if (clockConfig.showSeconds) {
+        updateDigit(timeElement.children[6], Math.floor(seconds / 10));
+        updateDigit(timeElement.children[7], seconds % 10);
+        timeElement.children[5].style.display = 'block';
+        timeElement.children[6].style.display = 'block';
+        timeElement.children[7].style.display = 'block';
+    } else {
+        timeElement.children[5].style.display = 'none';
+        timeElement.children[6].style.display = 'none';
+        timeElement.children[7].style.display = 'none';
     }
-    
-    if (secondColon) {
-        secondColon.style.display = clockConfig.showSeconds ? 'inline' : 'none';
-    }
+}
+
+function updateDigit(digitElement, number) {
+    // 移除原有的数字类
+    digitElement.className = digitElement.className.replace(/\bdigit-\d\b/g, '');
+    // 添加新的数字类
+    digitElement.classList.add(`digit-${number}`);
 }
 
 /**

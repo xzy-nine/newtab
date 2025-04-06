@@ -5,38 +5,208 @@
   inherits: false;
   initial-value: 0;
 }
+
 @property --m { 
   syntax: '<integer>';
   inherits: false;
   initial-value: 0;
 }
+
 @property --s { 
   syntax: '<integer>';
   inherits: false;
   initial-value: 0;
 }
 
+/* 八段数码管样式 */
 .time {
   display: flex;
   align-items: center;
   justify-content: center;
-  --step: 60s;
-  font-family: Consolas, Monaco, monospace;
-  font-size: 700%; /* 将字体大小调整到700% */
   position: absolute;
-  top: 5%; /* 调整这个值以确保在搜索框上面 */
+  top: 5%;
   left: 50%;
   transform: translateX(-50%);
-  color: rgb(0, 0, 0); /* 设置字体颜色为主要颜色 */
-  background-color: rgba(255, 255, 255, 0.3);
-  padding: 5px 15px;
-  border-radius: 10px;
-  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.541); /* 添加白色描边 */
+}
+
+/* 数码管容器 */
+.digit {
+  position: relative;
+  width: 40px;
+  height: 80px;
+  margin: 0 5px;
+}
+
+/* 数码管段样式 - 共8段(a-g, dp) */
+.segment {
+  position: absolute;
+  background-color: #ff0000;
+  box-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;
+  opacity: 0.1;
+  transition: opacity 0.1s;
+}
+
+/* 水平段 */
+.segment-h {
+  width: 30px;
+  height: 6px;
+  left: 5px;
+}
+
+/* 垂直段 */
+.segment-v {
+  width: 6px;
+  height: 30px;
+}
+
+/* 定义各段位置 */
+.segment-a { top: 0; left: 5px; }                  /* 上横 */
+.segment-b { top: 5px; right: 0; }      /* 右上竖 */
+.segment-c { bottom: 5px; right: 0; }   /* 右下竖 */
+.segment-d { bottom: 0; left: 5px; }               /* 下横 */
+.segment-e { bottom: 5px; left: 0; }    /* 左下竖 */
+.segment-f { top: 5px; left: 0; }       /* 左上竖 */
+.segment-g { top: 37px; left: 5px; }               /* 中横 */
+.segment-dp { right: -10px; bottom: 0; width: 6px; height: 6px; } /* 小数点 */
+
+/* 冒号样式 */
+.split {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  margin: 0 5px;
+}
+
+.split::before, .split::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background-color: #ff0000;
+  box-shadow: 0 0 5px #ff0000, 0 0 10px #ff0000;
+  border-radius: 50%;
+}
+
+.split::before { top: 20px; }
+.split::after { bottom: 20px; }
+
+/* 数字0-9的段激活规则 */
+.digit-0 .segment-a,
+.digit-0 .segment-b,
+.digit-0 .segment-c,
+.digit-0 .segment-d,
+.digit-0 .segment-e,
+.digit-0 .segment-f { opacity: 1; }
+.digit-0 .segment-g { opacity: 0; }
+
+.digit-1 .segment-b,
+.digit-1 .segment-c { opacity: 1; }
+.digit-1 .segment-a,
+.digit-1 .segment-d,
+.digit-1 .segment-e,
+.digit-1 .segment-f,
+.digit-1 .segment-g { opacity: 0; }
+
+/* 数字2-9的段定义 */
+.digit-2 .segment-a,
+.digit-2 .segment-b,
+.digit-2 .segment-g,
+.digit-2 .segment-e,
+.digit-2 .segment-d { opacity: 1; }
+.digit-2 .segment-f,
+.digit-2 .segment-c { opacity: 0; }
+
+.digit-3 .segment-a,
+.digit-3 .segment-b,
+.digit-3 .segment-g,
+.digit-3 .segment-c,
+.digit-3 .segment-d { opacity: 1; }
+.digit-3 .segment-f,
+.digit-3 .segment-e { opacity: 0; }
+
+.digit-4 .segment-f,
+.digit-4 .segment-g,
+.digit-4 .segment-b,
+.digit-4 .segment-c { opacity: 1; }
+.digit-4 .segment-a,
+.digit-4 .segment-d,
+.digit-4 .segment-e { opacity: 0; }
+
+.digit-5 .segment-a,
+.digit-5 .segment-f,
+.digit-5 .segment-g,
+.digit-5 .segment-c,
+.digit-5 .segment-d { opacity: 1; }
+.digit-5 .segment-b,
+.digit-5 .segment-e { opacity: 0; }
+
+.digit-6 .segment-a,
+.digit-6 .segment-f,
+.digit-6 .segment-g,
+.digit-6 .segment-c,
+.digit-6 .segment-d,
+.digit-6 .segment-e { opacity: 1; }
+.digit-6 .segment-b { opacity: 0; }
+
+.digit-7 .segment-a,
+.digit-7 .segment-b,
+.digit-7 .segment-c { opacity: 1; }
+.digit-7 .segment-d,
+.digit-7 .segment-e,
+.digit-7 .segment-f,
+.digit-7 .segment-g { opacity: 0; }
+
+.digit-8 .segment-a,
+.digit-8 .segment-b,
+.digit-8 .segment-c,
+.digit-8 .segment-d,
+.digit-8 .segment-e,
+.digit-8 .segment-f,
+.digit-8 .segment-g { opacity: 1; }
+
+.digit-9 .segment-a,
+.digit-9 .segment-b,
+.digit-9 .segment-c,
+.digit-9 .segment-d,
+.digit-9 .segment-f,
+.digit-9 .segment-g { opacity: 1; }
+.digit-9 .segment-e { opacity: 0; }
+
+/* 数字时钟样式 */
+.clock {
+  --step: 60s;
+  font-family: monospace;
+  font-size: 700%;
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ff0000;
+  background-color: transparent;
+  text-shadow: 
+    0 0 5px #ff0000,
+    0 0 10px #ff0000,
+    0 0 20px #ff0000;
+}
+
+.hour::after,
+.minitus::after,
+.seconds::after {
+  display: inline-block;
+  padding: 0.1em 0.2em;
+  margin: 0 0.05em;
+  background: #220000;
+  border-radius: 0.1em;
+  box-shadow: 
+    0 0 2px #ff0000,
+    inset 0 0 5px #ff0000;
 }
 
 .split {
-  /* 移除动画，使冒号不再跳动 */
-  animation: none;
+  color: #ff0000;
+  text-shadow: 
+    0 0 5px #ff0000,
+    0 0 10px #ff0000;
 }
 
 .hour::after {
@@ -85,4 +255,10 @@
   50% {
       opacity: 0;
   }
+}
+
+/* 让冒号闪烁 */
+.split.blink::before,
+.split.blink::after {
+  animation: shark 1s infinite;
 }

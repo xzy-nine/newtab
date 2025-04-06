@@ -116,40 +116,33 @@
 
 /* 文件夹展开/折叠箭头 - 指示文件夹状态的视觉元素 */
 .folder-arrow {
-  font-size: 14px; /* 进一步增大字体大小以提高可见性 */
+  font-size: 14px;
   margin-right: 6px;
   transition: transform 0.3s ease;
   width: 12px;
   text-align: center;
-  /* 改进反色效果 */
-  color: #222; /* 更深的基础颜色提高对比度 */
-  mix-blend-mode: difference;
-  filter: invert(0.9); /* 增强反色效果 */
-  font-weight: bold; /* 加粗箭头 */
-  text-shadow: 0 0 1px rgba(255, 255, 255, 0.8); /* 添加白色文字阴影 */
+  /* 去除深色模式相关属性 */
+  color: #222;
+  font-weight: bold;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.2); /* 修改为黑色阴影 */
 }
 
-/* 文件夹打开状态下箭头的旋转动画 - 移除颜色变化 */
+/* 文件夹打开状态下箭头的旋转动画 */
 .folder-button.open > .folder-content .folder-arrow {
   transform: rotate(90deg);
-  /* 移除颜色变化 */
-  color: #222; /* 保持与默认状态相同的颜色 */
-  filter: invert(0.9);
+  color: #222;
 }
 
-/* 文件夹按钮悬停状态下箭头的效果增强但不改变基本颜色 */
+/* 文件夹按钮悬停状态下箭头的效果 */
 .folder-button:hover .folder-arrow {
-  filter: invert(1); /* 悬停时增强反色效果 */
-  text-shadow: 0 0 2px rgba(255, 255, 255, 1); /* 增强文字阴影 */
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.3); /* 修改为黑色阴影 */
 }
 
-/* 选中状态下箭头的颜色 - 使用反色而非白色 */
+/* 选中状态下箭头的颜色 */
 .folder-button.selected .folder-arrow {
-  /* 使用黑色而不是白色，在蓝色背景上更醒目 */
-  color: #000;
-  filter: invert(0.7) brightness(5); /* 调整反色和亮度 */
-  text-shadow: 0 0 2px rgba(255, 255, 255, 1); /* 增强白色阴影 */
-  opacity: 0.9; /* 适当降低不透明度增加对比 */
+  color: #fff;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+  opacity: 0.9;
 }
 
 /* 文件夹图标容器 - 确保图标大小一致且对齐 */
