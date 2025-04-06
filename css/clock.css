@@ -1,0 +1,110 @@
+/* 时钟相关样式 */
+
+@property --h { /* 时钟属性 */
+  syntax: '<integer>';
+  inherits: false;
+  initial-value: 0;
+}
+@property --m { 
+  syntax: '<integer>';
+  inherits: false;
+  initial-value: 0;
+}
+@property --s { 
+  syntax: '<integer>';
+  inherits: false;
+  initial-value: 0;
+}
+
+.time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --step: 60s;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 700%; /* 将字体大小调整到700% */
+  position: absolute;
+  top: 5%; /* 调整这个值以确保在搜索框上面 */
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgb(0, 0, 0); /* 设置字体颜色为主要颜色 */
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.541); /* 添加白色描边 */
+}
+
+.split {
+  /* 移除动画，使冒号不再跳动 */
+  animation: none;
+}
+
+.hour::after {
+  counter-reset: hour var(--h);
+  content: counter(hour, decimal-leading-zero);
+  animation: hour calc(var(--step) * 60 * 24) infinite steps(24);
+  animation-delay: calc( -1 * var(--step) * var(--dh) * 60);
+}
+
+.minitus::after {
+  counter-reset: minitus var(--m);
+  content: counter(minitus, decimal-leading-zero);
+  animation: minitus calc(var(--step) * 60) infinite steps(60);
+  animation-delay: calc( -1 * var(--step) * var(--dm));
+}
+
+.seconds::after {
+  counter-reset: seconds var(--s);
+  content: counter(seconds, decimal-leading-zero);
+  animation: seconds var(--step) infinite steps(60);
+  animation-delay: calc( -1 * var(--step) * var(--ds) / 60 );
+}
+
+@keyframes hour {
+  to {
+      --h: 24
+  }
+}
+
+@keyframes minitus {
+  to {
+      --m: 60
+  }
+}
+
+@keyframes seconds {
+  to {
+      --s: 60
+  }
+}
+
+@keyframes shark {
+  0%, 100% {
+      opacity: 1;
+  }
+  50% {
+      opacity: 0;
+  }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .time {
+    color: rgba(255, 255, 255, 0.9);
+    -webkit-text-stroke: 1px rgba(0, 0, 0, 0.3);
+    background-color: rgba(30, 30, 30, 0.3);
+  }
+}
+
+/* 响应式设计优化 */
+@media screen and (max-width: 768px) {
+  .time {
+    font-size: clamp(1.5rem, 6vw, 3rem);
+    padding: 3px 10px;
+  }
+}
+
+/* 竖屏优化 - 当设备处于竖屏方向时应用以下样式 */
+@media screen and (orientation: portrait) {
+  .time {
+    font-size: 700%; /* 时钟字体大小调整为700% */
+    top: 2%; /* 距顶部位置调整为5% */
+  }
+}

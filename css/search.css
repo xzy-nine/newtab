@@ -1,0 +1,172 @@
+/* 搜索框相关样式 */
+
+#search-box { /* 搜索框容器 */
+  width: 61%; /* 设置宽度为61% */
+  height: 48px; /* 设置高度为48px */
+  display: flex; /* 设置为弹性布局 */
+  align-items: center; /* 设置垂直居中 */
+  border: 1px solid rgba(0, 0, 0, 0.1); /* 设置边框为1px的次要颜色 */
+  border-radius: 24px; /* 设置边框圆角为24px */
+  background: rgba(255, 255, 255, 0.8); /* 设置背景颜色为半透明白色 */
+  transition: box-shadow 0.3s, background 0.3s, transform 0.2s; /* 添加背景色过渡效果 */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* 设置阴影为10px的次要颜色 */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+#search-box:hover { /* 当鼠标移动到搜索框容器时 */
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+#search-box:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+  transform: translateY(-2px);
+}
+
+#engine-button { /* 搜索引擎切换按钮 */
+  width: 40px; /* 设置宽度为40px */
+  height: 40px; /* 设置高度为40px */
+  flex-shrink: 0;
+  border: none; /* 设置无边框 */
+  border-radius: 50%; /* 设置边框圆角为50% */
+  background: transparent; /* 设置背景颜色为透明 */
+  cursor: pointer; /* 设置鼠标样式为指针 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-left: 6px;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+#engine-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  transform: scale(1.1);
+}
+
+#engine-button:active {
+  transform: scale(0.95);
+}
+
+#engine-icon { /* 搜索引擎图标 */
+  width: 24px; /* 设置宽度为24% */
+  height: 24px; /* 设置高度为24px */
+  object-fit: contain;
+  transition: transform 0.3s;
+}
+
+#engine-button:hover #engine-icon {
+  transform: rotate(15deg);
+}
+
+#search-input { /* 搜索框输入框 */
+  width: calc(100% - 50px); /* 设置宽度为剩余空间 */
+  height: 100%; /* 设置高度为100% */
+  border: none; /* 设置无边框 */
+  border-radius: 24px; /* 设置边框圆角为24px */
+  background: transparent; /* 设置背景颜色为透明 */
+  font-size: 16px; /* 设置字体大小为16px */
+  font-family: var(--font-family); /* 设置字体族为根元素的字体族 */
+  padding: 0 20px; /* 设置左右内边距为20px */
+  color: #333;
+  -webkit-appearance: none; /* 移除Webkit浏览器默认样式 */
+  appearance: none; /* 移除默认样式 */
+  box-shadow: none !important; /* 禁用输入框阴影 */
+  outline: none !important; /* 禁用输入框轮廓 */
+  transition: background 0.3s;
+}
+
+#search-input:focus { /* 当搜索框输入框获得焦点时 */
+  outline: none; /* 设置无轮廓 */
+  box-shadow: none; /* 禁用输入框阴影 */
+  border: none; /* 设置无边框 */
+  -webkit-appearance: none; /* 移除Webkit浏览器默认样式 */
+  appearance: none; /* 移除默认样式 */
+}
+
+/* 搜索引擎菜单 */
+.search-engine-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  z-index: 1000;
+  display: none;
+  overflow: auto;
+  max-height: 300px;
+}
+
+/* 搜索引擎菜单项 */
+.search-engine-item {
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.search-engine-item.active {
+  background-color: #f0f0f0;
+}
+
+.search-engine-item img {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
+/* 添加搜索引擎按钮 */
+.search-engine-add {
+  padding: 10px;
+  border-top: 1px solid #eee;
+  text-align: center;
+  cursor: pointer;
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  #search-box {
+    background: rgba(30, 30, 30, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  #search-input {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .search-engine-menu {
+    background: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .search-engine-item.active {
+    background-color: #3a3a3a;
+  }
+  
+  .search-engine-add {
+    border-top: 1px solid #444;
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+/* 响应式设计优化 */
+@media screen and (max-width: 768px) {
+  #search-box {
+    width: 85%;
+    height: 42px;
+  }
+}
+
+/* 竖屏优化 - 当设备处于竖屏方向时应用以下样式 */
+@media screen and (orientation: portrait) {
+  #search-box {
+    width: 80%; /* 搜索框宽度调整为80% */
+    height: 5%; /* 搜索框高度调整为5% */
+    top: 15%; /* 距顶部位置调整为10% */
+  }
+}

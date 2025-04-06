@@ -32,11 +32,30 @@ import {
     showErrorMessage,
     showNotification,
     initUIEvents,
-    handleKeyDown
+    handleKeyDown,
+    showModal
 } from './modules/utils.js';
 
-// 当前版本号
-const VERSION = '1.1.5';
+// 版本号，从manifest.json读取
+let VERSION = '0.0.0'; // 默认值，将在初始化时更新
+
+/**
+ * 从manifest.json获取扩展版本号
+ * @returns {Promise<string>} 版本号
+ */
+async function getExtensionVersion() {
+    try {
+        const manifestResponse = await fetch('/manifest.json');
+        if (!manifestResponse.ok) {
+            throw new Error(`无法加载manifest.json: ${manifestResponse.status}`);
+        }
+        const manifest = await manifestResponse.json();
+        return manifest.version || '0.0.0';
+    } catch (error) {
+        console.error('读取版本号失败:', error);
+        return '0.0.0';
+    }
+}
 
 // 全局状态标志
 let isInitialized = false;
@@ -67,6 +86,10 @@ async function init() {
         // 显示加载指示器
         showLoadingIndicator();
         
+        // 首先读取版本号
+        VERSION = await getExtensionVersion();
+        console.log(`初始化新标签页，版本: ${VERSION}`);
+        
         // 初始化各模块 (按依赖顺序)
         console.log('Initializing new tab page...');
         
@@ -74,97 +97,80 @@ async function init() {
         const totalModules = 7; // 包括 i18n, 图标, 背景, 搜索, 书签, 时钟, 事件初始化
         let completedModules = 0;
         
-        try {
-            // 1. 首先初始化国际化，因为其他模块可能需要翻译文本
-            updateLoadingProgress(0, '正在加载国际化资源...');
-            await executeWithTimeout(initI18n, 5000, '国际化');
-            completedModules++;
-            updateLoadingProgress((completedModules / totalModules) * 100, '国际化资源加载完成');
-            console.log('Internationalization initialized');
-        } catch (error) {
-            console.error('Failed to initialize i18n:', error);
-            throw new Error('国际化资源加载失败: ' + error.message);
-        }
-        
-        try {
-            // 2. 初始化图标管理器
-            updateLoadingProgress((completedModules / totalModules) * 100, '正在加载图标资源...');
-            await executeWithTimeout(initIconManager, 5000, '图标管理器');
-            completedModules++;
-            updateLoadingProgress((completedModules / totalModules) * 100, '图标资源加载完成');
-            console.log('Icon manager initialized');
-        } catch (error) {
-            console.error('Failed to initialize icon manager:', error);
-            throw new Error('图标资源加载失败: ' + error.message);
-        }
-
-        try {
-            // 3. 初始化背景图像
-            updateLoadingProgress((completedModules / totalModules) * 100, '正在加载背景图像...');
-            await executeWithTimeout(initBackgroundImage, 5000, '背景图像');
-            completedModules++;
-            updateLoadingProgress((completedModules / totalModules) * 100, '背景图像加载完成');
-            console.log('Background image initialized');
-        } catch (error) {
-            console.error('Failed to initialize background image:', error);
-            throw new Error('背景图像加载失败: ' + error.message);
-        }
-        
-        // 在 init 函数内，可以添加一个标记确保只初始化一次
-        let searchEngineInitialized = false;
-
-        try {
-            // 4. 初始化搜索引擎
-            if (!searchEngineInitialized) {
-                updateLoadingProgress((completedModules / totalModules) * 100, '正在加载搜索引擎...');
-                await executeWithTimeout(initSearchEngine, 5000, '搜索引擎');
-                searchEngineInitialized = true;
-                completedModules++;
-                updateLoadingProgress((completedModules / totalModules) * 100, '搜索引擎加载完成');
-                console.log('Search engine initialized');
+        // 定义初始化步骤数组，使代码更统一
+        const initSteps = [
+            {
+                name: '国际化',
+                action: initI18n,
+                message: '正在加载国际化资源...',
+                completeMessage: '国际化资源加载完成',
+                timeout: 5000
+            },
+            {
+                name: '图标管理器',
+                action: initIconManager,
+                message: '正在加载图标资源...',
+                completeMessage: '图标资源加载完成',
+                timeout: 5000
+            },
+            {
+                name: '背景图像',
+                action: initBackgroundImage,
+                message: '正在加载背景图像...',
+                completeMessage: '背景图像加载完成',
+                timeout: 5000
+            },
+            {
+                name: '搜索引擎',
+                action: initSearchEngine,
+                message: '正在加载搜索引擎...',
+                completeMessage: '搜索引擎加载完成',
+                timeout: 5000
+            },
+            {
+                name: '书签',
+                action: initBookmarks,
+                message: '正在加载书签...',
+                completeMessage: '书签加载完成',
+                timeout: 5000
+            },
+            {
+                name: '时钟组件',
+                action: () => {
+                    initClock();
+                    return Promise.resolve();
+                },
+                message: '正在加载时钟组件...',
+                completeMessage: '时钟组件加载完成',
+                timeout: 5000
+            },
+            {
+                name: '事件初始化',
+                action: () => {
+                    setupEvents();
+                    return Promise.resolve();
+                },
+                message: '正在初始化事件处理...',
+                completeMessage: '加载完成！',
+                timeout: 5000
             }
-        } catch (error) {
-            console.error('Failed to initialize search engine:', error);
-            throw new Error('搜索引擎加载失败: ' + error.message);
+        ];
+
+        // 依次执行初始化步骤
+        for (const step of initSteps) {
+            try {
+                updateLoadingProgress((completedModules / totalModules) * 100, step.message);
+                await executeWithTimeout(step.action, step.timeout, step.name);
+                completedModules++;
+                updateLoadingProgress((completedModules / totalModules) * 100, step.completeMessage);
+                console.log(`${step.name} initialized`);
+            } catch (error) {
+                console.error(`Failed to initialize ${step.name}:`, error);
+                throw new Error(`${step.name}加载失败: ${error.message}`);
+            }
         }
         
-        try {
-            // 5. 初始化书签
-            updateLoadingProgress((completedModules / totalModules) * 100, '正在加载书签...');
-            await executeWithTimeout(initBookmarks, 5000, '书签');
-            completedModules++;
-            updateLoadingProgress((completedModules / totalModules) * 100, '书签加载完成');
-            console.log('Bookmarks initialized');
-        } catch (error) {
-            console.error('Failed to initialize bookmarks:', error);
-            throw new Error('书签加载失败: ' + error.message);
-        }
-        
-        try {
-            // 6. 初始化时钟
-            updateLoadingProgress((completedModules / totalModules) * 100, '正在加载时钟组件...');
-            initClock();
-            completedModules++;
-            updateLoadingProgress((completedModules / totalModules) * 100, '时钟组件加载完成');
-            console.log('Clock initialized');
-        } catch (error) {
-            console.error('Failed to initialize clock:', error);
-            throw new Error('时钟组件加载失败: ' + error.message);
-        }
-        
-        try {
-            // 7. 设置各模块事件
-            updateLoadingProgress((completedModules / totalModules) * 100, '正在初始化事件处理...');
-            setupEvents();
-            completedModules++;
-            updateLoadingProgress(100, '加载完成！');
-            console.log('Events initialized');
-        } catch (error) {
-            console.error('Failed to initialize events:', error);
-            throw new Error('事件初始化失败: ' + error.message);
-        }
-        
-        // 8. 执行应用启动后的额外操作
+        // 执行应用启动后的额外操作
         await performPostInitTasks();
         
         // 标记初始化完成
@@ -279,22 +285,8 @@ async function cleanupCacheData() {
 function showWelcomeMessage() {
     const welcomeModal = document.getElementById('welcome-modal');
     if (welcomeModal) {
-        welcomeModal.style.display = 'block';
-        
-        // 添加关闭事件
-        const closeBtn = welcomeModal.querySelector('.modal-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                welcomeModal.style.display = 'none';
-            });
-        }
-        
-        // 点击模态框外部关闭
-        window.addEventListener('click', (e) => {
-            if (e.target === welcomeModal) {
-                welcomeModal.style.display = 'none';
-            }
-        });
+        // 使用utils.js中的函数替代手动显示
+        showModal('welcome-modal');
     } else {
         // 如果没有预定义的欢迎模态框，使用通知
         showNotification(
@@ -347,37 +339,18 @@ document.addEventListener('visibilitychange', handleVisibilityChange);
 // 页面加载完成后初始化应用
 document.addEventListener('DOMContentLoaded', init);
 
-// 加载超时保护
+// 统一处理加载超时保护
 document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(function() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen && loadingScreen.style.display !== 'none') {
-      console.warn('Loading timeout - force hiding loading screen');
-      loadingScreen.style.opacity = '0';
-      setTimeout(() => {
-        loadingScreen.style.display = 'none';
-      }, 500);
-    }
-  }, 10000);
-});
-
-// 在开始初始化前，设置一个绝对的超时保护
-document.addEventListener('DOMContentLoaded', () => {
-  // 保持现有的超时保护
-  setTimeout(function() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen && loadingScreen.style.display !== 'none') {
-      console.warn('Loading timeout - force hiding loading screen');
-      // 使用立即模式强制隐藏
-      hideLoadingIndicator(true);
-    }
-  }, 8000); // 缩短到8秒，确保不会等待太久
+  // 主超时保护，8秒后如果仍在加载则强制隐藏
+  setTimeout(() => {
+    hideLoadingIndicator(true);
+  }, 8000);
   
-  // 添加备份保护机制，确保页面加载后显示内容
+  // 页面加载后的备份保护
   window.addEventListener('load', () => {
     setTimeout(() => {
       hideLoadingIndicator(true);
-    }, 2000); // 页面加载完成2秒后强制隐藏
+    }, 2000);
   });
 });
 

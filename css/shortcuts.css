@@ -1,0 +1,203 @@
+/* 快捷方式按钮相关样式 */
+
+#shortcut-list { /* 快捷方式列表 */
+  width: 80%; /* 设置宽度为80% */
+  height: 100%; /* 设置高度为100% */
+  display: flex; /* 设置为弹性布局 */
+  flex-wrap: wrap; /* 设置为换行 */
+  align-items: center; /* 设置垂直居中 */
+  justify-content: center; /* 设置水平居中 */
+  overflow-y: auto; /* 设置垂直滚动 */
+  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的黑色 */
+  border-radius: 10px; /* 设置边框圆角为10px */
+  margin-left: 10px; /* 设置左外边距为10px */
+}
+
+/* 当快捷方式列表为空时，设置背景为完全透明 */
+#shortcut-list:empty {
+  background: transparent;
+}
+
+.shortcut-button { /* 快捷方式按钮 */
+  width: 80px; /* 设置宽度为80px📏 */
+  aspect-ratio: 1 / 1; /* 设置宽高比为1:1 */
+  display: flex; /* 设置为弹性布局 */
+  flex-direction: column; /* 设置为垂直方向 */
+  align-items: center; /* 设置水平居中 */
+  justify-content: center; /* 设置垂直居中 */
+  border: none; /* 设置无边框 */
+  border-radius: 8px; /* 设置边框圆角为8px */
+  background: #ffffff87; /* 设置背景颜色为白色 */
+  box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
+  cursor: pointer; /* 设置鼠标样式为指针 */
+  margin: 10px; /* 设置外边距为10px */
+  transition: box-shadow 0.3s, transform 0.3s ease; /* 设置阴影和变换的过渡时间为0.3秒 */
+  background-size: 60%; /* 设置背景图像的大小 */
+  background-position: center; /* 设置背景图像的位置 */
+  background-repeat: no-repeat; /* 设置背景图像不重复 */
+  text-align: center; /* 文本居中对齐 */
+  overflow: hidden; /* 隐藏溢出的文本 */
+  justify-content: center; /* 在主轴上居中对齐 */
+  padding-top: 50px; /* 在底部添加内边距来为文本留出空间 */
+  clip-path: inset(0 round 10px); /* 添加圆角矩形遮罩 */
+}
+
+.shortcut-button:hover { /* 鼠标移动到快捷方式按钮上时 */
+  box-shadow: 0 0 15px var(--secondary-color); /* 增加阴影 */
+  transform: scale(1.2); /* 放大按钮 */
+  overflow: visible; /* 取消隐藏溢出的文本 */
+  box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
+}
+
+.shortcut-button:active {
+  transform: scale(0.95); /* 缩小按钮 */
+  transition: transform 0.1s; /* 设置缩放动画的过渡时间为0.1秒 */
+}
+
+.shortcut-title {
+  font-size: 12px;
+  color: #333;
+  margin-top: 5px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 快捷方式上下文菜单 */
+#shortcut-context-menu {
+  min-width: 150px;
+  border: 1px solid #ddd;
+}
+
+/* 书签相关样式 */
+#custom-bookmark-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.bookmark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 0 10px var(--secondary-color);
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.bookmark:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px var(--secondary-color);
+}
+
+.bookmark-icon {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 5px;
+}
+
+.bookmark-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.bookmark-title {
+  font-size: 12px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+/* 添加书签按钮样式 */
+.add-bookmark {
+  background: rgba(0, 120, 212, 0.2);
+  border: 2px dashed var(--primary-color);
+}
+
+.add-icon {
+  font-size: 24px;
+  color: var(--primary-color);
+  margin-bottom: 5px;
+}
+
+/* 书签上下文菜单 */
+#bookmark-context-menu {
+  min-width: 150px;
+  border: 1px solid #ddd;
+}
+
+/* 拖放相关样式 */
+.bookmark.dragging {
+  opacity: 0.5;
+  position: absolute;
+  pointer-events: none;
+}
+
+/* 书签列表占位符 */
+.bookmark-placeholder {
+  border: 2px dashed #ccc;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  #shortcut-list {
+    background: rgba(40, 40, 40, 0.7);
+  }
+  
+  .shortcut-button {
+    background: rgba(50, 50, 50, 0.7);
+  }
+  
+  .shortcut-title {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .bookmark {
+    background: rgba(50, 50, 50, 0.7);
+  }
+  
+  .bookmark-title {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  #shortcut-context-menu,
+  #bookmark-context-menu {
+    border-color: #444;
+    background: #2a2a2a;
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+/* 响应式设计优化 */
+@media screen and (max-width: 768px) {
+  #shortcut-list {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 10px;
+  }
+  
+  .shortcut-button {
+    width: 70px;
+    margin: 5px;
+  }
+}
+
+/* 竖屏优化 - 当设备处于竖屏方向时应用以下样式 */
+@media screen and (orientation: portrait) {
+  .shortcut-button {
+    margin: 5px; /* 外边距减小到5px */
+  }
+}

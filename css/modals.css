@@ -1,0 +1,203 @@
+/* 模态框相关样式 */
+
+/* 模态框样式 */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  width: 400px;
+  max-width: 90%;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.modal h2 {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* 书签模态框专用样式 */
+#bookmark-modal .form-group input[type="file"] {
+  padding: 5px 0;
+  border: none;
+}
+
+#bookmark-modal .image-preview {
+  width: 48px;
+  height: 48px;
+  margin-top: 5px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#bookmark-modal .image-preview img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* 图标选择对话框 */
+#icon-selector-modal .icon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 15px;
+}
+
+#icon-selector-modal .icon-option {
+  width: 48px;
+  height: 48px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+#icon-selector-modal .icon-option:hover {
+  border-color: var(--primary-color);
+  background-color: #f0f7ff;
+}
+
+#icon-selector-modal .icon-option img {
+  max-width: 80%;
+  max-height: 80%;
+}
+
+/* 通知样式 */
+.notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  z-index: 3000;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.notification-content {
+  padding: 10px 15px 15px;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #666;
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .modal-content, .notification {
+    background-color: #2a2a2a;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .form-group input {
+    background-color: #333;
+    color: rgba(255, 255, 255, 0.9);
+    border-color: #444;
+  }
+  
+  .btn {
+    background-color: #444;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .notification-header {
+    border-bottom-color: #444;
+  }
+  
+  .notification-close {
+    color: #aaa;
+  }
+  
+  #bookmark-modal .image-preview {
+    border-color: #444;
+    background-color: #333;
+  }
+  
+  #icon-selector-modal .icon-option {
+    border-color: #444;
+    background-color: #333;
+  }
+  
+  #icon-selector-modal .icon-option:hover {
+    border-color: var(--primary-color);
+    background-color: #2a3f5a;
+  }
+}

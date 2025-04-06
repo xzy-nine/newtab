@@ -129,10 +129,14 @@ function createFolderButtonsRecursive(folder, parentElement, level) {
     let folderButton = document.createElement("div");
     folderButton.className = "folder-button";
     
-    // 添加层级标识和展开/折叠指示器
+    // 检查是否有子文件夹
+    const subFolders = folder.children.filter(child => child.children);
+    const hasSubFolders = subFolders.length > 0;
+    
+    // 添加层级标识和展开/折叠指示器，只有有子文件夹时才显示箭头
     folderButton.innerHTML = `
         <div class="folder-content" style="margin-left: ${level * 20}px">
-            <span class="folder-arrow">▶</span>
+            <span class="folder-arrow">${hasSubFolders ? '▶' : ''}</span>
             <span class="folder-icon">📁</span>
             <span class="folder-name">${folder.title}</span>
         </div>
@@ -144,17 +148,14 @@ function createFolderButtonsRecursive(folder, parentElement, level) {
     // 添加按钮到父元素
     parentElement.appendChild(folderButton);
 
-    // 创建子文件夹容器
-    let subFolderContainer = document.createElement("div");
-    subFolderContainer.className = "folder-children";
-    subFolderContainer.style.display = 'none';
-    parentElement.appendChild(subFolderContainer);
-    
-    // 检查是否有子文件夹
-    const subFolders = folder.children.filter(child => child.children);
-    
-    // 如果有子文件夹，递归创建
-    if (subFolders.length > 0) {
+    // 只有存在子文件夹时才创建子容器
+    if (hasSubFolders) {
+        // 创建子文件夹容器
+        let subFolderContainer = document.createElement("div");
+        subFolderContainer.className = "folder-children";
+        subFolderContainer.style.display = 'none';
+        parentElement.appendChild(subFolderContainer);
+        
         // 递归为每个子文件夹创建按钮
         for (let subFolder of subFolders) {
             createFolderButtonsRecursive(subFolder, subFolderContainer, level + 1);
@@ -195,14 +196,18 @@ function getAllFolders(node) {
 function createFolderButtons(folders, parentElement, level = 0) {
     for (let folder of folders) {
         if (folder.children) {
+            // 检查是否有子文件夹
+            const subFolders = folder.children.filter(child => child.children && child.children.length > 0);
+            const hasSubFolders = subFolders.length > 0;
+            
             // 创建文件夹按钮元素
             let folderButton = document.createElement("div");
             folderButton.className = "folder-button";
             
-            // 添加层级标识和展开/折叠指示器
+            // 添加层级标识和展开/折叠指示器，只有有子文件夹时才显示箭头
             folderButton.innerHTML = `
                 <div class="folder-content" style="margin-left: ${level * 20}px">
-                    <span class="folder-arrow">▶</span>
+                    <span class="folder-arrow">${hasSubFolders ? '▶' : ''}</span>
                     <span class="folder-icon">📁</span>
                     <span class="folder-name">${folder.title}</span>
                 </div>
@@ -214,15 +219,15 @@ function createFolderButtons(folders, parentElement, level = 0) {
             // 添加按钮到父元素
             parentElement.appendChild(folderButton);
 
-            // 创建子文件夹容器
-            let subFolderContainer = document.createElement("div");
-            subFolderContainer.className = "folder-children";
-            subFolderContainer.style.display = 'none';
-            parentElement.appendChild(subFolderContainer);
+            // 只有存在子文件夹时才创建子容器
+            if (hasSubFolders) {
+                // 创建子文件夹容器
+                let subFolderContainer = document.createElement("div");
+                subFolderContainer.className = "folder-children";
+                subFolderContainer.style.display = 'none';
+                parentElement.appendChild(subFolderContainer);
 
-            // 创建该文件夹下的子文件夹，并将它们添加到当前文件夹的子容器中
-            const subFolders = folder.children.filter(child => child.children && child.children.length > 0);
-            if (subFolders.length > 0) {
+                // 创建该文件夹下的子文件夹，并将它们添加到当前文件夹的子容器中
                 createFolderButtons(subFolders, subFolderContainer, level + 1);
             }
         }
@@ -235,22 +240,23 @@ function createFolderButtons(folders, parentElement, level = 0) {
  * @param {Object} folder - 文件夹数据
  */
 function handleFolderClick(folderButton, folder) {
-    // 切换文件夹展开/收起状态
-    folderButton.classList.toggle('open');
-    
-    // 更新箭头方向
-    const arrowElement = folderButton.querySelector('.folder-arrow');
-    if (arrowElement) {
-        if (folderButton.classList.contains('open')) {
-            arrowElement.textContent = '▼';
-        } else {
-            arrowElement.textContent = '▶';
-        }
-    }
-    
-    // 获取对应的子文件夹容器并切换其显示状态
+    // 检查是否有子文件夹容器
     const children = folderButton.nextElementSibling;
     if (children && children.classList.contains('folder-children')) {
+        // 切换文件夹展开/收起状态
+        folderButton.classList.toggle('open');
+        
+        // 更新箭头方向
+        const arrowElement = folderButton.querySelector('.folder-arrow');
+        if (arrowElement) {
+            if (folderButton.classList.contains('open')) {
+                arrowElement.textContent = '▼';
+            } else {
+                arrowElement.textContent = '▶';
+            }
+        }
+        
+        // 切换子文件夹容器显示状态
         children.style.display = children.style.display === 'block' ? 'none' : 'block';
     }
     
@@ -468,6 +474,14 @@ function initBookmarkEvents() {
             }
         }
     });
+    
+    // 防止滚动时触发不必要的事件
+    const folderList = document.getElementById('folder-list');
+    if (folderList) {
+        folderList.addEventListener('wheel', (event) => {
+            event.stopPropagation(); // 防止滚轮事件冒泡
+        });
+    }
     
     // 添加其他书签相关事件
     window.addEventListener('click', (e) => {
