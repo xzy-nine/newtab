@@ -1,6 +1,4 @@
 /* 模态框相关样式 */
-
-/* 模态框样式 */
 .modal {
   display: none;
   position: fixed;
@@ -32,11 +30,7 @@
   cursor: pointer;
 }
 
-.modal h2 {
-  margin-bottom: 20px;
-  text-align: center;
-}
-
+/* 通用表单元素 */
 .form-group {
   margin-bottom: 15px;
 }
@@ -47,7 +41,8 @@
   font-weight: bold;
 }
 
-.form-group input {
+.form-group input, 
+.form-group textarea {
   width: 100%;
   padding: 8px;
   border: 1px solid #ddd;
@@ -61,6 +56,7 @@
   margin-top: 20px;
 }
 
+/* 按钮样式 */
 .btn {
   padding: 8px 15px;
   border: none;
@@ -69,7 +65,7 @@
 }
 
 .btn-primary {
-  background-color: #007bff; /* 移除var(--primary-color)使用固定值 */
+  background-color: #007bff;
   color: white;
 }
 
@@ -125,7 +121,7 @@
   max-height: 80%;
 }
 
-/* 通知样式 */
+/* 通知系统 */
 .notification {
   position: fixed;
   bottom: 20px;
@@ -174,47 +170,26 @@
   margin: 0;
 }
 
-/* 通知类型样式 */
-.notification-info {
-  background-color: #ffffff;
-  border-left-color: #eaeaea;
-}
+/* 通知类型 */
+.notification-info { border-left-color: #eaeaea; }
+.notification-error { border-left-color: #f44336; }
+.notification-warning { border-left-color: #fbbc05; }
+.notification-success { border-left-color: #34a853; }
 
-.notification-error {
-  background-color: #fff8f8;
-  border-left-color: #f44336;
-}
-
-.notification-warning {
-  background-color: #fffbf0;
-  border-left-color: #fbbc05;
-}
-
-.notification-success {
-  background-color: #f0fff4;
-  border-left-color: #34a853;
-}
-
-/* 确认通知样式 */
+/* 确认通知 */
 .notification-confirm {
-    width: 300px;
-    background-color: #fff;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 1050;
-}
-
-.notification-confirm .notification-message {
-    margin-bottom: 15px;
+  width: 300px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .notification-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
 }
 
-/* 添加从HTML移过来的动画和模态框样式 */
+/* 加载动画 */
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
