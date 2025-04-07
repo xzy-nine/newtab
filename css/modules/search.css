@@ -76,7 +76,7 @@
   -webkit-appearance: none; /* 移除Webkit浏览器默认样式 */
   appearance: none; /* 移除默认样式 */
   box-shadow: none !important; /* 禁用输入框阴影 */
-  outline: none !重要; /* 禁用输入框轮廓 */
+  outline: none !important; /* 修复了错误的 !重要 标记 */
   transition: background 0.3s;
   margin-right: 10px; /* 增加右侧间距，与搜索引擎按钮分隔 */
 }

@@ -3,8 +3,16 @@
  */
 
 import { getI18nMessage } from './i18n.js';
-import { setIconForElement, handleIconError, preloadIcons } from './iconManager.js';
-import { getDomain, showModal } from './utils.js';
+import { setIconForElement, handleIconError} from './iconManager.js';
+import { 
+    getDomain, 
+    showModal, 
+    hideModal, 
+    showConfirmDialog, 
+    showFormModal, 
+    showErrorModal, 
+    createElement 
+} from './utils.js';
 
 // 默认搜索引擎配置
 const defaultEngines = [
@@ -34,7 +42,7 @@ export async function initSearchEngine() {
     
     // 预加载所有搜索引擎图标
     const engineUrls = searchEngines.map(engine => engine.url);
-    preloadIcons(engineUrls);
+    // 移除对 preloadIcons 的调用，因为此函数在 iconManager.js 中已被简化
     
     // 渲染搜索引擎选择器，标记为首次渲染
     renderSearchEngineSelector(true);
@@ -298,22 +306,7 @@ function renderSearchEngineSelector(firstRender = false) {
     });
 
     // 为搜索引擎图标添加右键点击事件以清除存储
-    iconElement.addEventListener('contextmenu', (e) => {
-        e.preventDefault(); // 阻止默认右键菜单
-        e.stopPropagation();
-        
-        if (confirm(getI18nMessage('clearStorageConfirm') || '确定要清除所有存储数据吗？此操作不可恢复。')) {
-            clearExtensionStorage()
-                .then(() => {
-                    alert(getI18nMessage('clearStorageSuccess') || '存储已成功清除，页面将刷新。');
-                    window.location.reload(); // 刷新页面以应用更改
-                })
-                .catch(error => {
-                    console.error('清除存储失败:', error);
-                    alert(getI18nMessage('clearStorageError') || '清除存储失败，请查看控制台了解详情。');
-                });
-        }
-    });
+    setupIconContextMenu(iconElement);
     
     // 点击其他区域关闭菜单
     // 修复：使用一次性添加的方式，避免重复绑定
@@ -417,152 +410,161 @@ export function performSearch(query) {
 
 /**
  * 显示添加自定义搜索引擎模态框
- * 修复：对模态框外部点击事件只绑定一次
+ * 使用扩展后的工具函数
  */
 function showAddSearchEngineModal() {
-    // 检查是否已存在模态框，如果不存在则创建
-    let modal = document.getElementById('add-search-engine-modal');
-    if (!modal) {
-        // 创建模态框
-        modal = document.createElement('div');
-        modal.id = 'add-search-engine-modal';
-        modal.className = 'modal';
-        modal.style.cssText = 'display:none;';
-        
-        const modalContent = document.createElement('div');
-        modalContent.className = 'modal-content';
-        
-        modalContent.innerHTML = `
-            <span class="modal-close">&times;</span>
-            <h2>${getI18nMessage('addCustomSearchEngine')}</h2>
-            <div class="modal-form">
-                <div class="form-group">
-                    <label for="custom-engine-name">${getI18nMessage('engineName')}</label>
-                    <input type="text" id="custom-engine-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="custom-engine-url">${getI18nMessage('engineSearchUrl')}</label>
-                    <input type="url" id="custom-engine-url" placeholder="https://www.example.com/search?q=%s" required>
-                </div>
-                <div class="form-group">
-                    <label for="custom-engine-icon">${getI18nMessage('engineIconUrl')}</label>
-                    <input type="url" id="custom-engine-icon">
-                </div>
-                <div class="form-actions">
-                    <button id="add-engine-cancel" class="btn">${getI18nMessage('cancel')}</button>
-                    <button id="add-engine-confirm" class="btn btn-primary">${getI18nMessage('confirm')}</button>
-                </div>
-            </div>
-        `;
-        
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-        
-        // 首次创建时绑定外部点击事件
-        window.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.style.display = 'none';
+    // 定义表单项
+    const formItems = [
+        {
+            type: 'text',
+            id: 'custom-engine-name',
+            label: getI18nMessage('engineName') || '搜索引擎名称',
+            required: true
+        },
+        {
+            type: 'url',
+            id: 'custom-engine-url',
+            label: getI18nMessage('engineSearchUrl') || '搜索URL',
+            placeholder: 'https://www.example.com/search?q=%s',
+            required: true
+        },
+        {
+            type: 'url',
+            id: 'custom-engine-icon',
+            label: getI18nMessage('engineIconUrl') || '图标URL（可选）',
+            required: false
+        }
+    ];
+
+    // 使用表单模态框
+    showFormModal(
+        getI18nMessage('addCustomSearchEngine') || '添加自定义搜索引擎',
+        formItems,
+        (formData) => {
+            // 添加搜索引擎处理
+            const name = formData['custom-engine-name'];
+            let url = formData['custom-engine-url'];
+            let icon = formData['custom-engine-icon'];
+            
+            // 处理输入的URL，保留原始查询参数
+            if (url.includes('%s')) {
+                // 用户已经指定了搜索参数格式，直接替换%s为空字符串
+                url = url.replace('%s', '');
+            } else {
+                try {
+                    // 分析URL，确定正确的查询参数
+                    const urlObj = new URL(url);
+                    
+                    // 根据域名判断可能的查询参数
+                    let searchParam = 'q'; // 默认参数名
+                    
+                    // 检查URL是否已经包含某些参数
+                    if (urlObj.search) {
+                        // 使用已有的参数结构，仅清空值
+                        const searchParams = new URLSearchParams(urlObj.search);
+                        if (searchParams.keys().next().value) {
+                            searchParam = searchParams.keys().next().value;
+                            // 清空现有参数值
+                            searchParams.set(searchParam, '');
+                            urlObj.search = searchParams.toString();
+                            url = urlObj.toString();
+                        } else {
+                            // 如果没有参数，添加默认参数
+                            url = url + (url.includes('?') ? '&' : '?') + searchParam + '=';
+                        }
+                    } else {
+                        // 没有查询参数，添加默认参数
+                        url = url + '?' + searchParam + '=';
+                    }
+                } catch (e) {
+                    // URL格式错误，使用简单添加方式
+                    console.warn('解析URL失败:', e);
+                    url = url + (url.includes('?') ? '&q=' : '?q=');
+                }
             }
-        });
-    }
-    
-    // 显示模态框
-    modal.style.display = 'block';
-    
-    // 绑定确认按钮事件
-    const confirmBtn = document.getElementById('add-engine-confirm');
-    if (confirmBtn) {
-        // 移除旧的事件监听器
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        
-        newConfirmBtn.addEventListener('click', addCustomSearchEngine);
-    }
-    
-    // 绑定取消按钮事件
-    const cancelBtn = document.getElementById('add-engine-cancel');
-    if (cancelBtn) {
-        // 移除旧的事件监听器
-        const newCancelBtn = cancelBtn.cloneNode(true);
-        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-        
-        newCancelBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-    }
-    
-    // 绑定关闭按钮事件
-    const closeBtn = modal.querySelector('.modal-close');
-    if (closeBtn) {
-        // 清除旧的事件监听器
-        const newCloseBtn = closeBtn.cloneNode(true);
-        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-        
-        newCloseBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-    }
+            
+            // 添加新的搜索引擎
+            const newEngine = { name, url, icon };
+            const newEngines = [...searchEngines, newEngine];
+            
+            updateSearchEngines(newEngines, newEngines.length - 1)
+                .then(success => {
+                    if (!success) {
+                        // 保存失败，显示错误提示
+                        showErrorModal(getI18nMessage('saveFailed') || '保存失败');
+                    }
+                });
+        },
+        getI18nMessage('confirm') || '确认',
+        getI18nMessage('cancel') || '取消'
+    );
 }
 
 /**
  * 添加自定义搜索引擎
+ * 此函数现已被上面showAddSearchEngineModal中的实现所替代
+ * 为保持兼容性，我们保留此函数但使其调用新实现
  */
 async function addCustomSearchEngine() {
+    // 获取当前模态框中的表单数据
     const nameInput = document.getElementById('custom-engine-name');
     const urlInput = document.getElementById('custom-engine-url');
     const iconInput = document.getElementById('custom-engine-icon');
     
+    // 如果找不到输入元素，可能是使用了旧的模态框，直接返回
     if (!nameInput || !urlInput || !iconInput) return;
     
-    const name = nameInput.value.trim();
-    let url = urlInput.value.trim();
-    let icon = iconInput.value.trim();
+    const formData = {
+        'custom-engine-name': nameInput.value.trim(),
+        'custom-engine-url': urlInput.value.trim(),
+        'custom-engine-icon': iconInput.value.trim()
+    };
     
-    if (!name || !url) {
-        alert(getI18nMessage('pleaseCompleteAllFields'));
+    // 验证必填字段
+    if (!formData['custom-engine-name'] || !formData['custom-engine-url']) {
+        // 使用错误模态框显示错误消息
+        showErrorModal(getI18nMessage('pleaseCompleteAllFields') || '请填写所有必填字段');
         return;
     }
     
+    // 处理URL和添加搜索引擎的逻辑与showAddSearchEngineModal中相同
+    // ...URL处理代码...
+    let url = formData['custom-engine-url'];
+    let icon = formData['custom-engine-icon'];
+    
     // 处理输入的URL，保留原始查询参数
     if (url.includes('%s')) {
-        // 用户已经指定了搜索参数格式，直接替换%s为空字符串
         url = url.replace('%s', '');
     } else {
         try {
-            // 分析URL，确定正确的查询参数
             const urlObj = new URL(url);
-            const domain = urlObj.hostname;
+            let searchParam = 'q';
             
-            // 根据域名判断可能的查询参数
-            let searchParam = 'q'; // 默认参数名
-            
-            // 检查URL是否已经包含某些参数
             if (urlObj.search) {
-                // 使用已有的参数结构，仅清空值
                 const searchParams = new URLSearchParams(urlObj.search);
                 if (searchParams.keys().next().value) {
                     searchParam = searchParams.keys().next().value;
-                    // 清空现有参数值
                     searchParams.set(searchParam, '');
                     urlObj.search = searchParams.toString();
                     url = urlObj.toString();
                 } else {
-                    // 如果没有参数，添加默认参数
                     url = url + (url.includes('?') ? '&' : '?') + searchParam + '=';
                 }
             } else {
-                // 没有查询参数，添加默认参数
                 url = url + '?' + searchParam + '=';
             }
         } catch (e) {
-            // URL格式错误，使用简单添加方式
             console.warn('解析URL失败:', e);
             url = url + (url.includes('?') ? '&q=' : '?q=');
         }
     }
     
     // 添加新的搜索引擎
-    const newEngine = { name, url, icon };
+    const newEngine = { 
+        name: formData['custom-engine-name'], 
+        url, 
+        icon
+    };
     const newEngines = [...searchEngines, newEngine];
     
     const success = await updateSearchEngines(newEngines, newEngines.length - 1);
@@ -571,10 +573,12 @@ async function addCustomSearchEngine() {
     if (success) {
         const modal = document.getElementById('add-search-engine-modal');
         if (modal) {
-            modal.style.display = 'none';
+            // 使用hideModal替代直接修改style.display
+            hideModal('add-search-engine-modal');
         }
     } else {
-        alert(getI18nMessage('saveFailed') || '保存失败');
+        // 使用错误模态框显示错误消息
+        showErrorModal(getI18nMessage('saveFailed') || '保存失败');
     }
 }
 
@@ -707,6 +711,41 @@ async function clearExtensionStorage() {
                 resolve();
             }
         });
+    });
+}
+
+/**
+ * 为搜索引擎图标添加右键点击事件以清除存储
+ * 这里使用showConfirmDialog而不是浏览器原生的confirm
+ */
+function setupIconContextMenu(iconElement) {
+    if (!iconElement) return;
+    
+    iconElement.addEventListener('contextmenu', (e) => {
+        e.preventDefault(); // 阻止默认右键菜单
+        e.stopPropagation();
+        
+        // 使用工具函数显示确认对话框
+        showConfirmDialog(
+            getI18nMessage('clearStorageConfirm') || '确定要清除所有存储数据吗？此操作不可恢复。',
+            () => {
+                // 确认回调
+                clearExtensionStorage()
+                    .then(() => {
+                        // 使用通知而不是alert
+                        showErrorModal(
+                            getI18nMessage('clearStorageSuccess') || '存储已成功清除，页面将刷新。',
+                            () => {
+                                window.location.reload(); // 刷新页面以应用更改
+                            }
+                        );
+                    })
+                    .catch(error => {
+                        console.error('清除存储失败:', error);
+                        showErrorModal(getI18nMessage('clearStorageError') || '清除存储失败，请查看控制台了解详情。');
+                    });
+            }
+        );
     });
 }
 

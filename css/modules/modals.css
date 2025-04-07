@@ -195,6 +195,25 @@
   border-left-color: #34a853;
 }
 
+/* 确认通知样式 */
+.notification-confirm {
+    width: 300px;
+    background-color: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1050;
+}
+
+.notification-confirm .notification-message {
+    margin-bottom: 15px;
+}
+
+.notification-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
 /* 添加从HTML移过来的动画和模态框样式 */
 @keyframes spin {
   0% { transform: rotate(0deg); }
