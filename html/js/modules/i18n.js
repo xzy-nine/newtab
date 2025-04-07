@@ -26,18 +26,15 @@ export async function initI18n() {
  */
 async function setUserLanguage() {
     try {
-        // 尝试从存储中获取语言设置
         const result = await chrome.storage.sync.get('language');
         if (result.language) {
             currentLanguage = result.language;
         } else {
-            // 如果没有保存的语言设置，使用浏览器语言设置
             const browserLang = navigator.language.slice(0, 2);
             currentLanguage = ['en', 'zh', 'ja'].includes(browserLang) ? browserLang : 'en';
             await chrome.storage.sync.set({ language: currentLanguage });
         }
     } catch (error) {
-        console.error('Failed to set user language:', error);
         currentLanguage = 'en'; // 默认回退到英文
     }
 }
@@ -47,20 +44,14 @@ async function setUserLanguage() {
  */
 function loadTranslationsFromInternal() {
     try {
-        // 根据当前语言选择对应的翻译表
         const locale = currentLanguage === 'zh' ? 'zh_CN' : 'en_US';
         
-        // 将内部定义的 messages 转换为与外部加载格式一致的结构
         translations = {};
         
-        // 遍历 messages 对象的对应语言部分
         Object.entries(messages[locale]).forEach(([key, value]) => {
             translations[key] = { message: value };
         });
-        
-        console.log(`Loaded internal translations for ${locale}`);
     } catch (error) {
-        console.error('Failed to load internal translations:', error);
         translations = {}; // 出错时使用空对象
     }
 }

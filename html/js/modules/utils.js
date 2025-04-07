@@ -148,32 +148,25 @@ export function showLoadingIndicator() {
  * @param {boolean} [immediate=false] - 是否立即隐藏，无过渡动画
  */
 export function hideLoadingIndicator(immediate = false) {
-    console.log('Hiding loading indicator');
     const loadingScreen = document.getElementById('loading-screen');
     if (loadingScreen) {
         if (immediate) {
             loadingScreen.style.display = 'none';
-            console.log('Loading screen hidden immediately');
             return;
         }
         
         loadingScreen.style.opacity = '0';
-        // 强制触发重排以确保过渡动画生效
         loadingScreen.offsetHeight;
         
-        // 添加额外的保障，确保即使过渡动画失败也能隐藏
         const hideTimeout = setTimeout(() => {
             if (loadingScreen) {
                 loadingScreen.style.display = 'none';
-                console.log('Loading screen hidden via timeout');
             }
-        }, 600); // 略大于过渡时间
+        }, 600);
         
-        // 同时监听过渡结束事件
         loadingScreen.addEventListener('transitionend', () => {
             clearTimeout(hideTimeout);
             loadingScreen.style.display = 'none';
-            console.log('Loading screen hidden via transition');
         }, { once: true });
     }
 }

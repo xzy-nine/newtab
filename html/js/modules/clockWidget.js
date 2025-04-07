@@ -125,7 +125,7 @@ async function loadClockSettings() {
         
         updateClockVisibility();
     } catch (error) {
-        console.error('Failed to load clock settings:', error);
+        // 移除console.error调试代码
     }
 }
 
@@ -223,23 +223,20 @@ function updateClockVisibility() {
  */
 export async function saveClockSettings(settings) {
     try {
-        // 更新本地配置
         Object.assign(clockConfig, settings);
         
-        // 保存到存储
         await chrome.storage.local.set({
             clockEnabled: clockConfig.enabled,
             clockFormat24h: clockConfig.format24h,
             clockShowSeconds: clockConfig.showSeconds
         });
         
-        // 更新UI
         updateClockVisibility();
         updateClock();
         
         return true;
     } catch (error) {
-        console.error('Failed to save clock settings:', error);
+        // 移除console.error调试代码
         return false;
     }
 }

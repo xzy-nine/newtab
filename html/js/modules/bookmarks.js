@@ -30,9 +30,7 @@ export async function initBookmarks() {
         
         renderBookmarks();
         initBookmarkEvents();
-        console.log('Bookmarks initialized successfully');
     } catch (error) {
-        console.error('Failed to initialize bookmarks:', error);
         throw error;
     }
 }
@@ -46,7 +44,6 @@ async function loadBookmarks() {
         const result = await chrome.storage.sync.get('bookmarks');
         bookmarks = result.bookmarks || [];
     } catch (error) {
-        console.error('Failed to load bookmarks:', error);
         bookmarks = [];
     }
 }
@@ -60,23 +57,17 @@ async function getChromeBookmarks() {
         const tree = await chrome.bookmarks.getTree();
         const root = tree[0];
         
-        // 创建文件夹按钮
         const folderList = document.getElementById('folder-list');
         if (!folderList) {
-            console.error('找不到文件夹列表容器');
             return;
         }
         
-        // 清空现有内容
         folderList.innerHTML = '';
         
-        // 确保DOM更新
         setTimeout(() => {
-            // 处理Chrome书签的特殊根文件夹
             if (root && root.children) {
                 const specialRootFolders = root.children;
                 
-                // 处理每个特殊根文件夹
                 for (let specialRoot of specialRootFolders) {
                     if (specialRoot.children && !isFolderEmpty(specialRoot)) {
                         createRootFolderButton(specialRoot, folderList);
@@ -84,14 +75,10 @@ async function getChromeBookmarks() {
                 }
             }
             
-            // 从存储中获取上次选中的文件夹并应用
             applySelectedFolder(root);
-            
-            // 初始化事件处理
             initBookmarkEvents();
         }, 0);
     } catch (error) {
-        console.error('Failed to get Chrome bookmarks:', error);
     }
 }
 
@@ -277,12 +264,10 @@ function applySelectedFolder(root) {
         let folder = data.folder || root.id;
         currentFolder = folder;
         
-        // 通过ID查找选中的文件夹
         const selectedFolder = findFolderById(root, folder);
         if (selectedFolder) {
             showShortcuts(selectedFolder);
             
-            // 找到并突出显示选中的文件夹
             const selectedButton = document.getElementById(`folder-${folder}`);
             if (selectedButton) {
                 document.querySelectorAll('.folder-button.selected').forEach(btn => {
@@ -291,7 +276,7 @@ function applySelectedFolder(root) {
                 selectedButton.classList.add('selected');
             }
         }
-    }).catch(err => console.error('获取存储的文件夹失败:', err));
+    }).catch(err => {});
 }
 
 /**
