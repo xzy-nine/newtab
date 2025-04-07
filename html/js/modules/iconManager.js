@@ -2,22 +2,11 @@
  * 精简版图标管理模块 - 处理网站图标的获取和缓存
  */
 
-import { getDomain } from './utils.js';
+import { getDomain, blobToBase64, createElement, showErrorMessage } from './utils.js';
 
 // 核心数据结构
 const iconCache = new Map();
 const DEFAULT_ICON = 'images/default_favicon.png';
-
-/**
- * 将Blob对象转换为Base64字符串
- */
-export function convertBlobToBase64(blob) {
-    return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-    });
-}
 
 /**
  * 缓存图标数据
@@ -30,7 +19,10 @@ async function cacheIcon(domain, iconData) {
     
     try {
         await chrome.storage.local.set({ [domain]: iconData });
-    } catch (error) {}
+    } catch (error) {
+        // 使用 utils.js 的错误处理函数（但在此处不显示，只记录）
+        console.error('缓存图标失败:', error);
+    }
 }
 
 /**
@@ -91,7 +83,10 @@ export async function getIconUrl(url, element = null) {
                     iconUrls.unshift(new URL(iconLink.getAttribute('href'), url).href);
                 }
             }
-        } catch (error) {}
+        } catch (error) {
+            // 这里的错误可以忽略，因为我们有备选方案
+            console.debug('无法解析HTML获取图标:', error);
+        }
 
         // 依次尝试获取每个图标URL的内容
         for (const iconUrl of iconUrls) {
@@ -104,7 +99,8 @@ export async function getIconUrl(url, element = null) {
 
                 if (response.ok) {
                     const blob = await response.blob();
-                    const base64data = await convertBlobToBase64(blob);
+                    // 使用 utils.js 中的 blobToBase64 函数
+                    const base64data = await blobToBase64(blob);
                     
                     if (!base64data.startsWith('data:text')) {
                         const img = new Image();
@@ -123,10 +119,14 @@ export async function getIconUrl(url, element = null) {
                                 await cacheIcon(domain, base64data);
                                 return base64data;
                             }
-                        } catch (imgError) {}
+                        } catch (imgError) {
+                            console.debug(`图片加载失败: ${iconUrl}`, imgError);
+                        }
                     }
                 }
-            } catch (error) {}
+            } catch (error) {
+                console.debug(`获取图标失败: ${iconUrl}`, error);
+            }
         }
 
         // 生成基于域名首字母的替代图标
@@ -138,6 +138,8 @@ export async function getIconUrl(url, element = null) {
         return fallbackIcon;
 
     } catch (error) {
+        // 使用 utils.js 中的错误处理函数记录错误（但不显示给用户）
+        console.error('获取网站图标时遇到问题:', error);
         return DEFAULT_ICON;
     }
 }
@@ -161,9 +163,8 @@ function generateInitialBasedIcon(domain) {
     };
     
     const bgColor = getColorCode(domain);
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
+    // 使用 utils.js 中的 createElement 函数
+    const canvas = createElement('canvas', '', { width: '64', height: '64' });
     const ctx = canvas.getContext('2d');
     
     ctx.fillStyle = bgColor;
@@ -199,7 +200,9 @@ export async function handleIconError(img, fallbackIcon = DEFAULT_ICON) {
             
             try {
                 await chrome.storage.local.remove(originalUrl);
-            } catch (error) {}
+            } catch (error) {
+                console.error('移除失败的图标缓存时出错:', error);
+            }
         }
     }
 }
@@ -238,8 +241,10 @@ export async function setIconForElement(img, url) {
         
         delete img.dataset.processingUrl;
     } catch (error) {
+        // 使用默认图标并记录错误
         img.src = DEFAULT_ICON;
         delete img.dataset.processingUrl;
+        console.error('设置图标元素时出错:', error);
     }
 }
 
@@ -250,10 +255,20 @@ export async function generateIconDataUrl(url) { return await getIconUrl(url); }
 export async function preloadIcons() {}  // 简化为空函数，保留导出
 export function getAllCachedIcons() { return {}; }  // 简化实现，保留导出
 export async function setCustomIcon(url, base64Image) { 
-    await chrome.storage.local.set({ [url]: base64Image });
-    await cacheIcon(getDomain(url), base64Image);
+    try {
+        await chrome.storage.local.set({ [url]: base64Image });
+        await cacheIcon(getDomain(url), base64Image);
+    } catch (error) {
+        showErrorMessage('设置自定义图标失败');
+        console.error('设置自定义图标失败:', error);
+    }
 }
 export async function resetIcon(url) { 
-    await chrome.storage.local.remove(url);
-    iconCache.delete(getDomain(url));
+    try {
+        await chrome.storage.local.remove(url);
+        iconCache.delete(getDomain(url));
+    } catch (error) {
+        showErrorMessage('重置图标失败');
+        console.error('重置图标失败:', error);
+    }
 }
