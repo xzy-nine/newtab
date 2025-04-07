@@ -72,10 +72,93 @@ async function getChromeBookmarks() {
         
         // 确保DOM更新
         setTimeout(() => {
-            // 只处理根节点的直接子文件夹
-            if (root.children) {
-                for (let child of root.children) {
-                    createFolderButtonsRecursive(child, folderList, 0);
+            // Chrome书签结构特点：根节点(id:0)下有"收藏夹栏"(id:1)和"其他书签"(id:2)
+            // 我们需要直接处理这些特殊根文件夹，而不是处理它们的父节点
+            if (root && root.children) {
+                // 获取所有特殊根文件夹（通常是收藏夹栏和其他书签）
+                const specialRootFolders = root.children;
+                
+                // 处理每个特殊根文件夹
+                for (let specialRoot of specialRootFolders) {
+                    // 为特殊根文件夹创建按钮
+                    if (specialRoot.children && !isFolderEmpty(specialRoot)) {
+                        // 创建文件夹按钮
+                        let folderButton = document.createElement("div");
+                        folderButton.className = "folder-button";
+                        folderButton.id = `folder-${specialRoot.id}`;
+                        
+                        // 检查是否有非空子文件夹
+                        const nonEmptySubFolders = specialRoot.children.filter(child => 
+                            child.children && !isFolderEmpty(child)
+                        );
+                        const hasNonEmptySubFolders = nonEmptySubFolders.length > 0;
+                        
+                        // 添加内容
+                        const folderContent = document.createElement("div");
+                        folderContent.className = "folder-content folder-indent-0";
+                        
+                        folderContent.innerHTML = `
+                            <span class="folder-arrow">${hasNonEmptySubFolders ? '▶' : ''}</span>
+                            <span class="folder-icon">📁</span>
+                            <span class="folder-name">${specialRoot.title || "(无标题文件夹)"}</span>
+                        `;
+                        
+                        folderButton.appendChild(folderContent);
+                        
+                        // 存储文件夹数据到按钮元素
+                        folderButton.folderData = specialRoot;
+                        
+                        // 添加按钮到父元素
+                        folderList.appendChild(folderButton);
+                        
+                        // 只有存在非空子文件夹时才创建子容器
+                        if (hasNonEmptySubFolders) {
+                            // 创建子文件夹容器
+                            let subFolderContainer = document.createElement("div");
+                            subFolderContainer.className = "folder-children folder-children-initial";
+                            subFolderContainer.id = `children-${specialRoot.id}`;
+                            
+                            // 添加到DOM
+                            folderList.appendChild(subFolderContainer);
+                            
+                            // 对子文件夹进行排序处理
+                            let sortedSubFolders = [...nonEmptySubFolders];
+                            
+                            // 先按是否有子文件夹分组
+                            const subFoldersWithChildren = [];
+                            const subFoldersWithoutChildren = [];
+                            
+                            for (let subFolder of sortedSubFolders) {
+                                const hasNestedFolders = subFolder.children.some(child => 
+                                    child.children && !isFolderEmpty(child)
+                                );
+                                
+                                if (hasNestedFolders) {
+                                    subFoldersWithChildren.push(subFolder);
+                                } else {
+                                    subFoldersWithoutChildren.push(subFolder);
+                                }
+                            }
+                            
+                            // 对每个组内部按名称排序
+                            subFoldersWithoutChildren.sort((a, b) => a.title.localeCompare(b.title));
+                            subFoldersWithChildren.sort((a, b) => a.title.localeCompare(b.title));
+                            
+                            // 合并排序结果 - 无子文件夹的排在前面
+                            const finalSortedSubFolders = [...subFoldersWithoutChildren, ...subFoldersWithChildren];
+                            
+                            // 递归处理子文件夹
+                            for (let childFolder of finalSortedSubFolders) {
+                                createFolderButtonsRecursive(childFolder, subFolderContainer, 1);
+                            }
+                        }
+                        
+                        // 添加点击事件监听
+                        folderButton.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            handleFolderClick(folderButton, specialRoot);
+                        });
+                    }
                 }
             }
             
@@ -155,10 +238,59 @@ function createFolderButtonsRecursive(folder, parentElement, level) {
         // 跳过空文件夹
         if (isEmpty) return;
         
-        // 创建文件夹按钮
+        // 处理根级别的特殊排序
+        if (level === 0 && folder.children && folder.children.length > 0) {
+            // 获取所有非空文件夹
+            let childFolders = folder.children.filter(child => 
+                child.children && !isFolderEmpty(child)
+            );
+            
+            if (childFolders.length > 0) {
+                // 创建一个副本进行排序，而不是直接修改原始数组
+                let sortedFolders = [...childFolders];
+                
+                // 先按是否有子文件夹分组
+                const foldersWithChildren = [];
+                const foldersWithoutChildren = [];
+                
+                // 遍历所有非空文件夹
+                for (let child of sortedFolders) {
+                    // 检查是否有非空子文件夹
+                    const hasSubfolders = child.children.some(subChild => 
+                        subChild.children && !isFolderEmpty(subChild)
+                    );
+                    
+                    // 根据是否有子文件夹分组
+                    if (hasSubfolders) {
+                        foldersWithChildren.push(child);
+                    } else {
+                        foldersWithoutChildren.push(child);
+                    }
+                }
+                
+                // 每组内按名字排序
+                foldersWithoutChildren.sort((a, b) => 
+                    a.title.localeCompare(b.title)
+                );
+                foldersWithChildren.sort((a, b) => 
+                    a.title.localeCompare(b.title)
+                );
+                
+                // 组合两个数组 - 无子文件夹的排在前面
+                const finalSortedFolders = [...foldersWithoutChildren, ...foldersWithChildren];
+                
+                // 处理排序后的文件夹
+                for (let child of finalSortedFolders) {
+                    createFolderButtonsRecursive(child, parentElement, level + 1);
+                }
+            }
+            return;
+        }
+        
+        // 创建文件夹按钮元素
         let folderButton = document.createElement("div");
         folderButton.className = "folder-button";
-        folderButton.id = `folder-${folder.id}`; // 添加唯一ID便于调试
+        folderButton.id = `folder-${folder.id}`;
         
         // 确保文件夹标题可见
         if (!folder.title) {
@@ -171,7 +303,7 @@ function createFolderButtonsRecursive(folder, parentElement, level) {
         );
         const hasNonEmptySubFolders = nonEmptySubFolders.length > 0;
         
-        // 添加层级标识和展开/折叠指示器，只有有非空子文件夹时才显示箭头
+        // 添加层级标识和展开/折叠指示器
         const folderContent = document.createElement("div");
         folderContent.className = `folder-content folder-indent-${level}`;
         
@@ -188,22 +320,46 @@ function createFolderButtonsRecursive(folder, parentElement, level) {
         
         // 添加按钮到父元素
         parentElement.appendChild(folderButton);
-
+        
         // 只有存在非空子文件夹时才创建子容器
         if (hasNonEmptySubFolders) {
             // 创建子文件夹容器
             let subFolderContainer = document.createElement("div");
             subFolderContainer.className = "folder-children folder-children-initial";
-            subFolderContainer.id = `children-${folder.id}`; // 添加唯一ID便于调试
+            subFolderContainer.id = `children-${folder.id}`;
             
             // 添加到DOM
             parentElement.appendChild(subFolderContainer);
             
-            // 递归处理子文件夹
-            for (let childFolder of folder.children) {
-                if (childFolder.children) {
-                    createFolderButtonsRecursive(childFolder, subFolderContainer, level + 1);
+            // 以相同的逻辑对子文件夹进行排序
+            let sortedSubFolders = [...nonEmptySubFolders];
+            
+            // 应用相同的排序逻辑到子文件夹
+            const subFoldersWithChildren = [];
+            const subFoldersWithoutChildren = [];
+            
+            for (let subFolder of sortedSubFolders) {
+                const hasNestedFolders = subFolder.children.some(child => 
+                    child.children && !isFolderEmpty(child)
+                );
+                
+                if (hasNestedFolders) {
+                    subFoldersWithChildren.push(subFolder);
+                } else {
+                    subFoldersWithoutChildren.push(subFolder);
                 }
+            }
+            
+            // 对每个组内部按名称排序
+            subFoldersWithoutChildren.sort((a, b) => a.title.localeCompare(b.title));
+            subFoldersWithChildren.sort((a, b) => a.title.localeCompare(b.title));
+            
+            // 合并排序结果
+            const finalSortedSubFolders = [...subFoldersWithoutChildren, ...subFoldersWithChildren];
+            
+            // 递归处理子文件夹
+            for (let childFolder of finalSortedSubFolders) {
+                createFolderButtonsRecursive(childFolder, subFolderContainer, level + 1);
             }
         }
         
@@ -212,6 +368,7 @@ function createFolderButtonsRecursive(folder, parentElement, level) {
             event.stopPropagation();
             handleFolderClick(folderButton, folder);
         });
+        
     } catch (error) {
         console.error(`创建文件夹时出错:`, error);
     }
@@ -300,31 +457,37 @@ function handleFolderClick(folderButton, folder) {
         const parent = folderButton.parentElement;
         const children = folderButton.nextElementSibling;
         
-        // 判断是展开还是折叠
-        const isOpen = folderButton.classList.contains('open');
+        // 判断是否有非空子文件夹
+        const hasChildren = children && children.classList.contains('folder-children') && 
+                           children.querySelector('.folder-button');
         
-        // 关闭同级展开的文件夹
-        const siblings = parent.querySelectorAll(':scope > .folder-button.open');
-        siblings.forEach(openButton => {
-            if (openButton !== folderButton) {
-                const openChildren = openButton.nextElementSibling;
-                if (openChildren && openChildren.classList.contains('folder-children')) {
-                    closeFolder(openButton, openChildren);
-                }
-            }
-        });
-        
-        // 根据当前状态执行展开或折叠操作
-        if (isOpen) {
-            closeFolder(folderButton, children);
-        } else {
-            // 打开当前文件夹
-            openFolder(folderButton, children);
+        // 判断是展开还是折叠 - 只有存在子文件夹时才进行展开/折叠操作
+        if (hasChildren) {
+            const isOpen = folderButton.classList.contains('open');
             
-            // 确保视图滚动以显示新展开的内容
-            setTimeout(() => {
-                ensureChildrenVisibility(folderButton);
-            }, 300);
+            // 关闭同级展开的文件夹
+            const siblings = parent.querySelectorAll(':scope > .folder-button.open');
+            siblings.forEach(openButton => {
+                if (openButton !== folderButton) {
+                    const openChildren = openButton.nextElementSibling;
+                    if (openChildren && openChildren.classList.contains('folder-children')) {
+                        closeFolder(openButton, openChildren);
+                    }
+                }
+            });
+            
+            // 根据当前状态执行展开或折叠操作
+            if (isOpen) {
+                closeFolder(folderButton, children);
+            } else {
+                // 打开当前文件夹
+                openFolder(folderButton, children);
+                
+                // 确保视图滚动以显示新展开的内容
+                setTimeout(() => {
+                    ensureChildrenVisibility(folderButton);
+                }, 300);
+            }
         }
         
         // 显示该文件夹的快捷方式
@@ -334,6 +497,12 @@ function handleFolderClick(folderButton, folder) {
             
             // 保存当前选中的文件夹
             chrome.storage.local.set({ folder: folder.id });
+            
+            // 添加选中状态样式 - 修复选中状态
+            document.querySelectorAll('.folder-button.selected').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            folderButton.classList.add('selected');
         }
     }
 }
@@ -364,9 +533,9 @@ function closeFolder(button, children) {
     // 更新按钮状态
     button.classList.remove('open');
     
-    // 更新箭头方向
+    // 更新箭头方向 - 只有在有内容时才设置
     const arrowElement = button.querySelector('.folder-arrow');
-    if (arrowElement) {
+    if (arrowElement && arrowElement.textContent) {
         arrowElement.textContent = '▶';
     }
     
@@ -781,8 +950,12 @@ function createElement(tag, className, attributes = {}, content = '') {
 
 function openFolder(button, children) {
     button.classList.add('open');
+    
+    // 只有在有箭头内容时才旋转箭头
     const arrow = button.querySelector('.folder-arrow');
-    if (arrow) arrow.textContent = '▼';
+    if (arrow && arrow.textContent) {
+        arrow.textContent = '▼';
+    }
     
     children.classList.remove('folder-children-closed');
     children.classList.add('folder-children-open');
