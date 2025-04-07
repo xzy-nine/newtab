@@ -130,34 +130,69 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 300px;
+  width: 220px;
   background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   z-index: 3000;
   transform: translateY(100%);
   transition: transform 0.3s ease;
+  opacity: 0.95;
+  border-left: 3px solid #eaeaea;
+}
+
+.notification-content {
+  padding: 10px;
 }
 
 .notification-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
-  border-bottom: 1px solid #eee;
+  margin-bottom: 6px;
 }
 
-.notification-content {
-  padding: 10px 15px 15px;
+.notification-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notification-message {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 .notification-close {
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 13px;
   cursor: pointer;
-  color: #666;
+  padding: 0;
+  margin: 0;
+}
+
+/* 通知类型样式 */
+.notification-info {
+  background-color: #ffffff;
+  border-left-color: #eaeaea;
+}
+
+.notification-error {
+  background-color: #fff8f8;
+  border-left-color: #f44336;
+}
+
+.notification-warning {
+  background-color: #fffbf0;
+  border-left-color: #fbbc05;
+}
+
+.notification-success {
+  background-color: #f0fff4;
+  border-left-color: #34a853;
 }
 
 /* 添加从HTML移过来的动画和模态框样式 */

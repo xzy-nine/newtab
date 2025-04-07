@@ -33,7 +33,8 @@ import {
     showErrorMessage,
     showNotification,
     initUIEvents,
-    showModal
+    showModal,
+    createElement // 添加这一行导入createElement函数
 } from './modules/utils.js';
 
 // 版本号
@@ -80,6 +81,9 @@ async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
  */
 async function init() {
     try {
+        // 创建基本 UI 结构
+        createBasicUI();
+        
         // 显示加载界面
         showLoadingIndicator();
         
@@ -181,6 +185,53 @@ async function init() {
 }
 
 /**
+ * 创建基本 UI 结构
+ */
+function createBasicUI() {
+    const container = document.getElementById('container');
+    
+    // 创建搜索框
+    const searchBox = createElement('div', 'search-box', { id: 'search-box' });
+    const searchEngineIcon = createElement('img', '', { 
+        id: 'search-engine-icon', 
+        alt: 'Search Engine' 
+    });
+    const searchForm = createElement('form', '', { id: 'search-form' });
+    const searchInput = createElement('input', '', { 
+        id: 'search-input',
+        type: 'text',
+        placeholder: '搜索...',
+        autocomplete: 'off',
+        autocorrect: 'off',
+        autocapitalize: 'off',
+        spellcheck: 'false'
+    });
+    
+    searchForm.appendChild(searchInput);
+    searchBox.appendChild(searchEngineIcon);
+    searchBox.appendChild(searchForm);
+    
+    // 创建书签盒子
+    const bookmarkBox = createElement('div', '', { id: 'bookmark-box' });
+    const folderList = createElement('div', '', { id: 'folder-list' });
+    const shortcutList = createElement('div', '', { id: 'shortcut-list' });
+    
+    bookmarkBox.appendChild(folderList);
+    bookmarkBox.appendChild(shortcutList);
+    
+    // 创建背景按钮
+    const backgroundButton = createElement('button', '', { 
+        id: 'background-button',
+        'data-i18n': 'backgroundButton'
+    });
+    
+    // 添加所有元素到容器
+    container.appendChild(searchBox);
+    container.appendChild(bookmarkBox);
+    container.appendChild(backgroundButton);
+}
+
+/**
  * 设置所有模块的事件处理
  */
 function setupEvents() {
@@ -255,13 +306,15 @@ async function cleanupCacheData() {
 function showWelcomeMessage() {
     const welcomeModal = document.getElementById('welcome-modal');
     if (welcomeModal) {
-        // 使用utils.js中的函数替代手动显示
+        // 使用 utils.js 中的 showModal 函数
         showModal('welcome-modal');
     } else {
         // 如果没有预定义的欢迎模态框，使用通知
         showNotification(
             getI18nMessage('welcomeTitle'), 
-            getI18nMessage('welcomeMessage')
+            getI18nMessage('welcomeMessage'),
+            8000,  // 延长显示时间为 8 秒
+            'success'  // 使用成功类型的通知样式
         );
     }
 }
@@ -273,8 +326,10 @@ function showWelcomeMessage() {
  */
 function showUpdateMessage(oldVersion, newVersion) {
     showNotification(
-        getI18nMessage('updateTitle'), 
-        getI18nMessage('updateMessage').replace('{oldVersion}', oldVersion).replace('{newVersion}', newVersion)
+        getI18nMessage('updateTitle'),
+        getI18nMessage('updateMessage').replace('{oldVersion}', oldVersion).replace('{newVersion}', newVersion),
+        6000,  // 延长显示时间为 6 秒
+        'info'  // 使用信息类型的通知样式
     );
 }
 

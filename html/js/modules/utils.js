@@ -100,34 +100,46 @@ export function calculateTotalHeight(element) {
  * 显示加载指示器
  */
 export function showLoadingIndicator() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) {
-        // 创建或获取进度条元素
-        let progressBar = document.getElementById('loading-progress-bar');
-        if (!progressBar) {
-            progressBar = document.createElement('div');
-            progressBar.id = 'loading-progress-bar';
-            // 添加背景色和边框以确保在透明背景上可见
-            progressBar.style.cssText = 'width:0%;height:4px;background:linear-gradient(90deg,#4285f4,#34a853,#fbbc05,#ea4335);position:absolute;bottom:0;left:0;transition:width 0.3s;border-radius:0 2px 2px 0;box-shadow:0 0 5px rgba(0,0,0,0.3);';
-            loadingScreen.appendChild(progressBar);
-        }
+    // 检查是否已存在加载指示器
+    let loadingScreen = document.getElementById('loading-screen');
+    if (!loadingScreen) {
+        // 创建加载指示器
+        loadingScreen = createElement('div', '', { id: 'loading-screen' });
         
-        // 创建或获取状态文本元素
-        let statusText = document.getElementById('loading-status-text');
-        if (!statusText) {
-            statusText = document.createElement('div');
-            statusText.id = 'loading-status-text';
-            // 添加文字阴影确保在透明背景上可见
-            statusText.style.cssText = 'margin-top:10px;font-size:14px;color:#333;background:rgba(255,255,255,0.7);padding:5px 10px;border-radius:4px;text-shadow:0 0 2px #fff;';
-            statusText.textContent = '准备加载...';
-            loadingScreen.appendChild(statusText);
-        }
+        const loaderIcon = createElement('div', 'loader-icon', {
+            style: 'background:rgba(255,255,255,0.7);border-radius:50%;padding:10px;box-shadow:0 0 10px rgba(0,0,0,0.1);'
+        });
         
-        // 重置进度
-        progressBar.style.width = '0%';
-        statusText.textContent = '准备加载...';
+        loaderIcon.innerHTML = `
+            <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="20" cy="20" r="18" fill="none" stroke="#ddd" stroke-width="4"></circle>
+                <path d="M20 2 A18 18 0 0 1 38 20" fill="none" stroke="#4285f4" stroke-width="4" stroke-linecap="round">
+                    <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"></animateTransform>
+                </path>
+            </svg>
+        `;
         
-        loadingScreen.style.display = 'flex';
+        const loadingText = createElement('h3', '', {
+            style: 'background:rgba(255,255,255,0.7);padding:5px 15px;border-radius:4px;margin-top:10px;'
+        });
+        loadingText.textContent = '新标签页加载中...';
+        
+        loadingScreen.appendChild(loaderIcon);
+        loadingScreen.appendChild(loadingText);
+        document.body.appendChild(loadingScreen);
+    }
+    
+    loadingScreen.style.display = 'flex';
+    
+    // 添加进度条
+    if (!document.getElementById('loading-progress')) {
+        const progressContainer = createElement('div', 'progress-container', { id: 'loading-progress-container' });
+        const progressBar = createElement('div', 'progress-bar', { id: 'loading-progress' });
+        const statusText = createElement('div', 'status-text', { id: 'loading-status' });
+        
+        progressContainer.appendChild(progressBar);
+        loadingScreen.appendChild(progressContainer);
+        loadingScreen.appendChild(statusText);
     }
 }
 
@@ -187,34 +199,10 @@ export function updateLoadingProgress(percent, statusMessage) {
 /**
  * 显示错误消息
  * @param {string} message - 错误消息
+ * @param {number} [duration=5000] - 显示持续时间(毫秒)
  */
-export function showErrorMessage(message) {
-    const errorContainer = document.getElementById('error-container');
-    if (!errorContainer) {
-        // 如果不存在错误容器，创建一个
-        const container = document.createElement('div');
-        container.id = 'error-container';
-        container.style.cssText = 'position:fixed;top:10px;right:10px;background:#f44336;color:white;padding:10px 20px;border-radius:5px;z-index:1000;box-shadow:0 2px 5px rgba(0,0,0,0.2);';
-        
-        const messageElement = document.createElement('span');
-        messageElement.textContent = message;
-        
-        const closeButton = document.createElement('button');
-        closeButton.innerHTML = '&times;';
-        closeButton.style.cssText = 'margin-left:10px;background:none;border:none;color:white;font-size:16px;cursor:pointer;';
-        closeButton.addEventListener('click', () => {
-            container.style.display = 'none';
-        });
-        
-        container.appendChild(messageElement);
-        container.appendChild(closeButton);
-        document.body.appendChild(container);
-    } else {
-        // 如果存在，更新消息
-        const messageElement = errorContainer.querySelector('span') || errorContainer;
-        messageElement.textContent = message;
-        errorContainer.style.display = 'block';
-    }
+export function showErrorMessage(message, duration = 5000) {
+    showNotification('错误', message, duration, 'error');
 }
 
 /**
@@ -222,34 +210,38 @@ export function showErrorMessage(message) {
  * @param {string} title - 通知标题
  * @param {string} message - 通知内容
  * @param {number} [duration=5000] - 显示持续时间(毫秒)
+ * @param {string} [type='info'] - 通知类型 ('info', 'error', 'warning', 'success')
  */
-export function showNotification(title, message, duration = 5000) {
+export function showNotification(title, message, duration = 5000, type = 'info') {
     // 创建通知元素
     const notification = document.createElement('div');
-    notification.classList.add('notification');
-    notification.style.cssText = 'position:fixed;bottom:20px;right:20px;width:300px;background:white;border-radius:5px;box-shadow:0 2px 10px rgba(0,0,0,0.2);overflow:hidden;z-index:1000;transform:translateY(100%);transition:transform 0.3s;';
+    notification.classList.add('notification', `notification-${type}`);
     
-    // 添加通知内容
+    // 添加通知内容 - 使用结构化HTML
     notification.innerHTML = `
-        <div style="padding:15px;border-bottom:1px solid #eee;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <h3 style="margin:0;font-size:16px;">${title}</h3>
-                <button class="close-btn" style="background:none;border:none;font-size:16px;cursor:pointer;">&times;</button>
+        <div class="notification-content">
+            <div class="notification-header">
+                <h3 class="notification-title">${title}</h3>
+                <button class="notification-close">&times;</button>
             </div>
-            <p style="margin:10px 0 0;font-size:14px;">${message}</p>
+            <p class="notification-message">${message}</p>
         </div>
     `;
     
     // 添加到文档
     document.body.appendChild(notification);
     
-    // 显示通知
+    // 获取当前所有通知并计算位置偏移
+    const notifications = document.querySelectorAll('.notification');
+    const offset = (notifications.length - 1) * 10; // 每个通知堆叠时上移10px
+    
+    // 使用setTimeout确保样式先应用
     setTimeout(() => {
-        notification.style.transform = 'translateY(0)';
-    }, 100);
+        notification.style.transform = `translateY(0) translateY(-${offset}px)`;
+    }, 10);
     
     // 添加关闭按钮事件
-    const closeBtn = notification.querySelector('.close-btn');
+    const closeBtn = notification.querySelector('.notification-close');
     closeBtn.addEventListener('click', () => {
         closeNotification();
     });
@@ -268,9 +260,22 @@ export function showNotification(title, message, duration = 5000) {
         setTimeout(() => {
             if (document.body.contains(notification)) {
                 document.body.removeChild(notification);
+                // 重新计算其他通知的位置
+                adjustNotificationPositions();
             }
         }, 300);
     }
+}
+
+/**
+ * 调整所有通知的位置
+ * 在删除通知后重新排列剩余通知
+ */
+function adjustNotificationPositions() {
+    const notifications = document.querySelectorAll('.notification');
+    notifications.forEach((notification, index) => {
+        notification.style.transform = `translateY(0) translateY(-${index * 10}px)`;
+    });
 }
 
 /**
@@ -472,5 +477,61 @@ export function forceHideLoading() {
     return false;
 }
 
-// 在 newtab.js 末尾添加以下代码使其成为全局函数
-window.forceHideLoading = forceHideLoading;
+/**
+ * 弹出确认对话框的通用函数
+ * @param {string} message - 确认消息
+ * @param {Function} onConfirm - 确认回调
+ * @param {Function} [onCancel] - 取消回调
+ */
+export function showConfirmDialog(message, onConfirm, onCancel) {
+    // 创建确认对话框
+    const dialog = document.createElement('div');
+    dialog.classList.add('modal', 'confirm-dialog');
+    dialog.id = 'confirm-dialog-' + Date.now();
+    
+    dialog.innerHTML = `
+        <div class="modal-content">
+            <h3>${message}</h3>
+            <div class="confirm-actions">
+                <button id="confirm-btn-yes" class="btn btn-primary">${getI18nMessage('confirm') || '确认'}</button>
+                <button id="confirm-btn-no" class="btn">${getI18nMessage('cancel') || '取消'}</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    // 显示对话框
+    dialog.style.display = 'block';
+    
+    // 确认按钮事件
+    const btnYes = dialog.querySelector('#confirm-btn-yes');
+    btnYes.addEventListener('click', () => {
+        dialog.style.display = 'none';
+        document.body.removeChild(dialog);
+        if (typeof onConfirm === 'function') {
+            onConfirm();
+        }
+    });
+    
+    // 取消按钮事件
+    const btnNo = dialog.querySelector('#confirm-btn-no');
+    btnNo.addEventListener('click', () => {
+        dialog.style.display = 'none';
+        document.body.removeChild(dialog);
+        if (typeof onCancel === 'function') {
+            onCancel();
+        }
+    });
+    
+    // 点击外部关闭
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            dialog.style.display = 'none';
+            document.body.removeChild(dialog);
+            if (typeof onCancel === 'function') {
+                onCancel();
+            }
+        }
+    });
+}
