@@ -3,14 +3,9 @@
  * 负责处理Chrome书签和自定义书签的显示和交互
  */
 
-import { getDomain, showModal, createElement, isElementInViewport, calculateTotalHeight } from './utils.js';
+import { getDomain, showModal, createElement } from './utils.js';
 import { getI18nMessage } from './i18n.js';
-import { 
-    preloadIcons, 
-    getIconForShortcut, 
-    setCustomIcon, 
-    resetIcon
-} from './iconManager.js';
+import {  getIconUrl } from './iconManager.js';
 
 // 书签数据
 let bookmarks = [];
@@ -404,18 +399,14 @@ function showShortcuts(folder) {
 
     shortcutList.classList.remove('hidden');
     
-    // 预加载所有快捷方式的URL
-    const urls = shortcuts.map(shortcut => shortcut.url).filter(Boolean);
-    preloadIcons(urls);
-
     // 创建快捷方式按钮
     shortcuts.forEach(shortcut => {
         if (!shortcut.url) return;
         
         let shortcutButton = createElement("button", "shortcut-button", {title: shortcut.title});
         
-        // 获取图标
-        getIconForShortcut(shortcut.url, shortcutButton);
+        // 使用getIconUrl替代getIconForShortcut
+        getIconUrl(shortcut.url, shortcutButton);
         
         // 添加标题
         shortcutButton.appendChild(

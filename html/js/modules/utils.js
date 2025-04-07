@@ -477,54 +477,290 @@ export function forceHideLoading() {
  * @param {Function} [onCancel] - 取消回调
  */
 export function showConfirmDialog(message, onConfirm, onCancel) {
-    // 创建确认对话框
-    const dialog = document.createElement('div');
-    dialog.classList.add('modal', 'confirm-dialog');
-    dialog.id = 'confirm-dialog-' + Date.now();
+    // 使用通知样式实现确认对话框
+    const notification = document.createElement('div');
+    notification.classList.add('notification', 'notification-confirm');
     
-    dialog.innerHTML = `
-        <div class="modal-content">
-            <h3>${message}</h3>
-            <div class="confirm-actions">
-                <button id="confirm-btn-yes" class="btn btn-primary">${getI18nMessage('confirm') || '确认'}</button>
-                <button id="confirm-btn-no" class="btn">${getI18nMessage('cancel') || '取消'}</button>
+    // 添加通知内容
+    notification.innerHTML = `
+        <div class="notification-content">
+            <div class="notification-header">
+                <h3 class="notification-title">${getI18nMessage('confirm') || '确认'}</h3>
+                <button class="notification-close">&times;</button>
+            </div>
+            <p class="notification-message">${message}</p>
+            <div class="notification-actions">
+                <button class="btn btn-primary confirm-yes">${getI18nMessage('confirm') || '确认'}</button>
+                <button class="btn confirm-no">${getI18nMessage('cancel') || '取消'}</button>
             </div>
         </div>
     `;
     
-    document.body.appendChild(dialog);
+    // 添加到文档
+    document.body.appendChild(notification);
     
-    // 显示对话框
-    dialog.style.display = 'block';
+    // 获取当前所有通知并计算位置偏移
+    const notifications = document.querySelectorAll('.notification');
+    const offset = (notifications.length - 1) * 10; // 每个通知堆叠时上移10px
+    
+    // 使用setTimeout确保样式先应用
+    setTimeout(() => {
+        notification.style.transform = `translateY(0) translateY(-${offset}px)`;
+    }, 10);
+    
+    // 添加关闭按钮事件
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => {
+        closeNotification(false);
+    });
     
     // 确认按钮事件
-    const btnYes = dialog.querySelector('#confirm-btn-yes');
-    btnYes.addEventListener('click', () => {
-        dialog.style.display = 'none';
-        document.body.removeChild(dialog);
-        if (typeof onConfirm === 'function') {
-            onConfirm();
-        }
+    const confirmBtn = notification.querySelector('.confirm-yes');
+    confirmBtn.addEventListener('click', () => {
+        closeNotification(true);
     });
     
     // 取消按钮事件
-    const btnNo = dialog.querySelector('#confirm-btn-no');
-    btnNo.addEventListener('click', () => {
-        dialog.style.display = 'none';
-        document.body.removeChild(dialog);
-        if (typeof onCancel === 'function') {
-            onCancel();
+    const cancelBtn = notification.querySelector('.confirm-no');
+    cancelBtn.addEventListener('click', () => {
+        closeNotification(false);
+    });
+    
+    // 关闭通知函数
+    function closeNotification(isConfirmed) {
+        notification.style.transform = 'translateY(100%)';
+        
+        // 动画结束后移除DOM
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+                // 重新计算其他通知的位置
+                adjustNotificationPositions();
+                
+                // 执行回调
+                if (isConfirmed && typeof onConfirm === 'function') {
+                    onConfirm();
+                } else if (!isConfirmed && typeof onCancel === 'function') {
+                    onCancel();
+                }
+            }
+        }, 300);
+    }
+}
+
+/**
+ * 创建并显示一个表单模态框
+ * @param {string} title - 模态框标题
+ * @param {Array} formItems - 表单项配置数组，格式为 [{type, id, label, placeholder, required}]
+ * @param {Function} onConfirm - 确认回调，传入表单数据对象
+ * @param {string} [confirmText] - 确认按钮文本
+ * @param {string} [cancelText] - 取消按钮文本
+ * @returns {Object} - {close: Function} 返回控制对象
+ */
+export function showFormModal(title, formItems, onConfirm, confirmText, cancelText) {
+    // 生成唯一ID
+    const modalId = 'form-modal-' + Date.now();
+    
+    // 创建模态框元素
+    const modal = document.createElement('div');
+    modal.id = modalId;
+    modal.className = 'modal';
+    
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    
+    // 添加标题和关闭按钮
+    modalContent.innerHTML = `<span class="modal-close">&times;</span><h2>${title}</h2>`;
+    
+    // 创建表单元素
+    const formContainer = document.createElement('div');
+    formContainer.className = 'modal-form';
+    
+    // 添加表单项
+    formItems.forEach(item => {
+        const formGroup = document.createElement('div');
+        formGroup.className = 'form-group';
+        
+        const label = document.createElement('label');
+        label.setAttribute('for', item.id);
+        label.textContent = item.label;
+        formGroup.appendChild(label);
+        
+        let input;
+        if (item.type === 'textarea') {
+            input = document.createElement('textarea');
+        } else {
+            input = document.createElement('input');
+            input.type = item.type || 'text';
+        }
+        
+        input.id = item.id;
+        if (item.placeholder) input.placeholder = item.placeholder;
+        if (item.required) input.required = true;
+        if (item.value) input.value = item.value;
+        
+        formGroup.appendChild(input);
+        formContainer.appendChild(formGroup);
+    });
+    
+    // 添加按钮
+    const actionDiv = document.createElement('div');
+    actionDiv.className = 'form-actions';
+    
+    const cancelButton = document.createElement('button');
+    cancelButton.id = `${modalId}-cancel`;
+    cancelButton.className = 'btn';
+    cancelButton.textContent = cancelText || getI18nMessage('cancel') || '取消';
+    
+    const confirmButton = document.createElement('button');
+    confirmButton.id = `${modalId}-confirm`;
+    confirmButton.className = 'btn btn-primary';
+    confirmButton.textContent = confirmText || getI18nMessage('confirm') || '确认';
+    
+    actionDiv.appendChild(cancelButton);
+    actionDiv.appendChild(confirmButton);
+    formContainer.appendChild(actionDiv);
+    
+    modalContent.appendChild(formContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // 显示模态框
+    modal.style.display = 'block';
+    
+    // 关闭模态框的函数
+    const close = () => {
+        modal.style.display = 'none';
+        setTimeout(() => {
+            if (document.body.contains(modal)) {
+                document.body.removeChild(modal);
+            }
+        }, 300);
+    };
+    
+    // 绑定按钮事件
+    confirmButton.addEventListener('click', () => {
+        // 收集表单数据
+        const formData = {};
+        formItems.forEach(item => {
+            const input = document.getElementById(item.id);
+            if (input) {
+                formData[item.id] = input.value.trim();
+                
+                // 检查必填项
+                if (item.required && !formData[item.id]) {
+                    input.classList.add('error');
+                    return;
+                }
+            }
+        });
+        
+        // 如果有必填项未填，不关闭模态框
+        const requiredItems = formItems.filter(item => item.required);
+        const allFilled = requiredItems.every(item => {
+            const value = formData[item.id];
+            return value && value.trim().length > 0;
+        });
+        
+        if (!allFilled) {
+            // 显示错误提示
+            let errorMessage = document.getElementById(`${modalId}-error`);
+            if (!errorMessage) {
+                errorMessage = document.createElement('div');
+                errorMessage.id = `${modalId}-error`;
+                errorMessage.className = 'form-error';
+                errorMessage.textContent = getI18nMessage('pleaseCompleteAllFields') || '请填写所有必填项';
+                formContainer.insertBefore(errorMessage, actionDiv);
+            }
+            return;
+        }
+        
+        // 调用确认回调
+        onConfirm(formData);
+        close();
+    });
+    
+    cancelButton.addEventListener('click', close);
+    
+    // 关闭按钮事件
+    const closeButton = modal.querySelector('.modal-close');
+    closeButton.addEventListener('click', close);
+    
+    // 点击外部关闭
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            close();
         }
     });
     
-    // 点击外部关闭
-    dialog.addEventListener('click', (e) => {
-        if (e.target === dialog) {
-            dialog.style.display = 'none';
-            document.body.removeChild(dialog);
-            if (typeof onCancel === 'function') {
-                onCancel();
-            }
-        }
+    // 返回控制对象
+    return { close };
+}
+
+/**
+ * 创建并显示一个错误提示模态框
+ * @param {string} message - 错误消息
+ * @param {Function} [onClose] - 关闭回调
+ */
+export function showErrorModal(message, onClose) {
+    // 使用通知样式实现错误提示
+    const notification = document.createElement('div');
+    notification.classList.add('notification', 'notification-error');
+    
+    // 添加通知内容
+    notification.innerHTML = `
+        <div class="notification-content">
+            <div class="notification-header">
+                <h3 class="notification-title">${getI18nMessage('error') || '错误'}</h3>
+                <button class="notification-close">&times;</button>
+            </div>
+            <p class="notification-message">${message}</p>
+            <div class="notification-actions">
+                <button class="btn btn-primary error-ok">${getI18nMessage('ok') || '确定'}</button>
+            </div>
+        </div>
+    `;
+    
+    // 添加到文档
+    document.body.appendChild(notification);
+    
+    // 获取当前所有通知并计算位置偏移
+    const notifications = document.querySelectorAll('.notification');
+    const offset = (notifications.length - 1) * 10; // 每个通知堆叠时上移10px
+    
+    // 使用setTimeout确保样式先应用
+    setTimeout(() => {
+        notification.style.transform = `translateY(0) translateY(-${offset}px)`;
+    }, 10);
+    
+    // 添加关闭按钮事件
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => {
+        closeNotification();
     });
+    
+    // 确定按钮事件
+    const okBtn = notification.querySelector('.error-ok');
+    okBtn.addEventListener('click', () => {
+        closeNotification();
+    });
+    
+    // 关闭通知函数
+    function closeNotification() {
+        notification.style.transform = 'translateY(100%)';
+        
+        // 动画结束后移除DOM
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+                // 重新计算其他通知的位置
+                adjustNotificationPositions();
+                
+                // 执行回调
+                if (typeof onClose === 'function') {
+                    onClose();
+                }
+            }
+        }, 300);
+    }
 }

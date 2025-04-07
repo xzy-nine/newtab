@@ -28,7 +28,7 @@
   position: relative; /* 保持相对定位 */
   z-index: 1; /* 设置堆叠顺序为1 */
   pointer-events: none; /* 禁用鼠标事件 */
-  width: calc(100% - 10p x); /* 设置宽度，防止溢出 */
+  width: calc(100% - 10px); /* 设置宽度，防止溢出 - 修复了空格问题 */
   box-sizing: border-box; /* 确保padding计入总宽度 */
 }
 
