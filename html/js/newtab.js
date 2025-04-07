@@ -53,7 +53,6 @@ async function getExtensionVersion() {
         const manifest = await response.json();
         return manifest.version || '0.0.0';
     } catch (error) {
-        console.error('获取版本信息失败', error);
         return '0.0.0';
     }
 }
@@ -158,28 +157,17 @@ async function init() {
                 await executeWithTimeout(step.action, step.timeout, step.name);
                 completedModules++;
                 updateLoadingProgress((completedModules / totalModules) * 100, step.completeMessage);
-                console.log(`${step.name} initialized`);
             } catch (error) {
-                console.error(`Failed to initialize ${step.name}:`, error);
                 throw new Error(`${step.name}加载失败: ${error.message}`);
             }
         }
         
-        // 执行应用启动后的额外操作
         await performPostInitTasks();
-        
-        // 标记初始化完成
         isInitialized = true;
-        console.log('New tab page initialization complete');
-        
-        // 立即隐藏加载界面
         hideLoadingIndicator();
         
     } catch (error) {
-        // 处理初始化错误
-        console.error('Failed to initialize new tab page:', error);
         showErrorMessage('初始化失败，请刷新页面重试。');
-        // 确保在错误情况下也隐藏加载界面
         hideLoadingIndicator();
     }
 }
@@ -271,19 +259,15 @@ async function checkForUpdates() {
     try {
         const result = await chrome.storage.local.get('version');
         const oldVersion = result.version || null;
-        
-        // 保存当前版本
         await chrome.storage.local.set({ version: VERSION });
         
         if (!oldVersion) {
-            // 首次安装
             showWelcomeMessage();
         } else if (oldVersion !== VERSION) {
-            // 版本更新
             showUpdateMessage(oldVersion, VERSION);
         }
     } catch (error) {
-        console.error('Error checking for updates:', error);
+        // 静默处理错误
     }
 }
 
@@ -293,10 +277,9 @@ async function checkForUpdates() {
  */
 async function cleanupCacheData() {
     try {
-        // 清理图标缓存
         await cleanupIconCache();
     } catch (error) {
-        console.error('Failed to cleanup cache data:', error);
+        // 静默处理错误
     }
 }
 
@@ -339,12 +322,10 @@ function showUpdateMessage(oldVersion, newVersion) {
  */
 async function refreshPageContent() {
     try {
-        // 刷新背景图片
         await refreshBackgroundImage();
-        // 更新时钟
         updateClock();
     } catch (error) {
-        console.error('Failed to refresh page content:', error);
+        // 静默处理错误
     }
 }
 

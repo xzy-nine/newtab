@@ -95,7 +95,7 @@ async function loadSearchEngines() {
             try {
                 await saveToStorage({ [STORAGE_KEYS.ENGINES]: defaultEngines });
             } catch (err) {
-                console.warn("保存默认搜索引擎失败:", err);
+                // 移除console.warn
             }
         }
         
@@ -124,7 +124,7 @@ async function loadSearchEngines() {
             }
         }
     } catch (error) {
-        console.error('加载搜索引擎失败:', error);
+        // 移除console.error
         // 使用默认配置
         searchEngines = defaultEngines;
         currentEngineIndex = 0;
@@ -677,7 +677,10 @@ async function updateSearchEngines(newEngines, activeIndex = null) {
         renderSearchEngineSelector();
         return true;
     } catch (error) {
-        console.error('更新搜索引擎失败:', error);
+        // 移除console.error
+        // 使用默认配置
+        searchEngines = defaultEngines;
+        currentEngineIndex = 0;
         return false;
     }
 }

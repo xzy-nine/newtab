@@ -37,7 +37,6 @@ async function loadIconCache() {
         if (result.iconCache) {
             const cachedIcons = JSON.parse(result.iconCache);
             
-            // 将缓存的图标数据转换为Map
             Object.keys(cachedIcons).forEach(url => {
                 iconCache.set(url, {
                     data: cachedIcons[url].data,
@@ -46,7 +45,6 @@ async function loadIconCache() {
             });
         }
     } catch (error) {
-        console.error('Failed to load icon cache:', error);
     }
 }
 
@@ -56,7 +54,6 @@ async function loadIconCache() {
  */
 async function saveIconCache() {
     try {
-        // 将Map转换为对象以便存储
         const cacheObject = {};
         iconCache.forEach((value, key) => {
             cacheObject[key] = {
@@ -67,7 +64,6 @@ async function saveIconCache() {
         
         await chrome.storage.local.set({ iconCache: JSON.stringify(cacheObject) });
     } catch (error) {
-        console.error('Failed to save icon cache:', error);
     }
 }
 
@@ -155,7 +151,6 @@ export async function getIconUrl(url, element = null) {
             'www.so.com': 'https://www.so.com/favicon.ico'
         };
         
-        // 如果是已知的搜索引擎，使用直接的图标URL
         if (searchEngines[domain]) {
             try {
                 const response = await fetch(searchEngines[domain], { 
@@ -177,8 +172,7 @@ export async function getIconUrl(url, element = null) {
                     }
                 }
             } catch (error) {
-                console.log(`获取搜索引擎图标失败: ${domain}`, error);
-                // 继续尝试其他方法
+                // 移除console.log
             }
         }
 
@@ -429,25 +423,19 @@ export async function preloadIcons(urls, highPriority = false) {
  * @param {string} [fallbackIcon=DEFAULT_ICON] - 备用图标路径
  */
 export async function handleIconError(img, fallbackIcon = DEFAULT_ICON) {
-    // 设置默认图标
     img.src = fallbackIcon;
     
-    // 如果有原始URL，从缓存中移除失败的图标
     const originalUrl = img.dataset.originalUrl;
     if (originalUrl) {
         const domain = getDomain(originalUrl);
         if (iconCache.has(domain)) {
             iconCache.delete(domain);
             
-            // 从浏览器存储中也移除该图标
             try {
                 await chrome.storage.local.remove(originalUrl);
-                console.log(`已从缓存中移除失效图标: ${domain}`);
-                
-                // 保存更新后的缓存
                 await saveIconCache();
             } catch (error) {
-                console.error('清除失效图标缓存时出错:', error);
+                // 移除console.error
             }
         }
     }
