@@ -660,10 +660,60 @@ function showContextMenu(e, index) {
 }
 
 /**
- * 显示添加书签的模态框
+ * 显示书签模态框
  */
 function showBookmarkModal() {
+    // 检查是否已存在模态框
+    let modal = document.getElementById('bookmark-modal');
+    if (!modal) {
+        // 创建模态框结构
+        modal = createElement('div', 'modal', { id: 'bookmark-modal' });
+        const modalContent = createElement('div', 'modal-content');
+        
+        // 使用 createElement 函数构建 UI
+        modalContent.innerHTML = `
+            <span class="modal-close">&times;</span>
+            <h2>${getI18nMessage('addBookmark')}</h2>
+            <div class="modal-form">
+                <div class="form-group">
+                    <label for="bookmark-title">${getI18nMessage('title')}</label>
+                    <input type="text" id="bookmark-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="bookmark-url">${getI18nMessage('url')}</label>
+                    <input type="url" id="bookmark-url" required>
+                </div>
+                <div class="form-actions">
+                    <button id="bookmark-cancel" class="btn">${getI18nMessage('cancel')}</button>
+                    <button id="bookmark-confirm" class="btn btn-primary">${getI18nMessage('confirm')}</button>
+                </div>
+            </div>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+    }
+    
+    // 使用 utils.js 中的 showModal 函数显示模态框
     showModal('bookmark-modal');
+    
+    // 绑定确认按钮事件
+    const confirmBtn = document.getElementById('bookmark-confirm');
+    if (confirmBtn) {
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        newConfirmBtn.addEventListener('click', addNewBookmark);
+    }
+    
+    // 绑定取消按钮事件
+    const cancelBtn = document.getElementById('bookmark-cancel');
+    if (cancelBtn) {
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        newCancelBtn.addEventListener('click', () => {
+            hideModal('bookmark-modal');
+        });
+    }
 }
 
 /**

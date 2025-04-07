@@ -2,7 +2,7 @@
  * 背景图像处理模块
  */
 
-import { fetchData, blobToBase64 } from './utils.js';
+import { fetchData, blobToBase64, showErrorMessage } from './utils.js';
 import { getI18nMessage } from './i18n.js';
 
 // 背景图像设置
@@ -65,8 +65,6 @@ export function setupBackgroundEvents() {
     
     // 设置背景设置面板的事件
     setupBackgroundSettingsEvents();
-    
-    console.log('Background events setup complete');
 }
 
 /**
@@ -217,22 +215,22 @@ async function loadBackgroundSettings() {
  * @returns {Promise<void>}
  */
 export async function setBackgroundImage() {
-    const container = document.getElementById('background');
-    if (!container) {
-        console.error('Background container not found');
-        return;
-    }
-
     try {
+        // 获取背景容器
+        const container = document.getElementById('background-container');
+        if (!container) {
+            console.error('无法找到背景容器元素: background-container');
+            return;
+        }
+        
         let bgUrl = '';
         
-        // 根据背景类型设置背景
-        switch (bgSettings.type) {
+        // 根据背景类型获取URL
+        switch(bgSettings.type) {
             case 'custom':
                 if (bgSettings.customImageData) {
                     bgUrl = bgSettings.customImageData;
                 } else {
-                    console.log('No custom image found, using default');
                     bgUrl = 'images/default.jpg';
                 }
                 break;
@@ -241,21 +239,15 @@ export async function setBackgroundImage() {
                     bgUrl = await getBingImage();
                 } catch (error) {
                     console.error('Failed to get Bing image, using default:', error);
-                    bgUrl = 'images/default.jpg';
-                }
-                break;
-            case 'unsplash':
-                try {
-                    bgUrl = await getUnsplashImage();
-                } catch (error) {
-                    console.error('Failed to get Unsplash image, using default:', error);
+                    showErrorMessage(getI18nMessage('bingImageError') + error.message);
                     bgUrl = 'images/default.jpg';
                 }
                 break;
             case 'default':
-            default:
-                bgUrl = 'images/default.jpg';
-                break;
+                // 设置为白色背景
+                container.style.backgroundImage = 'none';
+                container.style.backgroundColor = '#ffffff';
+                return; // 直接返回，不需要设置背景图
         }
 
         // 应用背景样式
@@ -271,12 +263,13 @@ export async function setBackgroundImage() {
         
         // 应用背景效果
         applyBackgroundEffects();
-        
-        console.log('Background set successfully:', bgSettings.type);
     } catch (error) {
-        console.error('Failed to set background image:', error);
+        console.error('设置背景图像失败:', error);
         // 出错时使用默认背景
-        container.style.backgroundImage = 'url(images/default.jpg)';
+        const container = document.getElementById('background-container');
+        if (container) {
+            container.style.backgroundImage = 'url(images/default.jpg)';
+        }
     }
 }
 
@@ -284,8 +277,12 @@ export async function setBackgroundImage() {
  * 应用背景效果（模糊、暗化）
  */
 function applyBackgroundEffects() {
-    const container = document.getElementById('background');
-    if (!container) return;
+    // 统一使用与setBackgroundImage相同的元素ID
+    const container = document.getElementById('background-container');
+    if (!container) {
+        console.error('无法找到背景容器元素: background-container');
+        return;
+    }
     
     // 应用模糊效果
     if (bgSettings.blur > 0) {
@@ -309,6 +306,8 @@ function applyBackgroundEffects() {
         } else {
             overlay.style.display = 'none';
         }
+    } else {
+        console.error('无法找到背景遮罩元素: background-overlay');
     }
 }
 
@@ -333,11 +332,9 @@ async function getUnsplashImage() {
         const cacheExpiration = 24 * 60 * 60 * 1000; // 24小时
         
         if (cacheData[cacheName] && (now - cacheData[cacheName].timestamp < cacheExpiration)) {
-            console.log('Using cached Unsplash image');
             return cacheData[cacheName].imageData;
         }
         
-        console.log('Fetching new Unsplash image');
         // 从Unsplash获取随机图片
         const imageUrl = 'https://source.unsplash.com/random/1920x1080/?nature,landscape';
         
@@ -459,8 +456,6 @@ async function clearCustomBackground() {
     if (bgTypeSelect) {
         bgTypeSelect.value = 'bing';
     }
-    
-    console.log('Custom background cleared');
 }
 
 /**
@@ -526,7 +521,6 @@ export async function refreshBackgroundImage() {
         }
         
         if (needRefresh) {
-            console.log('Refreshing Bing background for a new day');
             // 强制清除缓存，获取新的Bing图片
             await chrome.storage.local.remove(cacheName);
             await setBackgroundImage();
