@@ -15,10 +15,10 @@
   position: relative; /* 设置相对定位 */
   overflow-y: auto; /* 允许垂直滚动 */
   overflow-x: hidden; /* 隐藏水平滚动条 */
+  max-height: 100%; /* 确保高度足够 */
 }
 
 /* 子文件夹容器样式 - 控制每个折叠子文件夹的容器 */
-/* 默认状态下子文件夹不可见且不可交互 */
 .folder-children {
   display: block; /* 设置为块级元素 */
   transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out; /* 添加高度和透明度的过渡效果 */
@@ -28,7 +28,7 @@
   position: relative; /* 保持相对定位 */
   z-index: 1; /* 设置堆叠顺序为1 */
   pointer-events: none; /* 禁用鼠标事件 */
-  width: calc(100% - 10px); /* 设置宽度，防止溢出 */
+  width: calc(100% - 10p x); /* 设置宽度，防止溢出 */
   box-sizing: border-box; /* 确保padding计入总宽度 */
 }
 
@@ -41,12 +41,6 @@
   overflow: visible; /* 允许内容溢出 */
 }
 
-/* 删除子文件夹容器的竖线装饰，简化视觉层次 */
-.folder-children::before { 
-  display: none; /* 移除竖线 */
-}
-
-/* 文件夹按钮基础样式 - 控制每个文件夹的点击区域和视觉外观 */
 /* 确保文件夹按钮具有一致的样式和交互行为 */
 .folder-button { 
   width: calc(100% - 5px); /* 稍微减小宽度 */
@@ -60,42 +54,17 @@
   box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
   cursor: pointer; /* 设置鼠标样式为指针 */
   margin: 4px 0; /* 设置上下外边距 */
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.1s; /* 合并transition属性 */
   overflow: hidden;
   z-index: 2; /* 按钮z-index高于折叠的子容器 */
   padding: 0; /* 移除内边距，让内容通过folder-content控制 */
   box-sizing: border-box;
 }
 
-/* 文件夹按钮底部指示条 - 当文件夹打开时会显示一条底部横线 */
-.folder-button::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background-color: var(--primary-color);
-  transition: width 0.3s ease;
-}
-
-/* 打开状态下文件夹按钮的底部指示条动画 */
-.folder-button.open::after {
-  width: 100%;
-}
-
-/* 删除第一个hover样式，保留第二个更具体的hover样式 */
 /* 文件夹按钮悬停状态 - 改变阴影效果增强用户体验 */
 .folder-button:hover { 
   box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
   background-color: rgba(0, 0, 0, 0.05);
-}
-
-/* 子文件夹嵌套视觉效果 - 通过缩进和竖线表示层次结构 */
-.child-container { 
-  margin-left: 20px; /* 设置左外边距为20px */
-  border-left: 2px solid #ccc; /* 设置左边框为2px的浅灰色实线 */
-  padding-left: 10px; /* 设置左内边距为10px */
 }
 
 /* 文件夹按钮点击动画效果 - 提供触觉反馈 */
@@ -125,6 +94,12 @@
   color: #222;
   font-weight: bold;
   text-shadow: 0 0 1px rgba(0, 0, 0, 0.2); /* 修改为黑色阴影 */
+}
+
+/* 当箭头为空时,不应占用空间 */
+.folder-arrow:empty {
+  margin-right: 0;
+  width: 0;
 }
 
 /* 文件夹打开状态下箭头的旋转动画 */
@@ -162,21 +137,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
-  max-width: 180px; /* 减小宽度以适应布局 */
-  text-align: left; /* 确保文本左对齐 */
-  padding-right: 5px; /* 右侧添加间距 */
-  font-size: 14px; /* 调整字体大小 */
+  max-width: 180px; /* 保留这个值，因为它更具体 */
+  text-align: left;
+  padding-right: 5px;
+  font-size: 14px;
 }
 
 /* 打开状态的文件夹按钮背景色变化 - 视觉状态指示 */
 .folder-button.open {
   background-color: rgba(0, 0, 0, 0.05);
-}
-
-/* 子文件夹容器过渡效果 - 控制展开/折叠的平滑动画 */
-.folder-children {
-  transition: max-height 0.3s ease-in-out;
-  overflow: hidden;
 }
 
 /* 文件夹图标样式 - 作为文件夹类型的视觉标识 */
@@ -194,43 +163,6 @@
 .folder-button.open .folder-icon::before,
 .folder-button:not(.open) .folder-icon::before {
   content: none; /* 禁用伪元素 */
-}
-
-/* 文件夹按钮边框样式 - 用于调试和明确元素边界 */
-.folder-button {
-  border: 1px solid rgba(0, 0, 0, 0.1); /* 添加边框以明确元素边界 */
-}
-
-/* 文件夹列表容器响应式调整 - 确保在不同视口尺寸下正常工作 */
-#folder-list {
-  min-width: 15%; /* 确保宽度足够 */
-  max-height: 100%; /* 确保高度足够 */
-  overflow-y: auto; /* 允许垂直滚动 */
-}
-
-/* 文件夹名称文本处理 - 防止长名称破坏布局 */
-.folder-name {
-  flex: 1;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-  max-width: 200px; /* 防止超长文本导致布局问题 */
-}
-
-/* 关闭状态的子文件夹容器样式 - 控制折叠状态的视觉效果 */
-.folder-children-closed {
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-}
-
-/* 打开状态的子文件夹容器样式 - 控制展开状态的视觉效果和过渡 */
-.folder-children-open {
-  display: block;
-  max-height: none;
-  opacity: 1;
-  transition: max-height 0.3s, opacity 0.3s;
-  overflow: visible; /* 允许子元素溢出可见 */
 }
 
 /* 添加新样式以替代内联样式 */
@@ -283,11 +215,5 @@
 .folder-button.selected .folder-icon,
 .folder-button.selected .folder-arrow {
   color: white;
-}
-
-/* 选中状态悬停效果 */
-.folder-button.selected:hover {
-  background-color: var(--primary-color-dark, #3367d6);
-  box-shadow: 0 0 15px rgba(66, 133, 244, 0.7);
 }
 
