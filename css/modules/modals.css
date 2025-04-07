@@ -124,15 +124,15 @@
 /* 通知系统 */
 .notification {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  top: 20px;           /* 从底部移到顶部 */
+  left: 20px;          /* 从右侧移到左侧 */
   width: 220px;
   background-color: white;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   z-index: 3000;
-  transform: translateY(100%);
+  transform: translateY(-100%);  /* 修改从上方移入 */
   transition: transform 0.3s ease;
   opacity: 0.95;
   border-left: 3px solid #eaeaea;

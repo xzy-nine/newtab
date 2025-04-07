@@ -244,7 +244,7 @@ export function showNotification(title, message, duration = 5000, type = 'info',
     
     // 使用setTimeout确保样式先应用
     setTimeout(() => {
-        notification.style.transform = `translateY(0) translateY(-${offset}px)`;
+        notification.style.transform = `translateY(0) translateY(${offset}px)`;  // 修改为正向偏移
     }, 10);
     
     // 添加关闭按钮事件
@@ -307,7 +307,7 @@ export function showNotification(title, message, duration = 5000, type = 'info',
 function adjustNotificationPositions() {
     const notifications = document.querySelectorAll('.notification');
     notifications.forEach((notification, index) => {
-        notification.style.transform = `translateY(0) translateY(-${index * 10}px)`;
+        notification.style.transform = `translateY(0) translateY(${index * 10}px)`;  // 改为向下堆叠
     });
 }
 
