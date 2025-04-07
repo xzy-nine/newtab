@@ -4,7 +4,6 @@
 
 import { fetchData, blobToBase64 } from './utils.js';
 import { getI18nMessage } from './i18n.js';
-import { fetchBingImage } from '../background.js';
 
 // 背景图像设置
 let bgSettings = {
@@ -13,6 +12,30 @@ let bgSettings = {
     blur: 0,
     dark: 0
 };
+
+// 从background.js移动过来的常量和函数
+const CACHE_KEY = 'bingImageCache';
+const CACHE_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * 获取必应每日图片
+ * @returns {Promise<string>} - 图片URL
+ */
+export async function fetchBingImage() {
+    const cachedData = await chrome.storage.local.get(CACHE_KEY);
+    const now = Date.now();
+
+    if (cachedData[CACHE_KEY] && (now - cachedData[CACHE_KEY].timestamp < CACHE_EXPIRATION)) {
+        return cachedData[CACHE_KEY].imageUrl;
+    }
+
+    const data = await fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1');
+    const imageUrl = `https://www.bing.com${data.images[0].url}`;
+
+    await chrome.storage.local.set({ [CACHE_KEY]: { imageUrl, timestamp: now } });
+
+    return imageUrl;
+}
 
 /**
  * 初始化背景图像
@@ -294,7 +317,7 @@ function applyBackgroundEffects() {
  * @returns {Promise<string>} - 图片URL
  */
 async function getBingImage() {
-    return await fetchBingImage(); // 调用background.js中的函数
+    return await fetchBingImage(); // 现在调用本模块中的函数
 }
 
 /**
