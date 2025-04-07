@@ -69,6 +69,30 @@ export function createElement(tag, className, attributes = {}, content = '') {
     return element;
 }
 
+/**
+ * 检查元素是否在视口内
+ * @param {HTMLElement} el - 要检查的元素
+ * @returns {boolean} - 如果元素在视口内则返回true
+ */
+export function isElementInViewport(el) {
+    const rect = el.getBoundingClientRect();
+    return (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    );
+}
+
+/**
+ * 计算元素总高度
+ * @param {HTMLElement} element - 要计算高度的元素
+ * @returns {number} - 总高度
+ */
+export function calculateTotalHeight(element) {
+    return element.scrollHeight * 1.1;
+}
+
 // UI相关函数集中管理
 // 加载指示器、通知、模态框等功能
 
