@@ -202,13 +202,26 @@ export function showErrorMessage(message, duration = 5000) {
  * 显示通知
  * @param {string} title - 通知标题
  * @param {string} message - 通知内容
- * @param {number} [duration=5000] - 显示持续时间(毫秒)
+ * @param {number} [duration=5000] - 显示持续时间(毫秒)，设为0则不自动关闭
  * @param {string} [type='info'] - 通知类型 ('info', 'error', 'warning', 'success')
+ * @param {Array} [buttons] - 可选的按钮配置 [{text, class, callback}]
+ * @param {Function} [onClose] - 关闭时的回调函数
+ * @returns {Object} - {close} 返回控制对象
  */
-export function showNotification(title, message, duration = 5000, type = 'info') {
+export function showNotification(title, message, duration = 5000, type = 'info', buttons = null, onClose = null) {
     // 创建通知元素
     const notification = document.createElement('div');
     notification.classList.add('notification', `notification-${type}`);
+    
+    // 构建按钮HTML
+    let buttonsHtml = '';
+    if (buttons && buttons.length > 0) {
+        buttonsHtml = '<div class="notification-actions">' +
+            buttons.map((btn, index) => 
+                `<button class="btn ${btn.class || ''}" data-button-index="${index}">${btn.text}</button>`
+            ).join('') +
+            '</div>';
+    }
     
     // 添加通知内容 - 使用结构化HTML
     notification.innerHTML = `
@@ -218,6 +231,7 @@ export function showNotification(title, message, duration = 5000, type = 'info')
                 <button class="notification-close">&times;</button>
             </div>
             <p class="notification-message">${message}</p>
+            ${buttonsHtml}
         </div>
     `;
     
@@ -239,15 +253,33 @@ export function showNotification(title, message, duration = 5000, type = 'info')
         closeNotification();
     });
     
-    // 定时关闭
-    const timeoutId = setTimeout(() => {
-        closeNotification();
-    }, duration);
+    // 添加自定义按钮事件
+    if (buttons && buttons.length > 0) {
+        buttons.forEach((btn, index) => {
+            const btnElement = notification.querySelector(`[data-button-index="${index}"]`);
+            if (btnElement && typeof btn.callback === 'function') {
+                btnElement.addEventListener('click', () => {
+                    btn.callback();
+                    closeNotification();
+                });
+            }
+        });
+    }
+    
+    // 定时关闭 (仅当duration > 0时)
+    let timeoutId;
+    if (duration > 0) {
+        timeoutId = setTimeout(() => {
+            closeNotification();
+        }, duration);
+    }
     
     // 关闭通知函数
     function closeNotification() {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
         notification.style.transform = 'translateY(100%)';
-        clearTimeout(timeoutId);
         
         // 动画结束后移除DOM
         setTimeout(() => {
@@ -255,9 +287,17 @@ export function showNotification(title, message, duration = 5000, type = 'info')
                 document.body.removeChild(notification);
                 // 重新计算其他通知的位置
                 adjustNotificationPositions();
+                
+                // 执行回调
+                if (typeof onClose === 'function') {
+                    onClose();
+                }
             }
         }, 300);
     }
+    
+    // 返回控制对象
+    return { close: closeNotification };
 }
 
 /**
@@ -475,77 +515,39 @@ export function forceHideLoading() {
  * @param {string} message - 确认消息
  * @param {Function} onConfirm - 确认回调
  * @param {Function} [onCancel] - 取消回调
+ * @returns {Object} - {close} 返回控制对象
  */
 export function showConfirmDialog(message, onConfirm, onCancel) {
-    // 使用通知样式实现确认对话框
-    const notification = document.createElement('div');
-    notification.classList.add('notification', 'notification-confirm');
-    
-    // 添加通知内容
-    notification.innerHTML = `
-        <div class="notification-content">
-            <div class="notification-header">
-                <h3 class="notification-title">${getI18nMessage('confirm') || '确认'}</h3>
-                <button class="notification-close">&times;</button>
-            </div>
-            <p class="notification-message">${message}</p>
-            <div class="notification-actions">
-                <button class="btn btn-primary confirm-yes">${getI18nMessage('confirm') || '确认'}</button>
-                <button class="btn confirm-no">${getI18nMessage('cancel') || '取消'}</button>
-            </div>
-        </div>
-    `;
-    
-    // 添加到文档
-    document.body.appendChild(notification);
-    
-    // 获取当前所有通知并计算位置偏移
-    const notifications = document.querySelectorAll('.notification');
-    const offset = (notifications.length - 1) * 10; // 每个通知堆叠时上移10px
-    
-    // 使用setTimeout确保样式先应用
-    setTimeout(() => {
-        notification.style.transform = `translateY(0) translateY(-${offset}px)`;
-    }, 10);
-    
-    // 添加关闭按钮事件
-    const closeBtn = notification.querySelector('.notification-close');
-    closeBtn.addEventListener('click', () => {
-        closeNotification(false);
-    });
-    
-    // 确认按钮事件
-    const confirmBtn = notification.querySelector('.confirm-yes');
-    confirmBtn.addEventListener('click', () => {
-        closeNotification(true);
-    });
-    
-    // 取消按钮事件
-    const cancelBtn = notification.querySelector('.confirm-no');
-    cancelBtn.addEventListener('click', () => {
-        closeNotification(false);
-    });
-    
-    // 关闭通知函数
-    function closeNotification(isConfirmed) {
-        notification.style.transform = 'translateY(100%)';
-        
-        // 动画结束后移除DOM
-        setTimeout(() => {
-            if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-                // 重新计算其他通知的位置
-                adjustNotificationPositions();
-                
-                // 执行回调
-                if (isConfirmed && typeof onConfirm === 'function') {
+    // 定义按钮
+    const buttons = [
+        {
+            text: getI18nMessage('confirm') || '确认',
+            class: 'btn-primary confirm-yes',
+            callback: () => {
+                if (typeof onConfirm === 'function') {
                     onConfirm();
-                } else if (!isConfirmed && typeof onCancel === 'function') {
+                }
+            }
+        },
+        {
+            text: getI18nMessage('cancel') || '取消',
+            class: 'confirm-no',
+            callback: () => {
+                if (typeof onCancel === 'function') {
                     onCancel();
                 }
             }
-        }, 300);
-    }
+        }
+    ];
+    
+    // 使用showNotification实现确认对话框
+    return showNotification(
+        getI18nMessage('confirm') || '确认',
+        message,
+        0, // 0 表示不自动关闭
+        'confirm',
+        buttons
+    );
 }
 
 /**
@@ -701,66 +703,25 @@ export function showFormModal(title, formItems, onConfirm, confirmText, cancelTe
  * 创建并显示一个错误提示模态框
  * @param {string} message - 错误消息
  * @param {Function} [onClose] - 关闭回调
+ * @returns {Object} - {close} 返回控制对象
  */
 export function showErrorModal(message, onClose) {
-    // 使用通知样式实现错误提示
-    const notification = document.createElement('div');
-    notification.classList.add('notification', 'notification-error');
+    // 定义按钮
+    const buttons = [
+        {
+            text: getI18nMessage('ok') || '确定',
+            class: 'btn-primary error-ok',
+            callback: () => {}
+        }
+    ];
     
-    // 添加通知内容
-    notification.innerHTML = `
-        <div class="notification-content">
-            <div class="notification-header">
-                <h3 class="notification-title">${getI18nMessage('error') || '错误'}</h3>
-                <button class="notification-close">&times;</button>
-            </div>
-            <p class="notification-message">${message}</p>
-            <div class="notification-actions">
-                <button class="btn btn-primary error-ok">${getI18nMessage('ok') || '确定'}</button>
-            </div>
-        </div>
-    `;
-    
-    // 添加到文档
-    document.body.appendChild(notification);
-    
-    // 获取当前所有通知并计算位置偏移
-    const notifications = document.querySelectorAll('.notification');
-    const offset = (notifications.length - 1) * 10; // 每个通知堆叠时上移10px
-    
-    // 使用setTimeout确保样式先应用
-    setTimeout(() => {
-        notification.style.transform = `translateY(0) translateY(-${offset}px)`;
-    }, 10);
-    
-    // 添加关闭按钮事件
-    const closeBtn = notification.querySelector('.notification-close');
-    closeBtn.addEventListener('click', () => {
-        closeNotification();
-    });
-    
-    // 确定按钮事件
-    const okBtn = notification.querySelector('.error-ok');
-    okBtn.addEventListener('click', () => {
-        closeNotification();
-    });
-    
-    // 关闭通知函数
-    function closeNotification() {
-        notification.style.transform = 'translateY(100%)';
-        
-        // 动画结束后移除DOM
-        setTimeout(() => {
-            if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-                // 重新计算其他通知的位置
-                adjustNotificationPositions();
-                
-                // 执行回调
-                if (typeof onClose === 'function') {
-                    onClose();
-                }
-            }
-        }, 300);
-    }
+    // 使用showNotification实现错误提示
+    return showNotification(
+        getI18nMessage('error') || '错误',
+        message,
+        0, // 0 表示不自动关闭
+        'error',
+        buttons,
+        onClose
+    );
 }
