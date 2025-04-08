@@ -38,6 +38,27 @@
     min-height: 100vh; /* 确保至少占满整个视口高度 */
   }
   
+  /* 添加背景容器样式 */
+  #background-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    background-size: cover;
+    background-position: center;
+  }
+  
+  #background-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+  }
+  
   /* 美化滚动条 */
   ::-webkit-scrollbar {
     width: 12px; /* 设置滚动条的宽度 */

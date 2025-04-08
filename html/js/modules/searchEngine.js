@@ -428,27 +428,12 @@ function getSearchParamFromUrl(url) {
  * @param {boolean} [firstRender=false] - 是否是首次渲染
  */
 function renderSearchEngineSelector(firstRender = false) {
-    const searchEngineIcon = document.getElementById('search-engine-icon');
-    if (!searchEngineIcon) return;
-    
-    // 首次渲染时设置占位图标
-    if (firstRender) {
-        searchEngineIcon.src = '../favicon.png';
-    }
-    
-    // 异步加载实际图标
-    setTimeout(() => {
-        IconManager.setIconForElement(searchEngineIcon, searchEngines[currentEngineIndex].url);
-        searchEngineIcon.onerror = () => IconManager.handleIconError(searchEngineIcon, '../favicon.png');
-    }, firstRender ? 100 : 0);
-    
-    // 创建或获取菜单元素
+    // 创建或获取搜索引擎菜单元素
     let menuElement = document.getElementById('search-engine-menu');
     if (!menuElement) {
-        menuElement = Utils.createElement('div', 'search-engine-menu', {
-            id: 'search-engine-menu',
-            style: 'display:none;position:fixed;overflow:auto;max-height:300px;width:200px;z-index:1000;'
-        });
+        menuElement = document.createElement('div');
+        menuElement.id = 'search-engine-menu';
+        menuElement.className = 'search-engine-menu';
         document.body.appendChild(menuElement);
     } else if (menuElement.parentElement && menuElement.parentElement.id === 'search-box') {
         document.body.appendChild(menuElement);
@@ -459,43 +444,32 @@ function renderSearchEngineSelector(firstRender = false) {
     
     // 填充搜索引擎选项
     searchEngines.forEach((engine, index) => {
-        const menuItem = Utils.createElement('div', 'search-engine-item' + (index === currentEngineIndex ? ' active' : ''), {
-            style: 'padding:10px;display:flex;align-items:center;cursor:pointer;' + 
-                  (index === currentEngineIndex ? 'background-color:#f0f0f0;' : '')
-        });
+        const menuItem = document.createElement('div');
+        menuItem.className = 'search-engine-item' + (index === currentEngineIndex ? ' active' : '');
         
-        const icon = Utils.createElement('img', '', {
-            alt: engine.name,
-            style: 'width:20px;height:20px;margin-right:10px;object-fit:contain;'
-        });
+        const icon = document.createElement('img');
+        icon.alt = engine.name;
         IconManager.setIconForElement(icon, engine.url);
         icon.onerror = () => IconManager.handleIconError(icon, '../favicon.png');
         
-        const name = Utils.createElement('span', '', {}, engine.name);
+        const name = document.createElement('span');
+        name.textContent = engine.name;
         
         menuItem.appendChild(icon);
         menuItem.appendChild(name);
         
         // 添加删除按钮(如果搜索引擎数量大于1)
         if (searchEngines.length > 1) {
-            const deleteButton = Utils.createElement('div', 'search-engine-delete', {
-                style: 'margin-left:auto;color:#999;font-size:16px;padding:0 5px;cursor:pointer;',
-                title: I18n.getMessage('deleteSearchEngine') || '删除搜索引擎'
-            }, '&times;');
-
+            const deleteButton = document.createElement('div');
+            deleteButton.className = 'search-engine-delete';
+            deleteButton.innerHTML = '&times;';
+            
             deleteButton.addEventListener('click', (e) => {
                 e.stopPropagation();
-                
-                // 确认删除
-                if (searchEngines.length <= 1) {
-                    Utils.UI.showErrorModal(I18n.getMessage('cannotDeleteLastEngine') || '无法删除最后一个搜索引擎', '', false);
-                    return;
-                }
-                
                 Utils.UI.showConfirmDialog(
-                    I18n.getMessage('confirmDeleteEngine') || '确定要删除此搜索引擎吗？',
+                    I18n.getMessage('confirmDeleteSearchEngine').replace('{name}', engine.name),
                     () => {
-                        SearchEngineAPI.removeEngine(index);
+                        SearchEngineAPI.deleteEngine(index);
                         menuElement.style.display = 'none';
                     }
                 );
@@ -512,9 +486,9 @@ function renderSearchEngineSelector(firstRender = false) {
     });
     
     // 添加自定义搜索引擎选项
-    const addCustomEngine = Utils.createElement('div', 'search-engine-add', {
-        style: 'padding:10px;border-top:1px solid #eee;text-align:center;cursor:pointer;'
-    }, I18n.getMessage('addCustomSearchEngine') || '添加自定义搜索引擎');
+    const addCustomEngine = document.createElement('div');
+    addCustomEngine.className = 'search-engine-add';
+    addCustomEngine.textContent = I18n.getMessage('addCustomSearchEngine') || '添加自定义搜索引擎';
     
     addCustomEngine.addEventListener('click', showAddSearchEngineModal);
     menuElement.appendChild(addCustomEngine);
@@ -576,9 +550,10 @@ function renderSearchEngineSelector(firstRender = false) {
     // 点击其他区域关闭菜单
     if (!window._menuClickHandlerAdded) {
         document.addEventListener('click', (e) => {
-            const icon = document.getElementById('search-engine-icon');
             const menu = document.getElementById('search-engine-menu');
-            if (icon && menu && !icon.contains(e.target) && !menu.contains(e.target)) {
+            if (menu && !menu.contains(e.target) && 
+                e.target.id !== 'search-engine-icon' &&
+                !e.target.classList.contains('search-engine-icon')) {
                 menu.style.display = 'none';
             }
         });
