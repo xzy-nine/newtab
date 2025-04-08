@@ -2,8 +2,8 @@
  * 背景图像处理模块
  */
 
-import { fetchData, blobToBase64, showErrorMessage } from './utils.js';
-import { getI18nMessage } from './i18n.js';
+import { Utils } from './utils.js';
+import { I18n } from './i18n.js';
 
 // 背景图像设置
 let bgSettings = {
@@ -29,7 +29,7 @@ export async function fetchBingImage() {
         return cachedData[CACHE_KEY].imageUrl;
     }
 
-    const data = await fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1');
+    const data = await Utils.fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1');
     const imageUrl = `https://www.bing.com${data.images[0].url}`;
 
     await chrome.storage.local.set({ [CACHE_KEY]: { imageUrl, timestamp: now } });
@@ -239,7 +239,7 @@ export async function setBackgroundImage() {
                     bgUrl = await getBingImage();
                 } catch (error) {
                     console.error('Failed to get Bing image, using default:', error);
-                    showErrorMessage(getI18nMessage('bingImageError') + error.message);
+                    Utils.UI.showErrorMessage(I18n.getMessage('bingImageError') + error.message);
                     bgUrl = 'images/default.jpg';
                 }
                 break;
@@ -341,7 +341,7 @@ async function getUnsplashImage() {
         // 下载图片并转换为base64
         const imgResponse = await fetch(imageUrl);
         const blob = await imgResponse.blob();
-        const base64Data = await blobToBase64(blob);
+        const base64Data = await Utils.blobToBase64(blob);
         
         // 保存到缓存
         await chrome.storage.local.set({ 
@@ -526,6 +526,6 @@ export async function refreshBackgroundImage() {
             await setBackgroundImage();
         }
     } catch (error) {
-        console.error('Failed to refresh background image:', error);
+        console.error('刷新背景图片失败:', error);
     }
 }

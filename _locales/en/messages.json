@@ -1,4 +1,8 @@
 {
+  "exampleKey": {
+    "message": "This is an example message",
+    "description": "This is an example description for demonstration purposes"
+  },
   "appName": {
     "message": "Bookmark New Tab Extension",
     "description": "应用程序的名称"
@@ -6,5 +10,241 @@
   "appDescription": {
     "message": "A clean and beautiful new tab extension with search engine switching, bookmark shortcuts, and background switching.",
     "description": "应用程序的描述"
+  },
+  "newTab": {
+    "message": "New Tab",
+    "description": "标签页标题"
+  },
+  "enterEngineUrl": {
+    "message": "Please enter the search engine URL, e.g., https://www.google.com",
+    "description": "搜索引擎URL输入提示"
+  },
+  "searchPlaceholder": {
+    "message": "Search here",
+    "description": "搜索框占位文本"
+  },
+  "backgroundButton": {
+    "message": "Background",
+    "description": "背景按钮文本"
+  },
+  "backgroundSetFailed": {
+    "message": "Failed to set background image, please check if the filename contains spaces or special characters",
+    "description": "背景设置失败提示"
+  },
+  "settingBackgroundType": {
+    "message": "Setting background type:",
+    "description": "设置背景类型提示"
+  },
+  "localStorageImageFailed": {
+    "message": "Failed to get image from local storage",
+    "description": "从本地存储获取图片失败提示"
+  },
+  "backgroundFetchFailed": {
+    "message": "Failed to fetch wallpaper",
+    "description": "获取壁纸失败提示"
+  },
+  "bingDailyBackgroundFailed": {
+    "message": "Failed to set Bing daily background:",
+    "description": "设置必应每日图片背景失败提示"
+  },
+  "customBackgroundExists": {
+    "message": "Custom background image status:",
+    "description": "自定义背景图片状态提示"
+  },
+  "currentBackgroundType": {
+    "message": "Current background type:",
+    "description": "当前背景类型提示"
+  },
+  "usingCachedImage": {
+    "message": "Using cached image, remaining time: %s hours %s minutes",
+    "description": "使用缓存图片提示"
+  },
+  "fetchingBingImage": {
+    "message": "Fetching Bing daily image...",
+    "description": "获取必应每日图片提示"
+  },
+  "bingApiError": {
+    "message": "Bing API error: %s",
+    "description": "必应API错误提示"
+  },
+  "invalidBingResponse": {
+    "message": "Invalid Bing API response",
+    "description": "无效的必应API响应提示"
+  },
+  "bingImageUrl": {
+    "message": "Bing image URL:",
+    "description": "必应图片地址提示"
+  },
+  "imageDownloadError": {
+    "message": "Image download failed",
+    "description": "图片下载失败提示"
+  },
+  "base64Generated": {
+    "message": "Base64 data generated:",
+    "description": "base64数据生成状态提示"
+  },
+  "localStorageError": {
+    "message": "Error saving to local storage:",
+    "description": "保存到本地存储时错误提示"
+  },
+  "bingImageError": {
+    "message": "Error fetching Bing image:",
+    "description": "获取必应图片时错误提示"
+  },
+  "welcomeTitle": {
+    "message": "Welcome",
+    "description": "欢迎标题"
+  },
+  "welcomeMessage": {
+    "message": "Thank you for installing the Bookmark New Tab Extension!",
+    "description": "欢迎信息"
+  },
+  "updateTitle": {
+    "message": "Updated",
+    "description": "更新标题"
+  },
+  "updateMessage": {
+    "message": "Extension updated from {oldVersion} to {newVersion}",
+    "description": "更新信息"
+  },
+  "customIcon": {
+    "message": "Custom Icon",
+    "description": "自定义图标"
+  },
+  "resetIcon": {
+    "message": "Reset Icon",
+    "description": "重置图标"
+  },
+  "editBookmark": {
+    "message": "Edit Bookmark",
+    "description": "编辑书签"
+  },
+  "addBookmark": {
+    "message": "Add Bookmark",
+    "description": "添加书签"
+  },
+  "confirmDeleteBookmark": {
+    "message": "Are you sure you want to delete this bookmark?",
+    "description": "确认删除书签提示"
+  },
+  "pleaseCompleteAllFields": {
+    "message": "Please complete all required fields",
+    "description": "完成所有必填字段提示"
+  },
+  "addCustomSearchEngine": {
+    "message": "Add Custom Search Engine",
+    "description": "添加自定义搜索引擎"
+  },
+  "engineName": {
+    "message": "Name",
+    "description": "引擎名称"
+  },
+  "engineSearchUrl": {
+    "message": "Search URL (include %s as search term placeholder)",
+    "description": "搜索URL"
+  },
+  "engineIconUrl": {
+    "message": "Icon URL (optional)",
+    "description": "图标URL"
+  },
+  "cancel": {
+    "message": "Cancel",
+    "description": "取消按钮"
+  },
+  "confirm": {
+    "message": "Confirm",
+    "description": "确认按钮"
+  },
+  "saveFailed": {
+    "message": "Save failed",
+    "description": "保存失败提示"
+  },
+  "savingSettings": {
+    "message": "Saving settings...",
+    "description": "正在保存设置提示"
+  },
+  "loadingResources": {
+    "message": "Loading resources...",
+    "description": "加载资源提示"
+  },
+  "loadingI18n": {
+    "message": "Loading internationalization resources...",
+    "description": "加载国际化资源提示"
+  },
+  "loadingIcons": {
+    "message": "Loading icon resources...",
+    "description": "加载图标资源提示"
+  },
+  "loadingBackground": {
+    "message": "Loading background image...",
+    "description": "加载背景图像提示"
+  },
+  "loadingSearch": {
+    "message": "Loading search engines...",
+    "description": "加载搜索引擎提示"
+  },
+  "loadingBookmarks": {
+    "message": "Loading bookmarks...",
+    "description": "加载书签提示"
+  },
+  "loadingClock": {
+    "message": "Loading clock widget...",
+    "description": "加载时钟组件提示"
+  },
+  "clearStorageConfirm": {
+    "message": "Are you sure you want to clear all storage data? This action cannot be undone.",
+    "description": "确认清除所有存储数据提示"
+  },
+  "clearStorageSuccess": {
+    "message": "Storage has been cleared successfully, the page will refresh.",
+    "description": "存储已成功清除提示"
+  },
+  "clearStorageError": {
+    "message": "Failed to clear storage, please check console for details.",
+    "description": "清除存储失败提示"
+  },
+  "deleteSearchEngine": {
+    "message": "Delete Search Engine",
+    "description": "删除搜索引擎"
+  },
+  "cannotDeleteLastEngine": {
+    "message": "Cannot delete the last search engine",
+    "description": "无法删除最后一个搜索引擎提示"
+  },
+  "confirmDeleteEngine": {
+    "message": "Are you sure you want to delete this search engine?",
+    "description": "确认删除搜索引擎提示"
+  },
+  "initializationFailed": {
+    "message": "Initialization failed, please refresh the page to try again.",
+    "description": "初始化失败提示"
+  },
+  "initializingTitle": {
+    "message": "New Tab Page initializing...",
+    "description": "新标签页初始化中提示"
+  },
+  "loadingEvents": {
+    "message": "Initializing event handlers...",
+    "description": "初始化事件处理提示"
+  },
+  "loadingComplete": {
+    "message": "Loading complete!",
+    "description": "加载完成提示"
+  },
+  "initTimeout": {
+    "message": "Initialization timeout",
+    "description": "初始化超时提示"
+  },
+  "moduleInitTimeout": {
+    "message": "{0} initialization timed out",
+    "description": "模块初始化超时提示"
+  },
+  "moduleLoadingFailed": {
+    "message": "{0} loading failed: {1}",
+    "description": "模块加载失败提示"
+  },
+  "refreshPage": {
+    "message": "Refresh Page",
+    "description": "刷新页面按钮"
   }
 }

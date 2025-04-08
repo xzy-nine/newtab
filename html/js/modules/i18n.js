@@ -18,8 +18,8 @@ export const I18n = {
     // 设置用户语言
     await setUserLanguage();
     
-    // 加载内部翻译文件
-    loadTranslationsFromInternal();
+    // 加载翻译文件
+    await loadTranslationsFromFiles();
     
     // 应用翻译到UI
     this.applyTranslations();
@@ -87,7 +87,7 @@ export const I18n = {
   changeLanguage: async function(language) {
     currentLanguage = language;
     await chrome.storage.sync.set({ language });
-    loadTranslationsFromInternal(); // 使用内部翻译
+    await loadTranslationsFromFiles(); // 加载新语言的翻译
     this.applyTranslations();
   },
 
@@ -120,18 +120,31 @@ async function setUserLanguage() {
 }
 
 /**
- * 从内部加载翻译数据
+ * 从JSON文件加载翻译数据
+ * @returns {Promise<void>}
  */
-function loadTranslationsFromInternal() {
+async function loadTranslationsFromFiles() {
   try {
-    const locale = currentLanguage === 'zh' ? 'zh_CN' : 'en_US';
+    // 根据当前语言确定要加载的语言文件
+    let locale = 'en';
+    if (currentLanguage === 'zh') {
+      locale = 'zh_CN';
+    } else if (currentLanguage === 'ja') {
+      locale = 'ja'; // 如果有日语支持
+    }
     
-    translations = {};
+    // 加载翻译文件
+    const response = await fetch(`/_locales/${locale}/messages.json`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     
-    Object.entries(messages[locale]).forEach(([key, value]) => {
-      translations[key] = { message: value };
-    });
+    const messagesData = await response.json();
+    translations = messagesData;
+    
+    console.log(`已加载 ${locale} 语言文件`);
   } catch (error) {
+    console.error('加载翻译文件失败:', error);
     translations = {}; // 出错时使用空对象
   }
 }
@@ -150,132 +163,6 @@ function initLanguageSelector() {
     location.reload();
   });
 }
-
-// 保留以下内部翻译表
-const messages = {
-  zh_CN: {
-    newTab: "新标签页",
-    enterEngineUrl: "请输入搜索引擎官网链接，例如：https://www.google.com",
-    searchPlaceholder: "请在此搜索",
-    backgroundButton: "背景",
-    backgroundSetFailed: "背景图片设置失败，请检查文件名是否包含空格或特殊字符",
-    settingBackgroundType: "正在设置背景类型：",
-    localStorageImageFailed: "从本地存储获取图片失败",
-    backgroundFetchFailed: "获取壁纸失败",
-    bingDailyBackgroundFailed: "设置必应每日图片背景失败：",
-    customBackgroundExists: "自定义背景图片状态：",
-    currentBackgroundType: "当前背景类型：",
-    usingCachedImage: "使用缓存图片，剩余时间：%s小时%s分钟",
-    fetchingBingImage: "正在获取必应每日图片...",
-    bingApiError: "必应API请求错误：%s",
-    invalidBingResponse: "无效的必应API响应",
-    bingImageUrl: "必应图片地址：",
-    imageDownloadError: "图片下载失败",
-    base64Generated: "base64数据生成状态：",
-    localStorageError: "保存到本地存储时出错：",
-    bingImageError: "获取必应图片时出错：",
-    welcomeTitle: "欢迎使用",
-    welcomeMessage: "感谢您安装收藏夹新标签页扩展！",
-    updateTitle: "已更新",
-    updateMessage: "扩展已从 {oldVersion} 更新至 {newVersion}",
-    customIcon: "自定义图标",
-    resetIcon: "重置图标",
-    editBookmark: "编辑书签",
-    addBookmark: "添加书签",
-    confirmDeleteBookmark: "确定要删除此书签吗？",
-    pleaseCompleteAllFields: "请完成所有必填字段",
-    addCustomSearchEngine: "添加自定义搜索引擎",
-    engineName: "名称",
-    engineSearchUrl: "搜索URL (包含 %s 作为搜索词占位符)",
-    engineIconUrl: "图标URL (可选)",
-    cancel: "取消",
-    confirm: "确认",
-    saveFailed: "保存失败",
-    savingSettings: "正在保存设置...",
-    loadingResources: "正在加载资源...",
-    loadingI18n: "正在加载国际化资源...",
-    loadingIcons: "正在加载图标资源...",
-    loadingBackground: "正在加载背景图像...",
-    loadingSearch: "正在加载搜索引擎...",
-    loadingBookmarks: "正在加载书签...",
-    loadingClock: "正在加载时钟组件...",
-    clearStorageConfirm: "确定要清除所有存储数据吗？此操作不可恢复。",
-    clearStorageSuccess: "存储已成功清除，页面将刷新。",
-    clearStorageError: "清除存储失败，请查看控制台了解详情。",
-    deleteSearchEngine: "删除搜索引擎",
-    cannotDeleteLastEngine: "无法删除最后一个搜索引擎",
-    confirmDeleteEngine: "确定要删除此搜索引擎吗？",
-    initializationFailed: "初始化失败，请刷新页面重试。",
-    initializingTitle: "新标签页初始化中...",
-    loadingEvents: "正在初始化事件处理...",
-    loadingComplete: "加载完成！",
-    initTimeout: "初始化超时",
-    moduleInitTimeout: "{0}初始化超时",
-    moduleLoadingFailed: "{0}加载失败: {1}",
-    refreshPage: "刷新页面"
-  },
-  en_US: {
-    newTab: "New Tab",
-    enterEngineUrl: "Please enter the search engine URL, e.g., https://www.google.com",
-    searchPlaceholder: "Search here",
-    backgroundButton: "Background",
-    backgroundSetFailed: "Failed to set background image, please check if the filename contains spaces or special characters",
-    settingBackgroundType: "Setting background type:",
-    localStorageImageFailed: "Failed to get image from local storage",
-    backgroundFetchFailed: "Failed to fetch wallpaper",
-    bingDailyBackgroundFailed: "Failed to set Bing daily background:",
-    customBackgroundExists: "Custom background image status:",
-    currentBackgroundType: "Current background type:",
-    usingCachedImage: "Using cached image, remaining time: %s hours %s minutes",
-    fetchingBingImage: "Fetching Bing daily image...",
-    bingApiError: "Bing API error: %s",
-    invalidBingResponse: "Invalid Bing API response",
-    bingImageUrl: "Bing image URL:",
-    imageDownloadError: "Image download failed",
-    base64Generated: "Base64 data generated:",
-    localStorageError: "Error saving to local storage:",
-    bingImageError: "Error fetching Bing image:",
-    welcomeTitle: "Welcome",
-    welcomeMessage: "Thank you for installing the Bookmark New Tab Extension!",
-    updateTitle: "Updated",
-    updateMessage: "Extension updated from {oldVersion} to {newVersion}",
-    customIcon: "Custom Icon",
-    resetIcon: "Reset Icon",
-    editBookmark: "Edit Bookmark", 
-    addBookmark: "Add Bookmark",
-    confirmDeleteBookmark: "Are you sure you want to delete this bookmark?",
-    pleaseCompleteAllFields: "Please complete all required fields",
-    addCustomSearchEngine: "Add Custom Search Engine",
-    engineName: "Name",
-    engineSearchUrl: "Search URL (include %s as search term placeholder)",
-    engineIconUrl: "Icon URL (optional)",
-    cancel: "Cancel",
-    confirm: "Confirm",
-    saveFailed: "Save failed",
-    savingSettings: "Saving settings...",
-    loadingResources: "Loading resources...",
-    loadingI18n: "Loading internationalization resources...",
-    loadingIcons: "Loading icon resources...",
-    loadingBackground: "Loading background image...",
-    loadingSearch: "Loading search engines...",
-    loadingBookmarks: "Loading bookmarks...",
-    loadingClock: "Loading clock widget...",
-    clearStorageConfirm: "Are you sure you want to clear all storage data? This action cannot be undone.",
-    clearStorageSuccess: "Storage has been cleared successfully, the page will refresh.",
-    clearStorageError: "Failed to clear storage, please check console for details.",
-    deleteSearchEngine: "Delete Search Engine",
-    cannotDeleteLastEngine: "Cannot delete the last search engine",
-    confirmDeleteEngine: "Are you sure you want to delete this search engine?",
-    initializationFailed: "Initialization failed, please refresh the page to try again.",
-    initializingTitle: "New Tab Page initializing...",
-    loadingEvents: "Initializing event handlers...",
-    loadingComplete: "Loading complete!",
-    initTimeout: "Initialization timeout",
-    moduleInitTimeout: "{0} initialization timed out",
-    moduleLoadingFailed: "{0} loading failed: {1}",
-    refreshPage: "Refresh Page"
-  }
-};
 
 // ========================================================
 // 弃用函数 - 为保持向后兼容而保留

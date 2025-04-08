@@ -3,7 +3,7 @@
  * 包含通用UI处理、通知、模态框等功能
  */
 
-import { getI18nMessage } from './i18n.js';
+import { I18n } from './i18n.js';
 
 /**
  * 工具函数命名空间
@@ -338,7 +338,7 @@ export const Utils = {
       // 定义按钮
       const buttons = [
         {
-          text: getI18nMessage('confirm') || '确认',
+          text: I18n.getMessage('confirm') || '确认',
           class: 'btn-primary confirm-yes',
           callback: () => {
             if (typeof onConfirm === 'function') {
@@ -347,7 +347,7 @@ export const Utils = {
           }
         },
         {
-          text: getI18nMessage('cancel') || '取消',
+          text: I18n.getMessage('cancel') || '取消',
           class: 'confirm-no',
           callback: () => {
             if (typeof onCancel === 'function') {
@@ -359,7 +359,7 @@ export const Utils = {
       
       // 使用showNotification实现确认对话框
       return this.showNotification(
-        getI18nMessage('confirm') || '确认',
+        I18n.getMessage('confirm') || '确认',
         message,
         0, // 0 表示不自动关闭
         'confirm',
@@ -386,7 +386,7 @@ export const Utils = {
       // 定义按钮
       const buttons = [
         {
-          text: getI18nMessage('ok') || '确定',
+          text: I18n.getMessage('ok') || '确定',
           class: 'btn-primary error-ok',
           callback: () => {}
         }
@@ -394,7 +394,7 @@ export const Utils = {
       
       // 使用showNotification实现错误提示
       return this.showNotification(
-        title || getI18nMessage('error') || '错误',
+        title || I18n.getMessage('error') || '错误',
         message,
         0, // 0 表示不自动关闭
         'error',
@@ -463,12 +463,12 @@ export const Utils = {
       const cancelButton = document.createElement('button');
       cancelButton.id = `${modalId}-cancel`;
       cancelButton.className = 'btn';
-      cancelButton.textContent = cancelText || getI18nMessage('cancel') || '取消';
+      cancelButton.textContent = cancelText || I18n.getMessage('cancel') || '取消';
       
       const confirmButton = document.createElement('button');
       confirmButton.id = `${modalId}-confirm`;
       confirmButton.className = 'btn btn-primary';
-      confirmButton.textContent = confirmText || getI18nMessage('confirm') || '确认';
+      confirmButton.textContent = confirmText || I18n.getMessage('confirm') || '确认';
       
       actionDiv.appendChild(cancelButton);
       actionDiv.appendChild(confirmButton);
@@ -522,7 +522,7 @@ export const Utils = {
             errorMessage = document.createElement('div');
             errorMessage.id = `${modalId}-error`;
             errorMessage.className = 'form-error';
-            errorMessage.textContent = getI18nMessage('pleaseCompleteAllFields') || '请填写所有必填项';
+            errorMessage.textContent = I18n.getMessage('pleaseCompleteAllFields') || '请填写所有必填项';
             formContainer.insertBefore(errorMessage, actionDiv);
           }
           return;
