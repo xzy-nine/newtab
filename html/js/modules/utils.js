@@ -102,116 +102,115 @@ export const Utils = {
     /**
      * 显示加载指示器
      */
-    showLoadingIndicator: function() {
-      // 检查是否已存在加载指示器
-      let loadingScreen = document.getElementById('loading-screen');
-      if (!loadingScreen) {
-        // 创建加载指示器
-        loadingScreen = Utils.createElement('div', '', { id: 'loading-screen' });
+    showLoadingIndicator: () => {
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (!loadingOverlay) {
+        const overlay = document.createElement('div');
+        overlay.id = 'loading-overlay';
         
-        const loaderIcon = Utils.createElement('div', 'loader-icon', {
-          style: 'background:rgba(255,255,255,0.7);border-radius:50%;padding:10px;box-shadow:0 0 10px rgba(0,0,0,0.1);'
-        });
+        const loaderContainer = document.createElement('div');
+        loaderContainer.className = 'loader-container';
         
-        loaderIcon.innerHTML = `
-          <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="20" cy="20" r="18" fill="none" stroke="#ddd" stroke-width="4"></circle>
-            <path d="M20 2 A18 18 0 0 1 38 20" fill="none" stroke="#4285f4" stroke-width="4" stroke-linecap="round">
-              <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"></animateTransform>
-            </path>
-          </svg>
-        `;
+        // 添加转圈动画
+        const spinner = document.createElement('div');
+        spinner.className = 'loader-spinner';
         
-        const loadingText = Utils.createElement('h3', '', {
-          style: 'background:rgba(255,255,255,0.7);padding:5px 15px;border-radius:4px;margin-top:10px;'
-        });
-        loadingText.textContent = '新标签页加载中...';
+        // 添加进度条
+        const progress = document.createElement('div');
+        progress.id = 'loading-progress';
+        const progressBar = document.createElement('div');
+        progressBar.id = 'loading-progress-bar';
+        progress.appendChild(progressBar);
         
-        loadingScreen.appendChild(loaderIcon);
-        loadingScreen.appendChild(loadingText);
-        document.body.appendChild(loadingScreen);
+        // 添加消息区域
+        const message = document.createElement('div');
+        message.id = 'loading-message';
+        message.textContent = '正在加载...';
+        
+        loaderContainer.appendChild(spinner);
+        loaderContainer.appendChild(progress);
+        loaderContainer.appendChild(message);
+        overlay.appendChild(loaderContainer);
+        
+        document.body.appendChild(overlay);
+      } else {
+        loadingOverlay.classList.remove('hiding');
+        loadingOverlay.style.display = 'flex';
       }
-      
-      loadingScreen.style.display = 'flex';
-      
-      // 添加进度条
-      if (!document.getElementById('loading-progress')) {
-        const progressContainer = Utils.createElement('div', 'progress-container', { id: 'loading-progress-container' });
-        const progressBar = Utils.createElement('div', 'progress-bar', { id: 'loading-progress' });
-        const statusText = Utils.createElement('div', 'status-text', { id: 'loading-status' });
-        
-        progressContainer.appendChild(progressBar);
-        loadingScreen.appendChild(progressContainer);
-        loadingScreen.appendChild(statusText);
-      }
-    },
-
-    /**
-     * 隐藏加载指示器
-     * @param {boolean} [immediate=false] - 是否立即隐藏，无过渡动画
-     */
-    hideLoadingIndicator: function(immediate = false) {
-      const loadingScreen = document.getElementById('loading-screen');
-      if (loadingScreen) {
-        if (immediate) {
-          loadingScreen.style.display = 'none';
-          return;
-        }
-        
-        loadingScreen.style.opacity = '0';
-        loadingScreen.offsetHeight;
-        
-        const hideTimeout = setTimeout(() => {
-          if (loadingScreen) {
-            loadingScreen.style.display = 'none';
-          }
-        }, 600);
-        
-        loadingScreen.addEventListener('transitionend', () => {
-          clearTimeout(hideTimeout);
-          loadingScreen.style.display = 'none';
-        }, { once: true });
-      }
-    },
-
-    /**
-     * 强制隐藏加载指示器
-     * @returns {boolean} - 是否成功隐藏
-     */
-    forceHideLoading: function() {
-      const loadingScreen = document.getElementById('loading-screen');
-      if (loadingScreen) {
-        loadingScreen.style.display = 'none';
-        return true;
-      }
-      return false;
     },
 
     /**
      * 更新加载进度
-     * @param {number} percent - 加载百分比(0-100)
-     * @param {string} statusMessage - 当前状态消息
+     * @param {number} percent - 加载百分比 (0-100)
+     * @param {string} message - 加载消息
      */
-    updateLoadingProgress: function(percent, statusMessage) {
+    updateLoadingProgress: (percent, message) => {
       const progressBar = document.getElementById('loading-progress-bar');
-      const statusText = document.getElementById('loading-status-text');
+      const loadingMessage = document.getElementById('loading-message');
       
       if (progressBar) {
         progressBar.style.width = `${percent}%`;
       }
       
-      if (statusText && statusMessage) {
-        statusText.textContent = statusMessage;
+      if (loadingMessage && message) {
+        // 添加淡出效果
+        loadingMessage.style.opacity = '0';
+        
+        setTimeout(() => {
+          loadingMessage.textContent = message;
+          loadingMessage.style.opacity = '1';
+        }, 200);
+      }
+      
+      // 如果进度达到100%，显示完成状态
+      if (percent >= 100) {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+          loadingOverlay.classList.add('load-complete');
+        }
       }
     },
-    
+
+    /**
+     * 隐藏加载指示器
+     * @param {boolean} force - 是否强制隐藏
+     */
+    hideLoadingIndicator: (force = false) => {
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (loadingOverlay) {
+        if (force) {
+          loadingOverlay.style.display = 'none';
+        } else {
+          loadingOverlay.classList.add('hiding');
+          // 完全移除DOM元素，在过渡完成后
+          setTimeout(() => {
+            loadingOverlay.style.display = 'none';
+          }, 500);
+        }
+      }
+    },
+
     /**
      * 显示错误消息
      * @param {string} message - 错误消息
-     * @param {number} [duration=5000] - 显示持续时间(毫秒)
      */
-    showErrorMessage: function(message, duration = 5000) {
-      return this.showNotification('错误', message, duration, 'error');
+    showErrorMessage: (message) => {
+      const loadingMessage = document.getElementById('loading-message');
+      const progressBar = document.getElementById('loading-progress-bar');
+      
+      if (loadingMessage) {
+        loadingMessage.textContent = message;
+        loadingMessage.style.color = '#e53935';
+      }
+      
+      if (progressBar) {
+        progressBar.style.backgroundColor = '#e53935';
+      }
+      
+      // 5秒后隐藏错误消息
+      setTimeout(() => {
+        Utils.UI.hideLoadingIndicator(true);
+      }, 5000);
     },
 
     /**
