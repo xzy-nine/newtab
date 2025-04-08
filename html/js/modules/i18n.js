@@ -204,7 +204,15 @@ const messages = {
     clearStorageError: "清除存储失败，请查看控制台了解详情。",
     deleteSearchEngine: "删除搜索引擎",
     cannotDeleteLastEngine: "无法删除最后一个搜索引擎",
-    confirmDeleteEngine: "确定要删除此搜索引擎吗？"
+    confirmDeleteEngine: "确定要删除此搜索引擎吗？",
+    initializationFailed: "初始化失败，请刷新页面重试。",
+    initializingTitle: "新标签页初始化中...",
+    loadingEvents: "正在初始化事件处理...",
+    loadingComplete: "加载完成！",
+    initTimeout: "初始化超时",
+    moduleInitTimeout: "{0}初始化超时",
+    moduleLoadingFailed: "{0}加载失败: {1}",
+    refreshPage: "刷新页面"
   },
   en_US: {
     newTab: "New Tab",
@@ -257,7 +265,15 @@ const messages = {
     clearStorageError: "Failed to clear storage, please check console for details.",
     deleteSearchEngine: "Delete Search Engine",
     cannotDeleteLastEngine: "Cannot delete the last search engine",
-    confirmDeleteEngine: "Are you sure you want to delete this search engine?"
+    confirmDeleteEngine: "Are you sure you want to delete this search engine?",
+    initializationFailed: "Initialization failed, please refresh the page to try again.",
+    initializingTitle: "New Tab Page initializing...",
+    loadingEvents: "Initializing event handlers...",
+    loadingComplete: "Loading complete!",
+    initTimeout: "Initialization timeout",
+    moduleInitTimeout: "{0} initialization timed out",
+    moduleLoadingFailed: "{0} loading failed: {1}",
+    refreshPage: "Refresh Page"
   }
 };
 

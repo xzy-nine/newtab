@@ -3,14 +3,14 @@
  * 负责协调各模块的初始化和交互
  */
 
-import { initI18n, getI18nMessage } from './modules/i18n.js';
+import { I18n } from './modules/i18n.js';
 import { 
     initBackgroundImage, 
     setupBackgroundEvents,
     refreshBackgroundImage
 } from './modules/backgroundImage.js';
 import { 
-    initSearchEngine, 
+    initSearchEngine,
     setupSearchEvents 
 } from './modules/searchEngine.js';
 import { 
@@ -68,7 +68,7 @@ async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
         asyncFunc(),
         new Promise((_, reject) => {
             setTimeout(() => {
-                reject(new Error(`${moduleName}初始化超时`));
+                reject(new Error(I18n.getMessage('moduleInitTimeout').replace('{0}', moduleName)));
             }, timeout);
         })
     ]);
@@ -85,48 +85,48 @@ async function init() {
         // 显示加载界面
         showLoadingIndicator();
         
+        // 先初始化国际化模块，这样后面才能使用它
+        await executeWithTimeout(
+            () => I18n.init(), 
+            5000, 
+            '国际化'
+        );
+        
         // 获取扩展版本
         VERSION = await getExtensionVersion();
-        console.log(`New Tab Page v${VERSION} initializing...`);
+        console.log(`${I18n.getMessage('initializingTitle')} v${VERSION}`);
         
         // 初始化步骤计数
-        const totalModules = 6; // 总模块数
-        let completedModules = 0;
+        const totalModules = 5; // 减少一个模块，因为国际化已经初始化了
+        let completedModules = 1; // 已经完成了一个模块(国际化)
         
-        // 定义初始化步骤
+        // 定义初始化步骤 - 移除国际化步骤，因为已经初始化了
         const initSteps = [
-            {
-                name: '国际化',
-                action: initI18n,
-                message: '正在加载国际化资源...',
-                completeMessage: '国际化资源加载完成',
-                timeout: 5000
-            },
             {
                 name: '背景图像',
                 action: initBackgroundImage,
-                message: '正在加载背景图像...',
+                message: I18n.getMessage('loadingBackground'),
                 completeMessage: '背景图像加载完成',
                 timeout: 5000
             },
             {
                 name: '搜索引擎',
                 action: initSearchEngine,
-                message: '正在加载搜索引擎...',
+                message: I18n.getMessage('loadingSearch'),
                 completeMessage: '搜索引擎加载完成',
                 timeout: 5000
             },
             {
                 name: '书签',
                 action: initBookmarks,
-                message: '正在加载书签...',
+                message: I18n.getMessage('loadingBookmarks'),
                 completeMessage: '书签加载完成',
                 timeout: 5000
             },
             {
                 name: '时钟组件',
                 action: initClockWidget,
-                message: '正在加载时钟组件...',
+                message: I18n.getMessage('loadingClock'),
                 completeMessage: '时钟组件加载完成',
                 timeout: 5000
             },
@@ -134,10 +134,12 @@ async function init() {
                 name: '事件初始化',
                 action: () => {
                     setupEvents();
+                    // 确保国际化的事件也被设置
+                    I18n.setupEvents();
                     return Promise.resolve();
                 },
-                message: '正在初始化事件处理...',
-                completeMessage: '加载完成！',
+                message: I18n.getMessage('loadingEvents'),
+                completeMessage: I18n.getMessage('loadingComplete'),
                 timeout: 5000
             }
         ];
@@ -150,7 +152,9 @@ async function init() {
                 completedModules++;
                 updateLoadingProgress((completedModules / totalModules) * 100, step.completeMessage);
             } catch (error) {
-                throw new Error(`${step.name}加载失败: ${error.message}`);
+                throw new Error(I18n.getMessage('moduleLoadingFailed')
+                    .replace('{0}', step.name)
+                    .replace('{1}', error.message));
             }
         }
         
@@ -159,7 +163,7 @@ async function init() {
         hideLoadingIndicator();
         
     } catch (error) {
-        showErrorMessage('初始化失败，请刷新页面重试。');
+        showErrorMessage(I18n.getMessage('initializationFailed'));
         hideLoadingIndicator();
     }
 }
@@ -250,8 +254,8 @@ function showWelcomeMessage() {
     } else {
         // 如果没有预定义的欢迎模态框，使用通知
         showNotification(
-            getI18nMessage('welcomeTitle'), 
-            getI18nMessage('welcomeMessage'),
+            I18n.getMessage('welcomeTitle'), 
+            I18n.getMessage('welcomeMessage'),
             8000,  // 延长显示时间为 8 秒
             'success'  // 使用成功类型的通知样式
         );
@@ -265,8 +269,8 @@ function showWelcomeMessage() {
  */
 function showUpdateMessage(oldVersion, newVersion) {
     showNotification(
-        getI18nMessage('updateTitle'),
-        getI18nMessage('updateMessage').replace('{oldVersion}', oldVersion).replace('{newVersion}', newVersion),
+        I18n.getMessage('updateTitle'),
+        I18n.getMessage('updateMessage').replace('{oldVersion}', oldVersion).replace('{newVersion}', newVersion),
         6000,  // 延长显示时间为 6 秒
         'info'  // 使用信息类型的通知样式
     );
