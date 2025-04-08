@@ -18,9 +18,8 @@ import {
     setupBookmarkEvents 
 } from './modules/bookmarks.js';
 import { 
-    initIconManager, 
-    preloadIcons,
-    cleanupIconCache
+    getIconUrl,
+    setIconForElement
 } from './modules/iconManager.js';
 import { 
     updateClock,
@@ -34,7 +33,7 @@ import {
     showNotification,
     initUIEvents,
     showModal,
-    createElement // 添加这一行导入createElement函数
+    createElement
 } from './modules/utils.js';
 
 // 版本号
@@ -91,7 +90,7 @@ async function init() {
         console.log(`New Tab Page v${VERSION} initializing...`);
         
         // 初始化步骤计数
-        const totalModules = 7; // 总模块数
+        const totalModules = 6; // 总模块数
         let completedModules = 0;
         
         // 定义初始化步骤
@@ -101,13 +100,6 @@ async function init() {
                 action: initI18n,
                 message: '正在加载国际化资源...',
                 completeMessage: '国际化资源加载完成',
-                timeout: 5000
-            },
-            {
-                name: '图标管理器',
-                action: initIconManager,
-                message: '正在加载图标资源...',
-                completeMessage: '图标资源加载完成',
                 timeout: 5000
             },
             {
@@ -178,8 +170,6 @@ async function init() {
 function createBasicUI() {
     const container = document.getElementById('container');
     
-    // 搜索框在searchEngine.js中创建，这里不再创建
-    
     // 创建书签盒子
     const bookmarkBox = createElement('div', '', { id: 'bookmark-box' });
     const folderList = createElement('div', '', { id: 'folder-list' });
@@ -224,9 +214,6 @@ async function performPostInitTasks() {
         // 检查更新或首次安装
         await checkForUpdates();
         
-        // 清理过期的缓存数据
-        await cleanupCacheData();
-        
     } catch (error) {
         console.error('Error in post-initialization tasks:', error);
     }
@@ -251,17 +238,6 @@ async function checkForUpdates() {
     }
 }
 
-
-/**
- * 清理过期的缓存数据
- */
-async function cleanupCacheData() {
-    try {
-        await cleanupIconCache();
-    } catch (error) {
-        // 静默处理错误
-    }
-}
 
 /**
  * 显示欢迎消息

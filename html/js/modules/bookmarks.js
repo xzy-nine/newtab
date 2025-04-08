@@ -3,7 +3,7 @@
  * 负责处理Chrome书签和自定义书签的显示和交互
  */
 
-import { getDomain, showModal, createElement } from './utils.js';
+import { getDomain, showModal, createElement, showErrorMessage, showNotification } from './utils.js';
 import { getI18nMessage } from './i18n.js';
 import {  getIconUrl } from './iconManager.js';
 
@@ -74,6 +74,7 @@ async function getChromeBookmarks() {
             initBookmarkEvents();
         }, 0);
     } catch (error) {
+        showErrorMessage('获取Chrome书签失败', error, false);
     }
 }
 
@@ -246,7 +247,7 @@ function createFolderButtonsRecursive(folder, parentElement, level) {
             handleFolderClick(folderButton, folder);
         });
     } catch (error) {
-        console.error(`创建文件夹时出错:`, error);
+        showErrorMessage('创建文件夹时出错:', error, false);
     }
 }
 
@@ -271,7 +272,9 @@ function applySelectedFolder(root) {
                 selectedButton.classList.add('selected');
             }
         }
-    }).catch(err => {});
+    }).catch(err => {
+        showErrorMessage('获取选中文件夹失败', err, false);
+    });
 }
 
 /**
@@ -405,8 +408,8 @@ function showShortcuts(folder) {
         
         let shortcutButton = createElement("button", "shortcut-button", {title: shortcut.title});
         
-        // 使用getIconUrl替代getIconForShortcut
-        getIconUrl(shortcut.url, shortcutButton);
+        // 检查是否有自定义图标
+        getCustomIconForShortcut(shortcut, shortcutButton);
         
         // 添加标题
         shortcutButton.appendChild(
@@ -450,14 +453,14 @@ function showShortcutContextMenu(event, shortcut) {
     contextMenu.style.top = `${pageY}px`;
     contextMenu.style.display = 'block';
     
-    // 菜单项点击事件 - 需添加实现
+    // 菜单项点击事件 - 实现自定义图标功能
     document.getElementById('custom-icon').addEventListener('click', () => {
-        // 实现自定义图标功能
+        showIconSelectorModal(shortcut);
         contextMenu.style.display = 'none';
     });
     
-    document.getElementById('reset-icon').addEventListener('click', () => {
-        // 实现重置图标功能
+    document.getElementById('reset-icon').addEventListener('click', async () => {
+        await resetShortcutIcon(shortcut);
         contextMenu.style.display = 'none';
     });
     
@@ -470,6 +473,261 @@ function showShortcutContextMenu(event, shortcut) {
     };
     
     setTimeout(() => document.addEventListener('click', closeMenuHandler), 100);
+}
+
+/**
+ * 显示图标选择模态框
+ * @param {Object} shortcut - 书签对象
+ */
+function showIconSelectorModal(shortcut) {
+    // 创建模态框结构（如果不存在）
+    let modal = document.getElementById('icon-selector-modal');
+    if (!modal) {
+        modal = createElement('div', 'modal', {id: 'icon-selector-modal'});
+        const modalContent = createElement('div', 'modal-content');
+        
+        modalContent.innerHTML = `
+            <span class="modal-close">&times;</span>
+            <h2>${getI18nMessage('customIcon') || '自定义图标'}</h2>
+            <div class="modal-form">
+                <div class="form-group">
+                    <label for="icon-url">${getI18nMessage('iconUrl') || '图标URL'}</label>
+                    <input type="url" id="icon-url" placeholder="https://example.com/icon.png">
+                </div>
+                <div class="form-group">
+                    <label for="icon-upload">${getI18nMessage('uploadIcon') || '上传图标'}</label>
+                    <input type="file" id="icon-upload" accept="image/*">
+                    <div class="image-preview" id="icon-preview"></div>
+                </div>
+                <div class="form-actions">
+                    <button id="icon-cancel" class="btn">${getI18nMessage('cancel') || '取消'}</button>
+                    <button id="icon-confirm" class="btn btn-primary">${getI18nMessage('confirm') || '确定'}</button>
+                </div>
+            </div>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // 预览上传图片
+        document.getElementById('icon-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const preview = document.getElementById('icon-preview');
+                    preview.innerHTML = `<img src="${event.target.result}" alt="Icon Preview" style="max-width: 64px; max-height: 64px; object-fit: contain;">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    // 显示模态框
+    showModal('icon-selector-modal');
+    
+    // 清空旧数据
+    const iconUrl = document.getElementById('icon-url');
+    if (iconUrl) iconUrl.value = '';
+    
+    const iconPreview = document.getElementById('icon-preview');
+    if (iconPreview) iconPreview.innerHTML = '';
+    
+    const iconUpload = document.getElementById('icon-upload');
+    if (iconUpload) iconUpload.value = '';
+    
+    // 绑定确定按钮事件
+    const confirmBtn = document.getElementById('icon-confirm');
+    if (confirmBtn) {
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        newConfirmBtn.addEventListener('click', async () => {
+            await saveCustomIconForShortcut(shortcut);
+            modal.style.display = 'none';
+        });
+    }
+    
+    // 绑定取消按钮事件
+    const cancelBtn = document.getElementById('icon-cancel');
+    if (cancelBtn) {
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        newCancelBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+}
+
+/**
+ * 保存自定义图标
+ * @param {Object} shortcut - 书签对象
+ * @returns {Promise<void>}
+ */
+async function saveCustomIconForShortcut(shortcut) {
+    try {
+        // 检查是否有URL输入
+        const iconUrlInput = document.getElementById('icon-url');
+        const iconUrl = iconUrlInput && iconUrlInput.value.trim();
+        
+        // 检查是否上传了图片
+        const iconUpload = document.getElementById('icon-upload');
+        const iconFile = iconUpload && iconUpload.files[0];
+        
+        // 图标数据
+        let iconData = null;
+        
+        // 优先使用上传的图片
+        if (iconFile) {
+            iconData = await readFileAsDataURL(iconFile);
+        } 
+        // 其次使用URL
+        else if (iconUrl) {
+            iconData = iconUrl;
+        }
+        
+        if (!iconData) return;
+        
+        // 存储自定义图标
+        const customIcons = await getCustomIcons();
+        customIcons[shortcut.id] = iconData;
+        await chrome.storage.local.set({ customIcons });
+        
+        // 刷新显示
+        await reloadCurrentFolder();
+        
+    } catch (error) {
+        showErrorMessage('保存自定义图标失败:', error);
+    }
+}
+
+/**
+ * 读取文件为Data URL
+ * @param {File} file - 文件对象
+ * @returns {Promise<string>} - data URL字符串
+ */
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+    });
+}
+
+/**
+ * 重置书签图标
+ * @param {Object} shortcut - 书签对象
+ * @returns {Promise<void>}
+ */
+async function resetShortcutIcon(shortcut) {
+    try {
+        // 获取当前自定义图标
+        const customIcons = await getCustomIcons();
+        
+        // 查找当前显示的快捷方式按钮
+        const shortcutList = document.getElementById("shortcut-list");
+        if (shortcutList) {
+            const shortcutButtons = shortcutList.querySelectorAll('.shortcut-button');
+            
+            for (const button of shortcutButtons) {
+                if (button.title === shortcut.title) {
+                    // 清除当前背景图像并应用临时样式
+                    button.style.backgroundImage = '';
+                    button.style.transition = 'all 0.3s';
+                    button.style.boxShadow = '0 0 15px rgba(0, 123, 255, 0.8)';
+                    
+                    // 删除存储中的自定义图标（如果有）
+                    if (customIcons[shortcut.id]) {
+                        delete customIcons[shortcut.id];
+                        await chrome.storage.local.set({ customIcons });
+                    }
+                    
+                    // 强制重新获取图标，避免使用缓存
+                    const timestamp = new Date().getTime();
+                    const url = new URL(shortcut.url);
+                    const domain = url.hostname;
+                    
+                    // 直接重设图标 - 强制获取新的图标
+                    setTimeout(() => {
+                        button.style.boxShadow = '';
+                        // 完全清除背景以确保重新获取
+                        button.style.backgroundImage = '';
+                        
+                        // 手动重新获取图标
+                        getIconUrl(shortcut.url + '?t=' + timestamp, button);
+                    }, 300);
+                    
+                    break;
+                }
+            }
+        }
+        
+        showNotification('图标已重置', '正在重新获取网站默认图标...', 1000);
+        
+    } catch (error) {
+        showErrorMessage('重置图标失败:', error);
+    }
+}
+
+/**
+ * 获取保存的自定义图标
+ * @returns {Promise<Object>} - 自定义图标对象
+ */
+async function getCustomIcons() {
+    try {
+        const result = await chrome.storage.local.get('customIcons');
+        return result.customIcons || {};
+    } catch (error) {
+        showErrorMessage('获取自定义图标失败', error, false);
+        return {};
+    }
+}
+
+/**
+ * 重新加载当前文件夹内容
+ * @returns {Promise<void>}
+ */
+async function reloadCurrentFolder() {
+    try {
+        // 获取Chrome书签树
+        const tree = await chrome.bookmarks.getTree();
+        const root = tree[0];
+        
+        // 根据当前文件夹ID查找文件夹对象
+        if (!currentFolder) return;
+        
+        const folder = findFolderById(root, currentFolder);
+        if (folder) {
+            showShortcuts(folder);
+        }
+    } catch (error) {
+        showErrorMessage('重新加载文件夹内容失败:', error);
+    }
+}
+
+/**
+ * 为快捷方式获取自定义图标，如果没有则使用默认图标
+ * @param {Object} shortcut - 快捷方式数据
+ * @param {HTMLElement} element - 要设置图标的元素
+ */
+async function getCustomIconForShortcut(shortcut, element) {
+    try {
+        // 获取自定义图标
+        const customIcons = await getCustomIcons();
+        const customIcon = customIcons[shortcut.id];
+        
+        if (customIcon) {
+            // 使用自定义图标
+            element.style.backgroundImage = `url(${customIcon})`;
+        } else {
+            // 使用默认图标获取逻辑
+            getIconUrl(shortcut.url, element);
+        }
+    } catch (error) {
+        // 出错时使用默认图标
+        getIconUrl(shortcut.url, element);
+        showErrorMessage('获取自定义图标失败', error, false);
+    }
 }
 
 /**
@@ -700,7 +958,7 @@ async function saveBookmarks() {
     try {
         await chrome.storage.sync.set({ bookmarks });
     } catch (error) {
-        console.error('Failed to save bookmarks:', error);
+        showErrorMessage('保存书签失败:', error);
     }
 }
 

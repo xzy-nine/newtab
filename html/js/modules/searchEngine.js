@@ -5,9 +5,6 @@
 import { getI18nMessage } from './i18n.js';
 import { setIconForElement, handleIconError} from './iconManager.js';
 import { 
-    getDomain, 
-    showModal, 
-    hideModal, 
     showConfirmDialog, 
     showFormModal, 
     showErrorModal, 

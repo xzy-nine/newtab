@@ -1,4 +1,4 @@
-import { fetchData } from './modules/utils.js';
+// 注册 Service Worker
 
 self.addEventListener('install', (event) => {
   console.log('Service Worker 安装');
