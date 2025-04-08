@@ -13,28 +13,12 @@ import {
     initSearchEngine,
     setupSearchEvents 
 } from './modules/searchEngine.js';
-import { 
-    initBookmarks, 
-    setupBookmarkEvents 
-} from './modules/bookmarks.js';
-import { 
-    getIconUrl,
-    setIconForElement
-} from './modules/iconManager.js';
+import { BookmarkManager } from './modules/bookmarks.js';
 import { 
     updateClock,
     initClockWidget   
 } from './modules/clockWidget.js';
-import { 
-    showLoadingIndicator,
-    hideLoadingIndicator,
-    updateLoadingProgress,
-    showErrorMessage,
-    showNotification,
-    initUIEvents,
-    showModal,
-    createElement
-} from './modules/utils.js';
+import { Utils } from './modules/utils.js';
 
 // 版本号
 let VERSION = '0.0.0'; 
@@ -83,7 +67,7 @@ async function init() {
         createBasicUI();
         
         // 显示加载界面
-        showLoadingIndicator();
+        Utils.UI.showLoadingIndicator();
         
         // 先初始化国际化模块，这样后面才能使用它
         await executeWithTimeout(
@@ -118,7 +102,7 @@ async function init() {
             },
             {
                 name: '书签',
-                action: initBookmarks,
+                action: BookmarkManager.init.bind(BookmarkManager),
                 message: I18n.getMessage('loadingBookmarks'),
                 completeMessage: '书签加载完成',
                 timeout: 5000
@@ -147,10 +131,10 @@ async function init() {
         // 依次执行初始化步骤
         for (const step of initSteps) {
             try {
-                updateLoadingProgress((completedModules / totalModules) * 100, step.message);
+                Utils.UI.updateLoadingProgress((completedModules / totalModules) * 100, step.message);
                 await executeWithTimeout(step.action, step.timeout, step.name);
                 completedModules++;
-                updateLoadingProgress((completedModules / totalModules) * 100, step.completeMessage);
+                Utils.UI.updateLoadingProgress((completedModules / totalModules) * 100, step.completeMessage);
             } catch (error) {
                 throw new Error(I18n.getMessage('moduleLoadingFailed')
                     .replace('{0}', step.name)
@@ -160,11 +144,11 @@ async function init() {
         
         await performPostInitTasks();
         isInitialized = true;
-        hideLoadingIndicator();
+        Utils.UI.hideLoadingIndicator();
         
     } catch (error) {
-        showErrorMessage(I18n.getMessage('initializationFailed'));
-        hideLoadingIndicator();
+        Utils.UI.showErrorMessage(I18n.getMessage('initializationFailed'));
+        Utils.UI.hideLoadingIndicator();
     }
 }
 
@@ -175,15 +159,15 @@ function createBasicUI() {
     const container = document.getElementById('container');
     
     // 创建书签盒子
-    const bookmarkBox = createElement('div', '', { id: 'bookmark-box' });
-    const folderList = createElement('div', '', { id: 'folder-list' });
-    const shortcutList = createElement('div', '', { id: 'shortcut-list' });
+    const bookmarkBox = Utils.createElement('div', '', { id: 'bookmark-box' });
+    const folderList = Utils.createElement('div', '', { id: 'folder-list' });
+    const shortcutList = Utils.createElement('div', '', { id: 'shortcut-list' });
     
     bookmarkBox.appendChild(folderList);
     bookmarkBox.appendChild(shortcutList);
     
     // 创建背景按钮
-    const backgroundButton = createElement('button', '', { 
+    const backgroundButton = Utils.createElement('button', '', { 
         id: 'background-button',
         'data-i18n': 'backgroundButton'
     });
@@ -204,10 +188,10 @@ function setupEvents() {
     setupSearchEvents();
     
     // 设置书签相关事件
-    setupBookmarkEvents();
+    BookmarkManager.initEvents();
     
     // 设置通用页面事件
-    initUIEvents();
+    Utils.Events.initUIEvents();
 }
 
 /**
@@ -242,18 +226,17 @@ async function checkForUpdates() {
     }
 }
 
-
 /**
  * 显示欢迎消息
  */
 function showWelcomeMessage() {
     const welcomeModal = document.getElementById('welcome-modal');
     if (welcomeModal) {
-        // 使用 utils.js 中的 showModal 函数
-        showModal('welcome-modal');
+        // 使用模块化API
+        Utils.Modal.show('welcome-modal');
     } else {
         // 如果没有预定义的欢迎模态框，使用通知
-        showNotification(
+        Utils.UI.showNotification(
             I18n.getMessage('welcomeTitle'), 
             I18n.getMessage('welcomeMessage'),
             8000,  // 延长显示时间为 8 秒
@@ -268,7 +251,7 @@ function showWelcomeMessage() {
  * @param {string} newVersion - 新版本号
  */
 function showUpdateMessage(oldVersion, newVersion) {
-    showNotification(
+    Utils.UI.showNotification(
         I18n.getMessage('updateTitle'),
         I18n.getMessage('updateMessage').replace('{oldVersion}', oldVersion).replace('{newVersion}', newVersion),
         6000,  // 延长显示时间为 6 秒
@@ -309,13 +292,13 @@ document.addEventListener('DOMContentLoaded', init);
 document.addEventListener('DOMContentLoaded', () => {
   // 主超时保护，8秒后如果仍在加载则强制隐藏
   setTimeout(() => {
-    hideLoadingIndicator(true);
+    Utils.UI.hideLoadingIndicator(true);
   }, 8000);
   
   // 页面加载后的备份保护
   window.addEventListener('load', () => {
     setTimeout(() => {
-      hideLoadingIndicator(true);
+      Utils.UI.hideLoadingIndicator(true);
     }, 2000);
   });
 });
