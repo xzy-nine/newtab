@@ -80,7 +80,7 @@ async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
  */
 async function init() {
     try {
-        // 创建基本 UI 结构
+        // 创建基本 UI 结构（不包括搜索框）
         createBasicUI();
         
         // 显示加载界面
@@ -178,26 +178,7 @@ async function init() {
 function createBasicUI() {
     const container = document.getElementById('container');
     
-    // 创建搜索框
-    const searchBox = createElement('div', 'search-box', { id: 'search-box' });
-    const searchEngineIcon = createElement('img', '', { 
-        id: 'search-engine-icon', 
-        alt: 'Search Engine' 
-    });
-    const searchForm = createElement('form', '', { id: 'search-form' });
-    const searchInput = createElement('input', '', { 
-        id: 'search-input',
-        type: 'text',
-        placeholder: '搜索...',
-        autocomplete: 'off',
-        autocorrect: 'off',
-        autocapitalize: 'off',
-        spellcheck: 'false'
-    });
-    
-    searchForm.appendChild(searchInput);
-    searchBox.appendChild(searchEngineIcon);
-    searchBox.appendChild(searchForm);
+    // 搜索框在searchEngine.js中创建，这里不再创建
     
     // 创建书签盒子
     const bookmarkBox = createElement('div', '', { id: 'bookmark-box' });
@@ -214,7 +195,6 @@ function createBasicUI() {
     });
     
     // 添加所有元素到容器
-    container.appendChild(searchBox);
     container.appendChild(bookmarkBox);
     container.appendChild(backgroundButton);
 }

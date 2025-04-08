@@ -447,33 +447,6 @@ export function handleKeyDown(e) {
         document.querySelectorAll('.modal').forEach(modal => {
             modal.style.display = 'none';
         });
-        
-        // 关闭设置面板
-        const settingsPanel = document.getElementById('settings-panel');
-        if (settingsPanel) {
-            settingsPanel.classList.remove('active');
-        }
-        
-        // 关闭搜索建议
-        const searchSuggestions = document.getElementById('search-suggestions');
-        if (searchSuggestions) {
-            searchSuggestions.innerHTML = '';
-        }
-    }
-    
-    // 处理/键 - 聚焦搜索框
-    if (e.key === '/' && !e.target.matches('input, textarea')) {
-        e.preventDefault();
-        document.getElementById('search-input')?.focus();
-    }
-    
-    // 处理Alt+S - 打开设置
-    if (e.key === 's' && e.altKey) {
-        e.preventDefault();
-        const settingsPanel = document.getElementById('settings-panel');
-        if (settingsPanel) {
-            settingsPanel.classList.toggle('active');
-        }
     }
 }
 
