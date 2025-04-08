@@ -195,7 +195,10 @@ const messages = {
         loadingClock: "正在加载时钟组件...",
         clearStorageConfirm: "确定要清除所有存储数据吗？此操作不可恢复。",
         clearStorageSuccess: "存储已成功清除，页面将刷新。",
-        clearStorageError: "清除存储失败，请查看控制台了解详情。"
+        clearStorageError: "清除存储失败，请查看控制台了解详情。",
+        deleteSearchEngine: "删除搜索引擎",
+        cannotDeleteLastEngine: "无法删除最后一个搜索引擎",
+        confirmDeleteEngine: "确定要删除此搜索引擎吗？"
     },
     en_US: {
         newTab: "New Tab",
@@ -245,6 +248,9 @@ const messages = {
         loadingClock: "Loading clock widget...",
         clearStorageConfirm: "Are you sure you want to clear all storage data? This action cannot be undone.",
         clearStorageSuccess: "Storage has been cleared successfully, the page will refresh.",
-        clearStorageError: "Failed to clear storage, please check console for details."
+        clearStorageError: "Failed to clear storage, please check console for details.",
+        deleteSearchEngine: "Delete Search Engine",
+        cannotDeleteLastEngine: "Cannot delete the last search engine",
+        confirmDeleteEngine: "Are you sure you want to delete this search engine?"
     }
 };

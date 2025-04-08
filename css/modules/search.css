@@ -120,6 +120,11 @@
   margin-right: 10px;
 }
 
+.search-engine-item .search-engine-delete:hover {
+  color: #ff4d4f;
+  transform: scale(1.2);
+}
+
 /* 添加搜索引擎按钮 */
 .search-engine-add {
   padding: 10px;
