@@ -2,7 +2,7 @@
  * 精简版图标管理模块 - 处理网站图标的获取和缓存
  */
 
-import { getDomain, blobToBase64, createElement, showErrorMessage, showNotification } from './utils.js';
+import { Utils } from './utils.js';
 
 // 核心数据结构
 const iconCache = new Map();
@@ -21,7 +21,7 @@ export const IconManager = {
     async getIconUrl(url, element = null) {
         if (!url) return DEFAULT_ICON;
         
-        const domain = getDomain(url);
+        const domain = Utils.getDomain(url);
         
         // 检查缓存
         if (iconCache.has(domain)) {
@@ -90,8 +90,8 @@ export const IconManager = {
 
                     if (response.ok) {
                         const blob = await response.blob();
-                        // 使用 utils.js 中的 blobToBase64 函数
-                        const base64data = await blobToBase64(blob);
+                        // 使用 Utils 模块中的 blobToBase64 函数
+                        const base64data = await Utils.blobToBase64(blob);
                         
                         if (!base64data.startsWith('data:text')) {
                             const img = new Image();
@@ -131,8 +131,8 @@ export const IconManager = {
             return fallbackIcon;
 
         } catch (error) {
-            // 使用 utils.js 中的错误处理函数记录错误（但确保只记录到控制台）
-            showErrorMessage('获取网站图标时遇到问题:', error, true);
+            // 使用 Utils 中的错误处理函数记录错误（但确保只记录到控制台）
+            Utils.UI.showErrorModal('错误', '获取网站图标时遇到问题: ' + error, true);
             return DEFAULT_ICON;
         }
     },
@@ -147,7 +147,7 @@ export const IconManager = {
         
         const originalUrl = img.dataset.originalUrl;
         if (originalUrl) {
-            const domain = getDomain(originalUrl);
+            const domain = Utils.getDomain(originalUrl);
             if (iconCache.has(domain)) {
                 iconCache.delete(domain);
                 
@@ -155,13 +155,17 @@ export const IconManager = {
                     await chrome.storage.local.remove(originalUrl);
                 } catch (error) {
                     // 只记录到控制台，不显示通知
-                    showErrorMessage('移除失败的图标缓存时出错:', error, true);
+                    Utils.UI.showErrorModal('错误', '移除失败的图标缓存时出错: ' + error, true);
                 }
             }
         }
     },
 
-    // 其他方法中使用相同的修改方式，确保错误只记录不通知
+    /**
+     * 为元素设置图标
+     * @param {HTMLImageElement} img - 图片元素
+     * @param {string} url - 网站URL
+     */
     async setIconForElement(img, url) {
         if (!img || !url) return;
         
@@ -175,7 +179,7 @@ export const IconManager = {
             
             img.onerror = () => this.handleIconError(img);
             
-            const domain = getDomain(url);
+            const domain = Utils.getDomain(url);
             if (iconCache.has(domain)) {
                 img.style.opacity = '0.7';
                 img.src = iconCache.get(domain).data;
@@ -196,30 +200,44 @@ export const IconManager = {
             // 使用默认图标并只记录错误
             img.src = DEFAULT_ICON;
             delete img.dataset.processingUrl;
-            showErrorMessage('设置图标元素时出错:', error, true);
+            Utils.UI.showErrorModal('错误', '设置图标元素时出错: ' + error, true);
         }
     },
 
+    /**
+     * 设置自定义图标
+     * @param {string} url - 网站URL
+     * @param {string} base64Image - Base64编码的图像
+     */
     async setCustomIcon(url, base64Image) { 
         try {
             await chrome.storage.local.set({ [url]: base64Image });
-            await this.cacheIcon(getDomain(url), base64Image);
+            await this.cacheIcon(Utils.getDomain(url), base64Image);
         } catch (error) {
             // 这个可能需要通知用户，因为是用户主动操作
-            showErrorMessage('设置自定义图标失败', error, false);
+            Utils.UI.showErrorMessage('设置自定义图标失败: ' + error);
         }
     },
 
+    /**
+     * 重置图标到默认状态
+     * @param {string} url - 网站URL
+     */
     async resetIcon(url) { 
         try {
             await chrome.storage.local.remove(url);
-            iconCache.delete(getDomain(url));
+            iconCache.delete(Utils.getDomain(url));
         } catch (error) {
             // 这个可能需要通知用户，因为是用户主动操作
-            showErrorMessage('重置图标失败', error, false);
+            Utils.UI.showErrorMessage('重置图标失败: ' + error);
         }
     },
 
+    /**
+     * 缓存图标
+     * @param {string} domain - 网站域名
+     * @param {string} iconData - 图标数据
+     */
     async cacheIcon(domain, iconData) {
         iconCache.set(domain, {
             data: iconData,
@@ -230,7 +248,7 @@ export const IconManager = {
             await chrome.storage.local.set({ [domain]: iconData });
         } catch (error) {
             // 只记录到控制台，不显示通知
-            showErrorMessage('缓存图标失败:', error, true);
+            Utils.UI.showErrorModal('错误', '缓存图标失败: ' + error, true);
         }
     },
 
@@ -256,8 +274,8 @@ export const IconManager = {
         };
         
         const bgColor = getColorCode(domain);
-        // 使用 utils.js 中的 createElement 函数
-        const canvas = createElement('canvas', '', { width: '64', height: '64' });
+        // 使用 Utils 模块中的 createElement 函数
+        const canvas = Utils.createElement('canvas', '', { width: '64', height: '64' });
         const ctx = canvas.getContext('2d');
         
         ctx.fillStyle = bgColor;
@@ -284,6 +302,7 @@ export const IconManager = {
  * @deprecated 请使用 IconManager.getIconUrl() 代替
  */
 export async function getIconUrl(url, element = null) {
+    console.warn('函数 getIconUrl 已弃用，请使用 IconManager.getIconUrl 代替');
     return await IconManager.getIconUrl(url, element);
 }
 
@@ -298,6 +317,7 @@ export const getIconForShortcut = getIconUrl;
  * @deprecated 请使用 IconManager.handleIconError() 代替
  */
 export async function handleIconError(img, fallbackIcon = DEFAULT_ICON) {
+    console.warn('函数 handleIconError 已弃用，请使用 IconManager.handleIconError 代替');
     return await IconManager.handleIconError(img, fallbackIcon);
 }
 
@@ -306,6 +326,7 @@ export async function handleIconError(img, fallbackIcon = DEFAULT_ICON) {
  * @deprecated 请使用 IconManager.setIconForElement() 代替
  */
 export async function setIconForElement(img, url) {
+    console.warn('函数 setIconForElement 已弃用，请使用 IconManager.setIconForElement 代替');
     return await IconManager.setIconForElement(img, url);
 }
 
@@ -314,6 +335,7 @@ export async function setIconForElement(img, url) {
  * @deprecated 请使用 IconManager.setCustomIcon() 代替
  */
 export async function setCustomIcon(url, base64Image) {
+    console.warn('函数 setCustomIcon 已弃用，请使用 IconManager.setCustomIcon 代替');
     return await IconManager.setCustomIcon(url, base64Image);
 }
 
@@ -322,5 +344,6 @@ export async function setCustomIcon(url, base64Image) {
  * @deprecated 请使用 IconManager.resetIcon() 代替
  */
 export async function resetIcon(url) {
+    console.warn('函数 resetIcon 已弃用，请使用 IconManager.resetIcon 代替');
     return await IconManager.resetIcon(url);
 }
