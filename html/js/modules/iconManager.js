@@ -75,7 +75,8 @@ export const IconManager = {
                 }
             } catch (error) {
                 // 这里的错误可以忽略，因为我们有备选方案
-                showNotification('无法解析HTML获取图标:', error);
+                // 使用logOnly=true，只记录到控制台不弹出通知
+                console.debug('无法解析HTML获取图标:', error);
             }
 
             // 依次尝试获取每个图标URL的内容
@@ -110,12 +111,14 @@ export const IconManager = {
                                     return base64data;
                                 }
                             } catch (imgError) {
-                                showNotification(`图片加载失败: ${iconUrl}`, imgError);
+                                // 使用logOnly=true，只记录到控制台不弹出通知
+                                console.debug(`图片加载失败: ${iconUrl}`, imgError);
                             }
                         }
                     }
                 } catch (error) {
-                    showNotification(`获取图标失败: ${iconUrl}`, error);
+                    // 使用logOnly=true，只记录到控制台不弹出通知
+                    console.debug(`获取图标失败: ${iconUrl}`, error);
                 }
             }
 
@@ -128,8 +131,8 @@ export const IconManager = {
             return fallbackIcon;
 
         } catch (error) {
-            // 使用 utils.js 中的错误处理函数记录错误（但不显示给用户）
-            showErrorMessage('获取网站图标时遇到问题:', error);
+            // 使用 utils.js 中的错误处理函数记录错误（但确保只记录到控制台）
+            showErrorMessage('获取网站图标时遇到问题:', error, true);
             return DEFAULT_ICON;
         }
     },
@@ -151,17 +154,14 @@ export const IconManager = {
                 try {
                     await chrome.storage.local.remove(originalUrl);
                 } catch (error) {
-                    showErrorMessage('移除失败的图标缓存时出错:', error);
+                    // 只记录到控制台，不显示通知
+                    showErrorMessage('移除失败的图标缓存时出错:', error, true);
                 }
             }
         }
     },
 
-    /**
-     * 设置图标元素的来源
-     * @param {HTMLImageElement} img - 图片元素
-     * @param {string} url - 网站URL
-     */
+    // 其他方法中使用相同的修改方式，确保错误只记录不通知
     async setIconForElement(img, url) {
         if (!img || !url) return;
         
@@ -193,46 +193,33 @@ export const IconManager = {
             
             delete img.dataset.processingUrl;
         } catch (error) {
-            // 使用默认图标并记录错误
+            // 使用默认图标并只记录错误
             img.src = DEFAULT_ICON;
             delete img.dataset.processingUrl;
-            showErrorMessage('设置图标元素时出错:', error);
+            showErrorMessage('设置图标元素时出错:', error, true);
         }
     },
 
-    /**
-     * 设置自定义图标
-     * @param {string} url - 网站URL
-     * @param {string} base64Image - Base64编码的图片
-     */
     async setCustomIcon(url, base64Image) { 
         try {
             await chrome.storage.local.set({ [url]: base64Image });
             await this.cacheIcon(getDomain(url), base64Image);
         } catch (error) {
-            showErrorMessage('设置自定义图标失败', error);
+            // 这个可能需要通知用户，因为是用户主动操作
+            showErrorMessage('设置自定义图标失败', error, false);
         }
     },
 
-    /**
-     * 重置图标到默认状态
-     * @param {string} url - 网站URL
-     */
     async resetIcon(url) { 
         try {
             await chrome.storage.local.remove(url);
             iconCache.delete(getDomain(url));
         } catch (error) {
-            showErrorMessage('重置图标失败', error);
+            // 这个可能需要通知用户，因为是用户主动操作
+            showErrorMessage('重置图标失败', error, false);
         }
     },
 
-    /**
-     * 缓存图标数据
-     * @param {string} domain - 网站域名
-     * @param {string} iconData - 图标数据
-     * @private
-     */
     async cacheIcon(domain, iconData) {
         iconCache.set(domain, {
             data: iconData,
@@ -242,7 +229,8 @@ export const IconManager = {
         try {
             await chrome.storage.local.set({ [domain]: iconData });
         } catch (error) {
-            showErrorMessage('缓存图标失败:', error);
+            // 只记录到控制台，不显示通知
+            showErrorMessage('缓存图标失败:', error, true);
         }
     },
 
