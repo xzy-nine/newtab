@@ -1,0 +1,163 @@
+/* 响应式设计相关样式 */
+
+/* 竖屏模式的媒体查询 */
+@media (max-aspect-ratio: 1/1), (max-width: 768px) {
+  /* 页面主容器调整为垂直布局 */
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-y: auto;
+  }
+  
+  /* 确保主容器内的所有元素垂直排列 */
+  #main-container {
+    display: flex !important; /* 强制应用flex布局 */
+    flex-direction: column !important; /* 强制垂直排列 */
+    width: 100%;
+    height: auto;
+    align-items: center;
+    flex-wrap: nowrap !important; /* 禁止换行 */
+  }
+  
+  /* 调整水平容器为垂直布局 */
+  .container-row, 
+  .folder-shortcut-container,
+  #folder-shortcut-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    align-items: center;
+    flex-wrap: nowrap !important;
+  }
+
+  /* 统一宽度变量，所有列表与搜索框使用相同宽度 */
+  :root {
+    --element-width: 80%;
+  }
+
+  /* 调整元素排列顺序 */
+  #search-box {
+    order: 1;
+    width: var(--element-width);
+    margin: 20px auto;
+  }
+
+  /* 文件夹列表调整 - 确保在搜索框和快捷方式之间 */
+  #folder-list {
+    order: 2;
+    min-width: unset;
+    max-width: unset;
+    width: var(--element-width);
+    max-height: 200px;
+    margin: 10px auto;
+    overflow-y: auto;
+    position: relative !important; /* 确保定位正确 */
+    left: auto !important; /* 取消任何可能的左侧定位 */
+    float: none !important; /* 取消任何浮动 */
+    display: block !important; /* 确保显示为块级元素 */
+  }
+
+  /* 快捷方式列表调整 - 确保在文件夹列表下方，但保持内部按钮水平排列 */
+  #shortcut-list {
+    order: 3;
+    width: var(--element-width);
+    height: auto;
+    margin: 10px auto;
+    padding: 10px;
+    overflow-y: visible;
+    position: relative !important; /* 确保定位正确 */
+    right: auto !important; /* 取消任何可能的右侧定位 */
+    float: none !important; /* 取消任何浮动 */
+    display: flex !important; /* 使用flex布局 */
+    flex-direction: row !important; /* 确保水平排列 */
+    flex-wrap: wrap !important; /* 允许换行 */
+    justify-content: center !important; /* 水平居中排列 */
+  }
+
+  /* 子文件夹缩进减小 */
+  .folder-children {
+    margin-left: 5px;
+    width: calc(100% - 5px);
+  }
+
+  /* 保持快捷方式按钮原比例和水平排列 */
+  .shortcut-button {
+    margin: 8px;
+    display: inline-block !important;
+    float: none !important;
+  }
+
+  /* 书签容器调整 */
+  #bookmark-box {
+    order: 4;
+    width: var(--element-width);
+    margin: 10px auto;
+  }
+
+  /* 调整时钟位置 */
+  .clock {
+    order: 0;
+    margin-top: 10px;
+  }
+
+  /* 背景切换按钮位置调整 - 移至右上角 */
+  #background-button {
+    top: 10px !important;
+    right: 10px !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: scale(0.85) !important; /* 稍微缩小按钮 */
+    z-index: 1000 !important; /* 确保按钮在最上层 */
+  }
+  
+  /* 强制覆盖可能影响布局的样式 */
+  #folder-list, 
+  #bookmark-box {
+    display: block !important;
+    float: none !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    clear: both !important; /* 清除浮动 */
+  }
+  
+  /* 重要：确保容器元素不会导致水平排列 */
+  .row, 
+  .col, 
+  .container, 
+  .flex-container, 
+  [class*="flex-"]:not(#shortcut-list) {
+    display: block !important;
+    width: 100% !important;
+    float: none !important;
+  }
+}
+
+/* 超窄屏幕额外调整 */
+@media (max-width: 480px) {
+  /* 在超窄屏幕上更新元素宽度变量 */
+  :root {
+    --element-width: 95%;
+  }
+
+  /* 调整搜索框的内部布局 */
+  #search-input {
+    padding: 0 10px;
+  }
+
+  /* 快捷方式按钮略微缩小，但保持比例和水平排列 */
+  .shortcut-button {
+    width: 70px;
+    margin: 5px;
+    display: inline-block;
+  }
+  
+  /* 超窄屏幕下背景切换按钮进一步缩小 */
+  #background-button {
+    transform: scale(0.7) !important;
+    top: 5px !important;
+    right: 5px !important;
+  }
+}
