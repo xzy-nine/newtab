@@ -4,20 +4,14 @@
  */
 
 import { I18n } from './modules/i18n.js';
-import { 
-    initBackgroundImage, 
-    setupBackgroundEvents,
-    refreshBackgroundImage
-} from './modules/backgroundImage.js';
+// 导入背景管理器实例
+import backgroundManager from './modules/backgroundImage.js';
 import { 
     initSearchEngine,
     setupSearchEvents 
 } from './modules/searchEngine.js';
 import { BookmarkManager } from './modules/bookmarks.js';
-import { 
-    updateClock,
-    initClockWidget   
-} from './modules/clockWidget.js';
+import { ClockWidget } from './modules/clockWidget.js';
 import { Utils } from './modules/utils.js';
 
 // 版本号
@@ -88,7 +82,7 @@ async function init() {
         const initSteps = [
             {
                 name: '背景图像',
-                action: initBackgroundImage,
+                action: backgroundManager.initialize.bind(backgroundManager), // 使用新API
                 message: I18n.getMessage('loadingBackground'),
                 completeMessage: '背景图像加载完成',
                 timeout: 5000
@@ -109,7 +103,7 @@ async function init() {
             },
             {
                 name: '时钟组件',
-                action: initClockWidget,
+                action: ClockWidget.init.bind(ClockWidget),
                 message: I18n.getMessage('loadingClock'),
                 completeMessage: '时钟组件加载完成',
                 timeout: 5000
@@ -181,8 +175,8 @@ function createBasicUI() {
  * 设置所有模块的事件处理
  */
 function setupEvents() {
-    // 设置背景相关事件
-    setupBackgroundEvents();
+    // 设置背景相关事件 - 使用新API
+    backgroundManager.setupEvents();
     
     // 设置搜索相关事件
     setupSearchEvents();
@@ -265,8 +259,9 @@ function showUpdateMessage(oldVersion, newVersion) {
  */
 async function refreshPageContent() {
     try {
-        await refreshBackgroundImage();
-        updateClock();
+        // 使用新的背景管理器API
+        await backgroundManager.refresh();
+        ClockWidget.update();
     } catch (error) {
         // 静默处理错误
     }
