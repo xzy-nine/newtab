@@ -1,9 +1,5 @@
-/**
- * 时钟组件模块
- */
+//时钟组件模块
 
-// 移除未使用的导入
-// import { getI18nMessage } from './i18n.js';
 
 // 时钟组件配置
 let clockConfig = {
