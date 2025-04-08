@@ -248,12 +248,11 @@ export async function setIconForElement(img, url) {
     }
 }
 
-// 保留兼容性的简化函数
-export async function initIconManager() {}  // 简化为空函数，保留导出
-export async function cleanupIconCache() {}  // 简化为空函数，保留导出
-export async function generateIconDataUrl(url) { return await getIconUrl(url); }  // 简化实现，保留导出
-export async function preloadIcons() {}  // 简化为空函数，保留导出
-export function getAllCachedIcons() { return {}; }  // 简化实现，保留导出
+
+
+/**
+ * 设置自定义图标
+ */
 export async function setCustomIcon(url, base64Image) { 
     try {
         await chrome.storage.local.set({ [url]: base64Image });
@@ -263,6 +262,10 @@ export async function setCustomIcon(url, base64Image) {
         console.error('设置自定义图标失败:', error);
     }
 }
+
+/**
+ * 重置图标到默认状态
+ */
 export async function resetIcon(url) { 
     try {
         await chrome.storage.local.remove(url);
@@ -272,3 +275,29 @@ export async function resetIcon(url) {
         console.error('重置图标失败:', error);
     }
 }
+
+// 保留兼容性的简化函数 - 这些函数已弃用，仅用于向后兼容
+/**
+ * @deprecated 此函数已弃用，无需调用
+ */
+export async function initIconManager() {}  // 简化为空函数，保留导出
+
+/**
+ * @deprecated 此函数已弃用，无需调用
+ */
+export async function cleanupIconCache() {}  // 简化为空函数，保留导出
+
+/**
+ * @deprecated 建议直接使用 getIconUrl
+ */
+export async function generateIconDataUrl(url) { return await getIconUrl(url); }  // 简化实现，保留导出
+
+/**
+ * @deprecated 此函数已弃用，无需调用
+ */
+export async function preloadIcons() {}  // 简化为空函数，保留导出
+
+/**
+ * @deprecated 此函数已弃用，返回空对象
+ */
+export function getAllCachedIcons() { return {}; }  // 简化实现，保留导出
