@@ -6,10 +6,7 @@
 import { I18n } from './modules/i18n.js';
 // 导入背景管理器实例
 import backgroundManager from './modules/backgroundImage.js';
-import { 
-    initSearchEngine,
-    setupSearchEvents 
-} from './modules/searchEngine.js';
+import { SearchEngineAPI } from './modules/searchEngine.js';  // 更新导入，使用新API
 import { BookmarkManager } from './modules/bookmarks.js';
 import { ClockWidget } from './modules/clockWidget.js';
 import { Utils } from './modules/utils.js';
@@ -82,14 +79,14 @@ async function init() {
         const initSteps = [
             {
                 name: '背景图像',
-                action: backgroundManager.initialize.bind(backgroundManager), // 使用新API
+                action: backgroundManager.initialize.bind(backgroundManager),
                 message: I18n.getMessage('loadingBackground'),
                 completeMessage: '背景图像加载完成',
                 timeout: 5000
             },
             {
                 name: '搜索引擎',
-                action: initSearchEngine,
+                action: SearchEngineAPI.initialize.bind(SearchEngineAPI),
                 message: I18n.getMessage('loadingSearch'),
                 completeMessage: '搜索引擎加载完成',
                 timeout: 5000
@@ -129,7 +126,7 @@ async function init() {
                 await executeWithTimeout(step.action, step.timeout, step.name);
                 completedModules++;
                 Utils.UI.updateLoadingProgress((completedModules / totalModules) * 100, step.completeMessage);
-            } catch (error) {
+        } catch (error) {
                 throw new Error(I18n.getMessage('moduleLoadingFailed')
                     .replace('{0}', step.name)
                     .replace('{1}', error.message));
@@ -178,8 +175,8 @@ function setupEvents() {
     // 设置背景相关事件 - 使用新API
     backgroundManager.setupEvents();
     
-    // 设置搜索相关事件
-    setupSearchEvents();
+    // 设置搜索相关事件 - 使用新API
+    SearchEngineAPI.setupEvents();
     
     // 设置书签相关事件
     BookmarkManager.initEvents();
