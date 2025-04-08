@@ -9,19 +9,64 @@ let clockConfig = {
 };
 
 /**
- * 初始化时钟组件
+ * 时钟模块API对象
  */
-export function initClockWidget() {
-    createClockElement();
-    loadClockSettings();
-    updateClock(); // 初始化时更新一次时钟显示
-    setInterval(updateClock, 1000);
-    
-    // 添加窗口大小变化监听，以调整时钟大小
-    window.addEventListener('resize', adjustClockSize);
-    // 初始调整
-    adjustClockSize();
-}
+export const ClockWidget = {
+    /**
+     * 初始化时钟组件
+     */
+    init() {
+        createClockElement();
+        loadClockSettings();
+        _updateClock(); // 初始化时更新一次时钟显示
+        setInterval(_updateClock, 1000);
+        
+        // 添加窗口大小变化监听，以调整时钟大小
+        window.addEventListener('resize', adjustClockSize);
+        // 初始调整
+        adjustClockSize();
+    },
+
+    /**
+     * 更新时钟显示
+     */
+    update() {
+        _updateClock();
+    },
+
+    /**
+     * 保存时钟设置
+     * @param {Object} settings 要更新的设置对象
+     * @returns {Promise<boolean>} 保存是否成功
+     */
+    async saveSettings(settings) {
+        try {
+            Object.assign(clockConfig, settings);
+            
+            await chrome.storage.local.set({
+                clockEnabled: clockConfig.enabled,
+                clockFormat24h: clockConfig.format24h,
+                clockShowSeconds: clockConfig.showSeconds
+            });
+            
+            updateClockVisibility();
+            _updateClock();
+            
+            return true;
+        } catch (error) {
+            // 移除console.error调试代码
+            return false;
+        }
+    },
+
+    /**
+     * 获取当前时钟设置
+     * @returns {Object} 当前时钟设置的副本
+     */
+    getSettings() {
+        return {...clockConfig};
+    }
+};
 
 /**
  * 创建时钟DOM元素
@@ -127,8 +172,9 @@ async function loadClockSettings() {
 
 /**
  * 更新时钟显示
+ * @private
  */
-export function updateClock() {
+function _updateClock() {
     if (!clockConfig.enabled) return;
     
     const now = new Date();
@@ -215,36 +261,6 @@ function updateClockVisibility() {
 }
 
 /**
- * 保存时钟设置
- */
-export async function saveClockSettings(settings) {
-    try {
-        Object.assign(clockConfig, settings);
-        
-        await chrome.storage.local.set({
-            clockEnabled: clockConfig.enabled,
-            clockFormat24h: clockConfig.format24h,
-            clockShowSeconds: clockConfig.showSeconds
-        });
-        
-        updateClockVisibility();
-        updateClock();
-        
-        return true;
-    } catch (error) {
-        // 移除console.error调试代码
-        return false;
-    }
-}
-
-/**
- * 获取当前时钟设置
- */
-export function getClockSettings() {
-    return {...clockConfig};
-}
-
-/**
  * 调整时钟大小以适应窗口宽度
  */
 function adjustClockSize() {
@@ -263,4 +279,44 @@ function adjustClockSize() {
         // 恢复正常大小
         timeElement.style.transform = 'translateX(-50%)';
     }
+}
+
+// ========================================================================
+// 弃用的 API 函数 (保留原导出函数但标记为弃用)
+// ========================================================================
+
+/**
+ * 初始化时钟组件
+ * @deprecated 请使用 ClockWidget.init() 代替
+ */
+export function initClockWidget() {
+    console.warn('initClockWidget() 已弃用，请使用 ClockWidget.init() 代替');
+    ClockWidget.init();
+}
+
+/**
+ * 更新时钟显示
+ * @deprecated 请使用 ClockWidget.update() 代替
+ */
+export function updateClock() {
+    console.warn('updateClock() 已弃用，请使用 ClockWidget.update() 代替');
+    ClockWidget.update();
+}
+
+/**
+ * 保存时钟设置
+ * @deprecated 请使用 ClockWidget.saveSettings(settings) 代替
+ */
+export async function saveClockSettings(settings) {
+    console.warn('saveClockSettings() 已弃用，请使用 ClockWidget.saveSettings(settings) 代替');
+    return ClockWidget.saveSettings(settings);
+}
+
+/**
+ * 获取当前时钟设置
+ * @deprecated 请使用 ClockWidget.getSettings() 代替
+ */
+export function getClockSettings() {
+    console.warn('getClockSettings() 已弃用，请使用 ClockWidget.getSettings() 代替');
+    return ClockWidget.getSettings();
 }
