@@ -135,7 +135,7 @@ export const Utils = {
 
     showNotification: (title, message, duration = 5000, type = 'info', buttons = null, onClose = null) => {
       const notification = document.createElement('div');
-      notification.classList.add('notification', `notification-${type}`);
+      notification.className = `notification notification-${type}`;
       
       let buttonsHtml = '';
       if (buttons?.length) {

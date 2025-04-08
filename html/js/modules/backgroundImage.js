@@ -213,16 +213,8 @@ class BackgroundManager {
                     return; // 直接返回，无需后续设置
             }
 
-            // 应用背景样式
-            container.style.position = 'fixed';
-            container.style.top = '0';
-            container.style.left = '0';
-            container.style.width = '100%';
-            container.style.height = '100%';
-            container.style.zIndex = '-2';
+            // 应用背景样式 - 移除内联样式，使用预定义的CSS样式
             container.style.backgroundImage = `url(${bgUrl})`;
-            container.style.backgroundSize = 'cover';
-            container.style.backgroundPosition = 'center';
             
             // 应用模糊和暗化效果
             this.applyEffects();
@@ -250,13 +242,6 @@ class BackgroundManager {
         const overlay = document.getElementById('background-overlay');
         if (overlay) {
             if (this.settings.dark > 0) {
-                // 显示半透明黑色遮罩
-                overlay.style.position = 'fixed';
-                overlay.style.top = '0';
-                overlay.style.left = '0';
-                overlay.style.width = '100%';
-                overlay.style.height = '100%';
-                overlay.style.zIndex = '-1';
                 overlay.style.backgroundColor = `rgba(0, 0, 0, ${this.settings.dark / 100})`;
                 overlay.style.display = 'block';
             } else {
