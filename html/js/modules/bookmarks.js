@@ -647,19 +647,27 @@ export const BookmarkManager = {
                             await chrome.storage.local.set({ customIcons });
                         }
                         
-                        // 强制重新获取图标，避免使用缓存
-                        const timestamp = new Date().getTime();
-                        const url = new URL(shortcut.url);
-                        const domain = url.hostname;
+                        // 调用IconManager的重置方法清除图标缓存
+                        await IconManager.resetIcon(shortcut.url);
                         
-                        // 直接重设图标 - 强制获取新的图标
+                        // 从所有可能的存储位置清除图标
+                        const domain = Utils.getDomain(shortcut.url);
+                        await chrome.storage.local.remove(domain);
+                        await chrome.storage.local.remove(shortcut.url);
+                        
+                        // 重新获取图标
                         setTimeout(() => {
                             button.style.boxShadow = '';
-                            // 完全清除背景以确保重新获取
+                            // 完全清除背景
                             button.style.backgroundImage = '';
                             
-                            // 手动重新获取图标
-                            IconManager.getIconUrl(shortcut.url + '?t=' + timestamp, button);
+                            // 清除DOM缓存，确保不使用缓存的图片
+                            const timestamp = Date.now();
+                            // 使用新的URL对象，添加时间戳来绕过缓存
+                            const refreshedUrl = shortcut.url + (shortcut.url.includes('?') ? '&' : '?') + '_t=' + timestamp;
+                            
+                            // 从零开始获取新图标
+                            IconManager.getIconUrl(refreshedUrl, button);
                         }, 300);
                         
                         break;
