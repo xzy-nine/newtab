@@ -159,10 +159,10 @@ export const Utils = {
       document.body.appendChild(notification);
       
       const notifications = document.querySelectorAll('.notification');
-      const offset = (notifications.length - 1) * 10;
+      const index = notifications.length - 1;
       
       setTimeout(() => {
-        notification.style.transform = `translateY(0) translateY(${offset}px)`;
+        notification.classList.add(`notification-offset-${index}`);
       }, 10);
       
       const closeNotification = () => {
@@ -203,7 +203,9 @@ export const Utils = {
 
     adjustNotificationPositions: () => {
       document.querySelectorAll('.notification').forEach((notification, index) => {
-        notification.style.transform = `translateY(0) translateY(${index * 10}px)`;
+        notification.classList.remove('notification-offset-1', 'notification-offset-2', 
+          'notification-offset-3', 'notification-offset-4', 'notification-offset-5');
+        notification.classList.add(`notification-offset-${index}`);
       });
     },
 
@@ -375,7 +377,7 @@ export const Utils = {
         return;
       }
       
-      modal.style.display = 'block';
+      modal.classList.add('visible');
       
       if (!modal.dataset.initialized) {
         modal.querySelectorAll('.modal-close').forEach(button => {
@@ -397,7 +399,7 @@ export const Utils = {
 
     hide: modalId => {
       const modal = document.getElementById(modalId);
-      if (modal) modal.style.display = 'none';
+      if (modal) modal.classList.remove('visible');
     }
   },
 

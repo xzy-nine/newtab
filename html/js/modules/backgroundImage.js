@@ -53,7 +53,15 @@ class BackgroundManager {
         const bgTypeSelect = document.getElementById('bg-type');
         if (bgTypeSelect) {
             bgTypeSelect.addEventListener('change', async (e) => {
+                // 保存旧的背景类型
+                const oldType = this.settings.type;
                 this.settings.type = e.target.value;
+                
+                // 如果切换到非自定义类型，记录该类型
+                if (this.settings.type !== 'custom') {
+                    await chrome.storage.local.set({ lastNonCustomBgType: this.settings.type });
+                }
+                
                 await chrome.storage.local.set({ bgType: this.settings.type });
                 await this.setImage();
             });
@@ -95,13 +103,24 @@ class BackgroundManager {
         
         // 左键点击 - 切换背景类型
         newButton.addEventListener('click', async () => {
+            // 保存旧的背景类型
+            const oldType = this.settings.type;
+            
             // 根据是否有自定义图片决定切换类型
             if (this.settings.customImageData) {
                 // 在bing和custom间切换
                 this.settings.type = this.settings.type === 'bing' ? 'custom' : 'bing';
+                
+                // 如果切换到非custom类型，保存为最后一个非自定义类型
+                if (this.settings.type !== 'custom') {
+                    await chrome.storage.local.set({ lastNonCustomBgType: this.settings.type });
+                }
             } else {
                 // 在bing和default间切换
                 this.settings.type = this.settings.type === 'bing' ? 'default' : 'bing';
+                
+                // 保存当前非自定义类型
+                await chrome.storage.local.set({ lastNonCustomBgType: this.settings.type });
             }
             
             await chrome.storage.local.set({ bgType: this.settings.type });
@@ -157,7 +176,8 @@ class BackgroundManager {
                 'bgType', 
                 'customImage', 
                 'backgroundBlur', 
-                'backgroundDark'
+                'backgroundDark',
+                'lastNonCustomBgType'
             ]);
             
             // 根据是否有自定义图片决定可用的类型选择
@@ -166,7 +186,8 @@ class BackgroundManager {
                 this.settings.type = result.bgType === 'custom' ? 'custom' : 'bing';
             } else {
                 this.settings.customImageData = null;
-                this.settings.type = result.bgType === 'default' ? 'default' : 'bing';
+                // 使用保存的背景类型或默认值
+                this.settings.type = result.bgType || 'bing';
             }
             
             // 加载特效设置
@@ -184,36 +205,31 @@ class BackgroundManager {
      */
     async setImage() {
         try {
+            // 获取背景容器元素
             const container = document.getElementById('background-container');
-            if (!container) {
-                console.error('无法找到背景容器元素: background-container');
-                return;
-            }
-            
-            let bgUrl = '';
-            
-            // 根据类型设置背景
-            switch(this.settings.type) {
-                case 'custom':
-                    bgUrl = this.settings.customImageData || 'images/default.jpg';
-                    break;
+            if (!container) return;
+
+            // 根据背景类型选择图片URL
+            let bgUrl;
+            switch (this.settings.type) {
                 case 'bing':
-                    try {
-                        bgUrl = await this.fetchBingImage();
-                    } catch (error) {
-                        console.error('获取必应图片失败:', error);
-                        Utils.UI.showErrorMessage(I18n.getMessage('bingImageError') + error.message);
-                        bgUrl = 'images/default.jpg'; // 失败时使用默认图
-                    }
+                    bgUrl = await this.fetchBingImage(); // 修改这里，使用已存在的fetchBingImage方法
+                    break;
+                case 'custom':
+                    bgUrl = this.settings.customImageData;
                     break;
                 case 'default':
                     // 设置为白色背景
-                    container.style.backgroundImage = 'none';
-                    container.style.backgroundColor = '#ffffff';
+                    container.classList.add('bg-white');
                     return; // 直接返回，无需后续设置
+                default:
+                    bgUrl = 'images/default.jpg';
             }
 
-            // 应用背景样式 - 移除内联样式，使用预定义的CSS样式
+            // 移除白色背景类（如果有）
+            container.classList.remove('bg-white');
+            
+            // 应用背景样式
             container.style.backgroundImage = `url(${bgUrl})`;
             
             // 应用模糊和暗化效果
@@ -374,7 +390,8 @@ class BackgroundManager {
                 // 保存设置
                 await chrome.storage.local.set({ 
                     customImage: this.settings.customImageData,
-                    bgType: 'custom'
+                    bgType: 'custom',
+                    lastNonCustomBgType: this.settings.type
                 });
                 
                 await this.setImage();
@@ -396,14 +413,18 @@ class BackgroundManager {
      * @returns {Promise<void>}
      */
     async clearCustomBackground() {
-        // 重置设置
+        // 重置设置 - 回退到用户之前选择的背景类型或默认背景
         this.settings.customImageData = null;
-        this.settings.type = 'bing';
+        
+        // 获取上次保存的背景类型
+        const result = await chrome.storage.local.get(['lastNonCustomBgType']);
+        // 如果有上次记录的类型则使用，否则默认使用bing
+        this.settings.type = result.lastNonCustomBgType || 'bing';
         
         // 保存到存储
         await chrome.storage.local.set({ 
             customImage: null,
-            bgType: 'bing'
+            bgType: this.settings.type
         });
         
         // 应用更改
@@ -412,7 +433,7 @@ class BackgroundManager {
         // 更新UI
         const bgTypeSelect = document.getElementById('bg-type');
         if (bgTypeSelect) {
-            bgTypeSelect.value = 'bing';
+            bgTypeSelect.value = this.settings.type;
         }
     }
 

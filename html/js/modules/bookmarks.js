@@ -1034,17 +1034,32 @@ export const BookmarkManager = {
 
     /**
      * 处理右键菜单事件
-     * @param {Event} e - 事件对象
+     * @param {Event} event - 事件对象
      */
-    handleContextMenu: function(e) {
-        if (!e.target.matches('input, textarea, [contenteditable="true"]')) {
+    handleContextMenu: function(event) {
+        if (!event.target.matches('input, textarea, [contenteditable="true"]')) {
             // 自定义右键菜单处理
-            if (e.target.closest('.shortcut-button') || e.target.closest('.bookmark')) {
+            if (event.target.closest('.shortcut-button') || event.target.closest('.bookmark')) {
                 // 已有处理逻辑
             } else {
                 // 可根据需要阻止默认菜单
             }
         }
+
+        // 创建或显示上下文菜单
+        let contextMenu = document.getElementById('shortcut-context-menu');
+        if (!contextMenu) {
+            // 创建菜单
+            // ... 原有代码 ...
+        }
+        
+        // 设置菜单位置使用CSS类
+        contextMenu.classList.add('context-menu-positioned');
+        contextMenu.style.left = `${event.pageX}px`;
+        contextMenu.style.top = `${event.pageY}px`;
+        contextMenu.classList.add('visible');
+        
+        // ... 原有代码 ...
     },
 
     /**

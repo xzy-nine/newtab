@@ -508,16 +508,7 @@ function renderSearchEngineSelector(firstRender = false) {
         newIcon.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            const menu = document.getElementById('search-engine-menu');
-            if (menu.style.display === 'block') {
-                menu.style.display = 'none';
-            } else {
-                const rect = newIcon.getBoundingClientRect();
-                menu.style.left = rect.left + 'px';
-                menu.style.top = (rect.bottom + 5) + 'px';
-                menu.style.display = 'block';
-            }
+            showSearchEngineMenu(newIcon);
         });
         
         // 添加右键菜单(清除存储功能)
@@ -554,7 +545,7 @@ function renderSearchEngineSelector(firstRender = false) {
             if (menu && !menu.contains(e.target) && 
                 e.target.id !== 'search-engine-icon' &&
                 !e.target.classList.contains('search-engine-icon')) {
-                menu.style.display = 'none';
+                hideSearchEngineMenu();
             }
         });
         window._menuClickHandlerAdded = true;
@@ -670,5 +661,27 @@ async function updateSearchEngines(newEngines, activeIndex = null) {
         currentEngineIndex = 0;
         return false;
     }
+}
+
+// 搜索引擎选择器相关代码
+
+// 显示搜索引擎菜单
+function showSearchEngineMenu(iconElement) {
+    const menu = document.getElementById('search-engine-menu');
+    if (!menu) return;
+    
+    menu.classList.add('search-engine-menu-positioned');
+    const rect = iconElement.getBoundingClientRect();
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.classList.add('visible');
+}
+
+// 隐藏搜索引擎菜单
+function hideSearchEngineMenu() {
+    const menu = document.getElementById('search-engine-menu');
+    if (!menu) return;
+    
+    menu.classList.remove('visible');
 }
 

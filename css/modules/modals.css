@@ -12,6 +12,15 @@
   align-items: center;
 }
 
+/* 模态框显示和隐藏状态 */
+.modal {
+  display: none; /* 默认隐藏 */
+}
+
+.modal.visible {
+  display: flex;
+}
+
 .modal-content {
   background-color: white;
   padding: 20px;
@@ -47,6 +56,13 @@
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 5px;
+}
+
+/* 错误消息样式 */
+.form-error {
+  color: #e53935;
+  font-size: 0.9em;
+  margin-top: 5px;
 }
 
 .form-actions {
@@ -119,6 +135,13 @@
 #icon-selector-modal .icon-option img {
   max-width: 80%;
   max-height: 80%;
+}
+
+/* 模态框内预览图片样式 */
+#icon-preview img {
+  max-width: 64px;
+  max-height: 64px;
+  object-fit: contain;
 }
 
 /* 通知系统 */
@@ -194,3 +217,24 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* 通知位置和变换 */
+.notification {
+  transform: translateY(100%); /* 初始位置在屏幕外 */
+}
+
+.notification.visible {
+  transform: translateY(0); /* 显示位置 */
+}
+
+/* 通知消息的不透明度过渡 */
+#loading-message {
+  transition: opacity 0.2s;
+}
+
+/* 通知系统位置调整 */
+.notification-offset-1 { transform: translateY(0) translateY(10px); }
+.notification-offset-2 { transform: translateY(0) translateY(20px); }
+.notification-offset-3 { transform: translateY(0) translateY(30px); }
+.notification-offset-4 { transform: translateY(0) translateY(40px); }
+.notification-offset-5 { transform: translateY(0) translateY(50px); }
