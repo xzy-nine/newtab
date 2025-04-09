@@ -56,45 +56,51 @@ export const Utils = {
   calculateTotalHeight: element => element.scrollHeight * 1.1,
 
   UI: {
+    // 修改为使用通知形式显示加载指示器
     showLoadingIndicator: (containerId = null) => {
-      let loadingOverlay = document.getElementById('loading-overlay');
+      // 移除原有的全屏加载逻辑
+      let loadingNotification = document.querySelector('.notification.loading-notification');
       
-      if (!loadingOverlay) {
-        loadingOverlay = Utils.createElement('div', 'compact-loading', { id: 'loading-overlay' });
+      if (!loadingNotification) {
+        // 创建加载通知
+        const notification = Utils.UI.notify({
+          title: I18n.getMessage('loading') || '加载中',
+          message: '<div class="loading-content">' +
+                   '<div class="mini-loader-spinner"></div>' + 
+                   '<div class="mini-progress">' +
+                   '<div class="notification-loading-bar"></div></div>' +
+                   '<div class="notification-loading-message">正在加载...</div>' +
+                   '</div>',
+          type: 'loading',
+          duration: 0 // 不自动关闭
+        });
         
-        const loaderContainer = Utils.createElement('div', 'loader-container');
+        loadingNotification = notification.getElement();
+        loadingNotification.classList.add('loading-notification');
         
-        const spinner = Utils.createElement('div', 'loader-spinner');
-        
-        const progress = Utils.createElement('div', '', { id: 'loading-progress' }, 
-          '<div id="loading-progress-bar"></div>');
-        
-        const message = Utils.createElement('div', '', { id: 'loading-message' }, '正在加载...');
-        
-        loaderContainer.append(spinner, progress, message);
-        loadingOverlay.appendChild(loaderContainer);
-        
-        // 如果指定了容器ID，则将加载指示器追加到该容器内
-        // 否则添加到body并使用固定位置而非全屏
+        // 确保加载通知始终显示在顶部
         if (containerId) {
           const container = document.getElementById(containerId);
           if (container) {
-            container.appendChild(loadingOverlay);
-          } else {
-            document.body.appendChild(loadingOverlay);
+            // 如果指定了容器，则确保通知在容器内部可见
+            container.style.position = 'relative';
           }
-        } else {
-          document.body.appendChild(loadingOverlay);
         }
       } else {
-        loadingOverlay.classList.remove('hiding');
-        loadingOverlay.style.display = 'flex';
+        // 如果已存在，确保它是可见的
+        loadingNotification.classList.add('visible');
+        Utils.UI.adjustNotificationPositions();
       }
+      
+      return loadingNotification;
     },
 
     updateLoadingProgress: (percent, message) => {
-      const progressBar = document.getElementById('loading-progress-bar');
-      const loadingMessage = document.getElementById('loading-message');
+      const loadingNotification = document.querySelector('.notification.loading-notification');
+      if (!loadingNotification) return;
+      
+      const progressBar = loadingNotification.querySelector('.notification-loading-bar');
+      const loadingMessage = loadingNotification.querySelector('.notification-loading-message');
       
       if (progressBar) progressBar.style.width = `${percent}%`;
       
@@ -107,28 +113,43 @@ export const Utils = {
       }
       
       if (percent >= 100) {
-        const loadingOverlay = document.getElementById('loading-overlay');
-        if (loadingOverlay) loadingOverlay.classList.add('load-complete');
+        loadingNotification.classList.add('load-complete');
       }
     },
 
     hideLoadingIndicator: (force = false) => {
-      const loadingOverlay = document.getElementById('loading-overlay');
-      if (loadingOverlay) {
-        if (force) {
-          loadingOverlay.style.display = 'none';
-        } else {
-          loadingOverlay.classList.add('hiding');
+      const loadingNotification = document.querySelector('.notification.loading-notification');
+      if (!loadingNotification) return;
+      
+      if (force) {
+        loadingNotification.classList.remove('visible');
+        setTimeout(() => {
+          if (document.body.contains(loadingNotification)) {
+            document.body.removeChild(loadingNotification);
+            Utils.UI.adjustNotificationPositions();
+          }
+        }, 300);
+      } else {
+        // 添加完成动画，然后隐藏
+        loadingNotification.classList.add('load-complete');
+        setTimeout(() => {
+          loadingNotification.classList.remove('visible');
           setTimeout(() => {
-            loadingOverlay.style.display = 'none';
-          }, 500);
-        }
+            if (document.body.contains(loadingNotification)) {
+              document.body.removeChild(loadingNotification);
+              Utils.UI.adjustNotificationPositions();
+            }
+          }, 300);
+        }, 1000); // 显示完成状态1秒后关闭
       }
     },
 
     showErrorMessage: message => {
-      const loadingMessage = document.getElementById('loading-message');
-      const progressBar = document.getElementById('loading-progress-bar');
+      const loadingNotification = document.querySelector('.notification.loading-notification');
+      if (!loadingNotification) return;
+      
+      const loadingMessage = loadingNotification.querySelector('.notification-loading-message');
+      const progressBar = loadingNotification.querySelector('.notification-loading-bar');
       
       if (loadingMessage) {
         loadingMessage.textContent = message;
@@ -633,7 +654,7 @@ export const Utils = {
      * @deprecated 请使用 ContextMenu.show() 代替
      */
     showGeneralMenu: function(event, items = []) {
-      console.warn('Utils.ContextMenu.showGeneralMenu() 已弃用，请使用 Utils.ContextMenu.show() 代替');
+      console.warn('Utils.ContextMenu.showGeneralMenu() 已弃用，请使用 ContextMenu.show() 代替');
       return this.show(event, items, {menuId: 'general-context-menu'});
     },
 
@@ -641,7 +662,7 @@ export const Utils = {
      * @deprecated 请使用 ContextMenu.show() 代替
      */
     showBookmarkMenu: function(event, index, bookmarks, callbacks = {}) {
-      console.warn('Utils.ContextMenu.showBookmarkMenu() 已弃用，请使用 Utils.ContextMenu.show() 代替');
+      console.warn('Utils.ContextMenu.showBookmarkMenu() 已弃用，请使用 ContextMenu.show() 代替');
       
       const items = [
         {
@@ -688,7 +709,7 @@ export const Utils = {
      * @deprecated 请使用 ContextMenu.hideAll() 代替
      */
     hideAllMenus: function() {
-      console.warn('Utils.ContextMenu.hideAllMenus() 已弃用，请使用 Utils.ContextMenu.hideAll() 代替');
+      console.warn('Utils.ContextMenu.hideAllMenus() 已弃用，请使用 ContextMenu.hideAll() 代替');
       return this.hideAll();
     }
   },
@@ -703,14 +724,7 @@ export const Utils = {
     },
 
     handlePageLoad: () => {
-      const loadingScreen = document.getElementById('loading-screen');
-      if (loadingScreen) {
-        loadingScreen.style.opacity = '0';
-        setTimeout(() => {
-          loadingScreen.style.display = 'none';
-        }, 500);
-      }
-      
+      // 不需要再处理旧的全屏加载元素
       const searchInput = document.getElementById('search-input');
       if (searchInput) setTimeout(() => searchInput.focus(), 100);
     },
