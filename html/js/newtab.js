@@ -13,7 +13,6 @@ import { Utils } from './modules/utils.js';
 
 // 版本号
 let VERSION = '0.0.0'; 
-
 // 全局状态标志
 let isInitialized = false;
 
@@ -294,6 +293,68 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 2000);
   });
 });
+
+// 添加消息监听器，用于接收背景脚本发送的消息
+chrome.runtime.onMessage && chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'showMobileInstruction') {
+    // 显示如何在手机上设置新标签页的通知
+    if (isInitialized) {
+      showMobileInstruction(message.extensionUrl);
+    } else {
+      // 如果页面尚未初始化，等待初始化完成后再显示
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          showMobileInstruction(message.extensionUrl);
+        }, 2000);
+      });
+    }
+    sendResponse({ received: true });
+    return true;
+  }
+});
+/**
+ * 显示新标签页设置指导通知（根据设备类型显示不同内容）
+ * @param {string} url - 扩展页面URL
+ */
+function showMobileInstruction(url) {
+    const finalUrl = url || chrome.runtime.getURL('html/newtab.html');
+    // 检测是否为移动设备
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    const title = '设置新标签页';
+    const message = isMobile 
+        ? `请复制并将该链接设置为新标签页:\n${finalUrl}`
+        : '您的新标签页已自动设置完成！';
+    
+    Utils.UI.showNotification(
+        title,
+        message,
+        isMobile ? 0 : 5000,  // 移动设备不自动关闭，其他设备5秒后关闭
+        'info',
+        isMobile ? [
+            {
+                text: '复制链接',
+                class: 'btn-primary',
+                callback: () => {
+                    navigator.clipboard.writeText(finalUrl)
+                        .then(() => Utils.UI.showNotification('成功', '链接已复制', 2000, 'success'))
+                        .catch(() => Utils.UI.showNotification('失败', '无法复制链接', 2000, 'error'));
+                }
+            },
+            {
+                text: '关闭',
+                class: 'btn-secondary',
+                callback: () => {}  // 空回调，点击时会默认关闭通知
+            }
+        ] : [
+            {
+                text: '确定',
+                class: 'btn-primary',
+                callback: () => {}  // 空回调，点击时会默认关闭通知
+            }
+        ]
+    );
+}
 
 // 导出版本号
 export { VERSION };

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.1.6",
+  "version": "1.1.8",
   "description": "__MSG_appDescription__",
   "icons": {
     "16": "/favicon.png",
@@ -16,13 +16,21 @@
   "chrome_url_overrides": {
     "newtab": "html/newtab.html"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["html/*", "images/*", "css/*", "js/*", "favicon.png"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "permissions": [
     "storage",
     "bookmarks",
-    "activeTab"
+    "activeTab",
+    "tabs"
   ],
   "host_permissions": [
-    "https://*/*"
+    "https://*/*",
+    "http://*/*"
   ],
   "default_locale": "zh_CN"
 }
