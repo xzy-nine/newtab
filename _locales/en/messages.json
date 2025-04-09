@@ -246,5 +246,65 @@
   "refreshPage": {
     "message": "Refresh Page",
     "description": "刷新页面按钮"
+  },
+  "openFolder": {
+    "message": "Open Folder",
+    "description": "打开文件夹菜单项"
+  },
+  "openAllBookmarks": {
+    "message": "Open All Bookmarks",
+    "description": "打开所有书签菜单项"
+  },
+  "refreshBookmarks": {
+    "message": "Refresh Bookmarks",
+    "description": "刷新书签菜单项"
+  },
+  "untitledFolder": {
+    "message": "(Untitled Folder)",
+    "description": "无标题文件夹显示文本"
+  },
+  "uploadIcon": {
+    "message": "Upload Icon",
+    "description": "上传图标标签"
+  },
+  "iconUrl": {
+    "message": "Icon URL",
+    "description": "图标URL标签"
+  },
+  "fetchBookmarksFailed": {
+    "message": "Failed to fetch bookmarks",
+    "description": "获取书签失败提示"
+  },
+  "folderCreationError": {
+    "message": "Error creating folder",
+    "description": "创建文件夹错误提示"
+  },
+  "fetchFolderFailed": {
+    "message": "Failed to fetch folder",
+    "description": "获取文件夹失败提示"
+  },
+  "reloadFailed": {
+    "message": "Reload failed",
+    "description": "重新加载失败提示"
+  },
+  "fetchIconFailed": {
+    "message": "Failed to fetch icon",
+    "description": "获取图标失败提示"
+  },
+  "iconReset": {
+    "message": "Icon reset",
+    "description": "图标已重置提示"
+  },
+  "saveIconFailed": {
+    "message": "Failed to save icon",
+    "description": "保存图标失败提示"
+  },
+  "success": {
+    "message": "Success",
+    "description": "成功提示标题"
+  },
+  "iconUpdated": {
+    "message": "Icon has been updated",
+    "description": "图标已更新提示"
   }
 }
