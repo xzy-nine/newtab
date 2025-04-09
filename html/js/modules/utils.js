@@ -151,6 +151,7 @@ export const Utils = {
       } = options;
 
       const notification = Utils.createElement('div', `notification notification-${type}`);
+      notification.dataset.visible = 'false';
       
       let buttonsHtml = '';
       if (buttons?.length) {
@@ -173,16 +174,14 @@ export const Utils = {
       
       document.body.appendChild(notification);
       
-      const notifications = document.querySelectorAll('.notification');
-      const index = notifications.length - 1;
-      
+      // 设置位置偏移
       setTimeout(() => {
-        notification.classList.add(`notification-offset-${index}`);
+        notification.classList.add('visible');
+        Utils.UI.adjustNotificationPositions();
       }, 10);
       
       const closeNotification = () => {
-        if (timeoutId) clearTimeout(timeoutId);
-        notification.style.transform = 'translateY(100%)';
+        notification.classList.remove('visible');
         
         setTimeout(() => {
           if (document.body.contains(notification)) {
@@ -209,19 +208,82 @@ export const Utils = {
       }
       
       let timeoutId;
-      if (duration > 0) {
-        timeoutId = setTimeout(closeNotification, duration);
-      }
       
-      return { close: closeNotification };
+      // 添加可见性检查函数
+      const checkVisibilityAndSetTimeout = () => {
+        if (notification.dataset.visible === 'true' && duration > 0) {
+          timeoutId = setTimeout(closeNotification, duration);
+        }
+      };
+      
+      // 添加到通知管理系统
+      Utils.UI.notificationManager.add(notification, duration, closeNotification, checkVisibilityAndSetTimeout);
+      
+      return { 
+        close: closeNotification,
+        getElement: () => notification 
+      };
+    },
+
+    // 通知管理系统
+    notificationManager: {
+      notifications: [],
+      visibleLimit: 3, // 最大同时显示数量
+      
+      add: (notification, duration, closeCallback, visibilityCallback) => {
+        const notificationItem = {
+          element: notification,
+          duration,
+          close: closeCallback,
+          checkVisibility: visibilityCallback
+        };
+        
+        Utils.UI.notificationManager.notifications.push(notificationItem);
+        Utils.UI.notificationManager.updateVisibility();
+      },
+      
+      updateVisibility: () => {
+        const notifications = Utils.UI.notificationManager.notifications;
+        
+        // 更新所有通知的可见状态
+        notifications.forEach((item, index) => {
+          if (index < Utils.UI.notificationManager.visibleLimit) {
+            item.element.dataset.visible = 'true';
+            item.checkVisibility(); // 对可见通知检查是否需要启动定时器
+          } else {
+            item.element.dataset.visible = 'false';
+            // 隐藏的通知不触发消失
+          }
+        });
+      },
+      
+      remove: (notification) => {
+        const index = Utils.UI.notificationManager.notifications.findIndex(
+          item => item.element === notification
+        );
+        
+        if (index !== -1) {
+          Utils.UI.notificationManager.notifications.splice(index, 1);
+          Utils.UI.notificationManager.updateVisibility();
+        }
+      }
     },
 
     adjustNotificationPositions: () => {
-      document.querySelectorAll('.notification').forEach((notification, index) => {
-        notification.classList.remove('notification-offset-1', 'notification-offset-2', 
-          'notification-offset-3', 'notification-offset-4', 'notification-offset-5');
+      const notifications = document.querySelectorAll('.notification');
+      notifications.forEach((notification, index) => {
+        // 清除所有偏移类
+        notification.classList.remove(
+          'notification-offset-0', 'notification-offset-1', 'notification-offset-2', 
+          'notification-offset-3', 'notification-offset-4', 'notification-offset-5'
+        );
+        
+        // 重新添加正确的偏移类
         notification.classList.add(`notification-offset-${index}`);
       });
+      
+      // 更新通知管理系统
+      Utils.UI.notificationManager.updateVisibility();
     },
 
     /**
