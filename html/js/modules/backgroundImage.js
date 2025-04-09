@@ -249,7 +249,12 @@ class BackgroundManager {
             Utils.UI.updateLoadingProgress(100, '背景设置完成');
             setTimeout(() => Utils.UI.hideLoadingIndicator(), 500);
         } catch (error) {            
-            Utils.UI.showErrorMessage('背景图片加载失败，使用默认背景');
+            Utils.UI.notify({
+                title: '背景加载错误',
+                message: '背景图片加载失败，已切换到默认背景。',
+                type: 'error',
+                duration: 5000
+            });
             
             // 出错时使用默认背景
             const container = document.getElementById('background-container');
@@ -286,19 +291,26 @@ class BackgroundManager {
      * @returns {Promise<string>} 图片URL
      */
     async fetchBingImage() {
+        Utils.UI.updateLoadingProgress(40, '检查本地缓存...');
+        
         // 检查缓存
         const cachedData = await chrome.storage.local.get(CACHE_KEY);
         const now = Date.now();
 
         // 使用缓存内图片（如未过期）
         if (cachedData[CACHE_KEY] && (now - cachedData[CACHE_KEY].timestamp < CACHE_EXPIRATION)) {
+            Utils.UI.updateLoadingProgress(50, '使用缓存的必应图片...');
             return cachedData[CACHE_KEY].imageUrl;
         }
 
+        Utils.UI.updateLoadingProgress(50, '获取必应每日图片...');
+        
         // 获取新图片
         const data = await Utils.fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1');
         const imageUrl = `https://www.bing.com${data.images[0].url}`;
 
+        Utils.UI.updateLoadingProgress(60, '保存图片到本地缓存...');
+        
         // 更新缓存
         await chrome.storage.local.set({ [CACHE_KEY]: { imageUrl, timestamp: now } });
 
@@ -359,6 +371,46 @@ class BackgroundManager {
         const file = e.target.files[0];
         if (!file) return;
         
+        // 检查文件是否为图片
+        if (!file.type.startsWith('image/')) {
+            Utils.UI.notify({
+                title: '文件类型错误',
+                message: '请选择有效的图片文件。',
+                type: 'error'
+            });
+            return;
+        }
+        
+        // 检查文件大小
+        if (file.size > 50 * 1024 * 1024) { // 5MB限制
+            Utils.UI.notify({
+                title: '文件过大',
+                message: '图片文件不应超过50MB。',
+                type: 'warning',
+                buttons: [
+                    {
+                        text: '继续',
+                        class: 'btn-primary',
+                        callback: () => this.processCustomBackgroundFile(file)
+                    },
+                    {
+                        text: '取消',
+                        callback: () => {}
+                    }
+                ]
+            });
+            return;
+        }
+        
+        this.processCustomBackgroundFile(file);
+    }
+
+    /**
+     * 处理自定义背景文件
+     * @param {File} file - 文件对象
+     * @returns {Promise<void>}
+     */
+    async processCustomBackgroundFile(file) {
         try {
             // 使用工具方法
             this.settings.customImageData = await Utils.blobToBase64(file);
@@ -378,6 +430,13 @@ class BackgroundManager {
             if (bgTypeSelect) {
                 bgTypeSelect.value = 'custom';
             }
+            
+            Utils.UI.notify({
+                title: '背景已更新',
+                message: '自定义背景已设置成功！',
+                type: 'success',
+                duration: 3000
+            });
         } catch (error) {
             console.error('处理自定义背景失败:', error);
             Utils.UI.notify({
@@ -499,9 +558,22 @@ class BackgroundManager {
                 // 清除缓存，获取新图片
                 await chrome.storage.local.remove(cacheName);
                 await this.setImage();
+                
+                // 添加刷新成功通知
+                Utils.UI.notify({
+                    title: '背景已更新',
+                    message: '已获取今日必应图片',
+                    type: 'info',
+                    duration: 3000
+                });
             }
         } catch (error) {
             console.error('刷新背景图片失败:', error);
+            Utils.UI.notify({
+                title: '背景更新失败',
+                message: '无法获取最新的必应图片，请稍后再试',
+                type: 'error'
+            });
         }
     }
 }
