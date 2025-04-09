@@ -1,6 +1,6 @@
 /* 模态框相关样式 */
 .modal {
-  display: none;
+  display: none; /* 默认隐藏 */
   position: fixed;
   top: 0;
   left: 0;
@@ -8,17 +8,12 @@
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 2000;
-  justify-content: center;
-  align-items: center;
-}
-
-/* 模态框显示和隐藏状态 */
-.modal {
-  display: none; /* 默认隐藏 */
 }
 
 .modal.visible {
   display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .modal-content {
@@ -58,18 +53,22 @@
   border-radius: 5px;
 }
 
-/* 错误消息样式 */
 .form-error {
   color: #e53935;
   font-size: 0.9em;
   margin-top: 5px;
 }
 
-.form-actions {
+.form-actions,
+.notification-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
+}
+
+.notification-actions {
+  margin-top: 10px;
 }
 
 /* 按钮样式 */
@@ -91,6 +90,7 @@
   border: none;
 }
 
+.image-preview,
 #bookmark-modal .image-preview {
   width: 48px;
   height: 48px;
@@ -103,7 +103,7 @@
   justify-content: center;
 }
 
-#bookmark-modal .image-preview img {
+.image-preview img {
   max-width: 100%;
   max-height: 100%;
 }
@@ -155,11 +155,22 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   z-index: 3000;
-  transform: translateY(-100%);
+  transform: translateY(100%); /* 初始位置在屏幕外 */
   transition: transform 0.3s ease;
   opacity: 0.95;
   border-left: 3px solid #eaeaea;
 }
+
+.notification.visible {
+  transform: translateY(0); /* 显示位置 */
+}
+
+/* 通知位置调整 */
+.notification-offset-1 { transform: translateY(10px); }
+.notification-offset-2 { transform: translateY(20px); }
+.notification-offset-3 { transform: translateY(30px); }
+.notification-offset-4 { transform: translateY(40px); }
+.notification-offset-5 { transform: translateY(50px); }
 
 .notification-content {
   padding: 10px;
@@ -205,26 +216,10 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.notification-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 10px;
-}
-
 /* 加载动画 */
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-/* 通知位置和变换 */
-.notification {
-  transform: translateY(100%); /* 初始位置在屏幕外 */
-}
-
-.notification.visible {
-  transform: translateY(0); /* 显示位置 */
 }
 
 /* 通知消息的不透明度过渡 */
@@ -232,9 +227,41 @@
   transition: opacity 0.2s;
 }
 
-/* 通知系统位置调整 */
-.notification-offset-1 { transform: translateY(0) translateY(10px); }
-.notification-offset-2 { transform: translateY(0) translateY(20px); }
-.notification-offset-3 { transform: translateY(0) translateY(30px); }
-.notification-offset-4 { transform: translateY(0) translateY(40px); }
-.notification-offset-5 { transform: translateY(0) translateY(50px); }
+/* 简洁加载提示 */
+.compact-loading {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 200px;
+  height: auto;
+  max-height: 100px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  padding: 15px;
+}
+
+.compact-loading .loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+}
+
+.compact-loading .loader-spinner {
+  width: 20px;
+  height: 20px;
+}
+
+.compact-loading #loading-message {
+  font-size: 14px;
+}
+
+.compact-loading #loading-progress {
+  width: 100%;
+  height: 5px;
+}

@@ -77,6 +77,7 @@ export const SearchEngineAPI = {
             renderSearchEngineSelector();
             return true;
         } catch (error) {
+            console.error('设置当前搜索引擎失败:', error);
             return false;
         }
     },
@@ -99,7 +100,7 @@ export const SearchEngineAPI = {
      * @param {number} index - 搜索引擎索引
      * @returns {Promise<boolean>} - 操作是否成功
      */
-    async removeEngine(index) {
+    async deleteEngine(index) {
         if (index < 0 || index >= searchEngines.length || searchEngines.length <= 1) return false;
         
         // 删除搜索引擎
@@ -313,32 +314,51 @@ function createSearchUI() {
  * @returns {Promise<Object>} - 存储数据
  */
 async function getFromStorage(keys) {
-    return new Promise((resolve, reject) => {
-        chrome.storage.local.get(keys, (result) => {
-            if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-            } else {
-                resolve(result);
-            }
+    try {
+        return await new Promise((resolve, reject) => {
+            chrome.storage.local.get(keys, (result) => {
+                if (chrome.runtime.lastError) {
+                    reject(new Error(chrome.runtime.lastError.message));
+                } else {
+                    resolve(result);
+                }
+            });
         });
-    });
+    } catch (error) {
+        console.error('从存储中读取数据失败:', error);
+        return {};
+    }
 }
 
 /**
- * 直接保存数据到Chrome存储
- * @param {Object} data - 要保存的数据对象
- * @returns {Promise<void>}
+ * 从URL中提取搜索参数名称
+ * @param {string} url - 搜索引擎URL
+ * @returns {string} - 搜索参数名
  */
-async function saveToStorage(data) {
-    return new Promise((resolve, reject) => {
-        chrome.storage.local.set(data, () => {
-            if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-            } else {
-                resolve();
+function getSearchParamFromUrl(url) {
+    if (!url || !url.includes('?')) return 'q';
+    
+    try {
+        const searchPart = url.split('?')[1];
+        const params = searchPart.split('&');
+        for (const param of params) {
+            if (param.includes('=')) {
+                return param.split('=')[0];
             }
-        });
-    });
+        }
+        
+        const urlObj = new URL(url);
+        const searchParams = new URLSearchParams(urlObj.search);
+        
+        const commonParams = ['q', 'query', 'search', 'text', 'keyword', 'wd', 'word', 'kw', 'key'];
+        for (const param of commonParams) {
+            if (searchParams.has(param)) return param;
+        }
+        
+        return searchParams.keys().next().value || 'q';
+    } catch (e) {
+        return 'q';
+    }
 }
 
 /**
@@ -348,7 +368,7 @@ async function saveToStorage(data) {
 async function loadSearchEngines() {
     try {
         // 从存储中获取搜索引擎列表
-        const data = await chrome.storage.local.get([STORAGE_KEYS.ENGINES, STORAGE_KEYS.CURRENT_ENGINE]);
+        const data = await getFromStorage([STORAGE_KEYS.ENGINES, STORAGE_KEYS.CURRENT_ENGINE]);
         const allEngines = data[STORAGE_KEYS.ENGINES] || [];
         
         // 确保搜索引擎列表有效
@@ -387,39 +407,9 @@ async function loadSearchEngines() {
             }
         }
     } catch (error) {
+        console.error('加载搜索引擎配置失败:', error);
         searchEngines = defaultEngines;
         currentEngineIndex = 0;
-    }
-}
-
-/**
- * 从URL中提取搜索参数名称
- * @param {string} url - 搜索引擎URL
- * @returns {string} - 搜索参数名
- */
-function getSearchParamFromUrl(url) {
-    if (!url || !url.includes('?')) return 'q';
-    
-    try {
-        const searchPart = url.split('?')[1];
-        const params = searchPart.split('&');
-        for (const param of params) {
-            if (param.includes('=')) {
-                return param.split('=')[0];
-            }
-        }
-        
-        const urlObj = new URL(url);
-        const searchParams = new URLSearchParams(urlObj.search);
-        
-        const commonParams = ['q', 'query', 'search', 'text', 'keyword', 'wd', 'word', 'kw', 'key'];
-        for (const param of commonParams) {
-            if (searchParams.has(param)) return param;
-        }
-        
-        return searchParams.keys().next().value || 'q';
-    } catch (e) {
-        return 'q';
     }
 }
 
@@ -431,9 +421,7 @@ function renderSearchEngineSelector(firstRender = false) {
     // 创建或获取搜索引擎菜单元素
     let menuElement = document.getElementById('search-engine-menu');
     if (!menuElement) {
-        menuElement = document.createElement('div');
-        menuElement.id = 'search-engine-menu';
-        menuElement.className = 'search-engine-menu';
+        menuElement = Utils.createElement('div', 'search-engine-menu', { id: 'search-engine-menu' });
         document.body.appendChild(menuElement);
     } else if (menuElement.parentElement && menuElement.parentElement.id === 'search-box') {
         document.body.appendChild(menuElement);
@@ -444,35 +432,44 @@ function renderSearchEngineSelector(firstRender = false) {
     
     // 填充搜索引擎选项
     searchEngines.forEach((engine, index) => {
-        const menuItem = document.createElement('div');
-        menuItem.className = 'search-engine-item' + (index === currentEngineIndex ? ' active' : '');
+        const menuItem = Utils.createElement('div', 'search-engine-item' + (index === currentEngineIndex ? ' active' : ''));
         
-        const icon = document.createElement('img');
-        icon.alt = engine.name;
+        const icon = Utils.createElement('img', '', { alt: engine.name });
         IconManager.setIconForElement(icon, engine.url);
         icon.onerror = () => IconManager.handleIconError(icon, '../favicon.png');
         
-        const name = document.createElement('span');
-        name.textContent = engine.name;
+        const name = Utils.createElement('span', '', {}, engine.name);
         
         menuItem.appendChild(icon);
         menuItem.appendChild(name);
         
         // 添加删除按钮(如果搜索引擎数量大于1)
         if (searchEngines.length > 1) {
-            const deleteButton = document.createElement('div');
-            deleteButton.className = 'search-engine-delete';
-            deleteButton.innerHTML = '&times;';
+            const deleteButton = Utils.createElement('div', 'search-engine-delete', {}, '&times;');
             
             deleteButton.addEventListener('click', (e) => {
                 e.stopPropagation();
-                Utils.UI.showConfirmDialog(
-                    I18n.getMessage('confirmDeleteSearchEngine').replace('{name}', engine.name),
-                    () => {
-                        SearchEngineAPI.deleteEngine(index);
-                        menuElement.style.display = 'none';
-                    }
-                );
+                Utils.UI.notify({
+                    title: I18n.getMessage('confirm') || '确认',
+                    message: I18n.getMessage('confirmDeleteSearchEngine').replace('{name}', engine.name),
+                    duration: 0,
+                    type: 'confirm',
+                    buttons: [
+                        {
+                            text: I18n.getMessage('confirm') || '确认',
+                            class: 'btn-primary confirm-yes',
+                            callback: () => {
+                                SearchEngineAPI.deleteEngine(index);
+                                menuElement.style.display = 'none';
+                            }
+                        },
+                        {
+                            text: I18n.getMessage('cancel') || '取消',
+                            class: 'confirm-no',
+                            callback: () => {}
+                        }
+                    ]
+                });
             });
             
             menuItem.appendChild(deleteButton);
@@ -486,9 +483,8 @@ function renderSearchEngineSelector(firstRender = false) {
     });
     
     // 添加自定义搜索引擎选项
-    const addCustomEngine = document.createElement('div');
-    addCustomEngine.className = 'search-engine-add';
-    addCustomEngine.textContent = I18n.getMessage('addCustomSearchEngine') || '添加自定义搜索引擎';
+    const addCustomEngine = Utils.createElement('div', 'search-engine-add', {}, 
+        I18n.getMessage('addCustomSearchEngine') || '添加自定义搜索引擎');
     
     addCustomEngine.addEventListener('click', showAddSearchEngineModal);
     menuElement.appendChild(addCustomEngine);
@@ -516,25 +512,44 @@ function renderSearchEngineSelector(firstRender = false) {
             e.preventDefault();
             e.stopPropagation();
             
-            Utils.UI.showConfirmDialog(
-                I18n.getMessage('clearStorageConfirm') || '确定要清除所有存储数据吗？此操作不可恢复。',
-                async () => {
-                    const success = await SearchEngineAPI.clearStorage();
-                    if (success) {
-                        Utils.UI.showErrorModal(
-                            I18n.getMessage('clearStorageSuccess') || '存储已成功清除，页面将刷新。',
-                            '',
-                            false
-                        );
-                        // 在显示消息后立即添加页面刷新代码
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500); // 延迟1.5秒，让用户能看到消息
-                    } else {
-                        Utils.UI.showErrorModal(I18n.getMessage('clearStorageError') || '清除存储失败', '', false);
+            Utils.UI.notify({
+                title: I18n.getMessage('confirm') || '确认',
+                message: I18n.getMessage('clearStorageConfirm') || '确定要清除所有存储数据吗？此操作不可恢复。',
+                duration: 0,
+                type: 'confirm',
+                buttons: [
+                    {
+                        text: I18n.getMessage('confirm') || '确认',
+                        class: 'btn-primary confirm-yes',
+                        callback: async () => {
+                            const success = await SearchEngineAPI.clearStorage();
+                            if (success) {
+                                Utils.UI.notify({
+                                    title: I18n.getMessage('success') || '成功',
+                                    message: I18n.getMessage('clearStorageSuccess') || '存储已成功清除，页面将刷新。',
+                                    type: 'success',
+                                    duration: 1500,
+                                    onClose: () => {
+                                        window.location.reload();
+                                    }
+                                });
+                            } else {
+                                Utils.UI.notify({
+                                    title: I18n.getMessage('error') || '错误',
+                                    message: I18n.getMessage('clearStorageError') || '清除存储失败',
+                                    type: 'error',
+                                    duration: 3000
+                                });
+                            }
+                        }
+                    },
+                    {
+                        text: I18n.getMessage('cancel') || '取消',
+                        class: 'confirm-no',
+                        callback: () => {}
                     }
-                }
-            );
+                ]
+            });
         });
     }
     
@@ -605,7 +620,7 @@ function showAddSearchEngineModal() {
         }
     ];
 
-    Utils.UI.showFormModal(
+    Utils.showFormModal(
         I18n.getMessage('addCustomSearchEngine') || '添加自定义搜索引擎',
         formItems,
         (formData) => {
@@ -617,19 +632,16 @@ function showAddSearchEngineModal() {
                 .then(success => {
                     if (!success) {
                         Utils.UI.notify({
-                            title: I18n.getMessage('saveFailed') || '保存失败',
-                            message: '',
-                            duration: 0,
+                            title: I18n.getMessage('error') || '错误',
+                            message: I18n.getMessage('saveFailed') || '保存失败',
                             type: 'error',
-                            buttons: [{
-                                text: I18n.getMessage('ok') || '确定',
-                                class: 'btn-primary error-ok',
-                                callback: () => {}
-                            }]
+                            duration: 3000
                         });
                     }
                 });
-        }
+        },
+        I18n.getMessage('confirm') || '确认',
+        I18n.getMessage('cancel') || '取消'
     );
 }
 
@@ -663,8 +675,7 @@ async function updateSearchEngines(newEngines, activeIndex = null) {
         renderSearchEngineSelector();
         return true;
     } catch (error) {
-        searchEngines = defaultEngines;
-        currentEngineIndex = 0;
+        console.error('更新搜索引擎失败:', error);
         return false;
     }
 }

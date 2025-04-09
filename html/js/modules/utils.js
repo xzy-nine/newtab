@@ -56,11 +56,13 @@ export const Utils = {
   calculateTotalHeight: element => element.scrollHeight * 1.1,
 
   UI: {
-    showLoadingIndicator: () => {
+    showLoadingIndicator: (containerId = null) => {
       let loadingOverlay = document.getElementById('loading-overlay');
+      
       if (!loadingOverlay) {
         loadingOverlay = document.createElement('div');
         loadingOverlay.id = 'loading-overlay';
+        loadingOverlay.className = 'compact-loading'; // 添加新的类名用于非全屏显示
         
         const loaderContainer = document.createElement('div');
         loaderContainer.className = 'loader-container';
@@ -78,7 +80,19 @@ export const Utils = {
         
         loaderContainer.append(spinner, progress, message);
         loadingOverlay.appendChild(loaderContainer);
-        document.body.appendChild(loadingOverlay);
+        
+        // 如果指定了容器ID，则将加载指示器追加到该容器内
+        // 否则添加到body并使用固定位置而非全屏
+        if (containerId) {
+          const container = document.getElementById(containerId);
+          if (container) {
+            container.appendChild(loadingOverlay);
+          } else {
+            document.body.appendChild(loadingOverlay);
+          }
+        } else {
+          document.body.appendChild(loadingOverlay);
+        }
       } else {
         loadingOverlay.classList.remove('hiding');
         loadingOverlay.style.display = 'flex';
