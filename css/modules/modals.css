@@ -155,22 +155,24 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   z-index: 3000;
-  transform: translateY(100%); /* 初始位置在屏幕外 */
-  transition: transform 0.3s ease;
-  opacity: 0.95;
+  transform: translateY(-100%); /* 初始位置在屏幕外 */
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
   border-left: 3px solid #eaeaea;
 }
 
 .notification.visible {
   transform: translateY(0); /* 显示位置 */
+  opacity: 0.95;
 }
 
 /* 通知位置调整 */
-.notification-offset-1 { transform: translateY(10px); }
-.notification-offset-2 { transform: translateY(20px); }
-.notification-offset-3 { transform: translateY(30px); }
-.notification-offset-4 { transform: translateY(40px); }
-.notification-offset-5 { transform: translateY(50px); }
+.notification-offset-0 { top: 20px; }
+.notification-offset-1 { top: 90px; }
+.notification-offset-2 { top: 160px; }
+.notification-offset-3 { top: 230px; }
+.notification-offset-4 { top: 300px; }
+.notification-offset-5 { top: 370px; }
 
 .notification-content {
   padding: 10px;
