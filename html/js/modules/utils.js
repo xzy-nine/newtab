@@ -495,6 +495,258 @@ export const Utils = {
     }
   },
 
+  ContextMenu: {
+    /**
+     * 初始化上下文菜单功能
+     */
+    init: function() {
+      // 关闭上下文菜单的通用事件监听
+      document.addEventListener('click', (event) => {
+        const menus = document.querySelectorAll('.context-menu.visible');
+        if (menus.length > 0) {
+          menus.forEach(menu => {
+            if (!menu.contains(event.target)) {
+              menu.classList.remove('visible');
+            }
+          });
+        }
+      });
+
+      // 初始化键盘事件 - 按Esc关闭所有菜单
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          document.querySelectorAll('.context-menu.visible').forEach(menu => {
+            menu.classList.remove('visible');
+          });
+        }
+      });
+    },
+
+    /**
+     * 显示文件夹上下文菜单
+     * @param {Event} event - 事件对象
+     * @param {Object} folder - 文件夹数据
+     * @param {Object} callbacks - 回调函数对象
+     * @param {Function} callbacks.onOpenFolder - 打开文件夹的回调
+     * @param {Function} callbacks.onOpenAllBookmarks - 打开所有书签的回调
+     */
+    showFolderMenu: function(event, folder, callbacks = {}) {
+      // 阻止默认菜单和冒泡
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // 创建或获取上下文菜单
+      let folderMenu = document.getElementById('folder-context-menu');
+      if (!folderMenu) {
+        folderMenu = Utils.createElement('div', 'context-menu', {id: 'folder-context-menu'});
+        document.body.appendChild(folderMenu);
+      }
+      
+      // 清空旧内容
+      folderMenu.innerHTML = '';
+      
+      // 创建菜单项
+      const openFolderItem = Utils.createElement('div', 'context-menu-item', {id: 'open-folder'}, I18n.getMessage('openFolder'));
+      const openAllItem = Utils.createElement('div', 'context-menu-item', {id: 'open-all-bookmarks'}, I18n.getMessage('openAllBookmarks'));
+      
+      folderMenu.appendChild(openFolderItem);
+      folderMenu.appendChild(openAllItem);
+      
+      // 设置菜单位置
+      folderMenu.style.left = `${event.pageX}px`;
+      folderMenu.style.top = `${event.pageY}px`;
+      folderMenu.classList.add('visible');
+      
+      // 菜单项点击事件
+      openFolderItem.addEventListener('click', () => {
+        if (typeof callbacks.onOpenFolder === 'function') {
+          callbacks.onOpenFolder(folder);
+        }
+        folderMenu.classList.remove('visible');
+      });
+      
+      openAllItem.addEventListener('click', () => {
+        if (typeof callbacks.onOpenAllBookmarks === 'function') {
+          callbacks.onOpenAllBookmarks(folder);
+        }
+        folderMenu.classList.remove('visible');
+      });
+    },
+
+    /**
+     * 显示快捷方式上下文菜单
+     * @param {Event} event - 事件对象
+     * @param {Object} shortcut - 快捷方式数据
+     * @param {Object} callbacks - 回调函数对象
+     * @param {Function} callbacks.onCustomIcon - 自定义图标的回调
+     * @param {Function} callbacks.onResetIcon - 重置图标的回调
+     */
+    showShortcutMenu: function(event, shortcut, callbacks = {}) {
+      const { pageX, pageY } = event;
+      
+      // 创建上下文菜单
+      let contextMenu = document.getElementById('shortcut-context-menu') || 
+        Utils.createElement('div', 'context-menu', {id: 'shortcut-context-menu'});
+      
+      if (!document.body.contains(contextMenu)) {
+        document.body.appendChild(contextMenu);
+      }
+      
+      // 设置菜单内容和位置
+      contextMenu.innerHTML = `
+        <div class="context-menu-item" id="custom-icon">${I18n.getMessage('customIcon')}</div>
+        <div class="context-menu-item" id="reset-icon">${I18n.getMessage('resetIcon')}</div>
+      `;
+      
+      contextMenu.style.left = `${pageX}px`;
+      contextMenu.style.top = `${pageY}px`;
+      contextMenu.style.display = 'block';
+      
+      // 菜单项点击事件
+      document.getElementById('custom-icon').addEventListener('click', () => {
+        if (typeof callbacks.onCustomIcon === 'function') {
+          callbacks.onCustomIcon(shortcut);
+        }
+        contextMenu.style.display = 'none';
+      });
+      
+      document.getElementById('reset-icon').addEventListener('click', () => {
+        if (typeof callbacks.onResetIcon === 'function') {
+          callbacks.onResetIcon(shortcut);
+        }
+        contextMenu.style.display = 'none';
+      });
+    },
+
+    /**
+     * 显示通用上下文菜单
+     * @param {Event} event - 事件对象 
+     * @param {Array} items - 菜单项数组，每项包含 {id, text, callback, disabled} 属性
+     */
+    showGeneralMenu: function(event, items = []) {
+      event.preventDefault();
+      
+      // 创建或获取上下文菜单
+      let contextMenu = document.getElementById('general-context-menu');
+      if (!contextMenu) {
+        contextMenu = Utils.createElement('div', 'context-menu', {id: 'general-context-menu'});
+        document.body.appendChild(contextMenu);
+      }
+      
+      // 清空旧内容
+      contextMenu.innerHTML = '';
+      
+      // 创建菜单项
+      items.forEach(item => {
+        const menuItem = Utils.createElement(
+          'div', 
+          `context-menu-item${item.disabled ? ' disabled' : ''}`, 
+          {id: item.id},
+          item.text
+        );
+        
+        if (!item.disabled && typeof item.callback === 'function') {
+          menuItem.addEventListener('click', () => {
+            item.callback();
+            contextMenu.classList.remove('visible');
+          });
+        }
+        
+        contextMenu.appendChild(menuItem);
+      });
+      
+      // 设置菜单位置
+      contextMenu.style.left = `${event.pageX}px`;
+      contextMenu.style.top = `${event.pageY}px`;
+      contextMenu.classList.add('visible');
+    },
+
+    /**
+     * 显示书签上下文菜单
+     * @param {Event} event - 事件对象
+     * @param {number} index - 书签索引
+     * @param {Array} bookmarks - 书签数组
+     * @param {Object} callbacks - 回调函数对象
+     * @param {Function} callbacks.onDelete - 删除书签的回调
+     * @param {Function} callbacks.onMoveUp - 上移书签的回调
+     * @param {Function} callbacks.onMoveDown - 下移书签的回调
+     */
+    showBookmarkMenu: function(event, index, bookmarks, callbacks = {}) {
+      const contextMenu = document.getElementById('bookmark-context-menu') || 
+        Utils.createElement('div', 'context-menu', {id: 'bookmark-context-menu'});
+      
+      if (!document.body.contains(contextMenu)) {
+        document.body.appendChild(contextMenu);
+      }
+      
+      // 设置菜单位置
+      contextMenu.style.left = `${event.pageX}px`;
+      contextMenu.style.top = `${event.pageY}px`;
+      contextMenu.style.display = 'block';
+      contextMenu.dataset.index = index;
+      
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // 构建菜单
+      contextMenu.innerHTML = `
+        <div id="bookmark-delete" class="context-menu-item">${I18n.getMessage('delete')}</div>
+        <div id="bookmark-move-up" class="context-menu-item ${index === 0 ? 'disabled' : ''}">${I18n.getMessage('moveUp')}</div>
+        <div id="bookmark-move-down" class="context-menu-item ${index === bookmarks.length - 1 ? 'disabled' : ''}">${I18n.getMessage('moveDown')}</div>
+      `;
+      
+      // 删除按钮事件
+      if (typeof callbacks.onDelete === 'function') {
+        document.getElementById('bookmark-delete').addEventListener('click', () => {
+          Utils.UI.notify({
+            title: I18n.getMessage('confirm'),
+            message: I18n.getMessage('confirmDeleteBookmark'),
+            type: 'confirm',
+            duration: 0,
+            buttons: [
+              {
+                text: I18n.getMessage('confirm'),
+                class: 'btn-primary',
+                callback: () => callbacks.onDelete(index)
+              },
+              {
+                text: I18n.getMessage('cancel'),
+                callback: () => {}
+              }
+            ]
+          });
+          contextMenu.style.display = 'none';
+        });
+      }
+      
+      // 上移按钮事件
+      if (typeof callbacks.onMoveUp === 'function' && index > 0) {
+        document.getElementById('bookmark-move-up').addEventListener('click', () => {
+          callbacks.onMoveUp(index);
+          contextMenu.style.display = 'none';
+        });
+      }
+      
+      // 下移按钮事件
+      if (typeof callbacks.onMoveDown === 'function' && index < bookmarks.length - 1) {
+        document.getElementById('bookmark-move-down').addEventListener('click', () => {
+          callbacks.onMoveDown(index);
+          contextMenu.style.display = 'none';
+        });
+      }
+    },
+    
+    /**
+     * 隐藏所有上下文菜单
+     */
+    hideAllMenus: function() {
+      document.querySelectorAll('.context-menu').forEach(menu => {
+        menu.classList.remove('visible');
+        menu.style.display = 'none';
+      });
+    }
+  },
+
   Events: {
     handleDocumentClick: e => {
       document.querySelectorAll('.dropdown-menu.active').forEach(dropdown => {
@@ -535,6 +787,7 @@ export const Utils = {
       document.addEventListener('keydown', this.handleKeyDown);
       document.addEventListener('click', this.handleDocumentClick);
       Utils.Modal.initEvents();
+      Utils.ContextMenu.init(); // 初始化上下文菜单
     }
   }
 };
