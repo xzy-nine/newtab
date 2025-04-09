@@ -226,12 +226,12 @@ function showWelcomeMessage() {
         Utils.Modal.show('welcome-modal');
     } else {
         // 如果没有预定义的欢迎模态框，使用通知
-        Utils.UI.showNotification(
-            I18n.getMessage('welcomeTitle'), 
-            I18n.getMessage('welcomeMessage'),
-            8000,  // 延长显示时间为 8 秒
-            'success'  // 使用成功类型的通知样式
-        );
+        Utils.UI.notify({
+            title: I18n.getMessage('welcomeTitle'),
+            message: I18n.getMessage('welcomeMessage'),
+            duration: 8000,  // 延长显示时间为 8 秒
+            type: 'success'  // 使用成功类型的通知样式
+        });
     }
 }
 
@@ -312,6 +312,7 @@ chrome.runtime.onMessage && chrome.runtime.onMessage.addListener((message, sende
     return true;
   }
 });
+
 /**
  * 显示新标签页设置指导通知（根据设备类型显示不同内容）
  * @param {string} url - 扩展页面URL
@@ -326,19 +327,29 @@ function showMobileInstruction(url) {
         ? `请复制并将该链接设置为新标签页:\n${finalUrl}`
         : '您的新标签页已自动设置完成！';
     
-    Utils.UI.showNotification(
-        title,
-        message,
-        isMobile ? 0 : 5000,  // 移动设备不自动关闭，其他设备5秒后关闭
-        'info',
-        isMobile ? [
+    Utils.UI.notify({
+        title: title,
+        message: message,
+        duration: isMobile ? 0 : 5000,  // 移动设备不自动关闭，其他设备5秒后关闭
+        type: 'info',
+        buttons: isMobile ? [
             {
                 text: '复制链接',
                 class: 'btn-primary',
                 callback: () => {
                     navigator.clipboard.writeText(finalUrl)
-                        .then(() => Utils.UI.showNotification('成功', '链接已复制', 2000, 'success'))
-                        .catch(() => Utils.UI.showNotification('失败', '无法复制链接', 2000, 'error'));
+                        .then(() => Utils.UI.notify({
+                            title: '成功', 
+                            message: '链接已复制', 
+                            duration: 2000, 
+                            type: 'success'
+                        }))
+                        .catch(() => Utils.UI.notify({
+                            title: '失败', 
+                            message: '无法复制链接', 
+                            duration: 2000, 
+                            type: 'error'
+                        }));
                 }
             },
             {
@@ -353,7 +364,7 @@ function showMobileInstruction(url) {
                 callback: () => {}  // 空回调，点击时会默认关闭通知
             }
         ]
-    );
+    });
 }
 
 // 导出版本号
