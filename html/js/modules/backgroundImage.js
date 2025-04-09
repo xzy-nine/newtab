@@ -194,7 +194,7 @@ class BackgroundManager {
             this.settings.blur = result.backgroundBlur !== undefined ? result.backgroundBlur : 0;
             this.settings.dark = result.backgroundDark !== undefined ? result.backgroundDark : 0;
         } catch (error) {
-            console.error('加载背景设置失败:', error);
+            console.error(I18n.getMessage('localStorageError'), error);
             this.settings.type = 'bing'; 
         }
     }
@@ -207,7 +207,7 @@ class BackgroundManager {
         try {
             // 显示加载指示器
             Utils.UI.showLoadingIndicator();
-            Utils.UI.updateLoadingProgress(10, '正在准备背景图片...');
+            Utils.UI.updateLoadingProgress(10, I18n.getMessage('loadingBackground'));
             
             // 获取背景容器元素
             const container = document.getElementById('background-container');
@@ -220,7 +220,7 @@ class BackgroundManager {
             let bgUrl;
             switch (this.settings.type) {
                 case 'bing':
-                    Utils.UI.updateLoadingProgress(30, '正在获取必应每日图片...');
+                    Utils.UI.updateLoadingProgress(30, I18n.getMessage('fetchingBingImage'));
                     bgUrl = await this.fetchBingImage();
                     break;
                 case 'custom':
@@ -235,7 +235,7 @@ class BackgroundManager {
                     bgUrl = 'images/default.jpg';
             }
 
-            Utils.UI.updateLoadingProgress(70, '正在应用背景...');
+            Utils.UI.updateLoadingProgress(70, I18n.getMessage('settingBackgroundType'));
             
             // 移除白色背景类（如果有）
             container.classList.remove('bg-white');
@@ -246,12 +246,12 @@ class BackgroundManager {
             // 应用模糊和暗化效果
             this.applyEffects();
             
-            Utils.UI.updateLoadingProgress(100, '背景设置完成');
+            Utils.UI.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete'));
             setTimeout(() => Utils.UI.hideLoadingIndicator(), 500);
         } catch (error) {            
             Utils.UI.notify({
-                title: '背景加载错误',
-                message: '背景图片加载失败，已切换到默认背景。',
+                title: I18n.getMessage('error'),
+                message: I18n.getMessage('backgroundFetchFailed'),
                 type: 'error',
                 duration: 5000
             });
@@ -291,7 +291,7 @@ class BackgroundManager {
      * @returns {Promise<string>} 图片URL
      */
     async fetchBingImage() {
-        Utils.UI.updateLoadingProgress(40, '检查本地缓存...');
+        Utils.UI.updateLoadingProgress(40, I18n.getMessage('loadingResources'));
         
         // 检查缓存
         const cachedData = await chrome.storage.local.get(CACHE_KEY);
@@ -299,24 +299,34 @@ class BackgroundManager {
 
         // 使用缓存内图片（如未过期）
         if (cachedData[CACHE_KEY] && (now - cachedData[CACHE_KEY].timestamp < CACHE_EXPIRATION)) {
-            Utils.UI.updateLoadingProgress(50, '使用缓存的必应图片...');
+            const remainingHours = Math.floor((CACHE_EXPIRATION - (now - cachedData[CACHE_KEY].timestamp)) / (60 * 60 * 1000));
+            const remainingMinutes = Math.floor(((CACHE_EXPIRATION - (now - cachedData[CACHE_KEY].timestamp)) % (60 * 60 * 1000)) / (60 * 1000));
+            Utils.UI.updateLoadingProgress(50, I18n.getMessage('usingCachedImage', [remainingHours, remainingMinutes]));
             return cachedData[CACHE_KEY].imageUrl;
         }
 
-        Utils.UI.updateLoadingProgress(50, '获取必应每日图片...');
+        Utils.UI.updateLoadingProgress(50, I18n.getMessage('fetchingBingImage'));
         
-        // 获取新图片
-        const data = await Utils.fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1');
-        const imageUrl = `https://www.bing.com${data.images[0].url}`;
-
-        Utils.UI.updateLoadingProgress(60, '保存图片到本地缓存...');
-        
-        // 更新缓存
-        await chrome.storage.local.set({ [CACHE_KEY]: { imageUrl, timestamp: now } });
-
-        return imageUrl;
+        try {
+            // 获取新图片
+            const data = await Utils.fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1');
+            if (!data || !data.images || !data.images[0]) {
+                throw new Error(I18n.getMessage('invalidBingResponse'));
+            }
+            
+            const imageUrl = `https://www.bing.com${data.images[0].url}`;
+            
+            Utils.UI.updateLoadingProgress(60, I18n.getMessage('loadingResources'));
+            
+            // 更新缓存
+            await chrome.storage.local.set({ [CACHE_KEY]: { imageUrl, timestamp: now } });
+            
+            return imageUrl;
+        } catch (error) {
+            console.error(I18n.getMessage('bingApiError', [error.message]));
+            throw new Error(I18n.getMessage('bingDailyBackgroundFailed'));
+        }
     }
-
 
     /**
      * 初始化背景控制UI并绑定事件
@@ -374,27 +384,27 @@ class BackgroundManager {
         // 检查文件是否为图片
         if (!file.type.startsWith('image/')) {
             Utils.UI.notify({
-                title: '文件类型错误',
-                message: '请选择有效的图片文件。',
+                title: I18n.getMessage('error'),
+                message: I18n.getMessage('imageTypeError'),
                 type: 'error'
             });
             return;
         }
         
         // 检查文件大小
-        if (file.size > 50 * 1024 * 1024) { // 5MB限制
+        if (file.size > 50 * 1024 * 1024) { // 50MB限制
             Utils.UI.notify({
-                title: '文件过大',
-                message: '图片文件不应超过50MB。',
+                title: I18n.getMessage('warning'),
+                message: I18n.getMessage('imageTooLarge'),
                 type: 'warning',
                 buttons: [
                     {
-                        text: '继续',
+                        text: I18n.getMessage('continue'),
                         class: 'btn-primary',
                         callback: () => this.processCustomBackgroundFile(file)
                     },
                     {
-                        text: '取消',
+                        text: I18n.getMessage('cancel'),
                         callback: () => {}
                     }
                 ]
@@ -432,16 +442,16 @@ class BackgroundManager {
             }
             
             Utils.UI.notify({
-                title: '背景已更新',
-                message: '自定义背景已设置成功！',
+                title: I18n.getMessage('success'),
+                message: I18n.getMessage('customBackgroundSuccess'),
                 type: 'success',
                 duration: 3000
             });
         } catch (error) {
-            console.error('处理自定义背景失败:', error);
+            console.error(I18n.getMessage('localStorageError'), error);
             Utils.UI.notify({
-                title: '背景设置错误',
-                message: '无法加载自定义背景图片',
+                title: I18n.getMessage('error'),
+                message: I18n.getMessage('backgroundSetFailed'),
                 type: 'error'
             });
         }
@@ -478,15 +488,15 @@ class BackgroundManager {
             
             // 提示用户操作成功
             Utils.UI.notify({
-                title: '已移除自定义背景',
-                message: '已切换到' + (this.settings.type === 'bing' ? '必应每日图片' : '默认背景'),
+                title: I18n.getMessage('backgroundRemoved'),
+                message: I18n.getMessage('switchedToBackground', [this.settings.type === 'bing' ? I18n.getMessage('bingDailyImage') : I18n.getMessage('defaultBackground')]),
                 type: 'info',
                 duration: 3000
             });
         } catch (error) {
             Utils.UI.notify({
-                title: '操作失败',
-                message: '无法清除自定义背景图片',
+                title: I18n.getMessage('error'),
+                message: I18n.getMessage('clearCustomBackgroundError'),
                 type: 'error'
             });
         }
@@ -561,17 +571,17 @@ class BackgroundManager {
                 
                 // 添加刷新成功通知
                 Utils.UI.notify({
-                    title: '背景已更新',
-                    message: '已获取今日必应图片',
+                    title: I18n.getMessage('backgroundUpdated'),
+                    message: I18n.getMessage('bingDailyImageUpdated'),
                     type: 'info',
                     duration: 3000
                 });
             }
         } catch (error) {
-            console.error('刷新背景图片失败:', error);
+            console.error(I18n.getMessage('bingImageError'), error);
             Utils.UI.notify({
-                title: '背景更新失败',
-                message: '无法获取最新的必应图片，请稍后再试',
+                title: I18n.getMessage('backgroundUpdateFailed'),
+                message: I18n.getMessage('bingDailyBackgroundFailed'),
                 type: 'error'
             });
         }

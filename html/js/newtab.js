@@ -63,7 +63,7 @@ async function init() {
         await executeWithTimeout(
             () => I18n.init(), 
             5000, 
-            '国际化'
+            I18n.getMessage('i18nModule') || '国际化'
         );
         
         // 获取扩展版本
@@ -77,35 +77,35 @@ async function init() {
         // 定义初始化步骤 - 移除国际化步骤，因为已经初始化了
         const initSteps = [
             {
-                name: '背景图像',
+                name: I18n.getMessage('backgroundModule') || '背景图像',
                 action: backgroundManager.initialize.bind(backgroundManager),
                 message: I18n.getMessage('loadingBackground'),
-                completeMessage: '背景图像加载完成',
+                completeMessage: I18n.getMessage('backgroundLoadComplete') || '背景图像加载完成',
                 timeout: 5000
             },
             {
-                name: '搜索引擎',
+                name: I18n.getMessage('searchModule') || '搜索引擎',
                 action: SearchEngineAPI.initialize.bind(SearchEngineAPI),
                 message: I18n.getMessage('loadingSearch'),
-                completeMessage: '搜索引擎加载完成',
+                completeMessage: I18n.getMessage('searchLoadComplete') || '搜索引擎加载完成',
                 timeout: 5000
             },
             {
-                name: '书签',
+                name: I18n.getMessage('bookmarkModule') || '书签',
                 action: BookmarkManager.init.bind(BookmarkManager),
                 message: I18n.getMessage('loadingBookmarks'),
-                completeMessage: '书签加载完成',
+                completeMessage: I18n.getMessage('bookmarkLoadComplete') || '书签加载完成',
                 timeout: 5000
             },
             {
-                name: '时钟组件',
+                name: I18n.getMessage('clockModule') || '时钟组件',
                 action: ClockWidget.init.bind(ClockWidget),
                 message: I18n.getMessage('loadingClock'),
-                completeMessage: '时钟组件加载完成',
+                completeMessage: I18n.getMessage('clockLoadComplete') || '时钟组件加载完成',
                 timeout: 5000
             },
             {
-                name: '事件初始化',
+                name: I18n.getMessage('eventsModule') || '事件初始化',
                 action: () => {
                     setupEvents();
                     // 确保国际化的事件也被设置
@@ -125,7 +125,7 @@ async function init() {
                 await executeWithTimeout(step.action, step.timeout, step.name);
                 completedModules++;
                 Utils.UI.updateLoadingProgress((completedModules / totalModules) * 100, step.completeMessage);
-        } catch (error) {
+            } catch (error) {
                 throw new Error(I18n.getMessage('moduleLoadingFailed')
                     .replace('{0}', step.name)
                     .replace('{1}', error.message));
@@ -199,7 +199,7 @@ async function performPostInitTasks() {
         await checkForUpdates();
         
     } catch (error) {
-        console.error('Error in post-initialization tasks:', error);
+        console.error(I18n.getMessage('postInitTasksError') || 'Error in post-initialization tasks:', error);
     }
 }
 
@@ -249,8 +249,8 @@ function showWelcomeMessage() {
 function showUpdateMessage(oldVersion, newVersion) {
     Utils.UI.showNotification(
         I18n.getMessage('updateTitle'),
-        I18n.getMessage('updateMessage').replace('{oldVersion}', oldVersion).replace('{newVersion}', newVersion),
-        6000,  // 延长显示时间为 6 秒
+        I18n.getMessage('updateMessage', [oldVersion, newVersion]),
+        6000,  // 显示时间为 6 秒
         'info'  // 使用信息类型的通知样式
     );
 }
@@ -342,31 +342,29 @@ function showMobileInstruction(url) {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     return Utils.UI.notify({
-        title: I18n.getMessage('setNewTab') || '设置新标签页',
+        title: I18n.getMessage('setNewTab'),
         message: isMobile 
-            ? I18n.getMessage('mobileInstructionMessage', [finalUrl]) || 
-              `请复制并将该链接设置为新标签页:\n${finalUrl}`
-            : I18n.getMessage('desktopInstructionMessage') || 
-              '您的新标签页已自动设置完成！',
+            ? I18n.getMessage('mobileInstructionMessage', [finalUrl])
+            : I18n.getMessage('desktopInstructionMessage'),
         duration: isMobile ? 0 : 5000,
         type: 'info',
         buttons: isMobile ? [
             {
-                text: I18n.getMessage('copyLink') || '复制链接',
+                text: I18n.getMessage('copyLink'),
                 class: 'btn-primary',
                 callback: () => {
                     navigator.clipboard.writeText(finalUrl)
                         .then(() => Utils.UI.notify({
-                            title: I18n.getMessage('success') || '成功', 
-                            message: I18n.getMessage('linkCopied') || '链接已复制', 
+                            title: I18n.getMessage('success'), 
+                            message: I18n.getMessage('linkCopied'), 
                             duration: 2000, 
                             type: 'success'
                         }))
                         .catch(err => {
-                            console.error('复制失败:', err);
+                            console.error(I18n.getMessage('copyError') || '复制失败:', err);
                             Utils.UI.notify({
-                                title: I18n.getMessage('error') || '失败', 
-                                message: I18n.getMessage('copyLinkFailed') || '无法复制链接', 
+                                title: I18n.getMessage('error'), 
+                                message: I18n.getMessage('copyLinkFailed'), 
                                 duration: 2000, 
                                 type: 'error'
                             });
@@ -374,12 +372,12 @@ function showMobileInstruction(url) {
                 }
             },
             {
-                text: I18n.getMessage('close') || '关闭',
+                text: I18n.getMessage('close'),
                 class: 'btn-secondary'
             }
         ] : [
             {
-                text: I18n.getMessage('ok') || '确定',
+                text: I18n.getMessage('ok'),
                 class: 'btn-primary'
             }
         ]
