@@ -616,11 +616,17 @@ function showAddSearchEngineModal() {
             SearchEngineAPI.addCustomEngine({ name, url, icon })
                 .then(success => {
                     if (!success) {
-                        Utils.UI.showErrorModal(
-                            I18n.getMessage('saveFailed') || '保存失败',
-                            '',
-                            false
-                        );
+                        Utils.UI.notify({
+                            title: I18n.getMessage('saveFailed') || '保存失败',
+                            message: '',
+                            duration: 0,
+                            type: 'error',
+                            buttons: [{
+                                text: I18n.getMessage('ok') || '确定',
+                                class: 'btn-primary error-ok',
+                                callback: () => {}
+                            }]
+                        });
                     }
                 });
         }
