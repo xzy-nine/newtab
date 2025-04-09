@@ -165,6 +165,12 @@ function createBasicUI() {
     // 添加所有元素到容器
     container.appendChild(bookmarkBox);
     container.appendChild(backgroundButton);
+    
+    // 移除可能存在的全屏加载元素
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay && loadingOverlay.parentNode) {
+        loadingOverlay.parentNode.removeChild(loadingOverlay);
+    }
 }
 
 /**
@@ -297,19 +303,32 @@ document.addEventListener('DOMContentLoaded', () => {
 // 添加消息监听器，用于接收背景脚本发送的消息
 chrome.runtime.onMessage && chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'showMobileInstruction') {
-    // 显示如何在手机上设置新标签页的通知
-    if (isInitialized) {
+    // 设置延迟函数，确保在页面初始化后执行
+    const showInstruction = () => {
       showMobileInstruction(message.extensionUrl);
+      sendResponse({ received: true, status: 'success' });
+    };
+
+    // 根据初始化状态决定如何显示通知
+    if (isInitialized) {
+      showInstruction();
     } else {
-      // 如果页面尚未初始化，等待初始化完成后再显示
-      document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-          showMobileInstruction(message.extensionUrl);
-        }, 2000);
-      });
+      // 使用事件监听等待初始化完成
+      const readyStateCheckInterval = setInterval(() => {
+        if (document.readyState === "complete" && isInitialized) {
+          clearInterval(readyStateCheckInterval);
+          showInstruction();
+        }
+      }, 100);
+      
+      // 设置超时保护，确保响应不会永远挂起
+      setTimeout(() => {
+        clearInterval(readyStateCheckInterval);
+        showInstruction();
+      }, 5000);
     }
-    sendResponse({ received: true });
-    return true;
+    
+    return true; // 保持异步响应
   }
 });
 
@@ -322,46 +341,46 @@ function showMobileInstruction(url) {
     // 检测是否为移动设备
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    const title = '设置新标签页';
-    const message = isMobile 
-        ? `请复制并将该链接设置为新标签页:\n${finalUrl}`
-        : '您的新标签页已自动设置完成！';
-    
-    Utils.UI.notify({
-        title: title,
-        message: message,
-        duration: isMobile ? 0 : 5000,  // 移动设备不自动关闭，其他设备5秒后关闭
+    return Utils.UI.notify({
+        title: I18n.getMessage('setNewTab') || '设置新标签页',
+        message: isMobile 
+            ? I18n.getMessage('mobileInstructionMessage', [finalUrl]) || 
+              `请复制并将该链接设置为新标签页:\n${finalUrl}`
+            : I18n.getMessage('desktopInstructionMessage') || 
+              '您的新标签页已自动设置完成！',
+        duration: isMobile ? 0 : 5000,
         type: 'info',
         buttons: isMobile ? [
             {
-                text: '复制链接',
+                text: I18n.getMessage('copyLink') || '复制链接',
                 class: 'btn-primary',
                 callback: () => {
                     navigator.clipboard.writeText(finalUrl)
                         .then(() => Utils.UI.notify({
-                            title: '成功', 
-                            message: '链接已复制', 
+                            title: I18n.getMessage('success') || '成功', 
+                            message: I18n.getMessage('linkCopied') || '链接已复制', 
                             duration: 2000, 
                             type: 'success'
                         }))
-                        .catch(() => Utils.UI.notify({
-                            title: '失败', 
-                            message: '无法复制链接', 
-                            duration: 2000, 
-                            type: 'error'
-                        }));
+                        .catch(err => {
+                            console.error('复制失败:', err);
+                            Utils.UI.notify({
+                                title: I18n.getMessage('error') || '失败', 
+                                message: I18n.getMessage('copyLinkFailed') || '无法复制链接', 
+                                duration: 2000, 
+                                type: 'error'
+                            });
+                        });
                 }
             },
             {
-                text: '关闭',
-                class: 'btn-secondary',
-                callback: () => {}  // 空回调，点击时会默认关闭通知
+                text: I18n.getMessage('close') || '关闭',
+                class: 'btn-secondary'
             }
         ] : [
             {
-                text: '确定',
-                class: 'btn-primary',
-                callback: () => {}  // 空回调，点击时会默认关闭通知
+                text: I18n.getMessage('ok') || '确定',
+                class: 'btn-primary'
             }
         ]
     });

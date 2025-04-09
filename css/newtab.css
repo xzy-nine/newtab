@@ -6,6 +6,7 @@
 @import 'modules/modals.css';     /* 模态框相关样式 */
 @import 'darkmode.css';   /* 暗黑模式相关样式 */
 @import 'responsive.css'; /* 响应式设计相关样式 */
+@import url('./modules/loading-notification.css'); /* 在适当位置添加导入 */
 
 /* 主体样式文件 - 基础布局、通用样式和全局变量 */
 
@@ -261,5 +262,5 @@
 .load-complete #loading-progress-bar {
   background: linear-gradient(90deg, #00c853, #64dd17);
   transition: all 0.3s ease;
-} 
+}
 

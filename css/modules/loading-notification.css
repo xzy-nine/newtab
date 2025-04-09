@@ -1,0 +1,93 @@
+/* 加载通知样式 */
+.notification.loading-notification {
+  width: 250px;
+  background-color: white;
+  border-left: 3px solid var(--primary-color, #0078d4);
+}
+
+.notification.loading-notification .loading-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+/* 小型加载动画 */
+.mini-loader-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(0, 120, 212, 0.2);
+  border-top: 2px solid var(--primary-color, #0078d4);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+/* 小型进度条 */
+.mini-progress {
+  width: 100%;
+  height: 4px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.notification-loading-bar {
+  width: 0; /* 初始宽度 */
+  height: 100%;
+  background: linear-gradient(90deg, #0078d4, #42a5f5);
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+}
+
+.notification-loading-message {
+  font-size: 12px;
+  color: #555;
+  text-align: center;
+  min-height: 16px;
+  animation: fade-in-out 1.8s infinite;
+  letter-spacing: 0.2px;
+}
+
+/* 加载完成样式 */
+.notification.loading-notification.load-complete #loading-progress-bar {
+  background: linear-gradient(90deg, #00c853, #64dd17);
+  transition: all 0.3s ease;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fade-in-out {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .notification.loading-notification {
+    background-color: #333;
+  }
+  
+  #loading-message {
+    color: #ddd;
+  }
+  
+  .mini-progress {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* 确保在小屏幕上显示合适大小 */
+@media (max-width: 480px) {
+  .notification.loading-notification {
+    width: 200px;
+  }
+  
+  #loading-message {
+    font-size: 11px;
+  }
+}
