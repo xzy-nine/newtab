@@ -133,7 +133,16 @@ export const Utils = {
       setTimeout(() => Utils.UI.hideLoadingIndicator(true), 5000);
     },
 
-    showNotification: (title, message, duration = 5000, type = 'info', buttons = null, onClose = null) => {
+    notify: (options) => {
+      const { 
+        title = '', 
+        message = '', 
+        type = 'info', 
+        duration = 5000, 
+        buttons = null, 
+        onClose = null 
+      } = options;
+
       const notification = document.createElement('div');
       notification.className = `notification notification-${type}`;
       
@@ -209,7 +218,19 @@ export const Utils = {
       });
     },
 
+    /**
+     * @deprecated 请使用 Utils.UI.notify() 代替
+     */
+    showNotification: (title, message, duration = 5000, type = 'info', buttons = null, onClose = null) => {
+      console.warn('Utils.UI.showNotification() 已弃用，请使用 Utils.UI.notify() 代替');
+      return Utils.UI.notify({ title, message, duration, type, buttons, onClose });
+    },
+
+    /**
+     * @deprecated 请使用 Utils.UI.notify() 代替
+     */
     showConfirmDialog: (message, onConfirm, onCancel) => {
+      console.warn('Utils.UI.showConfirmDialog() 已弃用，请使用 Utils.UI.notify() 代替');
       const buttons = [
         {
           text: I18n.getMessage('confirm') || '确认',
@@ -223,136 +244,140 @@ export const Utils = {
         }
       ];
       
-      return Utils.UI.showNotification(
-        I18n.getMessage('confirm') || '确认',
+      return Utils.UI.notify({
+        title: I18n.getMessage('confirm') || '确认',
         message,
-        0,
-        'confirm',
+        duration: 0,
+        type: 'confirm',
         buttons
-      );
+      });
     },
 
+    /**
+     * @deprecated 请使用 Utils.UI.notify() 代替
+     */
     showErrorModal: (title, message, logOnly = true) => {
+      console.warn('Utils.UI.showErrorModal() 已弃用，请使用 Utils.UI.notify() 代替');
       console.error(message);
       if (logOnly) return undefined;
       
-      return Utils.UI.showNotification(
-        title || I18n.getMessage('error') || '错误',
+      return Utils.UI.notify({
+        title: title || I18n.getMessage('error') || '错误',
         message,
-        0,
-        'error',
-        [{
+        duration: 0,
+        type: 'error',
+        buttons: [{
           text: I18n.getMessage('ok') || '确定',
           class: 'btn-primary error-ok',
           callback: () => {}
         }]
-      );
-    },
+      });
+    }
+  },
 
-    showFormModal: (title, formItems, onConfirm, confirmText, cancelText) => {
-      const modalId = 'form-modal-' + Date.now();
-      const modal = document.createElement('div');
-      modal.id = modalId;
-      modal.className = 'modal';
+  showFormModal: (title, formItems, onConfirm, confirmText, cancelText) => {
+    const modalId = 'form-modal-' + Date.now();
+    const modal = document.createElement('div');
+    modal.id = modalId;
+    modal.className = 'modal';
+    
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    modalContent.innerHTML = `<span class="modal-close">&times;</span><h2>${title}</h2>`;
+    
+    const formContainer = document.createElement('div');
+    formContainer.className = 'modal-form';
+    
+    formItems.forEach(item => {
+      const formGroup = document.createElement('div');
+      formGroup.className = 'form-group';
       
-      const modalContent = document.createElement('div');
-      modalContent.className = 'modal-content';
-      modalContent.innerHTML = `<span class="modal-close">&times;</span><h2>${title}</h2>`;
+      const label = document.createElement('label');
+      label.setAttribute('for', item.id);
+      label.textContent = item.label;
       
-      const formContainer = document.createElement('div');
-      formContainer.className = 'modal-form';
+      let input;
+      if (item.type === 'textarea') {
+        input = document.createElement('textarea');
+      } else {
+        input = document.createElement('input');
+        input.type = item.type || 'text';
+      }
+      
+      input.id = item.id;
+      if (item.placeholder) input.placeholder = item.placeholder;
+      if (item.required) input.required = true;
+      if (item.value) input.value = item.value;
+      
+      formGroup.append(label, input);
+      formContainer.appendChild(formGroup);
+    });
+    
+    const actionDiv = document.createElement('div');
+    actionDiv.className = 'form-actions';
+    
+    const cancelButton = document.createElement('button');
+    cancelButton.id = `${modalId}-cancel`;
+    cancelButton.className = 'btn';
+    cancelButton.textContent = cancelText || I18n.getMessage('cancel') || '取消';
+    
+    const confirmButton = document.createElement('button');
+    confirmButton.id = `${modalId}-confirm`;
+    confirmButton.className = 'btn btn-primary';
+    confirmButton.textContent = confirmText || I18n.getMessage('confirm') || '确认';
+    
+    actionDiv.append(cancelButton, confirmButton);
+    formContainer.appendChild(actionDiv);
+    modalContent.appendChild(formContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    modal.style.display = 'block';
+    
+    const close = () => {
+      modal.style.display = 'none';
+      setTimeout(() => {
+        if (document.body.contains(modal)) document.body.removeChild(modal);
+      }, 300);
+    };
+    
+    confirmButton.addEventListener('click', () => {
+      const formData = {};
+      let allFilled = true;
       
       formItems.forEach(item => {
-        const formGroup = document.createElement('div');
-        formGroup.className = 'form-group';
-        
-        const label = document.createElement('label');
-        label.setAttribute('for', item.id);
-        label.textContent = item.label;
-        
-        let input;
-        if (item.type === 'textarea') {
-          input = document.createElement('textarea');
-        } else {
-          input = document.createElement('input');
-          input.type = item.type || 'text';
+        const input = document.getElementById(item.id);
+        if (input) {
+          formData[item.id] = input.value.trim();
+          if (item.required && !formData[item.id]) {
+            input.classList.add('error');
+            allFilled = false;
+          }
         }
-        
-        input.id = item.id;
-        if (item.placeholder) input.placeholder = item.placeholder;
-        if (item.required) input.required = true;
-        if (item.value) input.value = item.value;
-        
-        formGroup.append(label, input);
-        formContainer.appendChild(formGroup);
       });
       
-      const actionDiv = document.createElement('div');
-      actionDiv.className = 'form-actions';
-      
-      const cancelButton = document.createElement('button');
-      cancelButton.id = `${modalId}-cancel`;
-      cancelButton.className = 'btn';
-      cancelButton.textContent = cancelText || I18n.getMessage('cancel') || '取消';
-      
-      const confirmButton = document.createElement('button');
-      confirmButton.id = `${modalId}-confirm`;
-      confirmButton.className = 'btn btn-primary';
-      confirmButton.textContent = confirmText || I18n.getMessage('confirm') || '确认';
-      
-      actionDiv.append(cancelButton, confirmButton);
-      formContainer.appendChild(actionDiv);
-      modalContent.appendChild(formContainer);
-      modal.appendChild(modalContent);
-      document.body.appendChild(modal);
-      
-      modal.style.display = 'block';
-      
-      const close = () => {
-        modal.style.display = 'none';
-        setTimeout(() => {
-          if (document.body.contains(modal)) document.body.removeChild(modal);
-        }, 300);
-      };
-      
-      confirmButton.addEventListener('click', () => {
-        const formData = {};
-        let allFilled = true;
-        
-        formItems.forEach(item => {
-          const input = document.getElementById(item.id);
-          if (input) {
-            formData[item.id] = input.value.trim();
-            if (item.required && !formData[item.id]) {
-              input.classList.add('error');
-              allFilled = false;
-            }
-          }
-        });
-        
-        if (!allFilled) {
-          let errorMessage = document.getElementById(`${modalId}-error`);
-          if (!errorMessage) {
-            errorMessage = document.createElement('div');
-            errorMessage.id = `${modalId}-error`;
-            errorMessage.className = 'form-error';
-            errorMessage.textContent = I18n.getMessage('pleaseCompleteAllFields') || '请填写所有必填项';
-            formContainer.insertBefore(errorMessage, actionDiv);
-          }
-          return;
+      if (!allFilled) {
+        let errorMessage = document.getElementById(`${modalId}-error`);
+        if (!errorMessage) {
+          errorMessage = document.createElement('div');
+          errorMessage.id = `${modalId}-error`;
+          errorMessage.className = 'form-error';
+          errorMessage.textContent = I18n.getMessage('pleaseCompleteAllFields') || '请填写所有必填项';
+          formContainer.insertBefore(errorMessage, actionDiv);
         }
-        
-        onConfirm(formData);
-        close();
-      });
+        return;
+      }
       
-      cancelButton.addEventListener('click', close);
-      
-      modal.querySelector('.modal-close').addEventListener('click', close);
-      modal.addEventListener('click', e => { if (e.target === modal) close(); });
-      
-      return { close };
-    },
+      onConfirm(formData);
+      close();
+    });
+    
+    cancelButton.addEventListener('click', close);
+    
+    modal.querySelector('.modal-close').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    
+    return { close };
   },
 
   Modal: {
@@ -446,4 +471,3 @@ export const Utils = {
     }
   }
 };
-
