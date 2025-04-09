@@ -64,6 +64,13 @@
   white-space: nowrap;
 }
 
+.shortcut-title, .bookmark-title {
+  user-select: none; /* 防止文本被选中 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
 /* 快捷方式上下文菜单 */
 #shortcut-context-menu {
   min-width: 150px;

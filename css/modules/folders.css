@@ -222,3 +222,16 @@
   color: white;
 }
 
+/* 禁用文本选择 - 防止用户选中文件夹列表中的文本 */
+#folder-list,
+.folder-button,
+.folder-content,
+.folder-name,
+.folder-icon,
+.folder-arrow {
+  user-select: none; /* 标准语法 */
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+}
+
