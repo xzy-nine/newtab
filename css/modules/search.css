@@ -102,6 +102,21 @@
   width: 200px;
 }
 
+/* 搜索引擎菜单定位和显示 */
+.search-engine-menu {
+  display: none; /* 默认隐藏 */
+}
+
+.search-engine-menu.visible {
+  display: block;
+}
+
+/* 搜索引擎菜单位置控制 */
+.search-engine-menu-positioned {
+  left: 10px; /* 默认左侧定位 */
+  top: 50px; /* 默认顶部定位 */
+}
+
 /* 搜索引擎菜单项 */
 .search-engine-item {
   padding: 10px;

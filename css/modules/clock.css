@@ -217,3 +217,18 @@
 .split.blink::after {
   animation: shark 1s infinite;
 }
+
+/* 时钟部分显示控制 */
+.split.hidden,
+.digit-group.hidden {
+  display: none;
+}
+
+/* 数码管段的可见性控制 */
+.segment {
+  opacity: 0.1; /* 默认透明度 */
+}
+
+.segment.active {
+  opacity: 1;
+}

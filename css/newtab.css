@@ -50,6 +50,7 @@
     background-position: center;
   }
   
+  /* 背景覆盖层 */
   #background-overlay {
     position: fixed;
     top: 0;
@@ -57,6 +58,14 @@
     width: 100%;
     height: 100%;
     z-index: -1;
+    display: none; /* 默认隐藏 */
+    background-color: rgba(0, 0, 0, 0); /* 默认透明 */
+  }
+  
+  /* 白色背景样式 */
+  .bg-white {
+    background-image: none;
+    background-color: #ffffff;
   }
   
   /* 美化滚动条 */
@@ -145,6 +154,21 @@
   .context-menu-item:hover {
     background-color: #f0f0f0;
   }
+
+  /* 上下文菜单显示和定位 */
+  .context-menu {
+    display: none; /* 默认隐藏 */
+  }
+
+  .context-menu.visible {
+    display: block;
+  }
+
+  /* 上下文菜单位置控制 */
+  .context-menu-positioned {
+    left: 0;
+    top: 0;
+  }
   
   /* 新版加载指示器相关样式 */
   #loading-overlay {
@@ -196,6 +220,12 @@
     margin: 5px 0;
   }
   
+  /* 加载进度条样式 */
+  #loading-progress-bar {
+    width: 0; /* 初始宽度 */
+    transition: width 0.5s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+  }
+  
   #loading-progress-bar {
     height: 100%;
     background: linear-gradient(90deg, #0078d4, #42a5f5);
@@ -228,22 +258,8 @@
     transform: translateY(-10px);
   }
   
-  .load-complete #loading-progress-bar {
-    background: linear-gradient(90deg, #00c853, #64dd17);
-    transition: all 0.3s ease;
-  }
-  
-  /* 适配深色模式 */
-  @media (prefers-color-scheme: dark) {
-    #loading-overlay {
-      background-color: rgba(30, 30, 30, 0.95);
-    }
-    
-    #loading-message {
-      color: rgba(255, 255, 255, 0.9);
-    }
-    
-    #loading-progress {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-  }
+.load-complete #loading-progress-bar {
+  background: linear-gradient(90deg, #00c853, #64dd17);
+  transition: all 0.3s ease;
+} 
+
