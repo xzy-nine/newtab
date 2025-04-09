@@ -306,5 +306,109 @@
   "iconUpdated": {
     "message": "Icon has been updated",
     "description": "图标已更新提示"
+  },
+  "i18nModule": {
+    "message": "Internationalization",
+    "description": "国际化模块名称"
+  },
+  "backgroundModule": {
+    "message": "Background Image",
+    "description": "背景图像模块名称"
+  },
+  "searchModule": {
+    "message": "Search Engine",
+    "description": "搜索引擎模块名称"
+  },
+  "bookmarkModule": {
+    "message": "Bookmarks",
+    "description": "书签模块名称"
+  },
+  "clockModule": {
+    "message": "Clock Widget",
+    "description": "时钟组件模块名称"
+  },
+  "eventsModule": {
+    "message": "Event Initialization",
+    "description": "事件初始化模块名称"
+  },
+  "backgroundLoadComplete": {
+    "message": "Background image loading complete",
+    "description": "背景图像加载完成提示"
+  },
+  "searchLoadComplete": {
+    "message": "Search engine loading complete",
+    "description": "搜索引擎加载完成提示"
+  },
+  "bookmarkLoadComplete": {
+    "message": "Bookmarks loading complete",
+    "description": "书签加载完成提示"
+  },
+  "clockLoadComplete": {
+    "message": "Clock widget loading complete",
+    "description": "时钟组件加载完成提示"
+  },
+  "postInitTasksError": {
+    "message": "Error in post-initialization tasks",
+    "description": "初始化后任务出错提示"
+  },
+  "error": {
+    "message": "Error",
+    "description": "错误提示"
+  },
+  "copyError": {
+    "message": "Copy failed",
+    "description": "复制失败提示"
+  },
+  "ok": {
+    "message": "OK",
+    "description": "确定按钮文本"
+  },
+  "close": {
+    "message": "Close",
+    "description": "关闭按钮文本"
+  },
+  "imageTypeError": {
+    "message": "Please select a valid image file.",
+    "description": "图片类型错误提示"
+  },
+  "warning": {
+    "message": "Warning",
+    "description": "警告标题"
+  },
+  "imageTooLarge": {
+    "message": "Image file should not exceed 50MB.",
+    "description": "图片过大提示"
+  },
+  "continue": {
+    "message": "Continue",
+    "description": "继续按钮文本"
+  },
+  "languageFileLoaded": {
+    "message": "Loaded %s language file",
+    "description": "语言文件加载完成提示"
+  },
+  "fetchingDefaultIcon": {
+    "message": "Fetching default icon...",
+    "description": "获取默认图标提示"
+  },
+  "fetchCustomIconFailed": {
+    "message": "Failed to fetch custom icon:",
+    "description": "获取自定义图标失败提示"
+  },
+  "desktopInstructionMessage": {
+    "message": "To use this extension as your new tab page, go to your browser extensions settings and choose 'Open New Tab page' from this extension's options.",
+    "description": "Instructions for desktop users on how to set this as their new tab page"
+  },
+  "mobileInstructionMessage": {
+    "message": "To set this as your new tab page on mobile, copy this URL and set it as your homepage: {0}",
+    "description": "移动设备用户新标签页的说明"
+  },
+  "linkCopied": {
+    "message": "Link copied to clipboard",
+    "description": "链接复制成功提示"
+  },
+  "copyLinkFailed": {
+    "message": "Failed to copy link to clipboard",
+    "description": "链接复制失败提示"
   }
 }

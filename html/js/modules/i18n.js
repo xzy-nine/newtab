@@ -142,7 +142,7 @@ async function loadTranslationsFromFiles() {
     const messagesData = await response.json();
     translations = messagesData;
     
-    console.log(`已加载 ${locale} 语言文件`);
+    console.log(I18n.getMessage('languageFileLoaded').replace('%s', locale));
   } catch (error) {
     console.error('加载翻译文件失败:', error);
     translations = {}; // 出错时使用空对象

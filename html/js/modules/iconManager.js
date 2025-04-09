@@ -3,6 +3,7 @@
  */
 
 import { Utils } from './utils.js';
+import { I18n } from './i18n.js';  // 添加导入I18n模块
 
 // 核心数据结构
 const iconCache = new Map();
@@ -49,7 +50,7 @@ export const IconManager = {
             if (element) element.style.backgroundImage = `url(${iconData})`;
             return iconData;
         } catch (error) {
-            console.error('获取网站图标时出错:', error);
+            console.error(I18n.getMessage('fetchIconFailed') + ':', error);
             return DEFAULT_ICON;
         }
     },
@@ -75,7 +76,7 @@ export const IconManager = {
             const htmlIconUrls = await this.extractIconUrlsFromHtml(url);
             iconUrls = [...htmlIconUrls, ...iconUrls];
         } catch (error) {
-            console.debug('无法解析HTML获取图标:', error);
+            console.debug(I18n.getMessage('fetchIconFailed') + ':', error);
         }
 
         // 并行获取所有图标
@@ -129,7 +130,7 @@ export const IconManager = {
                 });
             }
         } catch (error) {
-            console.debug('解析HTML失败:', error);
+            console.debug(I18n.getMessage('fetchIconFailed') + ':', error);
         }
         return icons;
     },
@@ -179,11 +180,11 @@ export const IconManager = {
                     score: isSvg ? 1000 : Math.max(img.width, img.height) // 评分：SVG最高，否则按最大尺寸
                 };
             } catch (error) {
-                console.debug(`图片分析失败: ${iconUrl}`, error);
+                console.debug(I18n.getMessage('fetchIconFailed') + `: ${iconUrl}`, error);
                 return null;
             }
         } catch (error) {
-            console.debug(`获取图标失败: ${iconUrl}`, error);
+            console.debug(I18n.getMessage('fetchIconFailed') + `: ${iconUrl}`, error);
             return null;
         }
     },
@@ -238,7 +239,7 @@ export const IconManager = {
                 try {
                     await chrome.storage.local.remove(originalUrl);
                 } catch (error) {
-                    console.error('移除失败的图标缓存时出错:', error);
+                    console.error(I18n.getMessage('error') + ':', error);
                 }
             }
         }
@@ -290,7 +291,7 @@ export const IconManager = {
         } catch (error) {
             img.src = DEFAULT_ICON;
             delete img.dataset.processingUrl;
-            console.error('设置图标元素时出错:', error);
+            console.error(I18n.getMessage('fetchIconFailed') + ':', error);
         }
     },
 
@@ -304,7 +305,7 @@ export const IconManager = {
             await chrome.storage.local.set({ [url]: base64Image });
             await this.cacheIcon(Utils.getDomain(url), base64Image);
         } catch (error) {
-            Utils.UI.showErrorMessage('设置自定义图标失败: ' + error);
+            Utils.UI.showErrorMessage(I18n.getMessage('saveIconFailed') + ': ' + error);
         }
     },
 
@@ -330,7 +331,7 @@ export const IconManager = {
                 chrome.storage.local.remove(key).catch(() => {})
             ));
         } catch (error) {
-            console.error('重置图标失败:', error);
+            console.error(I18n.getMessage('reloadFailed') + ':', error);
         }
     },
 
@@ -348,7 +349,7 @@ export const IconManager = {
         try {
             await chrome.storage.local.set({ [domain]: iconData });
         } catch (error) {
-            console.error('缓存图标失败:', error);
+            console.error(I18n.getMessage('saveFailed') + ':', error);
         }
     },
 

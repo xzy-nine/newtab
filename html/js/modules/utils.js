@@ -95,27 +95,68 @@ export const Utils = {
       return loadingNotification;
     },
 
-    updateLoadingProgress: (percent, message) => {
-      const loadingNotification = document.querySelector('.notification.loading-notification');
-      if (!loadingNotification) return;
-      
-      const progressBar = loadingNotification.querySelector('.notification-loading-bar');
-      const loadingMessage = loadingNotification.querySelector('.notification-loading-message');
-      
-      if (progressBar) progressBar.style.width = `${percent}%`;
-      
-      if (loadingMessage && message) {
-        loadingMessage.style.opacity = '0';
-        setTimeout(() => {
-          loadingMessage.textContent = message;
-          loadingMessage.style.opacity = '1';
-        }, 200);
-      }
-      
-      if (percent >= 100) {
-        loadingNotification.classList.add('load-complete');
-      }
-    },
+    updateLoadingProgress: (() => {
+      let lastUpdateTime = 0;
+      let lastPercent = 0;
+      let pendingUpdate = null;
+      const MIN_DISPLAY_TIME = 500; // 最低显示时间为500毫秒(0.5秒)
+
+      return (percent, message) => {
+        const loadingNotification = document.querySelector('.notification.loading-notification');
+        if (!loadingNotification) return;
+        
+        const progressBar = loadingNotification.querySelector('.notification-loading-bar');
+        const loadingMessage = loadingNotification.querySelector('.notification-loading-message');
+        
+        const currentTime = Date.now();
+        const timeElapsed = currentTime - lastUpdateTime;
+        
+        // 计算实际显示的百分比，确保平滑过渡
+        let displayPercent = percent;
+        
+        // 如果有待处理的更新，取消它
+        if (pendingUpdate) {
+          clearTimeout(pendingUpdate);
+          pendingUpdate = null;
+        }
+        
+        // 如果距离上次更新不足最低显示时间，则延迟更新
+        if (lastUpdateTime > 0 && timeElapsed < MIN_DISPLAY_TIME) {
+          pendingUpdate = setTimeout(() => {
+            // 递归调用以执行实际更新
+            Utils.UI.updateLoadingProgress(percent, message);
+          }, MIN_DISPLAY_TIME - timeElapsed);
+          return;
+        }
+        
+        // 更新进度条
+        if (progressBar) {
+          // 如果百分比增加很大，使用平滑过渡
+          if (percent > lastPercent) {
+            progressBar.style.transition = `width ${Math.min(300, MIN_DISPLAY_TIME)}ms ease-out`;
+          }
+          progressBar.style.width = `${displayPercent}%`;
+        }
+        
+        // 更新消息文本
+        if (loadingMessage && message) {
+          loadingMessage.style.opacity = '0';
+          setTimeout(() => {
+            loadingMessage.textContent = message;
+            loadingMessage.style.opacity = '1';
+          }, 200);
+        }
+        
+        // 如果达到100%，添加完成样式
+        if (percent >= 100) {
+          loadingNotification.classList.add('load-complete');
+        }
+        
+        // 更新状态追踪变量
+        lastUpdateTime = currentTime;
+        lastPercent = displayPercent;
+      };
+    })(),
 
     hideLoadingIndicator: (force = false) => {
       const loadingNotification = document.querySelector('.notification.loading-notification');
