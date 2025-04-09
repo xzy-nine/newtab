@@ -495,10 +495,132 @@ export const BookmarkManager = {
      */
     showShortcutContextMenu: function(event, shortcut) {
         event.preventDefault();
-        Utils.ContextMenu.showShortcutMenu(event, shortcut, {
-            onCustomIcon: (shortcut) => this.showIconSelectorModal(shortcut),
-            onResetIcon: async (shortcut) => await this.resetShortcutIcon(shortcut)
-        });
+        Utils.ContextMenu.show(event, [
+            {
+                id: 'custom-icon',
+                text: I18n.getMessage('customIcon'),
+                callback: () => this.showIconSelectorModal(shortcut)
+            },
+            {
+                id: 'reset-icon',
+                text: I18n.getMessage('resetIcon'),
+                callback: () => this.resetShortcutIcon(shortcut)
+            }
+        ], {menuId: 'shortcut-context-menu'});
+    },
+
+    /**
+     * 显示文件夹上下文菜单
+     * @param {Event} event - 事件对象
+     * @param {Object} folder - 文件夹数据
+     */
+    showFolderContextMenu: function(event, folder) {
+        Utils.ContextMenu.show(event, [
+            {
+                id: 'open-all-bookmarks',
+                text: I18n.getMessage('openAllBookmarks'),
+                callback: () => {
+                    // 打开文件夹中所有书签
+                    if (folder.children) {
+                        const bookmarks = folder.children.filter(item => item.url);
+                        bookmarks.forEach(bookmark => {
+                            window.open(bookmark.url, "_blank");
+                        });
+                    }
+                }
+            }
+        ], {menuId: 'folder-context-menu'});
+    },
+
+    /**
+     * 处理右键菜单事件
+     * @param {Event} event - 事件对象
+     */
+    handleContextMenu: function(event) {
+        // 检查是否在输入框内，如果是则使用默认右键菜单
+        if (event.target.matches('input, textarea, [contenteditable="true"]')) {
+            return; // 使用浏览器默认右键菜单
+        }
+
+        // 处理特定元素的右键菜单
+        const shortcutButton = event.target.closest('.shortcut-button');
+        const bookmarkElement = event.target.closest('.bookmark');
+        
+        // 快捷方式按钮或书签元素已有专门的处理逻辑，直接返回
+        if (shortcutButton || bookmarkElement) {
+            return; // 这些元素有自己的上下文菜单处理逻辑
+        }
+        
+        // 阻止默认右键菜单
+        event.preventDefault();
+
+        // 检查是否在文件夹上右击
+        const folderButton = event.target.closest('.folder-button');
+        if (folderButton && folderButton.folderData) {
+            this.showFolderContextMenu(event, folderButton.folderData);
+            return;
+        }
+    },
+
+    /**
+     * 显示书签上下文菜单
+     * @param {Event} e - 事件对象
+     * @param {number} index - 书签索引
+     */
+    showContextMenu: function(e, index) {
+        Utils.ContextMenu.show(e, [
+            {
+                id: 'bookmark-delete',
+                text: I18n.getMessage('delete'),
+                callback: () => {
+                    Utils.UI.notify({
+                        title: I18n.getMessage('confirm'),
+                        message: I18n.getMessage('confirmDeleteBookmark'),
+                        type: 'confirm',
+                        duration: 0,
+                        buttons: [
+                            {
+                                text: I18n.getMessage('confirm'),
+                                class: 'btn-primary',
+                                callback: () => {
+                                    bookmarks.splice(index, 1);
+                                    this.saveBookmarks();
+                                    this.renderBookmarks();
+                                }
+                            },
+                            {
+                                text: I18n.getMessage('cancel'),
+                                callback: () => {}
+                            }
+                        ]
+                    });
+                }
+            },
+            {
+                id: 'bookmark-move-up',
+                text: I18n.getMessage('moveUp'),
+                disabled: index === 0,
+                callback: async () => {
+                    if (index > 0) {
+                        [bookmarks[index - 1], bookmarks[index]] = [bookmarks[index], bookmarks[index - 1]];
+                        await this.saveBookmarks();
+                        this.renderBookmarks();
+                    }
+                }
+            },
+            {
+                id: 'bookmark-move-down',
+                text: I18n.getMessage('moveDown'),
+                disabled: index === bookmarks.length - 1,
+                callback: async () => {
+                    if (index < bookmarks.length - 1) {
+                        [bookmarks[index + 1], bookmarks[index]] = [bookmarks[index], bookmarks[index + 1]];
+                        await this.saveBookmarks();
+                        this.renderBookmarks();
+                    }
+                }
+            }
+        ], {menuId: 'bookmark-context-menu'});
     },
 
     /**
@@ -848,100 +970,6 @@ export const BookmarkManager = {
 
         // 添加其他事件处理
         document.addEventListener('contextmenu', this.handleContextMenu.bind(this));
-    },
-
-    /**
-     * 处理右键菜单事件
-     * @param {Event} event - 事件对象
-     */
-    handleContextMenu: function(event) {
-        // 检查是否在输入框内，如果是则使用默认右键菜单
-        if (event.target.matches('input, textarea, [contenteditable="true"]')) {
-            return; // 使用浏览器默认右键菜单
-        }
-
-        // 处理特定元素的右键菜单
-        const shortcutButton = event.target.closest('.shortcut-button');
-        const bookmarkElement = event.target.closest('.bookmark');
-        
-        // 快捷方式按钮或书签元素已有专门的处理逻辑，直接返回
-        if (shortcutButton || bookmarkElement) {
-            return; // 这些元素有自己的上下文菜单处理逻辑
-        }
-        
-        // 阻止默认右键菜单
-        event.preventDefault();
-
-        // 检查是否在文件夹上右击
-        const folderButton = event.target.closest('.folder-button');
-        if (folderButton && folderButton.folderData) {
-            this.showFolderContextMenu(event, folderButton.folderData);
-            return;
-        }
-
-        // 创建通用上下文菜单项
-        Utils.ContextMenu.showGeneralMenu(event, [
-            {
-                id: 'refresh-bookmarks',
-                text: I18n.getMessage('refreshBookmarks'),
-                callback: async () => await this.getChromeBookmarks()
-            }
-        ]);
-    },
-
-    /**
-     * 显示文件夹上下文菜单
-     * @param {Event} event - 事件对象
-     * @param {Object} folder - 文件夹数据
-     */
-    showFolderContextMenu: function(event, folder) {
-        Utils.ContextMenu.showFolderMenu(event, folder, {
-            onOpenFolder: (folder) => {
-                // 找到对应的按钮元素
-                const folderButton = document.getElementById(`folder-${folder.id}`);
-                if (folderButton) {
-                    this.handleFolderClick(folderButton, folder);
-                }
-            },
-            onOpenAllBookmarks: (folder) => {
-                // 打开文件夹中所有书签
-                if (folder.children) {
-                    const bookmarks = folder.children.filter(item => item.url);
-                    bookmarks.forEach(bookmark => {
-                        window.open(bookmark.url, "_blank");
-                    });
-                }
-            }
-        });
-    },
-
-    /**
-     * 显示书签上下文菜单
-     * @param {Event} e - 事件对象
-     * @param {number} index - 书签索引
-     */
-    showContextMenu: function(e, index) {
-        Utils.ContextMenu.showBookmarkMenu(e, index, bookmarks, {
-            onDelete: async (index) => {
-                bookmarks.splice(index, 1);
-                await this.saveBookmarks();
-                this.renderBookmarks();
-            },
-            onMoveUp: async (index) => {
-                if (index > 0) {
-                    [bookmarks[index - 1], bookmarks[index]] = [bookmarks[index], bookmarks[index - 1]];
-                    await this.saveBookmarks();
-                    this.renderBookmarks();
-                }
-            },
-            onMoveDown: async (index) => {
-                if (index < bookmarks.length - 1) {
-                    [bookmarks[index + 1], bookmarks[index]] = [bookmarks[index], bookmarks[index + 1]];
-                    await this.saveBookmarks();
-                    this.renderBookmarks();
-                }
-            }
-        });
     },
 
     /**
