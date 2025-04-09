@@ -60,23 +60,16 @@ export const Utils = {
       let loadingOverlay = document.getElementById('loading-overlay');
       
       if (!loadingOverlay) {
-        loadingOverlay = document.createElement('div');
-        loadingOverlay.id = 'loading-overlay';
-        loadingOverlay.className = 'compact-loading'; // 添加新的类名用于非全屏显示
+        loadingOverlay = Utils.createElement('div', 'compact-loading', { id: 'loading-overlay' });
         
-        const loaderContainer = document.createElement('div');
-        loaderContainer.className = 'loader-container';
+        const loaderContainer = Utils.createElement('div', 'loader-container');
         
-        const spinner = document.createElement('div');
-        spinner.className = 'loader-spinner';
+        const spinner = Utils.createElement('div', 'loader-spinner');
         
-        const progress = document.createElement('div');
-        progress.id = 'loading-progress';
-        progress.innerHTML = '<div id="loading-progress-bar"></div>';
+        const progress = Utils.createElement('div', '', { id: 'loading-progress' }, 
+          '<div id="loading-progress-bar"></div>');
         
-        const message = document.createElement('div');
-        message.id = 'loading-message';
-        message.textContent = '正在加载...';
+        const message = Utils.createElement('div', '', { id: 'loading-message' }, '正在加载...');
         
         loaderContainer.append(spinner, progress, message);
         loadingOverlay.appendChild(loaderContainer);
@@ -157,8 +150,7 @@ export const Utils = {
         onClose = null 
       } = options;
 
-      const notification = document.createElement('div');
-      notification.className = `notification notification-${type}`;
+      const notification = Utils.createElement('div', `notification notification-${type}`);
       
       let buttonsHtml = '';
       if (buttons?.length) {
@@ -291,34 +283,28 @@ export const Utils = {
 
   showFormModal: (title, formItems, onConfirm, confirmText, cancelText) => {
     const modalId = 'form-modal-' + Date.now();
-    const modal = document.createElement('div');
-    modal.id = modalId;
-    modal.className = 'modal';
+    const modal = Utils.createElement('div', 'modal', { id: modalId });
     
-    const modalContent = document.createElement('div');
-    modalContent.className = 'modal-content';
-    modalContent.innerHTML = `<span class="modal-close">&times;</span><h2>${title}</h2>`;
+    const modalContent = Utils.createElement('div', 'modal-content', {}, 
+      `<span class="modal-close">&times;</span><h2>${title}</h2>`);
     
-    const formContainer = document.createElement('div');
-    formContainer.className = 'modal-form';
+    const formContainer = Utils.createElement('div', 'modal-form');
     
     formItems.forEach(item => {
-      const formGroup = document.createElement('div');
-      formGroup.className = 'form-group';
+      const formGroup = Utils.createElement('div', 'form-group');
       
-      const label = document.createElement('label');
-      label.setAttribute('for', item.id);
-      label.textContent = item.label;
+      const label = Utils.createElement('label', '', { for: item.id }, item.label);
       
       let input;
       if (item.type === 'textarea') {
-        input = document.createElement('textarea');
+        input = Utils.createElement('textarea', '', { id: item.id });
       } else {
-        input = document.createElement('input');
-        input.type = item.type || 'text';
+        input = Utils.createElement('input', '', { 
+          id: item.id, 
+          type: item.type || 'text' 
+        });
       }
       
-      input.id = item.id;
       if (item.placeholder) input.placeholder = item.placeholder;
       if (item.required) input.required = true;
       if (item.value) input.value = item.value;
@@ -327,18 +313,21 @@ export const Utils = {
       formContainer.appendChild(formGroup);
     });
     
-    const actionDiv = document.createElement('div');
-    actionDiv.className = 'form-actions';
-    
-    const cancelButton = document.createElement('button');
-    cancelButton.id = `${modalId}-cancel`;
-    cancelButton.className = 'btn';
-    cancelButton.textContent = cancelText || I18n.getMessage('cancel') || '取消';
-    
-    const confirmButton = document.createElement('button');
-    confirmButton.id = `${modalId}-confirm`;
-    confirmButton.className = 'btn btn-primary';
-    confirmButton.textContent = confirmText || I18n.getMessage('confirm') || '确认';
+    const actionDiv = Utils.createElement('div', 'form-actions');
+
+    const cancelButton = Utils.createElement(
+      'button', 
+      'btn', 
+      { id: `${modalId}-cancel` },
+      cancelText || I18n.getMessage('cancel') || '取消'
+    );
+
+    const confirmButton = Utils.createElement(
+      'button', 
+      'btn btn-primary', 
+      { id: `${modalId}-confirm` },
+      confirmText || I18n.getMessage('confirm') || '确认'
+    );
     
     actionDiv.append(cancelButton, confirmButton);
     formContainer.appendChild(actionDiv);
@@ -373,10 +362,12 @@ export const Utils = {
       if (!allFilled) {
         let errorMessage = document.getElementById(`${modalId}-error`);
         if (!errorMessage) {
-          errorMessage = document.createElement('div');
-          errorMessage.id = `${modalId}-error`;
-          errorMessage.className = 'form-error';
-          errorMessage.textContent = I18n.getMessage('pleaseCompleteAllFields') || '请填写所有必填项';
+          errorMessage = Utils.createElement(
+            'div', 
+            'form-error', 
+            { id: `${modalId}-error` }, 
+            I18n.getMessage('pleaseCompleteAllFields') || '请填写所有必填项'
+          );
           formContainer.insertBefore(errorMessage, actionDiv);
         }
         return;
