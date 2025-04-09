@@ -79,7 +79,12 @@ export const BookmarkManager = {
                 this.initEvents();
             }, 0);
         } catch (error) {
-            Utils.UI.showErrorModal('获取Chrome书签失败', error, false);
+            Utils.UI.notify({
+                title: I18n.getMessage('fetchBookmarksFailed'),
+                message: error.message || I18n.getMessage('fetchBookmarksFailed'),
+                type: 'error',
+                duration: 5000
+            });
         }
     },
 
@@ -102,7 +107,7 @@ export const BookmarkManager = {
         const folderContent = Utils.createElement("div", "folder-content folder-indent-0", {}, `
             <span class="folder-arrow">${hasNonEmptySubFolders ? '▶' : ''}</span>
             <span class="folder-icon">📁</span>
-            <span class="folder-name">${folder.title || "(无标题文件夹)"}</span>
+            <span class="folder-name">${folder.title || I18n.getMessage('untitledFolder')}</span>
         `);
         
         folderButton.appendChild(folderContent);
@@ -211,7 +216,7 @@ export const BookmarkManager = {
             // 创建文件夹按钮元素
             let folderButton = Utils.createElement("div", "folder-button", {
                 id: `folder-${folder.id}`,
-                'data-folder-name': folder.title || "(无标题文件夹)"
+                'data-folder-name': folder.title || I18n.getMessage('untitledFolder')
             });
             
             // 获取所有非空子文件夹
@@ -224,7 +229,7 @@ export const BookmarkManager = {
             const folderContent = Utils.createElement("div", `folder-content folder-indent-${level}`, {}, `
                 <span class="folder-arrow">${hasNonEmptySubFolders ? '▶' : ''}</span>
                 <span class="folder-icon">📁</span>
-                <span class="folder-name">${folder.title || "(无标题文件夹)"}</span>
+                <span class="folder-name">${folder.title || I18n.getMessage('untitledFolder')}</span>
             `);
             
             folderButton.appendChild(folderContent);
@@ -252,7 +257,12 @@ export const BookmarkManager = {
                 this.handleFolderClick(folderButton, folder);
             });
         } catch (error) {
-            Utils.UI.showErrorModal('创建文件夹时出错:', error, false);
+            Utils.UI.notify({
+                title: I18n.getMessage('createFolderError'),
+                message: error.message || I18n.getMessage('createFolderError'),
+                type: 'error',
+                duration: 5000
+            });
         }
     },
 
@@ -278,7 +288,12 @@ export const BookmarkManager = {
                 }
             }
         }).catch(err => {
-            Utils.UI.showErrorModal('获取选中文件夹失败', err, false);
+            Utils.UI.notify({
+                title: I18n.getMessage('fetchFolderFailed'),
+                message: err.message || I18n.getMessage('fetchFolderFailed'),
+                type: 'error',
+                duration: 5000
+            });
         });
     },
 
@@ -450,8 +465,8 @@ export const BookmarkManager = {
         
         // 设置菜单内容和位置
         contextMenu.innerHTML = `
-            <div class="context-menu-item" id="custom-icon">${I18n.getMessage('customIcon') || '自定义图标'}</div>
-            <div class="context-menu-item" id="reset-icon">${I18n.getMessage('resetIcon') || '重置图标'}</div>
+            <div class="context-menu-item" id="custom-icon">${I18n.getMessage('customIcon')}</div>
+            <div class="context-menu-item" id="reset-icon">${I18n.getMessage('resetIcon')}</div>
         `;
         
         contextMenu.style.left = `${pageX}px`;
@@ -493,20 +508,20 @@ export const BookmarkManager = {
             
             modalContent.innerHTML = `
                 <span class="modal-close">&times;</span>
-                <h2>${I18n.getMessage('customIcon') || '自定义图标'}</h2>
+                <h2>${I18n.getMessage('customIcon')}</h2>
                 <div class="modal-form">
                     <div class="form-group">
-                        <label for="icon-url">${I18n.getMessage('iconUrl') || '图标URL'}</label>
+                        <label for="icon-url">${I18n.getMessage('iconUrl')}</label>
                         <input type="url" id="icon-url" placeholder="https://example.com/icon.png">
                     </div>
                     <div class="form-group">
-                        <label for="icon-upload">${I18n.getMessage('uploadIcon') || '上传图标'}</label>
+                        <label for="icon-upload">${I18n.getMessage('uploadIcon')}</label>
                         <input type="file" id="icon-upload" accept="image/*">
                         <div class="image-preview" id="icon-preview"></div>
                     </div>
                     <div class="form-actions">
-                        <button id="icon-cancel" class="btn">${I18n.getMessage('cancel') || '取消'}</button>
-                        <button id="icon-confirm" class="btn btn-primary">${I18n.getMessage('confirm') || '确定'}</button>
+                        <button id="icon-cancel" class="btn">${I18n.getMessage('cancel')}</button>
+                        <button id="icon-confirm" class="btn btn-primary">${I18n.getMessage('confirm')}</button>
                     </div>
                 </div>
             `;
@@ -548,7 +563,7 @@ export const BookmarkManager = {
             confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
             newConfirmBtn.addEventListener('click', async () => {
                 await this.saveCustomIconForShortcut(shortcut);
-                modal.style.display = 'none';
+                Utils.Modal.hide('icon-selector-modal');
             });
         }
         
@@ -558,7 +573,7 @@ export const BookmarkManager = {
             const newCancelBtn = cancelBtn.cloneNode(true);
             cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
             newCancelBtn.addEventListener('click', () => {
-                modal.style.display = 'none';
+                Utils.Modal.hide('icon-selector-modal');
             });
         }
     },
@@ -600,8 +615,20 @@ export const BookmarkManager = {
             // 刷新显示
             await this.reloadCurrentFolder();
             
+            Utils.UI.notify({
+                title: I18n.getMessage('success'),
+                message: I18n.getMessage('iconUpdated'),
+                type: 'success',
+                duration: 2000
+            });
+            
         } catch (error) {
-            Utils.UI.showErrorModal('保存自定义图标失败:', error);
+            Utils.UI.notify({
+                title: I18n.getMessage('saveIconFailed'),
+                message: error.message || I18n.getMessage('saveIconFailed'),
+                type: 'error',
+                duration: 5000
+            });
         }
     },
 
@@ -675,10 +702,20 @@ export const BookmarkManager = {
                 }
             }
             
-            Utils.UI.showNotification('图标已重置', '正在重新获取网站默认图标...', 1000);
+            Utils.UI.notify({
+                title: I18n.getMessage('iconReset'),
+                message: I18n.getMessage('fetchingDefaultIcon'),
+                type: 'info',
+                duration: 2000
+            });
             
         } catch (error) {
-            Utils.UI.showErrorModal('重置图标失败:', error);
+            Utils.UI.notify({
+                title: I18n.getMessage('resetIconFailed'),
+                message: error.message || I18n.getMessage('resetIconFailed'),
+                type: 'error',
+                duration: 5000
+            });
         }
     },
 
@@ -691,7 +728,17 @@ export const BookmarkManager = {
             const result = await chrome.storage.local.get('customIcons');
             return result.customIcons || {};
         } catch (error) {
-            Utils.UI.showErrorModal('获取自定义图标失败', error, false);
+            Utils.UI.notify({
+                title: I18n.getMessage('fetchIconsFailed'),
+                message: error.message || I18n.getMessage('fetchIconsFailed'),
+                type: 'error',
+                duration: 0,
+                buttons: [{
+                    text: I18n.getMessage('confirm'),
+                    class: 'btn-primary',
+                    callback: () => {}
+                }]
+            });
             return {};
         }
     },
@@ -714,7 +761,12 @@ export const BookmarkManager = {
                 this.showShortcuts(folder);
             }
         } catch (error) {
-            Utils.UI.showErrorModal('重新加载文件夹内容失败:', error);
+            Utils.UI.notify({
+                title: I18n.getMessage('reloadFailed'),
+                message: error.message || I18n.getMessage('reloadFailed'),
+                type: 'error',
+                duration: 5000
+            });
         }
     },
 
@@ -739,7 +791,7 @@ export const BookmarkManager = {
         } catch (error) {
             // 出错时使用默认图标
             IconManager.getIconUrl(shortcut.url, element);
-            Utils.UI.showErrorModal('获取自定义图标失败', error, false);
+            console.error(I18n.getMessage('fetchCustomIconFailed'), error);
         }
     },
 
@@ -792,11 +844,136 @@ export const BookmarkManager = {
 
         // 添加其他事件处理
         document.addEventListener('contextmenu', this.handleContextMenu.bind(this));
-        
-        const addBookmarkBtn = document.getElementById('add-bookmark-btn');
-        if (addBookmarkBtn) {
-            addBookmarkBtn.addEventListener('click', this.showBookmarkModal.bind(this));
+    },
+
+    /**
+     * 处理右键菜单事件
+     * @param {Event} event - 事件对象
+     */
+    handleContextMenu: function(event) {
+        // 检查是否在输入框内，如果是则使用默认右键菜单
+        if (event.target.matches('input, textarea, [contenteditable="true"]')) {
+            return; // 使用浏览器默认右键菜单
         }
+
+        // 处理特定元素的右键菜单
+        const shortcutButton = event.target.closest('.shortcut-button');
+        const bookmarkElement = event.target.closest('.bookmark');
+        
+        // 快捷方式按钮或书签元素已有专门的处理逻辑，直接返回
+        if (shortcutButton || bookmarkElement) {
+            return; // 这些元素有自己的上下文菜单处理逻辑
+        }
+        
+        // 阻止默认右键菜单
+        event.preventDefault();
+
+        // 检查是否在文件夹上右击
+        const folderButton = event.target.closest('.folder-button');
+        if (folderButton && folderButton.folderData) {
+            this.showFolderContextMenu(event, folderButton.folderData);
+            return;
+        }
+
+        // 创建或显示通用上下文菜单
+        let contextMenu = document.getElementById('general-context-menu');
+        if (!contextMenu) {
+            // 创建菜单
+            contextMenu = Utils.createElement('div', 'context-menu', {id: 'general-context-menu'});
+            document.body.appendChild(contextMenu);
+        }
+        
+        // 设置菜单内容 - 移除折叠所有文件夹选项
+        contextMenu.innerHTML = `
+            <div class="context-menu-item" id="refresh-bookmarks">${I18n.getMessage('refreshBookmarks')}</div>
+        `;
+        
+        // 设置菜单位置
+        contextMenu.classList.add('context-menu-positioned');
+        contextMenu.style.left = `${event.pageX}px`;
+        contextMenu.style.top = `${event.pageY}px`;
+        contextMenu.classList.add('visible');
+        
+        // 添加菜单项点击事件 - 只保留刷新书签事件
+        document.getElementById('refresh-bookmarks').addEventListener('click', async () => {
+            await this.getChromeBookmarks();
+            contextMenu.classList.remove('visible');
+        });
+        
+        // 点击其他区域关闭菜单
+        const closeContextMenu = (e) => {
+            if (!contextMenu.contains(e.target)) {
+                contextMenu.classList.remove('visible');
+                document.removeEventListener('click', closeContextMenu);
+            }
+        };
+        
+        // 延迟添加事件处理器，避免立即触发
+        setTimeout(() => {
+            document.addEventListener('click', closeContextMenu);
+        }, 10);
+    },
+
+    /**
+     * 显示文件夹上下文菜单
+     * @param {Event} event - 事件对象
+     * @param {Object} folder - 文件夹数据
+     */
+    showFolderContextMenu: function(event, folder) {
+        // 阻止默认菜单和冒泡
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // 创建上下文菜单
+        let folderMenu = document.getElementById('folder-context-menu');
+        if (!folderMenu) {
+            folderMenu = Utils.createElement('div', 'context-menu', {id: 'folder-context-menu'});
+            document.body.appendChild(folderMenu);
+        }
+        
+        // 设置菜单内容
+        folderMenu.innerHTML = `
+            <div class="context-menu-item" id="open-folder">${I18n.getMessage('openFolder')}</div>
+            <div class="context-menu-item" id="open-all-bookmarks">${I18n.getMessage('openAllBookmarks')}</div>
+        `;
+        
+        // 设置菜单位置
+        folderMenu.style.left = `${event.pageX}px`;
+        folderMenu.style.top = `${event.pageY}px`;
+        folderMenu.classList.add('visible');
+        
+        // 菜单项点击事件
+        document.getElementById('open-folder').addEventListener('click', () => {
+            // 找到对应的按钮元素
+            const folderButton = document.getElementById(`folder-${folder.id}`);
+            if (folderButton) {
+                this.handleFolderClick(folderButton, folder);
+            }
+            folderMenu.classList.remove('visible');
+        });
+        
+        document.getElementById('open-all-bookmarks').addEventListener('click', () => {
+            // 打开文件夹中所有书签
+            if (folder.children) {
+                const bookmarks = folder.children.filter(item => item.url);
+                bookmarks.forEach(bookmark => {
+                    window.open(bookmark.url, "_blank");
+                });
+            }
+            folderMenu.classList.remove('visible');
+        });
+        
+        // 点击其他区域关闭菜单
+        const closeFolderMenu = (e) => {
+            if (!folderMenu.contains(e.target)) {
+                folderMenu.classList.remove('visible');
+                document.removeEventListener('click', closeFolderMenu);
+            }
+        };
+        
+        setTimeout(() => {
+            document.addEventListener('click', closeFolderMenu);
+        }, 10);
     },
 
     /**
@@ -868,18 +1045,34 @@ export const BookmarkManager = {
         
         // 构建菜单
         contextMenu.innerHTML = `
-            <div id="bookmark-delete" class="context-menu-item">${I18n.getMessage('delete') || '删除'}</div>
-            <div id="bookmark-move-up" class="context-menu-item ${index === 0 ? 'disabled' : ''}">${I18n.getMessage('moveUp') || '上移'}</div>
-            <div id="bookmark-move-down" class="context-menu-item ${index === bookmarks.length - 1 ? 'disabled' : ''}">${I18n.getMessage('moveDown') || '下移'}</div>
+            <div id="bookmark-delete" class="context-menu-item">${I18n.getMessage('delete')}</div>
+            <div id="bookmark-move-up" class="context-menu-item ${index === 0 ? 'disabled' : ''}">${I18n.getMessage('moveUp')}</div>
+            <div id="bookmark-move-down" class="context-menu-item ${index === bookmarks.length - 1 ? 'disabled' : ''}">${I18n.getMessage('moveDown')}</div>
         `;
         
         // 删除按钮事件
         document.getElementById('bookmark-delete').addEventListener('click', async () => {
-            if(confirm(I18n.getMessage('confirmDeleteBookmark') || '确定要删除此书签吗？')) {
-                bookmarks.splice(index, 1);
-                await this.saveBookmarks();
-                this.renderBookmarks();
-            }
+            Utils.UI.notify({
+                title: I18n.getMessage('confirm'),
+                message: I18n.getMessage('confirmDeleteBookmark'),
+                type: 'confirm',
+                duration: 0,
+                buttons: [
+                    {
+                        text: I18n.getMessage('confirm'),
+                        class: 'btn-primary',
+                        callback: async () => {
+                            bookmarks.splice(index, 1);
+                            await this.saveBookmarks();
+                            this.renderBookmarks();
+                        }
+                    },
+                    {
+                        text: I18n.getMessage('cancel'),
+                        callback: () => {}
+                    }
+                ]
+            });
             contextMenu.style.display = 'none';
         });
         
@@ -915,112 +1108,6 @@ export const BookmarkManager = {
     },
 
     /**
-     * 显示书签模态框
-     */
-    showBookmarkModal: function() {
-        // 检查是否已存在模态框
-        let modal = document.getElementById('bookmark-modal');
-        if (!modal) {
-            // 创建模态框结构
-            modal = Utils.createElement('div', 'modal', { id: 'bookmark-modal' });
-            const modalContent = Utils.createElement('div', 'modal-content');
-            
-            modalContent.innerHTML = `
-                <span class="modal-close">&times;</span>
-                <h2>${I18n.getMessage('addBookmark')}</h2>
-                <div class="modal-form">
-                    <div class="form-group">
-                        <label for="bookmark-title">${I18n.getMessage('title')}</label>
-                        <input type="text" id="bookmark-title" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="bookmark-url">${I18n.getMessage('url')}</label>
-                        <input type="url" id="bookmark-url" required>
-                    </div>
-                    <div class="form-actions">
-                        <button id="bookmark-cancel" class="btn">${I18n.getMessage('cancel')}</button>
-                        <button id="bookmark-confirm" class="btn btn-primary">${I18n.getMessage('confirm')}</button>
-                    </div>
-                </div>
-            `;
-            
-            modal.appendChild(modalContent);
-            document.body.appendChild(modal);
-        }
-        
-        // 使用 utils.js 中的 showModal 函数显示模态框
-        Utils.Modal.show('bookmark-modal');
-        
-        // 绑定确认按钮事件
-        const confirmBtn = document.getElementById('bookmark-confirm');
-        if (confirmBtn) {
-            const newConfirmBtn = confirmBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-            newConfirmBtn.addEventListener('click', this.addNewBookmark.bind(this));
-        }
-        
-        // 绑定取消按钮事件
-        const cancelBtn = document.getElementById('bookmark-cancel');
-        if (cancelBtn) {
-            const newCancelBtn = cancelBtn.cloneNode(true);
-            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-            newCancelBtn.addEventListener('click', () => {
-                Utils.Modal.hide('bookmark-modal');
-            });
-        }
-    },
-
-    /**
-     * 添加新书签
-     */
-    addNewBookmark: async function() {
-        const titleInput = document.getElementById('bookmark-title');
-        const urlInput = document.getElementById('bookmark-url');
-        
-        if (!titleInput || !urlInput) return;
-        
-        const title = titleInput.value.trim();
-        let url = urlInput.value.trim();
-        
-        // 验证输入
-        if (!title || !url) {
-            Utils.UI.showErrorMessage('标题和URL不能为空');
-            return;
-        }
-        
-        // 确保URL格式正确
-        if (!/^https?:\/\//i.test(url)) {
-            url = 'https://' + url;
-        }
-        
-        try {
-            // 验证URL是否有效
-            new URL(url);
-            
-            // 添加到书签列表
-            bookmarks.push({
-                title,
-                url,
-                addedTime: new Date().getTime()
-            });
-            
-            // 保存并更新显示
-            await this.saveBookmarks();
-            this.renderBookmarks();
-            
-            // 关闭模态框并清空输入
-            Utils.Modal.hide('bookmark-modal');
-            titleInput.value = '';
-            urlInput.value = '';
-            
-            Utils.UI.showNotification('成功', '书签已添加', 2000);
-            
-        } catch (error) {
-            Utils.UI.showErrorMessage('URL格式无效');
-        }
-    },
-
-    /**
      * 保存书签数据到存储
      * @returns {Promise<void>}
      */
@@ -1028,38 +1115,13 @@ export const BookmarkManager = {
         try {
             await chrome.storage.sync.set({ bookmarks });
         } catch (error) {
-            Utils.UI.showErrorModal('保存书签失败:', error);
+            Utils.UI.notify({
+                title: I18n.getMessage('saveFailed'),
+                message: error.message || I18n.getMessage('saveFailed'),
+                type: 'error',
+                duration: 5000
+            });
         }
-    },
-
-    /**
-     * 处理右键菜单事件
-     * @param {Event} event - 事件对象
-     */
-    handleContextMenu: function(event) {
-        if (!event.target.matches('input, textarea, [contenteditable="true"]')) {
-            // 自定义右键菜单处理
-            if (event.target.closest('.shortcut-button') || event.target.closest('.bookmark')) {
-                // 已有处理逻辑
-            } else {
-                // 可根据需要阻止默认菜单
-            }
-        }
-
-        // 创建或显示上下文菜单
-        let contextMenu = document.getElementById('shortcut-context-menu');
-        if (!contextMenu) {
-            // 创建菜单
-            // ... 原有代码 ...
-        }
-        
-        // 设置菜单位置使用CSS类
-        contextMenu.classList.add('context-menu-positioned');
-        contextMenu.style.left = `${event.pageX}px`;
-        contextMenu.style.top = `${event.pageY}px`;
-        contextMenu.classList.add('visible');
-        
-        // ... 原有代码 ...
     },
 
     /**
