@@ -105,11 +105,78 @@ export const Utils = {
         // 如果已存在，确保它是可见的
         loadingNotification.classList.add('visible');
         Utils.UI.adjustNotificationPositions();
+        // 如果已存在，确保它是可见的
+        loadingNotification.classList.add('visible');
+        Utils.UI.adjustNotificationPositions();
       }
+      
+      return loadingNotification;
       
       return loadingNotification;
     },
 
+    updateLoadingProgress: (() => {
+      let lastUpdateTime = 0;
+      let lastPercent = 0;
+      let pendingUpdate = null;
+      const MIN_DISPLAY_TIME = 500; // 最低显示时间为500毫秒(0.5秒)
+
+      return (percent, message) => {
+        const loadingNotification = document.querySelector('.notification.loading-notification');
+        if (!loadingNotification) return;
+        
+        const progressBar = loadingNotification.querySelector('.notification-loading-bar');
+        const loadingMessage = loadingNotification.querySelector('.notification-loading-message');
+        
+        const currentTime = Date.now();
+        const timeElapsed = currentTime - lastUpdateTime;
+        
+        // 计算实际显示的百分比，确保平滑过渡
+        let displayPercent = percent;
+        
+        // 如果有待处理的更新，取消它
+        if (pendingUpdate) {
+          clearTimeout(pendingUpdate);
+          pendingUpdate = null;
+        }
+        
+        // 如果距离上次更新不足最低显示时间，则延迟更新
+        if (lastUpdateTime > 0 && timeElapsed < MIN_DISPLAY_TIME) {
+          pendingUpdate = setTimeout(() => {
+            // 递归调用以执行实际更新
+            Utils.UI.updateLoadingProgress(percent, message);
+          }, MIN_DISPLAY_TIME - timeElapsed);
+          return;
+        }
+        
+        // 更新进度条
+        if (progressBar) {
+          // 如果百分比增加很大，使用平滑过渡
+          if (percent > lastPercent) {
+            progressBar.style.transition = `width ${Math.min(300, MIN_DISPLAY_TIME)}ms ease-out`;
+          }
+          progressBar.style.width = `${displayPercent}%`;
+        }
+        
+        // 更新消息文本
+        if (loadingMessage && message) {
+          loadingMessage.style.opacity = '0';
+          setTimeout(() => {
+            loadingMessage.textContent = message;
+            loadingMessage.style.opacity = '1';
+          }, 200);
+        }
+        
+        // 如果达到100%，添加完成样式
+        if (percent >= 100) {
+          loadingNotification.classList.add('load-complete');
+        }
+        
+        // 更新状态追踪变量
+        lastUpdateTime = currentTime;
+        lastPercent = displayPercent;
+      };
+    })(),
     updateLoadingProgress: (() => {
       let lastUpdateTime = 0;
       let lastPercent = 0;
@@ -190,7 +257,29 @@ export const Utils = {
         loadingNotification.classList.add('load-complete');
         setTimeout(() => {
           loadingNotification.classList.remove('visible');
+      const loadingNotification = document.querySelector('.notification.loading-notification');
+      if (!loadingNotification) return;
+      
+      if (force) {
+        loadingNotification.classList.remove('visible');
+        setTimeout(() => {
+          if (document.body.contains(loadingNotification)) {
+            document.body.removeChild(loadingNotification);
+            Utils.UI.adjustNotificationPositions();
+          }
+        }, 300);
+      } else {
+        // 添加完成动画，然后隐藏
+        loadingNotification.classList.add('load-complete');
+        setTimeout(() => {
+          loadingNotification.classList.remove('visible');
           setTimeout(() => {
+            if (document.body.contains(loadingNotification)) {
+              document.body.removeChild(loadingNotification);
+              Utils.UI.adjustNotificationPositions();
+            }
+          }, 300);
+        }, 1000); // 显示完成状态1秒后关闭
             if (document.body.contains(loadingNotification)) {
               document.body.removeChild(loadingNotification);
               Utils.UI.adjustNotificationPositions();
@@ -201,6 +290,11 @@ export const Utils = {
     },
 
     showErrorMessage: message => {
+      const loadingNotification = document.querySelector('.notification.loading-notification');
+      if (!loadingNotification) return;
+      
+      const loadingMessage = loadingNotification.querySelector('.notification-loading-message');
+      const progressBar = loadingNotification.querySelector('.notification-loading-bar');
       const loadingNotification = document.querySelector('.notification.loading-notification');
       if (!loadingNotification) return;
       
@@ -217,6 +311,18 @@ export const Utils = {
       setTimeout(() => Utils.UI.hideLoadingIndicator(true), 5000);
     },
 
+    notify: (options) => {
+      const { 
+        title = '', 
+        message = '', 
+        type = 'info', 
+        duration = 5000, 
+        buttons = null, 
+        onClose = null 
+      } = options;
+
+      const notification = Utils.createElement('div', `notification notification-${type}`);
+      notification.dataset.visible = 'false';
     notify: (options) => {
       const { 
         title = '', 
@@ -261,12 +367,16 @@ export const Utils = {
       document.body.appendChild(notification);
       
       // 设置位置偏移
+      // 设置位置偏移
       setTimeout(() => {
+        notification.classList.add('visible');
+        Utils.UI.adjustNotificationPositions();
         notification.classList.add('visible');
         Utils.UI.adjustNotificationPositions();
       }, 10);
       
       const closeNotification = () => {
+        notification.classList.remove('visible');
         notification.classList.remove('visible');
         
         setTimeout(() => {
@@ -377,9 +487,90 @@ export const Utils = {
           Utils.UI.notificationManager.updateVisibility();
         }
       }
+      
+      // 添加可见性检查函数
+      const checkVisibilityAndSetTimeout = () => {
+        if (notification.dataset.visible === 'true' && duration > 0) {
+          timeoutId = setTimeout(closeNotification, duration);
+        }
+      };
+      
+      // 添加到通知管理系统
+      Utils.UI.notificationManager.add(notification, duration, closeNotification, checkVisibilityAndSetTimeout);
+      
+      return { 
+        close: closeNotification,
+        getElement: () => notification 
+      };
+    },
+
+    // 通知管理系统
+    notificationManager: {
+      notifications: [],
+      visibleLimit: 3, // 最大同时显示数量
+      
+      add: (notification, duration, closeCallback, visibilityCallback) => {
+        const notificationItem = {
+          element: notification,
+          duration,
+          close: closeCallback,
+          checkVisibility: visibilityCallback
+        };
+        
+        Utils.UI.notificationManager.notifications.push(notificationItem);
+        Utils.UI.notificationManager.updateVisibility();
+      },
+      
+      updateVisibility: () => {
+        const notifications = Utils.UI.notificationManager.notifications;
+        
+        // 更新所有通知的可见状态
+        notifications.forEach((item, index) => {
+          if (index < Utils.UI.notificationManager.visibleLimit) {
+            item.element.dataset.visible = 'true';
+            item.checkVisibility(); // 对可见通知检查是否需要启动定时器
+          } else {
+            item.element.dataset.visible = 'false';
+            // 隐藏的通知不触发消失
+          }
+        });
+      },
+      
+      remove: (notification) => {
+        const index = Utils.UI.notificationManager.notifications.findIndex(
+          item => item.element === notification
+        );
+        
+        if (index !== -1) {
+          Utils.UI.notificationManager.notifications.splice(index, 1);
+          Utils.UI.notificationManager.updateVisibility();
+        }
+      }
     },
 
     adjustNotificationPositions: () => {
+      const notifications = document.querySelectorAll('.notification');
+      notifications.forEach((notification, index) => {
+        // 清除所有偏移类
+        notification.classList.remove(
+          'notification-offset-0', 'notification-offset-1', 'notification-offset-2', 
+          'notification-offset-3', 'notification-offset-4', 'notification-offset-5'
+        );
+        
+        // 重新添加正确的偏移类
+        notification.classList.add(`notification-offset-${index}`);
+      });
+      
+      // 更新通知管理系统
+      Utils.UI.notificationManager.updateVisibility();
+    },
+
+    /**
+     * @deprecated 请使用 Utils.UI.notify() 代替
+     */
+    showNotification: (title, message, duration = 5000, type = 'info', buttons = null, onClose = null) => {
+      console.warn('Utils.UI.showNotification() 已弃用，请使用 Utils.UI.notify() 代替');
+      return Utils.UI.notify({ title, message, duration, type, buttons, onClose });
       const notifications = document.querySelectorAll('.notification');
       notifications.forEach((notification, index) => {
         // 清除所有偏移类
@@ -407,7 +598,11 @@ export const Utils = {
     /**
      * @deprecated 请使用 Utils.UI.notify() 代替
      */
+    /**
+     * @deprecated 请使用 Utils.UI.notify() 代替
+     */
     showConfirmDialog: (message, onConfirm, onCancel) => {
+      console.warn('Utils.UI.showConfirmDialog() 已弃用，请使用 Utils.UI.notify() 代替');
       console.warn('Utils.UI.showConfirmDialog() 已弃用，请使用 Utils.UI.notify() 代替');
       const buttons = [
         {
@@ -424,24 +619,38 @@ export const Utils = {
       
       return Utils.UI.notify({
         title: I18n.getMessage('confirm') || '确认',
+      return Utils.UI.notify({
+        title: I18n.getMessage('confirm') || '确认',
         message,
         duration: 0,
         type: 'confirm',
+        duration: 0,
+        type: 'confirm',
         buttons
+      });
       });
     },
 
     /**
      * @deprecated 请使用 Utils.UI.notify() 代替
      */
+    /**
+     * @deprecated 请使用 Utils.UI.notify() 代替
+     */
     showErrorModal: (title, message, logOnly = true) => {
+      console.warn('Utils.UI.showErrorModal() 已弃用，请使用 Utils.UI.notify() 代替');
       console.warn('Utils.UI.showErrorModal() 已弃用，请使用 Utils.UI.notify() 代替');
       console.error(message);
       if (logOnly) return undefined;
       
       return Utils.UI.notify({
         title: title || I18n.getMessage('error') || '错误',
+      return Utils.UI.notify({
+        title: title || I18n.getMessage('error') || '错误',
         message,
+        duration: 0,
+        type: 'error',
+        buttons: [{
         duration: 0,
         type: 'error',
         buttons: [{
@@ -452,7 +661,112 @@ export const Utils = {
       });
     }
   },
+      });
+    }
+  },
 
+  showFormModal: (title, formItems, onConfirm, confirmText, cancelText) => {
+    const modalId = 'form-modal-' + Date.now();
+    const modal = Utils.createElement('div', 'modal', { id: modalId });
+    
+    const modalContent = Utils.createElement('div', 'modal-content', {}, 
+      `<span class="modal-close">&times;</span><h2>${title}</h2>`);
+    
+    const formContainer = Utils.createElement('div', 'modal-form');
+    
+    formItems.forEach(item => {
+      const formGroup = Utils.createElement('div', 'form-group');
+      
+      const label = Utils.createElement('label', '', { for: item.id }, item.label);
+      
+      let input;
+      if (item.type === 'textarea') {
+        input = Utils.createElement('textarea', '', { id: item.id });
+      } else {
+        input = Utils.createElement('input', '', { 
+          id: item.id, 
+          type: item.type || 'text' 
+        });
+      }
+      
+      if (item.placeholder) input.placeholder = item.placeholder;
+      if (item.required) input.required = true;
+      if (item.value) input.value = item.value;
+      
+      formGroup.append(label, input);
+      formContainer.appendChild(formGroup);
+    });
+    
+    const actionDiv = Utils.createElement('div', 'form-actions');
+
+    const cancelButton = Utils.createElement(
+      'button', 
+      'btn', 
+      { id: `${modalId}-cancel` },
+      cancelText || I18n.getMessage('cancel') || '取消'
+    );
+
+    const confirmButton = Utils.createElement(
+      'button', 
+      'btn btn-primary', 
+      { id: `${modalId}-confirm` },
+      confirmText || I18n.getMessage('confirm') || '确认'
+    );
+    
+    actionDiv.append(cancelButton, confirmButton);
+    formContainer.appendChild(actionDiv);
+    modalContent.appendChild(formContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    modal.style.display = 'block';
+    
+    const close = () => {
+      modal.style.display = 'none';
+      setTimeout(() => {
+        if (document.body.contains(modal)) document.body.removeChild(modal);
+      }, 300);
+    };
+    
+    confirmButton.addEventListener('click', () => {
+      const formData = {};
+      let allFilled = true;
+      
+      formItems.forEach(item => {
+        const input = document.getElementById(item.id);
+        if (input) {
+          formData[item.id] = input.value.trim();
+          if (item.required && !formData[item.id]) {
+            input.classList.add('error');
+            allFilled = false;
+          }
+        }
+      });
+      
+      if (!allFilled) {
+        let errorMessage = document.getElementById(`${modalId}-error`);
+        if (!errorMessage) {
+          errorMessage = Utils.createElement(
+            'div', 
+            'form-error', 
+            { id: `${modalId}-error` }, 
+            I18n.getMessage('pleaseCompleteAllFields') || '请填写所有必填项'
+          );
+          formContainer.insertBefore(errorMessage, actionDiv);
+        }
+        return;
+      }
+      
+      onConfirm(formData);
+      close();
+    });
+    
+    cancelButton.addEventListener('click', close);
+    
+    modal.querySelector('.modal-close').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    
+    return { close };
   showFormModal: (title, formItems, onConfirm, confirmText, cancelText) => {
     const modalId = 'form-modal-' + Date.now();
     const modal = Utils.createElement('div', 'modal', { id: modalId });
@@ -579,6 +893,7 @@ export const Utils = {
         return;
       }
       
+      modal.classList.add('visible');
       modal.classList.add('visible');
       
       if (!modal.dataset.initialized) {
@@ -1087,6 +1402,7 @@ export const Utils = {
 
     handlePageLoad: () => {
       // 不需要再处理旧的全屏加载元素
+      // 不需要再处理旧的全屏加载元素
       const searchInput = document.getElementById('search-input');
       if (searchInput) setTimeout(() => searchInput.focus(), 100);
     },
@@ -1109,6 +1425,7 @@ export const Utils = {
       document.addEventListener('keydown', this.handleKeyDown);
       document.addEventListener('click', this.handleDocumentClick);
       Utils.Modal.initEvents();
+      Utils.ContextMenu.init(); // 初始化上下文菜单
       Utils.ContextMenu.init(); // 初始化上下文菜单
     }
   }

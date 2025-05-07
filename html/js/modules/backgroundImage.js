@@ -113,6 +113,9 @@ class BackgroundManager {
             // 保存旧的背景类型
             const oldType = this.settings.type;
             
+            // 保存旧的背景类型
+            const oldType = this.settings.type;
+            
             // 根据是否有自定义图片决定切换类型
             if (this.settings.customImageData) {
                 // 在bing和custom间切换
@@ -122,9 +125,17 @@ class BackgroundManager {
                 if (this.settings.type !== 'custom') {
                     await chrome.storage.local.set({ lastNonCustomBgType: this.settings.type });
                 }
+                
+                // 如果切换到非custom类型，保存为最后一个非自定义类型
+                if (this.settings.type !== 'custom') {
+                    await chrome.storage.local.set({ lastNonCustomBgType: this.settings.type });
+                }
             } else {
                 // 在bing和default间切换
                 this.settings.type = this.settings.type === 'bing' ? 'default' : 'bing';
+                
+                // 保存当前非自定义类型
+                await chrome.storage.local.set({ lastNonCustomBgType: this.settings.type });
                 
                 // 保存当前非自定义类型
                 await chrome.storage.local.set({ lastNonCustomBgType: this.settings.type });
@@ -157,6 +168,8 @@ class BackgroundManager {
                 'bgType', 
                 'customImage', 
                 'backgroundBlur', 
+                'backgroundDark',
+                'lastNonCustomBgType'
                 'backgroundDark',
                 'lastNonCustomBgType'
             ]);
@@ -247,6 +260,11 @@ class BackgroundManager {
      */
     async setImage() {
         try {
+            // 显示加载指示器
+            Utils.UI.showLoadingIndicator();
+            Utils.UI.updateLoadingProgress(10, I18n.getMessage('loadingBackground'));
+            
+            // 获取背景容器元素
             // 显示加载指示器
             Utils.UI.showLoadingIndicator();
             Utils.UI.updateLoadingProgress(10, I18n.getMessage('loadingBackground'));

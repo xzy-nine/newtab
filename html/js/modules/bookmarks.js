@@ -26,6 +26,10 @@ export const BookmarkManager = {
             Utils.UI.showLoadingIndicator('bookmarks-container');
             Utils.UI.updateLoadingProgress(10, I18n.getMessage('loadingBookmarks'));
             
+            // 显示加载指示器
+            Utils.UI.showLoadingIndicator('bookmarks-container');
+            Utils.UI.updateLoadingProgress(10, I18n.getMessage('loadingBookmarks'));
+            
             // 并行加载数据提高效率
             const [_, chromeBookmarks] = await Promise.all([
                 this.loadBookmarks(),
@@ -33,12 +37,22 @@ export const BookmarkManager = {
             ]);
             
             Utils.UI.updateLoadingProgress(80, I18n.getMessage('renderingBookmarks'));
+            Utils.UI.updateLoadingProgress(80, I18n.getMessage('renderingBookmarks'));
             this.renderBookmarks();
             this.initEvents();
             
             Utils.UI.updateLoadingProgress(100, I18n.getMessage('ready'));
             setTimeout(() => Utils.UI.hideLoadingIndicator(), 500);
+            
+            Utils.UI.updateLoadingProgress(100, I18n.getMessage('ready'));
+            setTimeout(() => Utils.UI.hideLoadingIndicator(), 500);
         } catch (error) {
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
             Utils.UI.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
@@ -58,6 +72,12 @@ export const BookmarkManager = {
             const result = await chrome.storage.sync.get('bookmarks');
             bookmarks = result.bookmarks || [];
         } catch (error) {
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
             Utils.UI.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
@@ -105,6 +125,12 @@ export const BookmarkManager = {
                 type: 'error',
                 duration: 5000
             });
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
         }
     },
 
@@ -114,6 +140,62 @@ export const BookmarkManager = {
      * @param {HTMLElement} container - 容器元素
      */
     createRootFolderButton: function(folder, container) {
+        try {
+            // 创建文件夹按钮
+            let folderButton = Utils.createElement("div", "folder-button", {id: `folder-${folder.id}`});
+            
+            // 检查是否有非空子文件夹
+            const nonEmptySubFolders = folder.children.filter(child => 
+                child.children && !this.isFolderEmpty(child)
+            );
+            const hasNonEmptySubFolders = nonEmptySubFolders.length > 0;
+            
+            // 添加内容
+            const folderContent = Utils.createElement("div", "folder-content folder-indent-0", {}, `
+                <span class="folder-arrow">${hasNonEmptySubFolders ? '▶' : ''}</span>
+                <span class="folder-icon">📁</span>
+                <span class="folder-name">${folder.title || I18n.getMessage('untitledFolder')}</span>
+            `);
+            
+            folderButton.appendChild(folderContent);
+            
+            // 存储文件夹数据到按钮元素
+            folderButton.folderData = folder;
+            
+            // 添加按钮到父元素
+            container.appendChild(folderButton);
+            
+            // 只有存在非空子文件夹时才创建子容器
+            if (hasNonEmptySubFolders) {
+                // 创建子文件夹容器
+                let subFolderContainer = Utils.createElement("div", "folder-children folder-children-initial", 
+                                                    {id: `children-${folder.id}`});
+                
+                // 添加到DOM
+                container.appendChild(subFolderContainer);
+                
+                // 对子文件夹进行排序处理
+                const sortedSubFolders = this.sortFoldersByStructure(nonEmptySubFolders);
+                
+                // 递归处理子文件夹
+                for (let childFolder of sortedSubFolders) {
+                    this.createFolderButtonsRecursive(childFolder, subFolderContainer, 1);
+                }
+            }
+            
+            // 添加点击事件监听
+            folderButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.handleFolderClick(folderButton, folder);
+            });
+        } catch (error) {
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
+        }
         try {
             // 创建文件夹按钮
             let folderButton = Utils.createElement("div", "folder-button", {id: `folder-${folder.id}`});
@@ -239,6 +321,39 @@ export const BookmarkManager = {
             });
             return folders;
         }
+        try {
+            // 先按是否有子文件夹分组
+            const foldersWithChildren = [];
+            const foldersWithoutChildren = [];
+            
+            // 遍历所有非空文件夹
+            for (let folder of folders) {
+                const hasSubfolders = folder.children.some(child => 
+                    child.children && !this.isFolderEmpty(child)
+                );
+                
+                if (hasSubfolders) {
+                    foldersWithChildren.push(folder);
+                } else {
+                    foldersWithoutChildren.push(folder);
+                }
+            }
+            
+            // 每组内按名字排序
+            foldersWithoutChildren.sort((a, b) => a.title.localeCompare(b.title));
+            foldersWithChildren.sort((a, b) => a.title.localeCompare(b.title));
+            
+            // 无子文件夹的排在前面
+            return [...foldersWithoutChildren, ...foldersWithChildren];
+        } catch (error) {
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
+            return folders;
+        }
     },
 
     /**
@@ -256,6 +371,7 @@ export const BookmarkManager = {
             let folderButton = Utils.createElement("div", "folder-button", {
                 id: `folder-${folder.id}`,
                 'data-folder-name': folder.title || I18n.getMessage('untitledFolder')
+                'data-folder-name': folder.title || I18n.getMessage('untitledFolder')
             });
             
             // 获取所有非空子文件夹
@@ -268,6 +384,7 @@ export const BookmarkManager = {
             const folderContent = Utils.createElement("div", `folder-content folder-indent-${level}`, {}, `
                 <span class="folder-arrow">${hasNonEmptySubFolders ? '▶' : ''}</span>
                 <span class="folder-icon">📁</span>
+                <span class="folder-name">${folder.title || I18n.getMessage('untitledFolder')}</span>
                 <span class="folder-name">${folder.title || I18n.getMessage('untitledFolder')}</span>
             `);
             
@@ -302,6 +419,12 @@ export const BookmarkManager = {
                 type: 'error',
                 duration: 5000
             });
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
         }
     },
 
@@ -327,6 +450,12 @@ export const BookmarkManager = {
                 }
             }
         }).catch(err => {
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: err.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
             Utils.UI.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: err.message || I18n.getMessage('genericError'),
@@ -410,6 +539,25 @@ export const BookmarkManager = {
     },
 
     /**
+     * 打开文件夹
+     * @param {HTMLElement} button - 文件夹按钮元素
+     * @param {HTMLElement} children - 子元素容器
+     */
+    openFolder: function(button, children) {
+        button.classList.add('open');
+        
+        // 只有在有箭头内容时才旋转箭头
+        const arrow = button.querySelector('.folder-arrow');
+        if (arrow && arrow.textContent) {
+            arrow.textContent = '▼';
+        }
+        
+        // 使用直观的类名切换
+        children.classList.remove('folder-children-closed');
+        children.classList.add('folder-children-open');
+    },
+
+    /**
      * 关闭文件夹
      * @param {HTMLElement} button - 文件夹按钮元素
      * @param {HTMLElement} children - 子元素容器
@@ -425,6 +573,7 @@ export const BookmarkManager = {
             arrowElement.textContent = '▶';
         }
         
+        // 使用直观的类名切换
         // 使用直观的类名切换
         children.classList.remove('folder-children-open');
         children.classList.add('folder-children-closed');
@@ -467,11 +616,13 @@ export const BookmarkManager = {
             if (!shortcut.url) return;
             
             // 使用Utils.createElement代替手动创建
+            // 使用Utils.createElement代替手动创建
             let shortcutButton = Utils.createElement("button", "shortcut-button", {title: shortcut.title});
             
             // 检查是否有自定义图标
             this.getCustomIconForShortcut(shortcut, shortcutButton);
             
+            // 添加标题，使用Utils.createElement替代createElement
             // 添加标题，使用Utils.createElement替代createElement
             shortcutButton.appendChild(
                 Utils.createElement("span", "shortcut-title", {}, shortcut.title)
@@ -494,6 +645,133 @@ export const BookmarkManager = {
      * @param {Object} shortcut - 快捷方式数据
      */
     showShortcutContextMenu: function(event, shortcut) {
+        event.preventDefault();
+        Utils.ContextMenu.show(event, [
+            {
+                id: 'custom-icon',
+                text: I18n.getMessage('customIcon'),
+                callback: () => this.showIconSelectorModal(shortcut)
+            },
+            {
+                id: 'reset-icon',
+                text: I18n.getMessage('resetIcon'),
+                callback: () => this.resetShortcutIcon(shortcut)
+            }
+        ], {menuId: 'shortcut-context-menu'});
+    },
+
+    /**
+     * 显示文件夹上下文菜单
+     * @param {Event} event - 事件对象
+     * @param {Object} folder - 文件夹数据
+     */
+    showFolderContextMenu: function(event, folder) {
+        Utils.ContextMenu.show(event, [
+            {
+                id: 'open-all-bookmarks',
+                text: I18n.getMessage('openAllBookmarks'),
+                callback: () => {
+                    // 打开文件夹中所有书签
+                    if (folder.children) {
+                        const bookmarks = folder.children.filter(item => item.url);
+                        bookmarks.forEach(bookmark => {
+                            window.open(bookmark.url, "_blank");
+                        });
+                    }
+                }
+            }
+        ], {menuId: 'folder-context-menu'});
+    },
+
+    /**
+     * 处理右键菜单事件
+     * @param {Event} event - 事件对象
+     */
+    handleContextMenu: function(event) {
+        // 检查是否在输入框内，如果是则使用默认右键菜单
+        if (event.target.matches('input, textarea, [contenteditable="true"]')) {
+            return; // 使用浏览器默认右键菜单
+        }
+
+        // 处理特定元素的右键菜单
+        const shortcutButton = event.target.closest('.shortcut-button');
+        const bookmarkElement = event.target.closest('.bookmark');
+        
+        // 快捷方式按钮或书签元素已有专门的处理逻辑，直接返回
+        if (shortcutButton || bookmarkElement) {
+            return; // 这些元素有自己的上下文菜单处理逻辑
+        }
+        
+        // 阻止默认右键菜单
+        event.preventDefault();
+
+        // 检查是否在文件夹上右击
+        const folderButton = event.target.closest('.folder-button');
+        if (folderButton && folderButton.folderData) {
+            this.showFolderContextMenu(event, folderButton.folderData);
+            return;
+        }
+    },
+
+    /**
+     * 显示书签上下文菜单
+     * @param {Event} e - 事件对象
+     * @param {number} index - 书签索引
+     */
+    showContextMenu: function(e, index) {
+        Utils.ContextMenu.show(e, [
+            {
+                id: 'bookmark-delete',
+                text: I18n.getMessage('delete'),
+                callback: () => {
+                    Utils.UI.notify({
+                        title: I18n.getMessage('confirm'),
+                        message: I18n.getMessage('confirmDeleteBookmark'),
+                        type: 'confirm',
+                        duration: 0,
+                        buttons: [
+                            {
+                                text: I18n.getMessage('confirm'),
+                                class: 'btn-primary',
+                                callback: () => {
+                                    bookmarks.splice(index, 1);
+                                    this.saveBookmarks();
+                                    this.renderBookmarks();
+                                }
+                            },
+                            {
+                                text: I18n.getMessage('cancel'),
+                                callback: () => {}
+                            }
+                        ]
+                    });
+                }
+            },
+            {
+                id: 'bookmark-move-up',
+                text: I18n.getMessage('moveUp'),
+                disabled: index === 0,
+                callback: async () => {
+                    if (index > 0) {
+                        [bookmarks[index - 1], bookmarks[index]] = [bookmarks[index], bookmarks[index - 1]];
+                        await this.saveBookmarks();
+                        this.renderBookmarks();
+                    }
+                }
+            },
+            {
+                id: 'bookmark-move-down',
+                text: I18n.getMessage('moveDown'),
+                disabled: index === bookmarks.length - 1,
+                callback: async () => {
+                    if (index < bookmarks.length - 1) {
+                        [bookmarks[index + 1], bookmarks[index]] = [bookmarks[index], bookmarks[index + 1]];
+                        await this.saveBookmarks();
+                        this.renderBookmarks();
+                    }
+                }
+            }
+        ], {menuId: 'bookmark-context-menu'});
         event.preventDefault();
         Utils.ContextMenu.show(event, [
             {
@@ -698,6 +976,8 @@ export const BookmarkManager = {
             if (iconFile) {
                 // 直接使用 Utils.blobToBase64
                 iconData = await Utils.blobToBase64(iconFile);
+                // 直接使用 Utils.blobToBase64
+                iconData = await Utils.blobToBase64(iconFile);
             } 
             // 其次使用URL
             else if (iconUrl) {
@@ -721,7 +1001,21 @@ export const BookmarkManager = {
                 duration: 2000
             });
             
+            Utils.UI.notify({
+                title: I18n.getMessage('success'),
+                message: I18n.getMessage('iconUpdated'),
+                type: 'success',
+                duration: 2000
+            });
+            
         } catch (error) {
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
+        }
             Utils.UI.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
@@ -793,8 +1087,20 @@ export const BookmarkManager = {
                 type: 'info',
                 duration: 2000
             });
+            Utils.UI.notify({
+                title: I18n.getMessage('iconReset'),
+                message: I18n.getMessage('fetchingDefaultIcon'),
+                type: 'info',
+                duration: 2000
+            });
             
         } catch (error) {
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
             Utils.UI.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
@@ -813,6 +1119,12 @@ export const BookmarkManager = {
             const result = await chrome.storage.local.get('customIcons');
             return result.customIcons || {};
         } catch (error) {
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
             Utils.UI.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
@@ -847,6 +1159,12 @@ export const BookmarkManager = {
                 type: 'error',
                 duration: 5000
             });
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
         }
     },
 
@@ -875,8 +1193,15 @@ export const BookmarkManager = {
                 type: 'error',
                 duration: 5000
             });
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
             // 出错时使用默认图标
             IconManager.getIconUrl(shortcut.url, element);
+            console.error(I18n.getMessage('fetchCustomIconFailed'), error);
             console.error(I18n.getMessage('fetchCustomIconFailed'), error);
         }
     },
@@ -962,6 +1287,7 @@ export const BookmarkManager = {
         const icon = Utils.createElement('div', 'bookmark-icon');
         const iconImg = Utils.createElement('img');
         // 使用Utils.getDomain替代手动提取域名
+        // 使用Utils.getDomain替代手动提取域名
         iconImg.src = bookmark.customIcon || `${Utils.getDomain(bookmark.url)}/favicon.ico`;
         iconImg.onerror = () => { iconImg.src = 'images/default_favicon.png'; };
         
@@ -996,6 +1322,12 @@ export const BookmarkManager = {
                 type: 'error',
                 duration: 5000
             });
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
         }
     },
 
@@ -1013,6 +1345,25 @@ export const BookmarkManager = {
      * @returns {Promise<void>}
      */
     importBookmarks: async function(importedBookmarks) {
+        try {
+            if (!Array.isArray(importedBookmarks)) return;
+            
+            importedBookmarks.forEach(bookmark => {
+                if (!bookmarks.some(b => b.url === bookmark.url)) {
+                    bookmarks.push(bookmark);
+                }
+            });
+            
+            await this.saveBookmarks();
+            this.renderBookmarks();
+        } catch (error) {
+            Utils.UI.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
+        }
         try {
             if (!Array.isArray(importedBookmarks)) return;
             

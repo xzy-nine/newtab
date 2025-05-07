@@ -1,6 +1,7 @@
 /* 模态框相关样式 */
 .modal {
   display: none; /* 默认隐藏 */
+  display: none; /* 默认隐藏 */
   position: fixed;
   top: 0;
   left: 0;
@@ -8,6 +9,10 @@
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 2000;
+}
+
+.modal.visible {
+  display: flex;
 }
 
 .modal.visible {
@@ -71,6 +76,14 @@
 
 .form-actions,
 .notification-actions {
+.form-error {
+  color: #e53935;
+  font-size: 0.9em;
+  margin-top: 5px;
+}
+
+.form-actions,
+.notification-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -110,6 +123,7 @@
   border: none;
 }
 
+.image-preview,
 .image-preview,
 #bookmark-modal .image-preview {
   width: 48px;
@@ -255,9 +269,18 @@
   object-fit: contain;
 }
 
+/* 模态框内预览图片样式 */
+#icon-preview img {
+  max-width: 64px;
+  max-height: 64px;
+  object-fit: contain;
+}
+
 /* 通知系统 */
 .notification {
   position: fixed;
+  top: 20px;
+  left: 20px;
   top: 20px;
   left: 20px;
   width: 220px;
@@ -269,8 +292,24 @@
   transform: translateY(-100%); /* 初始位置在屏幕外 */
   transition: transform 0.3s ease, opacity 0.3s ease;
   opacity: 0;
+  transform: translateY(-100%); /* 初始位置在屏幕外 */
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
   border-left: 3px solid #eaeaea;
 }
+
+.notification.visible {
+  transform: translateY(0); /* 显示位置 */
+  opacity: 0.95;
+}
+
+/* 通知位置调整 */
+.notification-offset-0 { top: 20px; }
+.notification-offset-1 { top: 90px; }
+.notification-offset-2 { top: 160px; }
+.notification-offset-3 { top: 230px; }
+.notification-offset-4 { top: 300px; }
+.notification-offset-5 { top: 370px; }
 
 .notification.visible {
   transform: translateY(0); /* 显示位置 */
