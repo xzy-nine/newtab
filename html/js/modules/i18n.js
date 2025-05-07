@@ -144,7 +144,7 @@ async function loadTranslationsFromFiles() {
     
     console.log(I18n.getMessage('languageFileLoaded').replace('%s', locale));
   } catch (error) {
-    console.error('加载翻译文件失败:', error);
+    console.error(I18n.getMessage('loadTranslationError'), error);
     translations = {}; // 出错时使用空对象
   }
 }

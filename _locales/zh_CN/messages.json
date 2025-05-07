@@ -92,19 +92,19 @@
     "description": "获取必应图片时错误提示"
   },
   "welcomeTitle": {
-    "message": "欢迎使用",
+    "message": "欢迎",
     "description": "欢迎标题"
   },
   "welcomeMessage": {
-    "message": "感谢您安装收藏夹新标签页扩展！",
+    "message": "感谢使用我们的扩展。",
     "description": "欢迎信息"
   },
   "updateTitle": {
-    "message": "已更新",
+    "message": "更新成功",
     "description": "更新标题"
   },
   "updateMessage": {
-    "message": "扩展已从 {oldVersion} 更新至 {newVersion}",
+    "message": "扩展已从版本 $1 更新至 $2",
     "description": "更新信息"
   },
   "customIcon": {
@@ -355,6 +355,14 @@
     "message": "错误",
     "description": "错误提示"
   },
+  "errorTitle": {
+    "message": "错误",
+    "description": "错误提示标题"
+  },
+  "genericError": {
+    "message": "发生未知错误",
+    "description": "通用错误信息"
+  },
   "copyError": {
     "message": "复制失败",
     "description": "复制失败提示"
@@ -384,7 +392,7 @@
     "description": "继续按钮文本"
   },
   "languageFileLoaded": {
-    "message": "已加载 %s 语言文件",
+    "message": "已加载语言文件: %s",
     "description": "语言文件加载完成提示"
   },
   "fetchingDefaultIcon": {
@@ -414,5 +422,47 @@
   "copyLinkFailed": {
     "message": "复制链接到剪贴板失败",
     "description": "链接复制失败提示"
+  },
+  "loading": {
+    "message": "正在加载..."
+  },
+  "loadTranslationError": {
+    "message": "加载翻译文件失败:"
+  },
+  "backgroundRemoved": {
+    "message": "自定义背景已移除",
+    "description": "自定义背景移除提示"
+  },
+  "switchedToBackground": {
+    "message": "已切换到%s背景",
+    "description": "切换到指定背景类型提示"
+  },
+  "bingDailyImage": {
+    "message": "必应每日图片",
+    "description": "必应每日图片名称"
+  },
+  "defaultBackground": {
+    "message": "默认背景",
+    "description": "默认背景名称"
+  },
+  "clearCustomBackgroundError": {
+    "message": "清除自定义背景失败",
+    "description": "清除自定义背景失败提示"
+  },
+  "backgroundUpdated": {
+    "message": "背景已更新",
+    "description": "背景更新成功标题"
+  },
+  "bingDailyImageUpdated": {
+    "message": "必应每日图片已更新",
+    "description": "必应每日图片更新提示"
+  },
+  "backgroundUpdateFailed": {
+    "message": "背景更新失败",
+    "description": "背景更新失败标题"
+  },
+  "customBackgroundSuccess": {
+    "message": "自定义背景图片已成功设置",
+    "description": "自定义背景设置成功提示"
   }
 }

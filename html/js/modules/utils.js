@@ -69,7 +69,7 @@ export const Utils = {
                    '<div class="mini-loader-spinner"></div>' + 
                    '<div class="mini-progress">' +
                    '<div class="notification-loading-bar"></div></div>' +
-                   '<div class="notification-loading-message">正在加载...</div>' +
+                   '<div class="notification-loading-message">' + I18n.getMessage('loading') + '</div>' +
                    '</div>',
           type: 'loading',
           duration: 0 // 不自动关闭
@@ -363,12 +363,12 @@ export const Utils = {
       console.warn('Utils.UI.showConfirmDialog() 已弃用，请使用 Utils.UI.notify() 代替');
       const buttons = [
         {
-          text: I18n.getMessage('confirm') || '确认',
+          text: I18n.getMessage('confirm'),
           class: 'btn-primary confirm-yes',
           callback: () => { if (typeof onConfirm === 'function') onConfirm(); }
         },
         {
-          text: I18n.getMessage('cancel') || '取消',
+          text: I18n.getMessage('cancel'),
           class: 'confirm-no',
           callback: () => { if (typeof onCancel === 'function') onCancel(); }
         }
@@ -718,12 +718,13 @@ export const Utils = {
               buttons: [
                 {
                   text: I18n.getMessage('confirm'),
-                  class: 'btn-primary',
-                  callback: () => callbacks.onDelete && callbacks.onDelete(index)
+                  class: 'btn-primary confirm-yes',
+                  callback: () => { if (typeof callbacks.onDelete === 'function') callbacks.onDelete(index); }
                 },
                 {
                   text: I18n.getMessage('cancel'),
-                  callback: () => {}
+                  class: 'confirm-no',
+                  callback: () => { if (typeof callbacks.onCancel === 'function') callbacks.onCancel(); }
                 }
               ]
             });

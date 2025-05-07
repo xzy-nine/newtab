@@ -96,15 +96,15 @@
     "description": "欢迎标题"
   },
   "welcomeMessage": {
-    "message": "Thank you for installing the Bookmark New Tab Extension!",
+    "message": "Thank you for using our extension.",
     "description": "欢迎信息"
   },
   "updateTitle": {
-    "message": "Updated",
+    "message": "Updated Successfully",
     "description": "更新标题"
   },
   "updateMessage": {
-    "message": "Extension updated from {oldVersion} to {newVersion}",
+    "message": "Extension updated from version $1 to $2",
     "description": "更新信息"
   },
   "customIcon": {
@@ -355,6 +355,14 @@
     "message": "Error",
     "description": "错误提示"
   },
+  "errorTitle": {
+    "message": "Error",
+    "description": "错误提示标题"
+  },
+  "genericError": {
+    "message": "An unknown error occurred",
+    "description": "通用错误信息"
+  },
   "copyError": {
     "message": "Copy failed",
     "description": "复制失败提示"
@@ -384,7 +392,7 @@
     "description": "继续按钮文本"
   },
   "languageFileLoaded": {
-    "message": "Loaded %s language file",
+    "message": "Language file loaded: %s",
     "description": "语言文件加载完成提示"
   },
   "fetchingDefaultIcon": {
@@ -410,5 +418,47 @@
   "copyLinkFailed": {
     "message": "Failed to copy link to clipboard",
     "description": "链接复制失败提示"
+  },
+  "loading": {
+    "message": "Loading..."
+  },
+  "loadTranslationError": {
+    "message": "Failed to load translation file:"
+  },
+  "backgroundRemoved": {
+    "message": "Custom background removed",
+    "description": "自定义背景移除提示"
+  },
+  "switchedToBackground": {
+    "message": "Switched to %s background",
+    "description": "切换到指定背景类型提示"
+  },
+  "bingDailyImage": {
+    "message": "Bing Daily Image",
+    "description": "必应每日图片名称"
+  },
+  "defaultBackground": {
+    "message": "Default",
+    "description": "默认背景名称"
+  },
+  "clearCustomBackgroundError": {
+    "message": "Failed to clear custom background",
+    "description": "清除自定义背景失败提示"
+  },
+  "backgroundUpdated": {
+    "message": "Background Updated",
+    "description": "背景更新成功标题"
+  },
+  "bingDailyImageUpdated": {
+    "message": "Bing daily image has been updated",
+    "description": "必应每日图片更新提示"
+  },
+  "backgroundUpdateFailed": {
+    "message": "Background Update Failed",
+    "description": "背景更新失败标题"
+  },
+  "customBackgroundSuccess": {
+    "message": "Custom background image has been set successfully",
+    "description": "自定义背景设置成功提示"
   }
 }
