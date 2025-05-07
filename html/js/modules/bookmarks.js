@@ -1032,12 +1032,4 @@ export const BookmarkManager = {
             });
         }
     },
-
-    /**
-     * 导出书签
-     * @returns {Object} - 包含书签数组的对象
-     */
-    exportBookmarks: function() {
-        return { bookmarks };
-    }
 };
