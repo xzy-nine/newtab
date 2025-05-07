@@ -319,6 +319,17 @@
   #icon-selector-modal .icon-grid {
     background-color: #333;
   }
+  
+  /* 背景遮罩层在深色模式下默认显示 */
+  #background-overlay {
+    display: block !important; /* 确保显示遮罩层 */
+    background-color: rgba(0, 0, 0, 0.4) !important; /* 40%的暗化程度 */
+  }
+  
+  /* 保持背景容器的滤镜效果 */
+  #background-container {
+    filter: brightness(0.85); /* 额外降低亮度 */
+  }
 }
 
 /* 暗黑模式相关样式补充 */
