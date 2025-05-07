@@ -247,12 +247,12 @@ function showWelcomeMessage() {
  * @param {string} newVersion - 新版本号
  */
 function showUpdateMessage(oldVersion, newVersion) {
-    Utils.UI.showNotification(
-        I18n.getMessage('updateTitle'),
-        I18n.getMessage('updateMessage', [oldVersion, newVersion]),
-        6000,  // 显示时间为 6 秒
-        'info'  // 使用信息类型的通知样式
-    );
+    Utils.UI.notify({
+        title: I18n.getMessage('updateTitle'),
+        message: I18n.getMessage('updateMessage').replace('{0}', oldVersion).replace('{1}', newVersion),
+        duration: 6000,
+        type: 'info'
+    });
 }
 
 /**
