@@ -1,5 +1,5 @@
 /**
- * 精简版图标管理模块 - 处理网站图标的获取和缓存
+ * 精简版图标管理模块 - 处理网站图标的获,和缓存
  */
 
 import { Utils } from './utils.js';
@@ -9,6 +9,8 @@ import { I18n } from './i18n.js';  // 添加导入I18n模块
 const iconCache = new Map();
 const DEFAULT_ICON = '../Icon.png';
 const FETCH_TIMEOUT = 3000;
+// 添加替代图标标记前缀
+const FALLBACK_ICON_PREFIX = 'data:image/png;base64,FALLBACKICON:';
 
 /**
  * IconManager API - 提供网站图标管理功能
@@ -28,8 +30,8 @@ export const IconManager = {
         // 1. 检查内存缓存
         if (iconCache.has(domain)) {
             const iconData = iconCache.get(domain).data;
-            if (element) element.style.backgroundImage = `url(${iconData})`;
-            return iconData;
+            if (element) element.style.backgroundImage = `url(${this.stripFallbackPrefix(iconData)})`;
+            return this.stripFallbackPrefix(iconData);
         }
         
         // 2. 设置默认图标
@@ -39,16 +41,17 @@ export const IconManager = {
             // 3. 检查本地存储缓存
             const cached = await chrome.storage.local.get(url);
             if (cached[url] && !cached[url].startsWith('data:text/html')) {
-                if (element) element.style.backgroundImage = `url(${cached[url]})`;
-                await this.cacheIcon(domain, cached[url]);
-                return cached[url];
+                const iconData = cached[url];
+                if (element) element.style.backgroundImage = `url(${this.stripFallbackPrefix(iconData)})`;
+                await this.cacheIcon(domain, iconData);
+                return this.stripFallbackPrefix(iconData);
             }
 
             // 4. 尝试获取图标
             const iconData = await this.fetchIconFromSources(url, domain);
             
-            if (element) element.style.backgroundImage = `url(${iconData})`;
-            return iconData;
+            if (element) element.style.backgroundImage = `url(${this.stripFallbackPrefix(iconData)})`;
+            return this.stripFallbackPrefix(iconData);
         } catch (error) {
             console.error(I18n.getMessage('fetchIconFailed') + ':', error);
             return DEFAULT_ICON;
@@ -70,6 +73,14 @@ export const IconManager = {
             `https://favicon.yandex.net/favicon/${new URL(url).hostname}`,
             `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}`
         ];
+
+        // 首先检查是否已有生成的替代图标
+        const domainCache = await chrome.storage.local.get(domain);
+        if (domainCache[domain] && domainCache[domain].startsWith(FALLBACK_ICON_PREFIX)) {
+            console.debug(`使用已存储的替代图标: ${domain}`);
+            await this.cacheIcon(domain, domainCache[domain]);
+            return this.stripFallbackPrefix(domainCache[domain]);
+        }
 
         // 尝试从HTML获取图标链接
         try {
@@ -100,9 +111,12 @@ export const IconManager = {
             return finalIconData;
         }
 
-        // 生成基于域名首字母的替代图标
+        // 生成基于域名前缀的替代图标
         const fallbackIcon = this.generateInitialBasedIcon(domain);
-        await this.cacheIcon(domain, fallbackIcon);
+        // 添加标记并保存到存储
+        const markedFallbackIcon = `${FALLBACK_ICON_PREFIX}${fallbackIcon.substring(22)}`; // 去掉 "data:image/png;base64,"
+        await this.cacheIcon(domain, markedFallbackIcon);
+        await chrome.storage.local.set({ [url]: markedFallbackIcon });
         return fallbackIcon;
     },
     
@@ -117,16 +131,26 @@ export const IconManager = {
             const response = await fetch(url, { 
                 mode: 'cors',
                 headers: { 'cache-control': 'no-cache' },
+                credentials: 'omit', // 避免发送认证信息，防止弹出Basic Auth对话框
                 signal: AbortSignal.timeout(FETCH_TIMEOUT)
             });
+            
+            // 检查是否返回401状态码，如果是则直接返回空数组
+            if (response.status === 401) {
+                console.debug(`跳过需要认证的网站: ${url}`);
+                return icons;
+            }
             
             if (response.ok) {
                 const text = await response.text();
                 const doc = new DOMParser().parseFromString(text, 'text/html');
-                const iconLinks = doc.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]');
+                const iconLinks = doc.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]');
                 
                 iconLinks.forEach(link => {
-                    icons.push(new URL(link.getAttribute('href'), url).href);
+                    const href = link.getAttribute('href');
+                    if (href) {
+                        icons.push(new URL(href, url).href);
+                    }
                 });
             }
         } catch (error) {
@@ -146,8 +170,15 @@ export const IconManager = {
             const response = await fetch(iconUrl, {
                 mode: 'cors',
                 headers: { 'cache-control': 'no-cache' },
+                credentials: 'omit', // 添加此项避免认证弹窗
                 signal: AbortSignal.timeout(FETCH_TIMEOUT)
             });
+
+            // 如果状态是401或403，直接返回null不处理
+            if (response.status === 401 || response.status === 403) {
+                console.debug(`跳过需要认证的图标: ${iconUrl}`);
+                return null;
+            }
 
             if (!response.ok) return null;
             
@@ -275,7 +306,7 @@ export const IconManager = {
             
             if (iconCache.has(domain)) {
                 applyTransition();
-                img.src = iconCache.get(domain).data;
+                img.src = this.stripFallbackPrefix(iconCache.get(domain).data);
             } else {
                 if (img.src) applyTransition();
                 
@@ -354,16 +385,26 @@ export const IconManager = {
     },
 
     /**
-     * 生成基于域名首字母的替代图标
+     * 生成基于域名前缀的替代图标
      * @param {string} domain - 网站域名
      * @returns {string} 图标的DataURL
      */
     generateInitialBasedIcon(domain) {
-        const domainParts = domain.split('.');
+        console.debug("生成图标，域名:", domain);
+        // 使用正则表达式去除所有协议头
+        let cleanDomain = domain.replace(/^.*?:\/\//, '');
+        console.debug("清理后域名:", cleanDomain);
+        
+        const domainParts = cleanDomain.split('.');
+        console.debug("域名部分:", domainParts);
         const siteName = domainParts[0] === 'www' && domainParts.length > 1 ? 
             domainParts[1] : domainParts[0];
+        console.debug("站点名称:", siteName);
         
-        const initial = siteName.charAt(0).toUpperCase();
+        // 使用整个域名前缀而不是首字母
+        let prefix = siteName.substring(0, Math.min(4, siteName.length));
+        prefix = prefix.charAt(0).toUpperCase() + prefix.substring(1).toLowerCase();
+        console.debug("使用前缀:", prefix);
         
         // 基于域名生成颜色
         const getColorCode = (str) => {
@@ -384,12 +425,27 @@ export const IconManager = {
         ctx.fill();
         
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 36px Arial';
+        
+        // 根据文本长度调整字体大小
+        const fontSize = prefix.length <= 2 ? 36 : (prefix.length === 3 ? 26 : 20);
+        ctx.font = `bold ${fontSize}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(initial, 32, 32);
+        ctx.fillText(prefix, 32, 32);
         
         return canvas.toDataURL('image/png');
+    },
+
+    /**
+     * 移除替代图标的前缀标记
+     * @param {string} iconData - 图标数据
+     * @returns {string} 处理后的图标数据
+     */
+    stripFallbackPrefix(iconData) {
+        if (iconData && iconData.startsWith(FALLBACK_ICON_PREFIX)) {
+            return 'data:image/png;base64,' + iconData.substring(FALLBACK_ICON_PREFIX.length);
+        }
+        return iconData;
     }
 };
 
