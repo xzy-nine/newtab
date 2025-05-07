@@ -925,60 +925,6 @@ export const Utils = {
       const preview = document.getElementById(`${modalId}-preview`);
       if (preview) preview.innerHTML = '';
       
-      /**
-       * 压缩图像
-       * @param {File|Blob} file - 图像文件
-       * @returns {Promise<string>} - 压缩后的base64图像数据
-       */
-      const compressImage = (file) => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = function(event) {
-            const img = new Image();
-            img.onload = function() {
-              let width = img.width;
-              let height = img.height;
-              
-              // 计算调整后的尺寸，保持比例
-              if (width > maxWidth || height > maxHeight) {
-                if (width / height > maxWidth / maxHeight) {
-                  // 宽度优先
-                  height = Math.floor(height * (maxWidth / width));
-                  width = maxWidth;
-                } else {
-                  // 高度优先
-                  width = Math.floor(width * (maxHeight / height));
-                  height = maxHeight;
-                }
-              }
-              
-              // 创建Canvas并绘制调整大小后的图像
-              const canvas = document.createElement('canvas');
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0, width, height);
-              
-              // 转换为base64
-              const quality_value = Math.min(1, Math.max(0, quality)); // 确保quality在0-1之间
-              const base64 = canvas.toDataURL('image/jpeg', quality_value);
-              resolve(base64);
-            };
-            
-            img.onerror = function() {
-              reject(new Error(I18n.getMessage('imageLoadError') || '图片加载失败'));
-            };
-            
-            img.src = event.target.result;
-          };
-          
-          reader.onerror = function() {
-            reject(new Error(I18n.getMessage('fileReadError') || '文件读取失败'));
-          };
-          
-          reader.readAsDataURL(file);
-        });
-      };
       
       // 添加文件上传和预览功能
       if (allowUpload) {
@@ -1001,11 +947,14 @@ export const Utils = {
                 preview.innerHTML = `<div class="loading-spinner"></div>`;
                 
                 // 压缩图像
-                const compressedImage = await compressImage(file);
+                const compressedImage = await fileToBase64(file);
                 
                 // 为不同模式设置不同的预览样式
                 if (mode === 'background') {
-                  preview.innerHTML = `<img src="${compressedImage}" alt="Background Preview" class="preview-bg-img">`;
+                  preview.innerHTML = `
+                    <div class="browser-frame"></div>
+                    <img src="${compressedImage}" alt="Background Preview" class="preview-bg-img">
+                  `;
                 } else { // 图标或默认模式
                   preview.innerHTML = `<img src="${compressedImage}" alt="Icon Preview" class="preview-icon-img">`;
                 }
@@ -1040,7 +989,10 @@ export const Utils = {
             const img = new Image();
             img.onload = function() {
               if (mode === 'background') {
-                preview.innerHTML = `<img src="${url}" alt="Background Preview" class="preview-bg-img">`;
+                preview.innerHTML = `
+                  <div class="browser-frame"></div>
+                  <img src="${url}" alt="Background Preview" class="preview-bg-img">
+                `;
               } else { // 图标或默认模式
                 preview.innerHTML = `<img src="${url}" alt="Icon Preview" class="preview-icon-img">`;
               }
@@ -1071,7 +1023,7 @@ export const Utils = {
           if (file) {
             try {
               // 压缩并转换图像
-              imageData = await compressImage(file);
+              imageData = await fileToBase64(file);
             } catch (error) {
               console.error('Failed to process image:', error);
               Utils.UI.notify({
@@ -1160,4 +1112,18 @@ export const Utils = {
       Utils.ContextMenu.init(); // 初始化上下文菜单
     }
   }
+};
+
+/**
+ * 将文件转换为 Base64 编码
+ * @param {File} file - 要转换的文件
+ * @returns {Promise<string>} - 返回 Base64 编码的字符串
+ */
+export const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
 };
