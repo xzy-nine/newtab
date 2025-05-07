@@ -370,7 +370,6 @@ export const BookmarkManager = {
                 this.closeFolder(folderButton, children);
             } else {
                 this.openFolder(folderButton, children);
-                
                 // 确保可视
                 setTimeout(() => this.ensureChildrenVisibility(folderButton), 300);
             }

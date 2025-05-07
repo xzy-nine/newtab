@@ -104,7 +104,7 @@
     "description": "更新标题"
   },
   "updateMessage": {
-    "message": "Extension updated from version $1 to $2",
+    "message": "Extension updated from version {0} to {1}",
     "description": "更新信息"
   },
   "customIcon": {

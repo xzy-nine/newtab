@@ -104,7 +104,7 @@
     "description": "更新标题"
   },
   "updateMessage": {
-    "message": "扩展已从版本 $1 更新至 $2",
+    "message": "扩展已从版本 {0} 更新至 {1}",
     "description": "更新信息"
   },
   "customIcon": {
