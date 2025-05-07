@@ -53,16 +53,23 @@ class BackgroundManager {
         const bgTypeSelect = document.getElementById('bg-type');
         if (bgTypeSelect) {
             bgTypeSelect.addEventListener('change', async (e) => {
-                // 保存旧的背景类型
-                const oldType = this.settings.type;
-                this.settings.type = e.target.value;
+                const newType = e.target.value;
                 
-                // 如果切换到非自定义类型，记录该类型
-                if (this.settings.type !== 'custom') {
-                    await chrome.storage.local.set({ lastNonCustomBgType: this.settings.type });
+                // 如果选择了自定义背景，但没有自定义图片，则打开选择器
+                if (newType === 'custom' && !this.settings.customImageData) {
+                    this.handleCustomBackground();
+                    return;
                 }
                 
-                await chrome.storage.local.set({ bgType: this.settings.type });
+                // 更新设置并应用
+                this.settings.type = newType;
+                
+                // 如果切换到非自定义类型，则保存为最后一个非自定义类型
+                if (newType !== 'custom') {
+                    await chrome.storage.local.set({ lastNonCustomBgType: newType });
+                }
+                
+                await chrome.storage.local.set({ bgType: newType });
                 await this.setImage();
             });
         }
@@ -72,8 +79,8 @@ class BackgroundManager {
         if (blurControl) {
             blurControl.addEventListener('input', async (e) => {
                 this.settings.blur = parseInt(e.target.value);
-                await chrome.storage.local.set({ backgroundBlur: this.settings.blur });
                 this.applyEffects();
+                await chrome.storage.local.set({ backgroundBlur: this.settings.blur });
             });
         }
         
@@ -81,9 +88,9 @@ class BackgroundManager {
         const darkControl = document.getElementById('dark-control');
         if (darkControl) {
             darkControl.addEventListener('input', async (e) => {
-                this.settings.dark = parseInt(e.target.value);
-                await chrome.storage.local.set({ backgroundDark: this.settings.dark });
+                this.settings.dark = parseFloat(e.target.value);
                 this.applyEffects();
+                await chrome.storage.local.set({ backgroundDark: this.settings.dark });
             });
         }
     }
@@ -133,36 +140,10 @@ class BackgroundManager {
             }
         });
         
-        // 右键点击 - 上传自定义背景
+        // 右键点击 - 使用通用图像选择器
         newButton.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); // 阻止默认右键菜单
-            
-            // 创建隐藏的文件选择器
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = 'image/*';
-            fileInput.style.display = 'none';
-            document.body.appendChild(fileInput);
-            
-            // 监听文件选择
-            fileInput.addEventListener('change', async (event) => {
-                if (event.target.files && event.target.files[0]) {
-                    await this.handleCustomBackground(event);
-                } else if (this.settings.customImageData) {
-                    await this.clearCustomBackground();
-                }
-                document.body.removeChild(fileInput);
-            });
-            
-            // 监听取消选择
-            fileInput.addEventListener('cancel', async () => {
-                if (this.settings.customImageData) {
-                    await this.clearCustomBackground();
-                }
-                document.body.removeChild(fileInput);
-            });
-            
-            fileInput.click(); // 触发文件选择器
+            e.preventDefault();
+            this.handleCustomBackground();
         });
     }
 
@@ -183,11 +164,15 @@ class BackgroundManager {
             // 根据是否有自定义图片决定可用的类型选择
             if (result.customImage) {
                 this.settings.customImageData = result.customImage;
-                this.settings.type = result.bgType === 'custom' ? 'custom' : 'bing';
+                this.settings.type = result.bgType || 'custom';
             } else {
                 this.settings.customImageData = null;
-                // 使用保存的背景类型或默认值
                 this.settings.type = result.bgType || 'bing';
+                
+                // 如果没有自定义图片但类型设为custom，则改为上次的非自定义类型
+                if (this.settings.type === 'custom') {
+                    this.settings.type = result.lastNonCustomBgType || 'bing';
+                }
             }
             
             // 加载特效设置
@@ -196,6 +181,63 @@ class BackgroundManager {
         } catch (error) {
             console.error(I18n.getMessage('localStorageError'), error);
             this.settings.type = 'bing'; 
+        }
+    }
+
+    /**
+     * 获取必应每日图片
+     * @returns {Promise<string|null>} 图片URL，失败返回null
+     */
+    async fetchBingImage() {
+        Utils.UI.updateLoadingProgress(40, I18n.getMessage('loadingResources'));
+        
+        // 检查缓存
+        const cachedData = await chrome.storage.local.get(CACHE_KEY);
+        const now = Date.now();
+
+        // 使用缓存内图片（如未过期）
+        if (cachedData[CACHE_KEY] && (now - cachedData[CACHE_KEY].timestamp < CACHE_EXPIRATION)) {
+            return cachedData[CACHE_KEY].url;
+        }
+
+        Utils.UI.updateLoadingProgress(50, I18n.getMessage('fetchingBingImage'));
+        
+        try {
+            // 必应API地址
+            const apiUrl = 'https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1';
+            const response = await fetch(apiUrl);
+            
+            if (!response.ok) {
+                throw new Error(`API responded with status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.images || !data.images.length) {
+                throw new Error('No images found in API response');
+            }
+            
+            const imageUrl = 'https://www.bing.com' + data.images[0].url;
+            
+            // 更新缓存
+            await chrome.storage.local.set({
+                [CACHE_KEY]: {
+                    url: imageUrl,
+                    timestamp: now
+                }
+            });
+            
+            return imageUrl;
+        } catch (error) {
+            console.error('Error fetching Bing image:', error);
+            
+            // 回退策略：尝试使用上一个缓存（即使过期）
+            if (cachedData[CACHE_KEY]) {
+                return cachedData[CACHE_KEY].url;
+            }
+            
+            // 如果没有缓存可用，返回null表示需要使用纯白背景
+            return null;
         }
     }
 
@@ -212,6 +254,7 @@ class BackgroundManager {
             // 获取背景容器元素
             const container = document.getElementById('background-container');
             if (!container) {
+                console.error('Background container not found');
                 Utils.UI.hideLoadingIndicator();
                 return;
             }
@@ -219,20 +262,35 @@ class BackgroundManager {
             // 根据背景类型选择图片URL
             let bgUrl;
             switch (this.settings.type) {
+                case 'custom':
+                    // 使用自定义图片
+                    if (this.settings.customImageData) {
+                        bgUrl = this.settings.customImageData;
+                    } else {
+                        // 如果没有自定义图片数据，则回退到必应
+                        bgUrl = await this.fetchBingImage();
+                    }
+                    break;
                 case 'bing':
-                    Utils.UI.updateLoadingProgress(30, I18n.getMessage('fetchingBingImage'));
+                    // 使用必应每日图片
                     bgUrl = await this.fetchBingImage();
                     break;
-                case 'custom':
-                    bgUrl = this.settings.customImageData;
-                    break;
                 case 'default':
-                    // 设置为白色背景
-                    container.classList.add('bg-white');
-                    Utils.UI.hideLoadingIndicator();
-                    return; // 直接返回，无需后续设置
                 default:
-                    bgUrl = 'images/default.jpg';
+                    // 使用纯白色背景
+                    container.classList.add('bg-white');
+                    container.style.backgroundImage = 'none';
+                    Utils.UI.hideLoadingIndicator();
+                    return;
+            }
+
+            // 如果bgUrl为null（表示获取图像失败），回退到白色背景
+            if (bgUrl === null) {
+                console.warn('Failed to load background image, fallback to white background');
+                container.classList.add('bg-white');
+                container.style.backgroundImage = 'none';
+                Utils.UI.hideLoadingIndicator();
+                return;
             }
 
             Utils.UI.updateLoadingProgress(70, I18n.getMessage('settingBackgroundType'));
@@ -248,19 +306,14 @@ class BackgroundManager {
             
             Utils.UI.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete'));
             setTimeout(() => Utils.UI.hideLoadingIndicator(), 500);
-        } catch (error) {            
+        } catch (error) {
+            console.error('Failed to set background image:', error);
             Utils.UI.notify({
                 title: I18n.getMessage('error'),
-                message: I18n.getMessage('backgroundFetchFailed'),
-                type: 'error',
-                duration: 5000
+                message: I18n.getMessage('backgroundSetFailed'),
+                type: 'error'
             });
-            
-            // 出错时使用默认背景
-            const container = document.getElementById('background-container');
-            if (container) {
-                container.style.backgroundImage = 'url(images/default.jpg)';
-            }
+            Utils.UI.hideLoadingIndicator();
         }
     }
 
@@ -277,54 +330,8 @@ class BackgroundManager {
         // 暗化效果
         const overlay = document.getElementById('background-overlay');
         if (overlay) {
-            if (this.settings.dark > 0) {
-                overlay.style.backgroundColor = `rgba(0, 0, 0, ${this.settings.dark / 100})`;
-                overlay.style.display = 'block';
-            } else {
-                overlay.style.display = 'none'; // 无暗化时隐藏遮罩
-            }
-        }
-    }
-
-    /**
-     * 获取必应每日图片
-     * @returns {Promise<string>} 图片URL
-     */
-    async fetchBingImage() {
-        Utils.UI.updateLoadingProgress(40, I18n.getMessage('loadingResources'));
-        
-        // 检查缓存
-        const cachedData = await chrome.storage.local.get(CACHE_KEY);
-        const now = Date.now();
-
-        // 使用缓存内图片（如未过期）
-        if (cachedData[CACHE_KEY] && (now - cachedData[CACHE_KEY].timestamp < CACHE_EXPIRATION)) {
-            const remainingHours = Math.floor((CACHE_EXPIRATION - (now - cachedData[CACHE_KEY].timestamp)) / (60 * 60 * 1000));
-            const remainingMinutes = Math.floor(((CACHE_EXPIRATION - (now - cachedData[CACHE_KEY].timestamp)) % (60 * 60 * 1000)) / (60 * 1000));
-            Utils.UI.updateLoadingProgress(50, I18n.getMessage('usingCachedImage', [remainingHours, remainingMinutes]));
-            return cachedData[CACHE_KEY].imageUrl;
-        }
-
-        Utils.UI.updateLoadingProgress(50, I18n.getMessage('fetchingBingImage'));
-        
-        try {
-            // 获取新图片
-            const data = await Utils.fetchData('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1');
-            if (!data || !data.images || !data.images[0]) {
-                throw new Error(I18n.getMessage('invalidBingResponse'));
-            }
-            
-            const imageUrl = `https://www.bing.com${data.images[0].url}`;
-            
-            Utils.UI.updateLoadingProgress(60, I18n.getMessage('loadingResources'));
-            
-            // 更新缓存
-            await chrome.storage.local.set({ [CACHE_KEY]: { imageUrl, timestamp: now } });
-            
-            return imageUrl;
-        } catch (error) {
-            console.error(I18n.getMessage('bingApiError', [error.message]));
-            throw new Error(I18n.getMessage('bingDailyBackgroundFailed'));
+            const opacity = this.settings.dark > 0 ? this.settings.dark : 0;
+            overlay.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
         }
     }
 
@@ -336,125 +343,86 @@ class BackgroundManager {
         const bgTypeSelect = document.getElementById('bg-type');
         if (bgTypeSelect) {
             bgTypeSelect.value = this.settings.type;
-            bgTypeSelect.addEventListener('change', async (e) => {
-                this.settings.type = e.target.value;
-                await chrome.storage.local.set({ bgType: this.settings.type });
-                await this.setImage();
-            });
         }
         
         // 自定义背景上传按钮
         const customBgInput = document.getElementById('custom-bg');
         if (customBgInput) {
-            customBgInput.addEventListener('change', e => this.handleCustomBackground(e));
+            customBgInput.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleCustomBackground();
+            });
         }
         
         // 模糊效果控制
         const blurControl = document.getElementById('blur-control');
         if (blurControl) {
             blurControl.value = this.settings.blur;
-            blurControl.addEventListener('input', async (e) => {
-                this.settings.blur = parseInt(e.target.value);
-                await chrome.storage.local.set({ backgroundBlur: this.settings.blur });
-                this.applyEffects();
-            });
         }
         
         // 暗化效果控制
         const darkControl = document.getElementById('dark-control');
         if (darkControl) {
             darkControl.value = this.settings.dark;
-            darkControl.addEventListener('input', async (e) => {
-                this.settings.dark = parseInt(e.target.value);
-                await chrome.storage.local.set({ backgroundDark: this.settings.dark });
-                this.applyEffects();
-            });
         }
     }
 
     /**
      * 处理自定义背景图片上传
-     * @param {Event} e - 文件上传事件
-     * @returns {Promise<void>}
      */
-    async handleCustomBackground(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        // 检查文件是否为图片
-        if (!file.type.startsWith('image/')) {
-            Utils.UI.notify({
-                title: I18n.getMessage('error'),
-                message: I18n.getMessage('imageTypeError'),
-                type: 'error'
-            });
-            return;
-        }
-        
-        // 检查文件大小
-        if (file.size > 50 * 1024 * 1024) { // 50MB限制
-            Utils.UI.notify({
-                title: I18n.getMessage('warning'),
-                message: I18n.getMessage('imageTooLarge'),
-                type: 'warning',
-                buttons: [
-                    {
-                        text: I18n.getMessage('continue'),
-                        class: 'btn-primary',
-                        callback: () => this.processCustomBackgroundFile(file)
-                    },
-                    {
-                        text: I18n.getMessage('cancel'),
-                        callback: () => {}
+    handleCustomBackground() {
+        Utils.ImageSelector.show({
+            title: I18n.getMessage('selectBackground') || '选择背景图片',
+            modalId: 'background-selector-modal',
+            mode: 'background',
+            urlLabel: I18n.getMessage('backgroundUrl') || '背景图片URL',
+            uploadLabel: I18n.getMessage('uploadBackground') || '上传背景图片',
+            urlPlaceholder: 'https://example.com/background.jpg',
+            showReset: this.settings.customImageData !== null,
+            resetText: I18n.getMessage('resetBackground') || '重置背景',
+            maxWidth: 1920,
+            maxHeight: 1080,
+            quality: 0.85,
+            onReset: () => this.clearCustomBackground(),
+            onConfirm: async (imageData) => {
+                if (imageData) {
+                    try {
+                        this.settings.customImageData = imageData;
+                        this.settings.type = 'custom';  // 自动切换到自定义背景
+                        
+                        // 保存设置
+                        await chrome.storage.local.set({ 
+                            customImage: this.settings.customImageData,
+                            bgType: 'custom',
+                            lastNonCustomBgType: this.settings.type
+                        });
+                        
+                        await this.setImage();
+                        
+                        // 更新UI
+                        const bgTypeSelect = document.getElementById('bg-type');
+                        if (bgTypeSelect) {
+                            bgTypeSelect.value = 'custom';
+                        }
+                        
+                        Utils.UI.notify({
+                            title: I18n.getMessage('success'),
+                            message: I18n.getMessage('customBackgroundSuccess') || '背景图片设置成功',
+                            type: 'success',
+                            duration: 3000
+                        });
+                    } catch (error) {
+                        console.error(I18n.getMessage('localStorageError'), error);
+                        Utils.UI.notify({
+                            title: I18n.getMessage('error') || '错误',
+                            message: I18n.getMessage('backgroundSetFailed') || '背景图片设置失败',
+                            type: 'error',
+                            duration: 5000
+                        });
                     }
-                ]
-            });
-            return;
-        }
-        
-        this.processCustomBackgroundFile(file);
-    }
-
-    /**
-     * 处理自定义背景文件
-     * @param {File} file - 文件对象
-     * @returns {Promise<void>}
-     */
-    async processCustomBackgroundFile(file) {
-        try {
-            // 使用工具方法
-            this.settings.customImageData = await Utils.blobToBase64(file);
-            this.settings.type = 'custom';  // 自动切换到自定义背景
-            
-            // 保存设置
-            await chrome.storage.local.set({ 
-                customImage: this.settings.customImageData,
-                bgType: 'custom',
-                lastNonCustomBgType: this.settings.type
-            });
-            
-            await this.setImage();
-            
-            // 更新UI
-            const bgTypeSelect = document.getElementById('bg-type');
-            if (bgTypeSelect) {
-                bgTypeSelect.value = 'custom';
+                }
             }
-            
-            Utils.UI.notify({
-                title: I18n.getMessage('success'),
-                message: I18n.getMessage('customBackgroundSuccess'),
-                type: 'success',
-                duration: 3000
-            });
-        } catch (error) {
-            console.error(I18n.getMessage('localStorageError'), error);
-            Utils.UI.notify({
-                title: I18n.getMessage('error'),
-                message: I18n.getMessage('backgroundSetFailed'),
-                type: 'error'
-            });
-        }
+        });
     }
 
     /**
@@ -463,21 +431,20 @@ class BackgroundManager {
      */
     async clearCustomBackground() {
         try {
-            // 重置设置 - 回退到用户之前选择的背景类型或默认背景
+            // 清除自定义图片数据
             this.settings.customImageData = null;
             
-            // 获取上次保存的背景类型
-            const result = await chrome.storage.local.get(['lastNonCustomBgType']);
-            // 如果有上次记录的类型则使用，否则默认使用bing
+            // 切换到之前的非自定义背景类型
+            const result = await chrome.storage.local.get('lastNonCustomBgType');
             this.settings.type = result.lastNonCustomBgType || 'bing';
             
-            // 保存到存储
-            await chrome.storage.local.set({ 
+            // 保存更改
+            await chrome.storage.local.set({
                 customImage: null,
                 bgType: this.settings.type
             });
             
-            // 应用更改
+            // 重新加载背景
             await this.setImage();
             
             // 更新UI
@@ -486,18 +453,19 @@ class BackgroundManager {
                 bgTypeSelect.value = this.settings.type;
             }
             
-            // 提示用户操作成功
             Utils.UI.notify({
-                title: I18n.getMessage('backgroundRemoved'),
-                message: I18n.getMessage('switchedToBackground', [this.settings.type === 'bing' ? I18n.getMessage('bingDailyImage') : I18n.getMessage('defaultBackground')]),
-                type: 'info',
+                title: I18n.getMessage('success') || '成功',
+                message: I18n.getMessage('backgroundResetSuccess') || '已重置为默认背景',
+                type: 'success',
                 duration: 3000
             });
         } catch (error) {
+            console.error('Failed to clear custom background:', error);
             Utils.UI.notify({
-                title: I18n.getMessage('error'),
-                message: I18n.getMessage('clearCustomBackgroundError'),
-                type: 'error'
+                title: I18n.getMessage('error') || '错误',
+                message: I18n.getMessage('backgroundResetFailed') || '背景重置失败',
+                type: 'error',
+                duration: 5000
             });
         }
     }
@@ -528,7 +496,9 @@ class BackgroundManager {
         
         // 保存自定义图片（如果有）
         if (newSettings.customImageData) {
-            await chrome.storage.local.set({ customImage: this.settings.customImageData });
+            await chrome.storage.local.set({
+                customImage: newSettings.customImageData
+            });
         }
         
         // 应用更改
@@ -541,49 +511,18 @@ class BackgroundManager {
      */
     async refresh() {
         try {
-            // 仅对必应背景执行刷新
-            if (this.settings.type !== 'bing') return;
-            
-            // 检查是否需要刷新（是否是新的一天）
-            const cacheName = CACHE_KEY;
-            const cacheData = await chrome.storage.local.get(cacheName);
-            const now = Date.now();
-            
-            let needRefresh = true;
-            
-            if (cacheData[cacheName]) {
-                // 判断日期是否相同
-                const cacheDate = new Date(cacheData[cacheName].timestamp);
-                const currentDate = new Date(now);
+            // 如果是必应背景，检查缓存是否过期
+            if (this.settings.type === 'bing') {
+                const cachedData = await chrome.storage.local.get(CACHE_KEY);
+                const now = Date.now();
                 
-                // 同一天则不刷新
-                if (cacheDate.getDate() === currentDate.getDate() && 
-                    cacheDate.getMonth() === currentDate.getMonth() &&
-                    cacheDate.getFullYear() === currentDate.getFullYear()) {
-                    needRefresh = false;
+                // 如果缓存已过期，重新加载背景
+                if (!cachedData[CACHE_KEY] || (now - cachedData[CACHE_KEY].timestamp > CACHE_EXPIRATION)) {
+                    await this.setImage();
                 }
             }
-            
-            if (needRefresh) {
-                // 清除缓存，获取新图片
-                await chrome.storage.local.remove(cacheName);
-                await this.setImage();
-                
-                // 添加刷新成功通知
-                Utils.UI.notify({
-                    title: I18n.getMessage('backgroundUpdated'),
-                    message: I18n.getMessage('bingDailyImageUpdated'),
-                    type: 'info',
-                    duration: 3000
-                });
-            }
         } catch (error) {
-            console.error(I18n.getMessage('bingImageError'), error);
-            Utils.UI.notify({
-                title: I18n.getMessage('backgroundUpdateFailed'),
-                message: I18n.getMessage('bingDailyBackgroundFailed'),
-                type: 'error'
-            });
+            console.error('Error refreshing background:', error);
         }
     }
 }
@@ -592,4 +531,3 @@ class BackgroundManager {
 const backgroundManager = new BackgroundManager();
 
 export default backgroundManager;
-

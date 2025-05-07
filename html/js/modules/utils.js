@@ -9,6 +9,21 @@ import { I18n } from './i18n.js';
  * 工具函数命名空间
  */
 export const Utils = {
+/**
+   * 防抖函数
+   * @param {Function} func - 要执行的函数
+   * @param {number} wait - 等待时间(ms)
+   * @returns {Function} - 防抖后的函数
+   */
+  debounce: function(func, wait) {
+    let timeout;
+    return function(...args) {
+      const context = this;
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+  },
+
   fetchData: async url => {
     try {
       return await (await fetch(url)).json();
@@ -786,6 +801,326 @@ export const Utils = {
     hideAllMenus: function() {
       console.warn('Utils.ContextMenu.hideAllMenus() 已弃用，请使用 ContextMenu.hideAll() 代替');
       return this.hideAll();
+    }
+  },
+
+  // ImageSelector 组件升级
+  ImageSelector: {
+    /**
+     * 显示图像选择模态框
+     * @param {Object} options - 配置选项
+     * @param {string} options.title - 模态框标题
+     * @param {string} options.modalId - 模态框ID
+     * @param {Function} options.onConfirm - 确认回调，接收选定的图像数据
+     * @param {Function} options.onReset - 重置回调，当点击重置按钮时触发
+     * @param {Function} options.onCancel - 取消回调
+     * @param {boolean} options.allowUrl - 是否允许URL输入，默认true
+     * @param {boolean} options.allowUpload - 是否允许文件上传，默认true
+     * @param {boolean} options.showReset - 是否显示重置按钮，默认false
+     * @param {string} options.mode - 选择器模式，可选值："icon"、"background"
+     * @param {string} options.confirmText - 确认按钮文本
+     * @param {string} options.cancelText - 取消按钮文本
+     * @param {string} options.resetText - 重置按钮文本
+     * @param {string} options.urlPlaceholder - URL输入框占位文本
+     * @param {number} options.maxWidth - 图片压缩后的最大宽度，默认根据mode自动设置
+     * @param {number} options.maxHeight - 图片压缩后的最大高度，默认根据mode自动设置
+     * @param {number} options.quality - 图片压缩质量，0-1之间，默认0.8
+     * @param {string} options.urlLabel - URL输入框标签
+     * @param {string} options.uploadLabel - 文件上传标签
+     */
+    show: function(options = {}) {
+      const {
+        title = I18n.getMessage('selectImage') || '选择图片',
+        modalId = 'image-selector-modal',
+        onConfirm = () => {},
+        onReset = null,
+        onCancel = () => {},
+        allowUrl = true,
+        allowUpload = true,
+        showReset = false,
+        mode = 'icon', // 默认为图标模式
+        confirmText = I18n.getMessage('confirm') || '确认',
+        cancelText = I18n.getMessage('cancel') || '取消',
+        resetText = I18n.getMessage('resetIcon') || '重置',
+        urlPlaceholder = 'https://example.com/image.png',
+        maxWidth = mode === 'icon' ? 256 : 1920,
+        maxHeight = mode === 'icon' ? 256 : 1080,
+        quality = 1,
+        urlLabel = I18n.getMessage('imageUrl') || '图片URL',
+        uploadLabel = I18n.getMessage('uploadImage') || '上传图片'
+      } = options;
+
+      // 创建或获取模态框
+      let modal = document.getElementById(modalId);
+      if (!modal) {
+        modal = Utils.createElement('div', 'modal', {id: modalId});
+        const modalContent = Utils.createElement('div', 'modal-content');
+        
+        // 为不同模式设置不同的模态框样式
+        if (mode === 'background') {
+          modalContent.classList.add('modal-content-wide');
+        } else if (mode === 'icon') {
+          modalContent.classList.add('modal-content-compact');
+        }
+        
+        // 构建模态框HTML
+        let modalHtml = `
+          <span class="modal-close">&times;</span>
+          <h2>${title}</h2>
+          <div class="modal-form">
+        `;
+        
+        // URL输入框（如果允许）
+        if (allowUrl) {
+          modalHtml += `
+            <div class="form-group">
+              <label for="${modalId}-url">${urlLabel}</label>
+              <input type="url" id="${modalId}-url" placeholder="${urlPlaceholder}">
+            </div>
+          `;
+        }
+        
+        // 文件上传（如果允许）
+        if (allowUpload) {
+          modalHtml += `
+            <div class="form-group">
+              <label for="${modalId}-upload">${uploadLabel}</label>
+              <input type="file" id="${modalId}-upload" accept="image/*">
+            </div>
+          `;
+        }
+        
+        // 根据模式调整预览区样式
+        const previewClass = mode === 'background' ? 'image-preview-bg' : 'image-preview-icon';
+        modalHtml += `<div class="image-preview ${previewClass}" id="${modalId}-preview"></div>`;
+        
+        // 按钮组
+        modalHtml += `<div class="form-actions">`;
+        
+        // 添加重置按钮（如果需要）
+        if (showReset && typeof onReset === 'function') {
+          modalHtml += `<button id="${modalId}-reset" class="btn btn-danger">${resetText}</button>`;
+        }
+        
+        modalHtml += `
+            <button id="${modalId}-cancel" class="btn">${cancelText}</button>
+            <button id="${modalId}-confirm" class="btn btn-primary">${confirmText}</button>
+          </div>
+        </div>`;
+        
+        modalContent.innerHTML = modalHtml;
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+      }
+      
+      // 显示模态框
+      Utils.Modal.show(modalId);
+      
+      // 清空旧数据
+      if (allowUrl) {
+        const urlInput = document.getElementById(`${modalId}-url`);
+        if (urlInput) urlInput.value = '';
+      }
+      
+      const preview = document.getElementById(`${modalId}-preview`);
+      if (preview) preview.innerHTML = '';
+      
+      /**
+       * 压缩图像
+       * @param {File|Blob} file - 图像文件
+       * @returns {Promise<string>} - 压缩后的base64图像数据
+       */
+      const compressImage = (file) => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+              let width = img.width;
+              let height = img.height;
+              
+              // 计算调整后的尺寸，保持比例
+              if (width > maxWidth || height > maxHeight) {
+                if (width / height > maxWidth / maxHeight) {
+                  // 宽度优先
+                  height = Math.floor(height * (maxWidth / width));
+                  width = maxWidth;
+                } else {
+                  // 高度优先
+                  width = Math.floor(width * (maxHeight / height));
+                  height = maxHeight;
+                }
+              }
+              
+              // 创建Canvas并绘制调整大小后的图像
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, width, height);
+              
+              // 转换为base64
+              const quality_value = Math.min(1, Math.max(0, quality)); // 确保quality在0-1之间
+              const base64 = canvas.toDataURL('image/jpeg', quality_value);
+              resolve(base64);
+            };
+            
+            img.onerror = function() {
+              reject(new Error(I18n.getMessage('imageLoadError') || '图片加载失败'));
+            };
+            
+            img.src = event.target.result;
+          };
+          
+          reader.onerror = function() {
+            reject(new Error(I18n.getMessage('fileReadError') || '文件读取失败'));
+          };
+          
+          reader.readAsDataURL(file);
+        });
+      };
+      
+      // 添加文件上传和预览功能
+      if (allowUpload) {
+        const uploadInput = document.getElementById(`${modalId}-upload`);
+        if (uploadInput) {
+          // 移除旧事件并重置
+          const newUploadInput = uploadInput.cloneNode(true);
+          uploadInput.parentNode.replaceChild(newUploadInput, uploadInput);
+          newUploadInput.value = '';
+          
+          // 添加预览功能
+          newUploadInput.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+              const preview = document.getElementById(`${modalId}-preview`);
+              if (preview) {
+                // 先显示加载状态
+                preview.innerHTML = `<div class="loading-spinner"></div>`;
+                
+                // 压缩图像
+                const compressedImage = await compressImage(file);
+                
+                // 为不同模式设置不同的预览样式
+                if (mode === 'background') {
+                  preview.innerHTML = `<img src="${compressedImage}" alt="Background Preview" class="preview-bg-img">`;
+                } else { // 图标或默认模式
+                  preview.innerHTML = `<img src="${compressedImage}" alt="Icon Preview" class="preview-icon-img">`;
+                }
+              }
+            } catch (error) {
+              console.error('Failed to process image:', error);
+              Utils.UI.notify({
+                title: I18n.getMessage('error') || '错误',
+                message: error.message || I18n.getMessage('imageProcessingError') || '图片处理失败',
+                type: 'error',
+                duration: 5000
+              });
+            }
+          });
+        }
+      }
+      
+      // URL输入预览功能
+      if (allowUrl) {
+        const urlInput = document.getElementById(`${modalId}-url`);
+        if (urlInput) {
+          urlInput.addEventListener('input', Utils.debounce(async function() {
+            const url = this.value.trim();
+            if (!url) return;
+            
+            const preview = document.getElementById(`${modalId}-preview`);
+            if (!preview) return;
+            
+            // 尝试加载URL作为图像
+            preview.innerHTML = `<div class="loading-spinner"></div>`;
+            
+            const img = new Image();
+            img.onload = function() {
+              if (mode === 'background') {
+                preview.innerHTML = `<img src="${url}" alt="Background Preview" class="preview-bg-img">`;
+              } else { // 图标或默认模式
+                preview.innerHTML = `<img src="${url}" alt="Icon Preview" class="preview-icon-img">`;
+              }
+            };
+            
+            img.onerror = function() {
+              preview.innerHTML = `<div class="error-message">${I18n.getMessage('imageLoadError') || '图片加载失败'}</div>`;
+            };
+            
+            img.src = url;
+          }, 500));
+        }
+      }
+      
+      // 绑定确认按钮事件
+      const confirmBtn = document.getElementById(`${modalId}-confirm`);
+      if (confirmBtn) {
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        newConfirmBtn.addEventListener('click', async () => {
+          // 获取选择的图像数据
+          let imageData = null;
+          
+          // 优先使用上传的图片
+          const uploadInput = document.getElementById(`${modalId}-upload`);
+          const file = uploadInput && uploadInput.files[0];
+          
+          if (file) {
+            try {
+              // 压缩并转换图像
+              imageData = await compressImage(file);
+            } catch (error) {
+              console.error('Failed to process image:', error);
+              Utils.UI.notify({
+                title: I18n.getMessage('error') || '错误',
+                message: error.message || I18n.getMessage('imageProcessingError') || '图片处理失败',
+                type: 'error',
+                duration: 5000
+              });
+              return;
+            }
+          } else if (allowUrl) {
+            // 其次使用URL
+            const urlInput = document.getElementById(`${modalId}-url`);
+            const url = urlInput && urlInput.value.trim();
+            if (url) {
+              imageData = url;
+            }
+          }
+          
+          Utils.Modal.hide(modalId);
+          onConfirm(imageData);
+        });
+      }
+      
+      // 绑定取消按钮事件
+      const cancelBtn = document.getElementById(`${modalId}-cancel`);
+      if (cancelBtn) {
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        newCancelBtn.addEventListener('click', () => {
+          Utils.Modal.hide(modalId);
+          onCancel();
+        });
+      }
+      
+      // 绑定重置按钮事件（如果存在）
+      if (showReset && typeof onReset === 'function') {
+        const resetBtn = document.getElementById(`${modalId}-reset`);
+        if (resetBtn) {
+          const newResetBtn = resetBtn.cloneNode(true);
+          resetBtn.parentNode.replaceChild(newResetBtn, resetBtn);
+          newResetBtn.addEventListener('click', () => {
+            Utils.Modal.hide(modalId);
+            onReset();
+          });
+        }
+      }
+      
+      return modal;
     }
   },
 

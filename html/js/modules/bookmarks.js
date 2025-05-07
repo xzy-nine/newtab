@@ -629,83 +629,43 @@ export const BookmarkManager = {
      */
     showIconSelectorModal: function(shortcut) {
         try {
-            // 创建模态框结构（如果不存在）
-            let modal = document.getElementById('icon-selector-modal');
-            if (!modal) {
-                // 使用Utils创建模态框结构
-                modal = Utils.createElement('div', 'modal', {id: 'icon-selector-modal'});
-                const modalContent = Utils.createElement('div', 'modal-content');
-                
-                modalContent.innerHTML = `
-                    <span class="modal-close">&times;</span>
-                    <h2>${I18n.getMessage('customIcon')}</h2>
-                    <div class="modal-form">
-                        <div class="form-group">
-                            <label for="icon-url">${I18n.getMessage('iconUrl')}</label>
-                            <input type="url" id="icon-url" placeholder="https://example.com/icon.png">
-                        </div>
-                        <div class="form-group">
-                            <label for="icon-upload">${I18n.getMessage('uploadIcon')}</label>
-                            <input type="file" id="icon-upload" accept="image/*">
-                            <div class="image-preview" id="icon-preview"></div>
-                        </div>
-                        <div class="form-actions">
-                            <button id="icon-cancel" class="btn">${I18n.getMessage('cancel')}</button>
-                            <button id="icon-confirm" class="btn btn-primary">${I18n.getMessage('confirm')}</button>
-                        </div>
-                    </div>
-                `;
-                
-                modal.appendChild(modalContent);
-                document.body.appendChild(modal);
-                
-                // 预览上传图片
-                document.getElementById('icon-upload').addEventListener('change', function(e) {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = function(event) {
-                            const preview = document.getElementById('icon-preview');
-                            preview.innerHTML = `<img src="${event.target.result}" alt="Icon Preview" style="max-width: 64px; max-height: 64px; object-fit: contain;">`;
-                        };
-                        reader.readAsDataURL(file);
+            Utils.ImageSelector.show({
+                title: I18n.getMessage('customIcon'),
+                modalId: 'icon-selector-modal',
+                mode: 'icon',
+                urlLabel: I18n.getMessage('iconUrl'),
+                uploadLabel: I18n.getMessage('uploadIcon'),
+                urlPlaceholder: 'https://example.com/icon.png',
+                showReset: true,
+                onReset: () => this.resetShortcutIcon(shortcut),
+                onConfirm: async (iconData) => {
+                    if (iconData) {
+                        try {
+                            // 存储自定义图标
+                            const customIcons = await this.getCustomIcons();
+                            customIcons[shortcut.id] = iconData;
+                            await chrome.storage.local.set({ customIcons });
+                            
+                            // 刷新显示
+                            await this.reloadCurrentFolder();
+                            
+                            Utils.UI.notify({
+                                title: I18n.getMessage('success'),
+                                message: I18n.getMessage('iconUpdated'),
+                                type: 'success',
+                                duration: 2000
+                            });
+                        } catch (error) {
+                            Utils.UI.notify({
+                                title: I18n.getMessage('errorTitle'),
+                                message: error.message || I18n.getMessage('genericError'),
+                                type: 'error',
+                                duration: 5000
+                            });
+                        }
                     }
-                });
-            }
-            
-            // 使用Utils.Modal.show替代手动显示
-            Utils.Modal.show('icon-selector-modal');
-            
-            // 清空旧数据
-            const iconUrl = document.getElementById('icon-url');
-            if (iconUrl) iconUrl.value = '';
-            
-            const iconPreview = document.getElementById('icon-preview');
-            if (iconPreview) iconPreview.innerHTML = '';
-            
-            const iconUpload = document.getElementById('icon-upload');
-            if (iconUpload) iconUpload.value = '';
-            
-            // 绑定确定按钮事件
-            const confirmBtn = document.getElementById('icon-confirm');
-            if (confirmBtn) {
-                const newConfirmBtn = confirmBtn.cloneNode(true);
-                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-                newConfirmBtn.addEventListener('click', async () => {
-                    await this.saveCustomIconForShortcut(shortcut);
-                    Utils.Modal.hide('icon-selector-modal');
-                });
-            }
-            
-            // 绑定取消按钮事件
-            const cancelBtn = document.getElementById('icon-cancel');
-            if (cancelBtn) {
-                const newCancelBtn = cancelBtn.cloneNode(true);
-                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-                newCancelBtn.addEventListener('click', () => {
-                    Utils.Modal.hide('icon-selector-modal');
-                });
-            }
+                }
+            });
         } catch (error) {
             Utils.UI.notify({
                 title: I18n.getMessage('errorTitle'),
