@@ -282,10 +282,10 @@ function createSearchUI() {
     const searchEngineIcon = Utils.createElement('img', '', { 
         id: 'search-engine-icon', 
         alt: 'Search Engine',
-        style: 'width:24px;height:24px;margin:0 15px;cursor:pointer;object-fit:contain;opacity:0.7;transition:opacity 0.3s;'
+        style: 'width:24px;height:24px;margin:0 10px 0 15px;cursor:pointer;object-fit:contain;opacity:0.7;transition:opacity 0.3s;'
     });
     
-    const searchForm = Utils.createElement('form', '', { id: 'search-form' });
+    const searchForm = Utils.createElement('form', 'search-form-container', { id: 'search-form' });
     const searchInput = Utils.createElement('input', '', { 
         id: 'search-input',
         type: 'text',

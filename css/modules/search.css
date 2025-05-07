@@ -63,6 +63,14 @@
   transform: rotate(15deg);
 }
 
+/* 搜索表单容器 */
+.search-form-container {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
 #search-input { /* 搜索框输入框 */
   flex: 1; /* 使用flex:1让输入框占据所有剩余空间 */
   height: 100%; /* 设置高度为100% */
@@ -71,14 +79,15 @@
   background: transparent; /* 设置背景颜色为透明 */
   font-size: 16px; /* 设置字体大小为16px */
   font-family: var(--font-family); /* 设置字体族为根元素的字体族 */
-  padding: 0 20px; /* 设置左右内边距为20px */
+  padding: 0 15px 0 0; /* 减少右内边距，保留更多输入空间 */
   color: #333;
   -webkit-appearance: none; /* 移除Webkit浏览器默认样式 */
   appearance: none; /* 移除默认样式 */
   box-shadow: none !important; /* 禁用输入框阴影 */
-  outline: none !important; /* 修复了错误的 !重要 标记 */
+  outline: none !important; /* 禁用输入框轮廓 */
   transition: background 0.3s;
-  margin-right: 10px; /* 增加右侧间距，与搜索引擎按钮分隔 */
+  margin-right: 15px; /* 增加右侧间距，与搜索引擎按钮分隔 */
+  cursor: text; /* 确保鼠标指针显示为文本编辑样式 */
 }
 
 #search-input:focus { /* 当搜索框输入框获得焦点时 */
