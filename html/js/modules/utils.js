@@ -223,6 +223,14 @@ export const Utils = {
           ).join('') + '</div>';
       }
       
+      // 添加复制按钮，但不为加载类型通知添加
+      const copyButtonHtml = type !== 'loading' ? 
+        '<button class="notification-copy" title="' + (I18n.getMessage('copyToClipboard') || '复制内容') + '">' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>' +
+        '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>' +
+        '</svg></button>' : '';
+      
       notification.innerHTML = `
         <div class="notification-content">
           <div class="notification-header">
@@ -231,6 +239,7 @@ export const Utils = {
           </div>
           <p class="notification-message">${message}</p>
           ${buttonsHtml}
+          ${copyButtonHtml}
         </div>
       `;
       
@@ -256,6 +265,30 @@ export const Utils = {
       
       notification.querySelector('.notification-close')
         .addEventListener('click', closeNotification);
+      
+      // 为复制按钮添加点击事件
+      if (type !== 'loading') {
+        const copyButton = notification.querySelector('.notification-copy');
+        if (copyButton) {
+          copyButton.addEventListener('click', () => {
+            const contentToCopy = `${title}\n${message}`.trim();
+            navigator.clipboard.writeText(contentToCopy).then(() => {
+              // 显示复制成功的反馈
+              const originalTitle = copyButton.getAttribute('title');
+              copyButton.setAttribute('title', I18n.getMessage('copied') || '已复制');
+              copyButton.classList.add('copied');
+              
+              // 1.5秒后恢复原始状态
+              setTimeout(() => {
+                copyButton.setAttribute('title', originalTitle);
+                copyButton.classList.remove('copied');
+              }, 1500);
+            }).catch(err => {
+              console.error('复制失败: ', err);
+            });
+          });
+        }
+      }
       
       if (buttons?.length) {
         buttons.forEach((btn, index) => {
