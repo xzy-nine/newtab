@@ -237,7 +237,8 @@ jobs:
           # 自动创建新版本的分支
           echo "📝 处理新版本 ${{ env.VERSION }} 的变更日志"
           
-          ORIGINAL_CHANGELOG=$(echo '${{ fromJson(env.CHANGELOG) }}')
+          # 修复这一行 - 直接使用环境变量
+          ORIGINAL_CHANGELOG="${CHANGELOG}"
           AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
           
           if [ ! -z "$AI_CHANGELOG" ]; then
