@@ -71,118 +71,6 @@ export const Utils = {
   calculateTotalHeight: element => element.scrollHeight * 1.1,
 
   UI: {
-    /**
-     * @deprecated 请使用 Notification.showLoadingIndicator 代替
-     */
-    showLoadingIndicator: (containerId = null) => {
-      console.warn('Utils.UI.showLoadingIndicator 已弃用，请使用 Notification.showLoadingIndicator 代替');
-      return Notification.showLoadingIndicator(containerId);
-    },
-
-    /**
-     * @deprecated 请使用 Notification.updateLoadingProgress 代替
-     */
-    updateLoadingProgress: (percent, message) => {
-      console.warn('Utils.UI.updateLoadingProgress 已弃用，请使用 Notification.updateLoadingProgress 代替');
-      return Notification.updateLoadingProgress(percent, message);
-    },
-
-    /**
-     * @deprecated 请使用 Notification.hideLoadingIndicator 代替
-     */
-    hideLoadingIndicator: (force = false) => {
-      console.warn('Utils.UI.hideLoadingIndicator 已弃用，请使用 Notification.hideLoadingIndicator 代替');
-      return Notification.hideLoadingIndicator(force);
-    },
-
-    /**
-     * @deprecated 请使用 Notification.showErrorMessage 代替
-     */
-    showErrorMessage: message => {
-      console.warn('Utils.UI.showErrorMessage 已弃用，请使用 Notification.showErrorMessage 代替');
-      return Notification.showErrorMessage(message);
-    },
-
-    /**
-     * @deprecated 请使用 Notification.notify 代替
-     */
-    notify: (options) => {
-      console.warn('Utils.UI.notify 已弃用，请使用 Notification.notify 代替');
-      return Notification.notify(options);
-    },
-
-    /**
-     * @deprecated 请使用 Notification.notificationManager 代替
-     */
-    notificationManager: Notification.notificationManager,
-
-    /**
-     * @deprecated 请使用 Notification.adjustNotificationPositions 代替
-     */
-    adjustNotificationPositions: () => {
-      console.warn('Utils.UI.adjustNotificationPositions 已弃用，请使用 Notification.adjustNotificationPositions 代替');
-      return Notification.adjustNotificationPositions();
-    },
-  },
-
-  /**
-   * @deprecated 请使用 Menu.showFormModal 代替
-   */
-  showFormModal: (title, formItems, onConfirm, confirmText, cancelText) => {
-    console.warn('Utils.showFormModal 已弃用，请使用 Menu.showFormModal 代替');
-    return Menu.showFormModal(title, formItems, onConfirm, confirmText, cancelText);
-  },
-
-  /**
-   * @deprecated 请使用 Menu.Modal 代替
-   */
-  Modal: {
-    initEvents: () => {
-      console.warn('Utils.Modal.initEvents 已弃用，请使用 Menu.Modal.initEvents 代替');
-      return Menu.Modal.initEvents();
-    },
-
-    show: modalId => {
-      console.warn('Utils.Modal.show 已弃用，请使用 Menu.Modal.show 代替');
-      return Menu.Modal.show(modalId);
-    },
-
-    hide: modalId => {
-      console.warn('Utils.Modal.hide 已弃用，请使用 Menu.Modal.hide 代替');
-      return Menu.Modal.hide(modalId);
-    }
-  },
-
-  /**
-   * @deprecated 请使用 Menu.ContextMenu 代替
-   */
-  ContextMenu: {
-    init: function() {
-      console.warn('Utils.ContextMenu.init 已弃用，请使用 Menu.ContextMenu.init 代替');
-      return Menu.ContextMenu.init();
-    },
-
-    show: function(event, items = [], options = {}) {
-      console.warn('Utils.ContextMenu.show 已弃用，请使用 Menu.ContextMenu.show 代替');
-      return Menu.ContextMenu.show(event, items, options);
-    },
-
-    hideAll: function() {
-      console.warn('Utils.ContextMenu.hideAll 已弃用，请使用 Menu.ContextMenu.hideAll 代替');
-      return Menu.ContextMenu.hideAll();
-    },
-  },
-
-  /**
-   * @deprecated 请使用 Menu.ImageSelector 代替
-   */
-  ImageSelector: {
-    show: function(options = {}) {
-      console.warn('Utils.ImageSelector.show 已弃用，请使用 Menu.ImageSelector.show 代替');
-      return Menu.ImageSelector.show(options);
-    }
-  },
-
   Events: {
     handleDocumentClick: e => {
       document.querySelectorAll('.dropdown-menu.active').forEach(dropdown => {
@@ -232,5 +120,6 @@ export const Utils = {
       reader.onerror = (error) => reject(error);
       reader.readAsDataURL(file);
     });
+   }
   }
 };

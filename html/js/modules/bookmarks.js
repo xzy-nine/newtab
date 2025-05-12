@@ -233,7 +233,7 @@ export const BookmarkManager = {
             // 无子文件夹的排在前面
             return [...foldersWithoutChildren, ...foldersWithChildren];
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -298,7 +298,7 @@ export const BookmarkManager = {
                 this.handleFolderClick(folderButton, folder);
             });
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -555,7 +555,7 @@ export const BookmarkManager = {
                 id: 'bookmark-delete',
                 text: I18n.getMessage('delete'),
                 callback: () => {
-                    Utils.UI.notify({
+                    Notification.notify({
                         title: I18n.getMessage('confirm'),
                         message: I18n.getMessage('confirmDeleteBookmark'),
                         type: 'confirm',
