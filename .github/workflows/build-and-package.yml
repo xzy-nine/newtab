@@ -25,7 +25,7 @@ jobs:
       id: get_version
       run: |
         VERSION=$(jq -r '.version' manifest.json)
-        echo "VERSION=$VERSION" >> $GITHUB_ENV/,/.
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
 
     - name: 获取最新发布版本
       id: get_latest_release
@@ -33,7 +33,7 @@ jobs:
         LATEST_VERSION=$(curl -s https:,/api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name' || echo "0.0.0")
         echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
 
-    - name: 比较版本
+    - name: 比较版本标签
       id: compare_versions
       run: |
         if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then
