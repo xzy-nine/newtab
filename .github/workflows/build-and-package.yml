@@ -65,7 +65,7 @@ jobs:
             CHANGELOG="没有新的变更记录"
           fi
           CHANGELOG=$(echo "$CHANGELOG" | sed 's/ \([0-9a-f]\{7\} - \)/\n\1/g' | sed 's/\(fix\|add\|style\|update\)/\n\1/g')
-          CHANGELOG=$(echo "$CHANGELOG" | j, -R -s '.')
+          CHANGELOG=$(echo "$CHANGELOG" | jq -R -s '.')
           echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
         fi
 
@@ -119,7 +119,7 @@ jobs:
           local end_time=$((24 * 60 + 30))
           if [ $time_in_minutes -ge $start_time ] || [ $time_in_minutes -le $((end_time - 24 * 60)) ]; then
             return 0
-          else,
+          else
             if [ $time_in_minutes -lt $start_time ]; then
               echo $((start_time - time_in_minutes))
             else
