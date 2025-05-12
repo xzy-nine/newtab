@@ -25,7 +25,7 @@ jobs:
       id: get_version
       run: |
         VERSION=$(jq -r '.version' manifest.json)
-        echo "VERSION=$VERSION" >> $GITHUB_ENV,/.
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
 
     - name: 获取最新发布版本
       id: get_latest_release
