@@ -208,14 +208,24 @@ jobs:
           RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.event.inputs.tag }}")
           
+          # 验证是否成功获取Release信息
+          if [[ $(echo "$RELEASE_INFO" | jq -r 'has("id")') != "true" ]]; then
+            echo "::error::无法获取tag '${{ github.event.inputs.tag }}' 的Release信息: $(echo "$RELEASE_INFO" | jq -r '.message // "未知错误"')"
+            exit 1
+          fi
+          
           RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r '.id')
+          echo "找到Release ID: $RELEASE_ID"
+          
           ORIGINAL_CHANGELOG=$(echo "$RELEASE_INFO" | jq -r '.body')
+          echo "获取到原始变更日志，长度: $(echo "$ORIGINAL_CHANGELOG" | wc -c) 字符"
           
           if [[ "$ORIGINAL_CHANGELOG" == *"[AI生成的变更日志摘要]"* ]]; then
             echo "⚠️ 此Release已包含AI生成的变更日志，跳过处理"
             exit 0
           fi
           
+          echo "调用 generate_ai_changelog 函数处理变更日志..."
           AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
           
           if [ -z "$AI_CHANGELOG" ]; then
@@ -223,13 +233,21 @@ jobs:
             exit 0
           fi
           
+          echo "AI变更日志生成成功，长度: $(echo "$AI_CHANGELOG" | wc -c) 字符"
           NEW_BODY="## 版本 ${{ github.event.inputs.tag }} 更新摘要 [AI生成的变更日志摘要]\n\n${AI_CHANGELOG}\n\n## 原始提交记录\n\n${ORIGINAL_CHANGELOG}"
           
-          curl -s -X PATCH \
+          echo "更新Release内容..."
+          UPDATE_RESPONSE=$(curl -s -X PATCH \
             -H "Authorization: token ${{ secrets.PAT }}" \
             -H "Content-Type: application/json" \
             -d "{\"body\": $(echo "$NEW_BODY" | jq -R -s '.')}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}"
+            "https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}")
+            
+          # 验证更新是否成功
+          if [[ $(echo "$UPDATE_RESPONSE" | jq -r 'has("id")') != "true" ]]; then
+            echo "::error::更新Release失败: $(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')"
+            exit 1
+          fi
           
           echo "✅ 已成功更新 ${{ github.event.inputs.tag }} 的发布日志"
           
