@@ -5,6 +5,7 @@
 import { I18n } from './i18n.js';
 import { IconManager } from './iconManager.js';
 import { Utils } from './utils.js';
+import { Menu } from './menu.js';
 
 // 默认搜索引擎配置
 const defaultEngines = [
@@ -449,7 +450,7 @@ function renderSearchEngineSelector(firstRender = false) {
             
             deleteButton.addEventListener('click', (e) => {
                 e.stopPropagation();
-                Utils.UI.notify({
+                Notification.notify({
                     title: I18n.getMessage('confirm') || '确认',
                     message: I18n.getMessage('confirmDeleteSearchEngine').replace('{name}', engine.name),
                     duration: 0,
@@ -512,7 +513,7 @@ function renderSearchEngineSelector(firstRender = false) {
             e.preventDefault();
             e.stopPropagation();
             
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('confirm') || '确认',
                 message: I18n.getMessage('clearStorageConfirm') || '确定要清除所有存储数据吗？此操作不可恢复。',
                 duration: 0,
@@ -524,7 +525,7 @@ function renderSearchEngineSelector(firstRender = false) {
                         callback: async () => {
                             const success = await SearchEngineAPI.clearStorage();
                             if (success) {
-                                Utils.UI.notify({
+                                Notification.notify({
                                     title: I18n.getMessage('success') || '成功',
                                     message: I18n.getMessage('clearStorageSuccess') || '存储已成功清除，页面将刷新。',
                                     type: 'success',
@@ -534,7 +535,7 @@ function renderSearchEngineSelector(firstRender = false) {
                                     }
                                 });
                             } else {
-                                Utils.UI.notify({
+                                Notification.notify({
                                     title: I18n.getMessage('error') || '错误',
                                     message: I18n.getMessage('clearStorageError') || '清除存储失败',
                                     type: 'error',
@@ -620,7 +621,7 @@ function showAddSearchEngineModal() {
         }
     ];
 
-    Utils.showFormModal(
+    Menu.showFormModal(
         I18n.getMessage('addCustomSearchEngine') || '添加自定义搜索引擎',
         formItems,
         (formData) => {
@@ -631,7 +632,7 @@ function showAddSearchEngineModal() {
             SearchEngineAPI.addCustomEngine({ name, url, icon })
                 .then(success => {
                     if (!success) {
-                        Utils.UI.notify({
+                        Notification.notify({
                             title: I18n.getMessage('error') || '错误',
                             message: I18n.getMessage('saveFailed') || '保存失败',
                             type: 'error',

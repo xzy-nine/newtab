@@ -41,10 +41,24 @@ async function getExtensionVersion() {
  */
 async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
     return Promise.race([
-        asyncFunc(),
+        asyncFunc().catch(error => {
+            // 增强错误日志记录
+            console.error(`[模块执行错误] ${moduleName}`, {
+                错误信息: error.message,
+                错误堆栈: error.stack,
+                模块名称: moduleName,
+                超时设置: `${timeout}ms`
+            });
+            throw error;
+        }),
         new Promise((_, reject) => {
             setTimeout(() => {
-                reject(new Error(I18n.getMessage('moduleInitTimeout').replace('{0}', moduleName)));
+                const timeoutError = new Error(I18n.getMessage('moduleInitTimeout').replace('{0}', moduleName));
+                console.error(`[模块超时] ${moduleName}`, {
+                    超时时间: `${timeout}ms`,
+                    模块名称: moduleName
+                });
+                reject(timeoutError);
             }, timeout);
         })
     ]);
@@ -128,6 +142,12 @@ async function init() {
                 completedModules++;
                 Notification.updateLoadingProgress((completedModules / totalModules) * 100, step.completeMessage);
             } catch (error) {
+                console.error(`[初始化错误] 模块: ${step.name}`, {
+                    错误信息: error.message,
+                    错误堆栈: error.stack,
+                    完成进度: `${completedModules}/${totalModules}`,
+                    当前步骤: step.message
+                });
                 throw new Error(I18n.getMessage('moduleLoadingFailed')
                     .replace('{0}', step.name)
                     .replace('{1}', error.message));
@@ -139,6 +159,16 @@ async function init() {
         Notification.hideLoadingIndicator();
         
     } catch (error) {
+        // 增强错误日志记录
+        console.error('[严重初始化错误]', {
+            错误类型: error.name,
+            错误信息: error.message,
+            错误堆栈: error.stack,
+            时间戳: new Date().toISOString(),
+            浏览器信息: navigator.userAgent,
+            扩展版本: VERSION
+        });
+        
         Notification.showErrorMessage(I18n.getMessage('initializationFailed'));
         Notification.hideLoadingIndicator();
     }
