@@ -66,7 +66,7 @@ jobs:
           fi
           CHANGELOG=$(echo "$CHANGELOG" | sed 's/ \([0-9a-f]\{7\} - \)/\n\1/g' | sed 's/\(fix\|add\|style\|update\)/\n\1/g')
           CHANGELOG=$(echo "$CHANGELOG" | jq -R -s '.')
-          echo "CHANGELOG=$CHANGELOG" >, $GITHUB_ENV
+          echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
         fi
 
     - name: 创建并提交 zip 包
@@ -343,8 +343,8 @@ jobs:
           # 自动创建新版本的分支
           echo "📝 处理新版本 ${{ env.VERSION }} 的变更日志"
           
-          # 修复这一行 - 直接使用环境变量
-          ORIGINAL_CHANGELOG="${CHANGELOG}"
+          # 修复这一行 - 移除额外的双引号
+          ORIGINAL_CHANGELOG=$(echo $CHANGELOG | jq -r '.')
           AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
           
           if [ ! -z "$AI_CHANGELOG" ]; then
