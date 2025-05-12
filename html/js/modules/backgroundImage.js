@@ -4,6 +4,8 @@
 
 import { Utils } from './utils.js';
 import { I18n } from './i18n.js';
+import { Notification } from './notification.js';
+import { Menu } from './menu.js';
 
 // 背景图片缓存相关常量
 const CACHE_KEY = 'bingImageCache';
@@ -189,7 +191,7 @@ class BackgroundManager {
      * @returns {Promise<string|null>} 图片URL，失败返回null
      */
     async fetchBingImage() {
-        Utils.UI.updateLoadingProgress(40, I18n.getMessage('loadingResources'));
+        Notification.updateLoadingProgress(40, I18n.getMessage('loadingResources'));
         
         // 检查缓存
         const cachedData = await chrome.storage.local.get(CACHE_KEY);
@@ -200,7 +202,7 @@ class BackgroundManager {
             return cachedData[CACHE_KEY].url;
         }
 
-        Utils.UI.updateLoadingProgress(50, I18n.getMessage('fetchingBingImage'));
+        Notification.updateLoadingProgress(50, I18n.getMessage('fetchingBingImage'));
         
         try {
             // 必应API地址
@@ -248,14 +250,14 @@ class BackgroundManager {
     async setImage() {
         try {
             // 显示加载指示器
-            Utils.UI.showLoadingIndicator();
-            Utils.UI.updateLoadingProgress(10, I18n.getMessage('loadingBackground'));
+            Notification.showLoadingIndicator();
+            Notification.updateLoadingProgress(10, I18n.getMessage('loadingBackground'));
             
             // 获取背景容器元素
             const container = document.getElementById('background-container');
             if (!container) {
                 console.error('Background container not found');
-                Utils.UI.hideLoadingIndicator();
+                Notification.hideLoadingIndicator();
                 return;
             }
 
@@ -289,11 +291,11 @@ class BackgroundManager {
                 console.warn('Failed to load background image, fallback to white background');
                 container.classList.add('bg-white');
                 container.style.backgroundImage = 'none';
-                Utils.UI.hideLoadingIndicator();
+                Notification.hideLoadingIndicator();
                 return;
             }
 
-            Utils.UI.updateLoadingProgress(70, I18n.getMessage('settingBackgroundType'));
+            Notification.updateLoadingProgress(70, I18n.getMessage('settingBackgroundType'));
             
             // 移除白色背景类（如果有）
             container.classList.remove('bg-white');
@@ -304,16 +306,16 @@ class BackgroundManager {
             // 应用模糊和暗化效果
             this.applyEffects();
             
-            Utils.UI.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete'));
-            setTimeout(() => Utils.UI.hideLoadingIndicator(), 500);
+            Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete'));
+            setTimeout(() => Notification.hideLoadingIndicator(), 500);
         } catch (error) {
             console.error('Failed to set background image:', error);
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('error'),
                 message: I18n.getMessage('backgroundSetFailed'),
                 type: 'error'
             });
-            Utils.UI.hideLoadingIndicator();
+            Notification.hideLoadingIndicator();
         }
     }
 
@@ -371,7 +373,7 @@ class BackgroundManager {
      * 处理自定义背景图片上传
      */
     handleCustomBackground() {
-        Utils.ImageSelector.show({
+        Menu.ImageSelector.show({
             title: I18n.getMessage('selectBackground') || '选择背景图片',
             modalId: 'background-selector-modal',
             mode: 'background',
@@ -405,7 +407,7 @@ class BackgroundManager {
                             bgTypeSelect.value = 'custom';
                         }
                         
-                        Utils.UI.notify({
+                        otification.notify({
                             title: I18n.getMessage('success'),
                             message: I18n.getMessage('customBackgroundSuccess') || '背景图片设置成功',
                             type: 'success',
@@ -413,7 +415,7 @@ class BackgroundManager {
                         });
                     } catch (error) {
                         console.error(I18n.getMessage('localStorageError'), error);
-                        Utils.UI.notify({
+                        otification.notify({
                             title: I18n.getMessage('error') || '错误',
                             message: I18n.getMessage('backgroundSetFailed') || '背景图片设置失败',
                             type: 'error',
@@ -453,7 +455,7 @@ class BackgroundManager {
                 bgTypeSelect.value = this.settings.type;
             }
             
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('success') || '成功',
                 message: I18n.getMessage('backgroundResetSuccess') || '已重置为默认背景',
                 type: 'success',
@@ -461,7 +463,7 @@ class BackgroundManager {
             });
         } catch (error) {
             console.error('Failed to clear custom background:', error);
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('error') || '错误',
                 message: I18n.getMessage('backgroundResetFailed') || '背景重置失败',
                 type: 'error',
