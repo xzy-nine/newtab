@@ -2,7 +2,6 @@
  * 工具函数模块
  * 包含通用UI处理、通知、模态框等功能
  */
-import { Notification } from './notification.js';
 import { Menu } from './menu.js';
 
 /**
@@ -81,15 +80,9 @@ export const Utils = {
     },
 
     handlePageLoad: () => {
-      // 不需要再处理旧的全屏加载元素
       const searchInput = document.getElementById('search-input');
       if (searchInput) setTimeout(() => searchInput.focus(), 100);
     },
-
-    handleWindowResize: () => {
-      // 处理响应式布局调整
-    },
-
     handleKeyDown: e => {
       if (e.key === 'Escape') {
         document.querySelectorAll('.modal').forEach(modal => {

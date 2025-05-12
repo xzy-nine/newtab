@@ -14,10 +14,11 @@ let clockConfig = {
 export const ClockWidget = {
     /**
      * 初始化时钟组件
+     * @returns {Promise<void>}
      */
-    init() {
+    async init() {
         createClockElement();
-        loadClockSettings();
+        await loadClockSettings();  // 等待设置加载完成
         _updateClock(); // 初始化时更新一次时钟显示
         setInterval(_updateClock, 1000);
         
@@ -25,6 +26,8 @@ export const ClockWidget = {
         window.addEventListener('resize', adjustClockSize);
         // 初始调整
         adjustClockSize();
+        
+        return Promise.resolve(); // 确保返回一个已解决的Promise
     },
 
     /**
