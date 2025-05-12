@@ -36,7 +36,7 @@ jobs:
     - name: 比较版本
       id: compare_versions
       run: |
-        if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then/.
+        if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then
             echo "new_version=true" >> $GITHUB_ENV
         else
             echo "new_version=false" >> $GITHUB_ENV
@@ -58,10 +58,10 @@ jobs:
           LAST_TAG=$(git describe --tags --abbrev=0 || echo "")
           if [ -z "$LAST_TAG" ]; then
             CHANGELOG=$(git log --pretty=format:"%h - %s")
-          else,
+          else
             CHANGELOG=$(git log --pretty=format:"%h - %s" $LAST_TAG..HEAD)
           fi
-          if [ -z "$CHANG,LOG" ]; then
+          if [ -z "$CHANGELOG" ]; then
             CHANGELOG="没有新的变更记录"
           fi
           CHANGELOG=$(echo "$CHANGELOG" | sed 's/ \([0-9a-f]\{7\} - \)/\n\1/g' | sed 's/\(fix\|add\|style\|update\)/\n\1/g')
@@ -100,21 +100,17 @@ jobs:
         asset_name: newtab-${{ env.VERSION }}.zip
         asset_content_type: application/zip
 
-    - name: 使用AI优化变更日志
-      if: env.new_version == 'true' && env.tag_exists == 'false'
+    - name: 处理AI变更日志
       id: ai_changelog
       continue-on-error: true
       timeout-minutes: 60
       run: |
-        # 获取原始变更日志
-        ORIGINAL_CHANGELOG=$(echo '${{ fromJson(env.CHANGELOG) }}')
-        
-        # 设置请求参数
+        # 设置通用参数
         MAX_RETRIES=3
         MAX_TOKENS=1500
         MAX_WAIT_MINUTES=60
         
-        # 检查是否在错峰时间（北京时间00:30-08:30，对应UTC 16:30-00:30）
+        # 错峰时间检查函数
         check_off_peak_time() {
           local hour=$(date -u +%H)
           local minute=$(date -u +%M)
@@ -133,6 +129,7 @@ jobs:
           fi
         }
         
+        # 等待错峰时间函数
         wait_for_off_peak() {
           local minutes_to_wait
           if ! check_off_peak_time; then
@@ -152,39 +149,112 @@ jobs:
           fi
         }
         
+        # 生成AI变更日志的函数
+        generate_ai_changelog() {
+          local original_content="$1"
+          local ai_changelog=""
+          
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "尝试第 $i 次生成AI变更日志..."
+            
+            # 保存API响应到变量并添加调试输出
+            local api_response=$(curl -v -s -X POST \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
+              -d "{
+                \"model\": \"deepseek-chat\",
+                \"messages\": [{\"role\": \"system\", \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。对每个变更都必须包含原始提交ID作为引用：$original_content\"}],
+                \"max_tokens\": $MAX_TOKENS
+              }" \
+              https://api.deepseek.com/v1/chat/completions 2>&1)
+            
+            echo "API响应内容(前100个字符): ${api_response:0:100}..."
+            
+            # 检查响应是否为有效JSON
+            if echo "$api_response" | jq '.' &>/dev/null; then
+              echo "获得有效JSON响应"
+              ai_changelog=$(echo "$api_response" | jq -r '.choices[0].message.content // empty')
+            else
+              echo "警告: 收到非JSON响应"
+              ai_changelog=""
+            fi
+            
+            if [ ! -z "$ai_changelog" ]; then
+              echo "✅ AI变更日志生成成功"
+              break
+            fi
+            
+            if [ $i -eq $MAX_RETRIES ]; then
+              echo "::warning::AI变更日志生成失败，服务返回: ${api_response:0:200}..."
+              return 1
+            else
+              echo "⚠️ 生成失败，等待3秒后重试..."
+              sleep 3
+            fi
+          done
+          
+          echo "$ai_changelog"
+          return 0
+        }
+        
+        # 等待错峰时间
         wait_for_off_peak
         
-        for i in $(seq 1 $MAX_RETRIES); do
-          echo "尝试第 $i 次生成AI变更日志..."
-          AI_CHANGELOG=$(curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
-            -d "{
-              \"model\": \"deepseek-chat\",
-              \"messages\": [{\"role\": \"system\", \"content\": \"你是一个新标签页的拓展发布日志编辑请保持专业、简洁并引用原始提交ID和对应url以md格式\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为简洁、结构化的发布日志，按功能新增、问题修复和改进优化分类：$ORIGINAL_CHANGELOG\"}],
-              \"max_tokens\": $MAX_TOKENS
-            }" \
-            https://api.deepseek.com/v1/chat/completions | jq -r '.choices[0].message.content' || echo "")
+        # 根据触发方式执行不同的分支
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ ! -z "${{ inputs.tag }}" ]; then
+          # 手动触发的分支
+          echo "📝 处理手动指定的tag '${{ github.event.inputs.tag }}' 的变更日志"
           
-          if [ ! -z "$AI_CHANGELOG" ] && [ "$AI_CHANGELOG" != "null" ]; then
-            echo "✅ AI变更日志生成成功"
-            break
-          fi
+          RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.event.inputs.tag }}")
           
-          if [ $i -eq $MAX_RETRIES ]; then
-            echo "::warning::AI变更日志生成失败"
+          RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r '.id')
+          ORIGINAL_CHANGELOG=$(echo "$RELEASE_INFO" | jq -r '.body')
+          
+          if [[ "$ORIGINAL_CHANGELOG" == *"[AI生成的变更日志摘要]"* ]]; then
+            echo "⚠️ 此Release已包含AI生成的变更日志，跳过处理"
             exit 0
-          else
-            echo "⚠️ 生成失败，等待3秒后重试..."
-            sleep 3
           fi
-        done
-        
-        AI_CHANGELOG="${AI_CHANGELOG//'%'/'%25'}"
-        AI_CHANGELOG="${AI_CHANGELOG//$'\n'/'%0A'}"
-        AI_CHANGELOG="${AI_CHANGELOG//$'\r'/'%0D'}"
-        
-        echo "ai_changelog=$AI_CHANGELOG" >> $GITHUB_OUTPUT
+          
+          AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
+          
+          if [ -z "$AI_CHANGELOG" ]; then
+            echo "::warning::未能获取有效的AI变更日志内容"
+            exit 0
+          fi
+          
+          NEW_BODY="## 版本 ${{ github.event.inputs.tag }} 更新摘要 [AI生成的变更日志摘要]\n\n${AI_CHANGELOG}\n\n## 原始提交记录\n\n${ORIGINAL_CHANGELOG}"
+          
+          curl -s -X PATCH \
+            -H "Authorization: token ${{ secrets.PAT }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"body\": $(echo "$NEW_BODY" | jq -R -s '.')}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}"
+          
+          echo "✅ 已成功更新 ${{ github.event.inputs.tag }} 的发布日志"
+          
+        elif [ "${{ env.new_version }}" == "true" ] && [ "${{ env.tag_exists }}" == "false" ]; then
+          # 自动创建新版本的分支
+          echo "📝 处理新版本 ${{ env.VERSION }} 的变更日志"
+          
+          ORIGINAL_CHANGELOG=$(echo '${{ fromJson(env.CHANGELOG) }}')
+          AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
+          
+          if [ ! -z "$AI_CHANGELOG" ]; then
+            # 为GitHub Actions输出准备变量
+            AI_CHANGELOG="${AI_CHANGELOG//'%'/'%25'}"
+            AI_CHANGELOG="${AI_CHANGELOG//$'\n'/'%0A'}"
+            AI_CHANGELOG="${AI_CHANGELOG//$'\r'/'%0D'}"
+            
+            echo "ai_changelog=$AI_CHANGELOG" >> $GITHUB_OUTPUT
+            echo "✅ AI变更日志已准备就绪，等待更新Release"
+          else
+            echo "::warning::未能获取有效的AI变更日志内容"
+          fi
+          
+        else
+          echo "⏭️ 不满足AI变更日志处理条件，跳过此步骤"
+        fi
 
     - name: 更新Release内容
       if: env.new_version == 'true' && env.tag_exists == 'false' && steps.ai_changelog.outcome == 'success' && steps.ai_changelog.outputs.ai_changelog != ''
@@ -206,87 +276,3 @@ jobs:
           } catch (error) {
             console.log('⚠️ 更新发布日志失败:', error.message);
           }
-
-
-    - name: 手动处理指定tag的AI变更日志
-      if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
-      id: manual_ai_changelog
-      continue-on-error: true
-      timeout-minutes: 60
-      run: |
-            RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.event.inputs.tag }}")
-            
-            RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r '.id')
-            ORIGINAL_CHANGELOG=$(echo "$RELEASE_INFO" | jq -r '.body')
-            
-            if [[ "$ORIGINAL_CHANGELOG" == *"[AI生成的变更日志摘要]"* ]]; then
-              echo "⚠️ 此Release已包含AI生成的变更日志，跳过处理"
-              exit 0
-            fi
-            
-            echo "📝 正在处理tag '${{ github.event.inputs.tag }}' 的变更日志，Release ID: $RELEASE_ID"
-            
-            MAX_RETRIES=3
-            MAX_TOKENS=1500
-            MAX_WAIT_MINUTES=60
-            
-            # 错峰时间检查函数和等待函数保持不变
-            # ...
-            
-            wait_for_off_peak
-            
-            for i in $(seq 1 $MAX_RETRIES); do
-              echo "尝试第 $i 次生成AI变更日志..."
-              
-              # 保存API响应到变量并添加调试输出
-              API_RESPONSE=$(curl -v -s -X POST \
-                -H "Content-Type: application/json" \
-                -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
-                -d "{
-                  \"model\": \"deepseek-chat\",
-                  \"messages\": [{\"role\": \"system\", \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。对每个变更都必须包含原始提交ID作为引用：$ORIGINAL_CHANGELOG\"}],
-                  \"max_tokens\": $MAX_TOKENS
-                }" \
-                https://api.deepseek.com/v1/chat/completions 2>&1)
-              
-              echo "API响应内容(前100个字符): ${API_RESPONSE:0:100}..."
-              
-              # 检查响应是否为有效JSON
-              if echo "$API_RESPONSE" | jq '.' &>/dev/null; then
-                echo "获得有效JSON响应"
-                AI_CHANGELOG=$(echo "$API_RESPONSE" | jq -r '.choices[0].message.content // empty')
-              else
-                echo "警告: 收到非JSON响应"
-                AI_CHANGELOG=""
-              fi
-              
-              if [ ! -z "$AI_CHANGELOG" ]; then
-                echo "✅ AI变更日志生成成功"
-                break
-              fi
-              
-              if [ $i -eq $MAX_RETRIES ]; then
-                echo "::warning::AI变更日志生成失败，服务返回: ${API_RESPONSE:0:200}..."
-                exit 0
-              else
-                echo "⚠️ 生成失败，等待3秒后重试..."
-                sleep 3
-              fi
-            done
-            
-            # 确保变量内容有效后再继续
-            if [ -z "$AI_CHANGELOG" ]; then
-              echo "::warning::未能获取有效的AI变更日志内容"
-              exit 0
-            fi
-            
-            NEW_BODY="## 版本 ${{ github.event.inputs.tag }} 更新摘要 [AI生成的变更日志摘要]\n\n${AI_CHANGELOG}\n\n## 原始提交记录\n\n${ORIGINAL_CHANGELOG}"
-            
-            curl -s -X PATCH \
-              -H "Authorization: token ${{ secrets.PAT }}" \
-              -H "Content-Type: application/json" \
-              -d "{\"body\": $(echo "$NEW_BODY" | jq -R -s '.')}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}"
-            
-            echo "✅ 已成功更新 ${{ github.event.inputs.tag }} 的发布日志"
