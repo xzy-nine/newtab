@@ -1,5 +1,4 @@
-name: Build and Package
-
+name: 打包与构建
 on:
   push:
     branches:
@@ -323,8 +322,8 @@ jobs:
           fi
           
           echo "AI变更日志生成成功，长度: $(echo "$AI_CHANGELOG" | wc -c) 字符"
-          # 使用 echo -e 来正确解释转义序列
-          NEW_BODY=$(echo -e "## 版本 ${{ github.event.inputs.tag }} 更新摘要 [AI生成的变更日志摘要]\n\n${AI_CHANGELOG}\n\n## 原始提交记录\n\n${ORIGINAL_CHANGELOG}")
+          # 使用 echo -e 来正确解释转义序列，并将原始提交记录放入折叠部分
+          NEW_BODY=$(echo -e "## 版本 ${{ github.event.inputs.tag }} 更新摘要 [AI生成的变更日志摘要]\n\n${AI_CHANGELOG}\n\n<details>\n<summary>查看原始提交记录</summary>\n\n${ORIGINAL_CHANGELOG}\n\n</details>")
           
           echo "更新Release内容..."
           UPDATE_RESPONSE=$(curl -s -X PATCH \
@@ -373,7 +372,15 @@ jobs:
         github-token: ${{ secrets.PAT }}
         script: |
           const releaseId = ${{ steps.create_release.outputs.id }};
-          const aiChangelog = `## 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]${{ steps.ai_changelog.outputs.ai_changelog }}## 原始提交记录${{ fromJson(env.CHANGELOG) }}`;
+          const aiChangelog = `## 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
+
+          ${{ steps.ai_changelog.outputs.ai_changelog }}
+
+          <details>
+          <summary>查看原始提交记录</summary>
+
+          ${{ fromJson(env.CHANGELOG) }}
+          </details>`;
           
           try {
             await github.rest.repos.updateRelease({
