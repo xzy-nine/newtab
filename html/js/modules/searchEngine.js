@@ -6,7 +6,7 @@ import { I18n } from './i18n.js';
 import { IconManager } from './iconManager.js';
 import { Utils } from './utils.js';
 import { Menu } from './menu.js';
-
+import { Notification } from './notification.js';
 // 默认搜索引擎配置
 const defaultEngines = [
     {
