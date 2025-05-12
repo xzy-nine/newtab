@@ -25,7 +25,7 @@ jobs:
       id: get_version
       run: |
         VERSION=$(jq -r '.version' manifest.json)
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "VERSION=$VERSION" >> $GITHUB_ENV,/.
 
     - name: 获取最新发布版本
       id: get_latest_release
@@ -110,7 +110,7 @@ jobs:
         MAX_TOKENS=1500
         MAX_WAIT_MINUTES=60
         
-        # 错峰时间检查函数,
+        # 错峰时间检查函数
         check_off_peak_time() {
           local hour=$(date -u +%H)
           local minute=$(date -u +%M)
@@ -119,7 +119,7 @@ jobs:
           local end_time=$((24 * 60 + 30))
           if [ $time_in_minutes -ge $start_time ] || [ $time_in_minutes -le $((end_time - 24 * 60)) ]; then
             return 0
-          else,
+          else
             if [ $time_in_minutes -lt $start_time ]; then
               echo $((start_time - time_in_minutes))
             else
@@ -156,21 +156,21 @@ jobs:
           
           # 检查输入内容
           if [ -z "$original_content" ]; then
-            echo "::error::传入的原始变更日志内容为空"
+            echo >&2 "::error::传入的原始变更日志内容为空"
             return 1
           fi
           
           # 记录输入内容长度
-          echo "原始内容长度: $(echo "$original_content" | wc -c) 字符"
+          echo >&2 "原始内容长度: $(echo "$original_content" | wc -c) 字符"
           
           # 转义原始内容以便安全地插入到JSON中
           local json_escaped_content=$(echo "$original_content" | jq -Rs '.')
           
           for i in $(seq 1 $MAX_RETRIES); do
-            echo "尝试第 $i 次生成AI变更日志..."
+            echo >&2 "尝试第 $i 次生成AI变更日志..."
             
             # 添加更详细的API请求日志
-            echo "正在发送请求到DeepSeek API端点..."
+            echo >&2 "正在发送请求到DeepSeek API端点..."
             
             # 构建请求体并打印前200个字符用于调试
             local request_body="{
@@ -178,11 +178,11 @@ jobs:
               \"messages\": [{\"role\": \"system\", \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。对每个变更都必须包含原始提交ID作为引用：${json_escaped_content:1:-1}\"}],
               \"max_tokens\": $MAX_TOKENS
             }"
-            echo "请求体前200字符: ${request_body:0:200}..."
+            echo >&2 "请求体前200字符: ${request_body:0:200}..."
             
             # 保存完整的输出供调试使用
-            echo "执行API调用..."
-            echo "======== API请求开始 ========"
+            echo >&2 "执行API调用..."
+            echo >&2 "======== API请求开始 ========"
             local api_response_file=$(mktemp)
             local api_headers_file=$(mktemp)
             
@@ -343,8 +343,9 @@ jobs:
           # 自动创建新版本的分支
           echo "📝 处理新版本 ${{ env.VERSION }} 的变更日志"
           
-          # 修复这一行 - 移除额外的双引号
-          ORIGINAL_CHANGELOG=$(echo $CHANGELOG | jq -r '.')
+          # 修复这一行 - 确保获取正确的变更日志内容
+          ORIGINAL_CHANGELOG=$(echo $CHANGELOG | jq -r '.' 2>/dev/null || echo "$CHANGELOG")
+          # 调用生成函数但确保只获取实际的输出内容
           AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
           
           if [ ! -z "$AI_CHANGELOG" ]; then
