@@ -30,7 +30,7 @@ jobs:
     - name: 获取最新发布版本
       id: get_latest_release
       run: |
-        LATEST_VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name' || echo "0.0.0")
+        LATEST_VERSION=$(curl -s https:,/api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name' || echo "0.0.0")
         echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
 
     - name: 比较版本
@@ -154,21 +154,27 @@ jobs:
           local original_content="$1"
           local ai_changelog=""
           
+          # 转义原始内容以便安全地插入到JSON中
+          local json_escaped_content=$(echo "$original_content" | jq -Rs '.')
+          
           for i in $(seq 1 $MAX_RETRIES); do
             echo "尝试第 $i 次生成AI变更日志..."
             
             # 添加更详细的API请求日志
             echo "正在发送请求到DeepSeek API端点..."
             
+            # 保存完整请求体用于调试
+            local request_body="{
+              \"model\": \"deepseek-chat\",
+              \"messages\": [{\"role\": \"system\", \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。对每个变更都必须包含原始提交ID作为引用：${json_escaped_content:1:-1}\"}],
+              \"max_tokens\": $MAX_TOKENS
+            }"
+            
             # 保存API响应，并添加详细的调试信息
             local api_response=$(curl -v -s -X POST \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
-              -d "{
-                \"model\": \"deepseek-chat\",
-                \"messages\": [{\"role\": \"system\", \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。对每个变更都必须包含原始提交ID作为引用：$original_content\"}],
-                \"max_tokens\": $MAX_TOKENS
-              }" \
+              -d "$request_body" \
               https://api.deepseek.com/v1/chat/completions 2>&1)
             
             local curl_status=$?
@@ -183,9 +189,36 @@ jobs:
               continue
             fi
             
+            # 提取HTTP状态码
+            local http_status=$(echo "$api_response" | grep -o 'HTTP/[0-9.]* [0-9]\{3\}' | tail -1 | awk '{print $2}')
+            echo "收到HTTP状态码: ${http_status:-未知}"
+            
+            # 基于HTTP状态码提供更详细的错误诊断
+            if [[ "$http_status" == "400" ]]; then
+              echo "::error::请求格式错误(400)，请检查请求体"
+              echo "请求体(前200字符): ${request_body:0:200}..."
+            elif [[ "$http_status" == "401" ]]; then
+              echo "::error::认证失败(401)，请检查API密钥是否正确"
+            elif [[ "$http_status" == "402" ]]; then
+              echo "::error::账户余额不足(402)，请充值后重试"
+            elif [[ "$http_status" == "422" ]]; then
+              echo "::error::参数错误(422)，请检查请求参数"
+            elif [[ "$http_status" == "429" ]]; then
+              echo "::error::请求速率达到上限(429)，请稍后重试"
+            elif [[ "$http_status" == "500" ]]; then
+              echo "::error::服务器内部故障(500)，请稍后重试"
+            elif [[ "$http_status" == "503" ]]; then
+              echo "::error::服务器繁忙(503)，请稍后重试"
+            fi
+            
             # 记录API响应的更多细节
-            echo "收到API响应，状态码: $(echo "$api_response" | grep -o 'HTTP/[0-9.]* [0-9]* ' | tail -1 || echo "未知")"
-            echo "API响应体(前200个字符): ${api_response:0:200}..."
+            echo "API响应体(前500个字符): ${api_response:0:500}..."
+            
+            # 尝试提取错误消息(如果存在)
+            local error_message=$(echo "$api_response" | grep -o '"error":{[^}]*}' || echo "")
+            if [ ! -z "$error_message" ]; then
+              echo "::error::API错误信息: $error_message"
+            fi
             
             # 使用jq验证JSON响应的完整性
             if echo "$api_response" | grep -q '{"id":' && echo "$api_response" | jq '.' &>/dev/null; then
