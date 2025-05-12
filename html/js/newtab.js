@@ -6,10 +6,12 @@
 import { I18n } from './modules/i18n.js';
 // 导入背景管理器实例
 import backgroundManager from './modules/backgroundImage.js';
-import { SearchEngineAPI } from './modules/searchEngine.js';  // 更新导入，使用新API
+import { SearchEngineAPI } from './modules/searchEngine.js'; 
 import { BookmarkManager } from './modules/bookmarks.js';
 import { ClockWidget } from './modules/clockWidget.js';
 import { Utils } from './modules/utils.js';
+import { Notification } from './modules/notification.js'; 
+import { Menu } from './modules/menu.js'; 
 
 // 版本号
 let VERSION = '0.0.0'; 
@@ -57,7 +59,7 @@ async function init() {
         createBasicUI();
         
         // 显示加载界面
-        Utils.UI.showLoadingIndicator();
+        Notification.showLoadingIndicator();
         
         // 先初始化国际化模块，这样后面才能使用它
         await executeWithTimeout(
@@ -121,10 +123,10 @@ async function init() {
         // 依次执行初始化步骤
         for (const step of initSteps) {
             try {
-                Utils.UI.updateLoadingProgress((completedModules / totalModules) * 100, step.message);
+                Notification.updateLoadingProgress((completedModules / totalModules) * 100, step.message);
                 await executeWithTimeout(step.action, step.timeout, step.name);
                 completedModules++;
-                Utils.UI.updateLoadingProgress((completedModules / totalModules) * 100, step.completeMessage);
+                Notification.updateLoadingProgress((completedModules / totalModules) * 100, step.completeMessage);
             } catch (error) {
                 throw new Error(I18n.getMessage('moduleLoadingFailed')
                     .replace('{0}', step.name)
@@ -134,11 +136,11 @@ async function init() {
         
         await performPostInitTasks();
         isInitialized = true;
-        Utils.UI.hideLoadingIndicator();
+        Notification.hideLoadingIndicator();
         
     } catch (error) {
-        Utils.UI.showErrorMessage(I18n.getMessage('initializationFailed'));
-        Utils.UI.hideLoadingIndicator();
+        Notification.showErrorMessage(I18n.getMessage('initializationFailed'));
+        Notification.hideLoadingIndicator();
     }
 }
 
@@ -229,10 +231,10 @@ function showWelcomeMessage() {
     const welcomeModal = document.getElementById('welcome-modal');
     if (welcomeModal) {
         // 使用模块化API
-        Utils.Modal.show('welcome-modal');
+        Menu.Modal.show('welcome-modal');
     } else {
         // 如果没有预定义的欢迎模态框，使用通知
-        Utils.UI.notify({
+        Notification.notify({
             title: I18n.getMessage('welcomeTitle'),
             message: I18n.getMessage('welcomeMessage'),
             duration: 8000,  // 延长显示时间为 8 秒
@@ -247,7 +249,7 @@ function showWelcomeMessage() {
  * @param {string} newVersion - 新版本号
  */
 function showUpdateMessage(oldVersion, newVersion) {
-    Utils.UI.notify({
+    Notification.notify({
         title: I18n.getMessage('updateTitle'),
         message: I18n.getMessage('updateMessage').replace('{0}', oldVersion).replace('{1}', newVersion),
         duration: 6000,
@@ -289,13 +291,13 @@ document.addEventListener('DOMContentLoaded', init);
 document.addEventListener('DOMContentLoaded', () => {
   // 主超时保护，8秒后如果仍在加载则强制隐藏
   setTimeout(() => {
-    Utils.UI.hideLoadingIndicator(true);
+    Notification.hideLoadingIndicator(true);
   }, 8000);
   
   // 页面加载后的备份保护
   window.addEventListener('load', () => {
     setTimeout(() => {
-      Utils.UI.hideLoadingIndicator(true);
+      Notification.hideLoadingIndicator(true);
     }, 2000);
   });
 });
@@ -341,7 +343,7 @@ function showMobileInstruction(url) {
     // 检测是否为移动设备
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    return Utils.UI.notify({
+    return Notification.notify({
         title: I18n.getMessage('setNewTab'),
         message: isMobile 
             ? I18n.getMessage('mobileInstructionMessage', [finalUrl])
@@ -354,7 +356,7 @@ function showMobileInstruction(url) {
                 class: 'btn-primary',
                 callback: () => {
                     navigator.clipboard.writeText(finalUrl)
-                        .then(() => Utils.UI.notify({
+                        .then(() => Notification.notify({
                             title: I18n.getMessage('success'), 
                             message: I18n.getMessage('linkCopied'), 
                             duration: 2000, 
@@ -362,7 +364,7 @@ function showMobileInstruction(url) {
                         }))
                         .catch(err => {
                             console.error(I18n.getMessage('copyError') || '复制失败:', err);
-                            Utils.UI.notify({
+                            Notification.notify({
                                 title: I18n.getMessage('error'), 
                                 message: I18n.getMessage('copyLinkFailed'), 
                                 duration: 2000, 
