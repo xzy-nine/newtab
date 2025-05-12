@@ -25,7 +25,7 @@ jobs:
       id: get_version
       run: |
         VERSION=$(jq -r '.version' manifest.json)
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "VERSION=$VERSION" >> $GITHUB_ENV/,/.
 
     - name: 获取最新发布版本
       id: get_latest_release
@@ -66,7 +66,7 @@ jobs:
           fi
           CHANGELOG=$(echo "$CHANGELOG" | sed 's/ \([0-9a-f]\{7\} - \)/\n\1/g' | sed 's/\(fix\|add\|style\|update\)/\n\1/g')
           CHANGELOG=$(echo "$CHANGELOG" | jq -R -s '.')
-          echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
+          echo "CHANGELOG=$CHANGELOG" >, $GITHUB_ENV
         fi
 
     - name: 创建并提交 zip 包
@@ -110,7 +110,7 @@ jobs:
         MAX_TOKENS=1500
         MAX_WAIT_MINUTES=60
         
-        # 错峰时间检查函数
+        # 错峰时间检查函数,
         check_off_peak_time() {
           local hour=$(date -u +%H)
           local minute=$(date -u +%M)
@@ -119,7 +119,7 @@ jobs:
           local end_time=$((24 * 60 + 30))
           if [ $time_in_minutes -ge $start_time ] || [ $time_in_minutes -le $((end_time - 24 * 60)) ]; then
             return 0
-          else
+          else,
             if [ $time_in_minutes -lt $start_time ]; then
               echo $((start_time - time_in_minutes))
             else
@@ -154,6 +154,15 @@ jobs:
           local original_content="$1"
           local ai_changelog=""
           
+          # 检查输入内容
+          if [ -z "$original_content" ]; then
+            echo "::error::传入的原始变更日志内容为空"
+            return 1
+          fi
+          
+          # 记录输入内容长度
+          echo "原始内容长度: $(echo "$original_content" | wc -c) 字符"
+          
           # 转义原始内容以便安全地插入到JSON中
           local json_escaped_content=$(echo "$original_content" | jq -Rs '.')
           
@@ -163,90 +172,111 @@ jobs:
             # 添加更详细的API请求日志
             echo "正在发送请求到DeepSeek API端点..."
             
-            # 保存完整请求体用于调试
+            # 构建请求体并打印前200个字符用于调试
             local request_body="{
               \"model\": \"deepseek-chat\",
               \"messages\": [{\"role\": \"system\", \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。对每个变更都必须包含原始提交ID作为引用：${json_escaped_content:1:-1}\"}],
               \"max_tokens\": $MAX_TOKENS
             }"
+            echo "请求体前200字符: ${request_body:0:200}..."
             
-            # 保存API响应，并添加详细的调试信息
-            local api_response=$(curl -v -s -X POST \
+            # 保存完整的输出供调试使用
+            echo "执行API调用..."
+            echo "======== API请求开始 ========"
+            local api_response_file=$(mktemp)
+            local api_headers_file=$(mktemp)
+            
+            # 使用curl的-D选项将头信息保存到单独的文件
+            curl -v -s -X POST \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
               -d "$request_body" \
-              https://api.deepseek.com/v1/chat/completions 2>&1)
+              -D "$api_headers_file" \
+              https://api.deepseek.com/v1/chat/completions > "$api_response_file" 2> /tmp/curl_error.log
             
             local curl_status=$?
             
+            echo "Curl命令退出状态: $curl_status"
+            
+            # 输出错误日志
+            if [ -s /tmp/curl_error.log ]; then
+              echo "Curl错误日志:"
+              cat /tmp/curl_error.log
+            fi
+            
+            # 输出响应头
+            echo "API响应头:"
+            cat "$api_headers_file"
+            
+            # 输出响应体(前1000个字符)
+            echo "API响应体(前1000字符):"
+            head -c 1000 "$api_response_file"
+            echo ""
+            echo "======== API请求结束 ========"
+            
             # 记录curl命令执行状态
             if [ $curl_status -ne 0 ]; then
-              echo "::error::curl命令执行失败，错误代码: $curl_status，错误信息: ${api_response:0:500}"
+              echo "::error::curl命令执行失败，错误代码: $curl_status"
+              cat /tmp/curl_error.log
               if [ $i -eq $MAX_RETRIES ]; then
+                rm -f "$api_response_file" "$api_headers_file" /tmp/curl_error.log
                 return $curl_status
               fi
-              sleep 3
+              sleep 5
               continue
             fi
             
             # 提取HTTP状态码
-            local http_status=$(echo "$api_response" | grep -o 'HTTP/[0-9.]* [0-9]\{3\}' | tail -1 | awk '{print $2}')
+            local http_status=$(grep -o 'HTTP/[0-9.]* [0-9]\{3\}' "$api_headers_file" | tail -1 | awk '{print $2}')
             echo "收到HTTP状态码: ${http_status:-未知}"
             
-            # 基于HTTP状态码提供更详细的错误诊断
-            if [[ "$http_status" == "400" ]]; then
-              echo "::error::请求格式错误(400)，请检查请求体"
-              echo "请求体(前200字符): ${request_body:0:200}..."
-            elif [[ "$http_status" == "401" ]]; then
-              echo "::error::认证失败(401)，请检查API密钥是否正确"
-            elif [[ "$http_status" == "402" ]]; then
-              echo "::error::账户余额不足(402)，请充值后重试"
-            elif [[ "$http_status" == "422" ]]; then
-              echo "::error::参数错误(422)，请检查请求参数"
-            elif [[ "$http_status" == "429" ]]; then
-              echo "::error::请求速率达到上限(429)，请稍后重试"
-            elif [[ "$http_status" == "500" ]]; then
-              echo "::error::服务器内部故障(500)，请稍后重试"
-            elif [[ "$http_status" == "503" ]]; then
-              echo "::error::服务器繁忙(503)，请稍后重试"
+            # 检查HTTP状态码是否表示成功
+            if [ "$http_status" != "200" ]; then
+              echo "::warning::API返回非200状态码: $http_status"
+              echo "响应详情:"
+              cat "$api_response_file"
+              
+              if [ $i -eq $MAX_RETRIES ]; then
+                echo "::error::在 $MAX_RETRIES 次尝试后API仍返回错误状态码"
+                rm -f "$api_response_file" "$api_headers_file" /tmp/curl_error.log
+                return 1
+              fi
+              
+              sleep 5
+              continue
             fi
             
-            # 记录API响应的更多细节
-            echo "API响应体(前500个字符): ${api_response:0:500}..."
-            
-            # 尝试提取错误消息(如果存在)
-            local error_message=$(echo "$api_response" | grep -o '"error":{[^}]*}' || echo "")
-            if [ ! -z "$error_message" ]; then
-              echo "::error::API错误信息: $error_message"
-            fi
-            
-            # 使用jq验证JSON响应的完整性
-            if echo "$api_response" | grep -q '{"id":' && echo "$api_response" | jq '.' &>/dev/null; then
+            # 尝试解析响应为JSON
+            if [ -s "$api_response_file" ] && jq '.' "$api_response_file" > /dev/null 2>&1; then
               echo "✅ 收到有效的JSON响应"
-              ai_changelog=$(echo "$api_response" | jq -r '.choices[0].message.content // empty')
+              ai_changelog=$(jq -r '.choices[0].message.content // empty' "$api_response_file")
             else
               echo "⚠️ 警告: 收到无效或非JSON响应"
-              echo "完整响应(最多1000个字符): ${api_response:0:1000}"
+              cat "$api_response_file"
               ai_changelog=""
             fi
             
+            # 清理临时文件
+            rm -f "$api_response_file" "$api_headers_file" /tmp/curl_error.log
+            
             if [ ! -z "$ai_changelog" ]; then
               echo "✅ AI变更日志生成成功，内容长度: $(echo "$ai_changelog" | wc -c) 字符"
-              break
+              echo "$ai_changelog"
+              return 0
             fi
             
             if [ $i -eq $MAX_RETRIES ]; then
               echo "::error::尝试了 $MAX_RETRIES 次后AI变更日志生成失败"
-              echo "最后一次API响应：${api_response:0:1000}..."
               return 1
             else
-              echo "⚠️ 第 $i 次尝试生成失败，等待3秒后重试..."
-              sleep 3
+              echo "⚠️ 第 $i 次尝试生成失败，等待5秒后重试..."
+              sleep 5
             fi
           done
           
-          echo "$ai_changelog"
-          return 0
+          # 如果代码执行到这里，表示所有重试都失败了但没有被前面的条件捕获
+          echo "::error::在所有重试后未能生成有效的AI变更日志"
+          return 1
         }
         
         # 等待错峰时间
@@ -277,20 +307,18 @@ jobs:
             exit 0
           fi
           
-          echo "调用 generate_ai_changelog 函数处理变更日志..."
-          
-          # 更详细地捕获和记录API调用结果
+          echo "开始生成AI变更日志..."
           AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
           API_RESULT=$?
           
           # 检查API调用的返回状态
           if [ $API_RESULT -ne 0 ]; then
-            echo "::warning::DeepSeek API调用失败，错误代码: $API_RESULT"
+            echo "::error::DeepSeek API调用失败，错误代码: $API_RESULT"
             echo "::debug::跳过AI变更日志更新，保持原始变更日志不变"
-            exit 0
+            exit 1
           elif [ -z "$AI_CHANGELOG" ]; then
-            echo "::warning::未能获取有效的AI变更日志内容（内容为空）"
-            exit 0
+            echo "::error::未能获取有效的AI变更日志内容（内容为空）"
+            exit 1
           fi
           
           echo "AI变更日志生成成功，长度: $(echo "$AI_CHANGELOG" | wc -c) 字符"
