@@ -157,7 +157,10 @@ jobs:
           for i in $(seq 1 $MAX_RETRIES); do
             echo "尝试第 $i 次生成AI变更日志..."
             
-            # 保存API响应到变量并添加调试输出
+            # 添加更详细的API请求日志
+            echo "正在发送请求到DeepSeek API端点..."
+            
+            # 保存API响应，并添加详细的调试信息
             local api_response=$(curl -v -s -X POST \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
@@ -168,27 +171,43 @@ jobs:
               }" \
               https://api.deepseek.com/v1/chat/completions 2>&1)
             
-            echo "API响应内容(前100个字符): ${api_response:0:100}..."
+            local curl_status=$?
             
-            # 检查响应是否为有效JSON
-            if echo "$api_response" | jq '.' &>/dev/null; then
-              echo "获得有效JSON响应"
+            # 记录curl命令执行状态
+            if [ $curl_status -ne 0 ]; then
+              echo "::error::curl命令执行失败，错误代码: $curl_status，错误信息: ${api_response:0:500}"
+              if [ $i -eq $MAX_RETRIES ]; then
+                return $curl_status
+              fi
+              sleep 3
+              continue
+            fi
+            
+            # 记录API响应的更多细节
+            echo "收到API响应，状态码: $(echo "$api_response" | grep -o 'HTTP/[0-9.]* [0-9]* ' | tail -1 || echo "未知")"
+            echo "API响应体(前200个字符): ${api_response:0:200}..."
+            
+            # 使用jq验证JSON响应的完整性
+            if echo "$api_response" | grep -q '{"id":' && echo "$api_response" | jq '.' &>/dev/null; then
+              echo "✅ 收到有效的JSON响应"
               ai_changelog=$(echo "$api_response" | jq -r '.choices[0].message.content // empty')
             else
-              echo "警告: 收到非JSON响应"
+              echo "⚠️ 警告: 收到无效或非JSON响应"
+              echo "完整响应(最多1000个字符): ${api_response:0:1000}"
               ai_changelog=""
             fi
             
             if [ ! -z "$ai_changelog" ]; then
-              echo "✅ AI变更日志生成成功"
+              echo "✅ AI变更日志生成成功，内容长度: $(echo "$ai_changelog" | wc -c) 字符"
               break
             fi
             
             if [ $i -eq $MAX_RETRIES ]; then
-              echo "::warning::AI变更日志生成失败，服务返回: ${api_response:0:200}..."
+              echo "::error::尝试了 $MAX_RETRIES 次后AI变更日志生成失败"
+              echo "最后一次API响应：${api_response:0:1000}..."
               return 1
             else
-              echo "⚠️ 生成失败，等待3秒后重试..."
+              echo "⚠️ 第 $i 次尝试生成失败，等待3秒后重试..."
               sleep 3
             fi
           done
@@ -226,10 +245,18 @@ jobs:
           fi
           
           echo "调用 generate_ai_changelog 函数处理变更日志..."
-          AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
           
-          if [ -z "$AI_CHANGELOG" ]; then
-            echo "::warning::未能获取有效的AI变更日志内容"
+          # 更详细地捕获和记录API调用结果
+          AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
+          API_RESULT=$?
+          
+          # 检查API调用的返回状态
+          if [ $API_RESULT -ne 0 ]; then
+            echo "::warning::DeepSeek API调用失败，错误代码: $API_RESULT"
+            echo "::debug::跳过AI变更日志更新，保持原始变更日志不变"
+            exit 0
+          elif [ -z "$AI_CHANGELOG" ]; then
+            echo "::warning::未能获取有效的AI变更日志内容（内容为空）"
             exit 0
           fi
           
