@@ -24,13 +24,13 @@ jobs:
     - name: 从 manifest.json 获取版本信息
       id: get_version
       run: |
-        VERSION=$(jq -r '.version' manifest.json),//.
+        VERSION=$(jq -r '.version' manifest.json)
         echo "VERSION=$VERSION" >> $GITHUB_ENV
 
     - name: 获取最新发布版本
       id: get_latest_release
       run: |
-        LATEST_VERSION=$(curl -s https:,/api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name' || echo "0.0.0")
+        LATEST_VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name' || echo "0.0.0")
         echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
 
     - name: 比较版本标签
