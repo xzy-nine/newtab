@@ -4,7 +4,6 @@
  */
 
 import { I18n } from './modules/i18n.js';
-// 导入背景管理器实例
 import backgroundManager from './modules/backgroundImage.js';
 import { SearchEngineAPI } from './modules/searchEngine.js'; 
 import { BookmarkManager } from './modules/bookmarks.js';
@@ -40,25 +39,38 @@ async function getExtensionVersion() {
  * @returns {Promise} - 处理结果
  */
 async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
+    // 创建状态标记
+    let completed = false;
+    
     return Promise.race([
-        asyncFunc().catch(error => {
-            // 增强错误日志记录
-            console.error(`[模块执行错误] ${moduleName}`, {
-                错误信息: error.message,
-                错误堆栈: error.stack,
-                模块名称: moduleName,
-                超时设置: `${timeout}ms`
-            });
-            throw error;
+        // 执行异步函数并标记完成状态
+        new Promise(async (resolve, reject) => {
+            try {
+                const result = await asyncFunc();
+                completed = true;
+                resolve(result);
+            } catch (error) {
+                completed = 'error';
+                console.error(`[模块执行错误] ${moduleName}`, {
+                    错误信息: error.message,
+                    错误堆栈: error.stack,
+                    模块名称: moduleName,
+                    超时设置: `${timeout}ms`
+                });
+                reject(error);
+            }
         }),
+        // 超时处理，但只在没完成时才报错
         new Promise((_, reject) => {
             setTimeout(() => {
-                const timeoutError = new Error(I18n.getMessage('moduleInitTimeout').replace('{0}', moduleName));
-                console.error(`[模块超时] ${moduleName}`, {
-                    超时时间: `${timeout}ms`,
-                    模块名称: moduleName
-                });
-                reject(timeoutError);
+                if (!completed) {
+                    const timeoutError = new Error(I18n.getMessage('moduleInitTimeout').replace('{0}', moduleName));
+                    console.error(`[模块超时] ${moduleName}`, {
+                        超时时间: `${timeout}ms`,
+                        模块名称: moduleName
+                    });
+                    reject(timeoutError);
+                }
             }, timeout);
         })
     ]);
@@ -84,13 +96,10 @@ async function init() {
         
         // 获取扩展版本
         VERSION = await getExtensionVersion();
-        console.log(`${I18n.getMessage('initializingTitle')} v${VERSION}`);
         
         // 初始化步骤计数
-        const totalModules = 5; // 减少一个模块，因为国际化已经初始化了
-        let completedModules = 1; // 已经完成了一个模块(国际化)
-        
-        // 定义初始化步骤 - 移除国际化步骤，因为已经初始化了
+        const totalModules = 5; 
+        let completedModules = 1; 
         const initSteps = [
             {
                 name: I18n.getMessage('backgroundModule') || '背景图像',
@@ -207,19 +216,62 @@ function createBasicUI() {
 
 /**
  * 设置所有模块的事件处理
+ * @returns {Promise<void>} 完成事件设置的Promise
  */
 function setupEvents() {
-    // 设置背景相关事件 - 使用新API
-    backgroundManager.setupEvents();
-    
-    // 设置搜索相关事件 - 使用新API
-    SearchEngineAPI.setupEvents();
-    
-    // 设置书签相关事件
-    BookmarkManager.initEvents();
-    
-    // 设置通用页面事件
-    Utils.Events.initUIEvents();
+    // 创建一个记录各模块执行状态的对象
+    const moduleStatus = {
+        background: false,
+        search: false,
+        bookmark: false,
+        ui: false
+    };
+
+    // 为每个模块创建带超时的Promise
+    const setupModuleWithTimeout = (setupFunc, moduleName, timeout = 2000) => {
+        return Promise.race([
+            new Promise(async (resolve) => {
+                try {
+                    await setupFunc();
+                    moduleStatus[moduleName] = true;
+                    resolve();
+                } catch (error) {
+                    console.error(`${moduleName}模块事件设置失败:`, error);
+                    // 即使失败也标记为已处理，以便继续其他模块的设置
+                    moduleStatus[moduleName] = 'error';
+                    // 失败也视为完成，不阻塞整体进度
+                    resolve();
+                }
+            }),
+            new Promise(resolve => {
+                setTimeout(() => {
+                    if (!moduleStatus[moduleName]) {
+                        moduleStatus[moduleName] = 'timeout';
+                    }
+                    resolve(); // 超时也不阻塞整体进度
+                }, timeout);
+            })
+        ]);
+    };
+
+    // 并行执行所有模块的事件设置
+    return Promise.all([
+        setupModuleWithTimeout(() => backgroundManager.setupEvents(), 'background'),
+        setupModuleWithTimeout(() => SearchEngineAPI.setupEvents(), 'search'),
+        setupModuleWithTimeout(() => BookmarkManager.initEvents(), 'bookmark'),
+        setupModuleWithTimeout(() => Utils.UI.Events.initUIEvents(), 'ui')
+    ]).then(() => {
+        // 检查是否有超时或错误的模块
+        const problematicModules = Object.entries(moduleStatus)
+            .filter(([_, status]) => status === 'timeout' || status === 'error')
+            .map(([name]) => name);
+            
+        if (problematicModules.length > 0) {
+            // 尽管有问题，但函数仍然成功返回，不阻塞整体初始化流程
+        }
+        
+        return Promise.resolve();
+    });
 }
 
 /**
