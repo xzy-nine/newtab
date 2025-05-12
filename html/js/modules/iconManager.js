@@ -3,7 +3,7 @@
  */
 
 import { Utils } from './utils.js';
-import { I18n } from './i18n.js';  // 添加导入I18n模块
+import { I18n } from './i18n.js'; 
 
 // 核心数据结构
 const iconCache = new Map();
@@ -55,6 +55,30 @@ export const IconManager = {
         } catch (error) {
             console.error(I18n.getMessage('fetchIconFailed') + ':', error);
             return DEFAULT_ICON;
+        }
+    },
+
+    /**
+     * 获取图标URL（异步方法，返回URL而不是设置DOM元素）
+     * @param {string} url - 网站URL
+     * @returns {Promise<string>} - 图标URL
+     */
+    getIconUrlAsync: async function(url) {
+        try {
+            // 尝试从缓存获取
+            const domain = Utils.getDomain(url);
+            const cachedIconObj = await chrome.storage.local.get([domain, url]);
+            
+            // 优先使用URL对应的图标，其次是域名图标
+            if (cachedIconObj[url]) return cachedIconObj[url];
+            if (cachedIconObj[domain]) return cachedIconObj[domain];
+            
+            // 尝试获取favicon
+            const iconUrl = `${domain}/favicon.ico`;
+            return iconUrl;
+        } catch (error) {
+            console.error('获取图标URL失败:', error);
+            return null;
         }
     },
 
@@ -336,7 +360,7 @@ export const IconManager = {
             await chrome.storage.local.set({ [url]: base64Image });
             await this.cacheIcon(Utils.getDomain(url), base64Image);
         } catch (error) {
-            Utils.UI.showErrorMessage(I18n.getMessage('saveIconFailed') + ': ' + error);
+            Notification.showErrorMessage(I18n.getMessage('saveIconFailed') + ': ' + error);
         }
     },
 

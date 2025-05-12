@@ -363,6 +363,14 @@ export const Menu = {
       // 显示模态框
       Menu.Modal.show(modalId);
       
+      // 如果存在onShow回调，在模态框显示后执行
+      if (typeof options.onShow === 'function') {
+          // 延迟执行确保模态框已经显示
+          setTimeout(() => {
+              options.onShow();
+          }, 100);
+      }
+      
       // 清空旧数据
       if (allowUrl) {
         const urlInput = document.getElementById(`${modalId}-url`);
