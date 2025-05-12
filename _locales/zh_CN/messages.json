@@ -465,28 +465,44 @@
     "message": "自定义背景图片已成功设置",
     "description": "自定义背景设置成功提示"
   },
-"selectImage": {
-  "message": "选择图片",
-  "description": "选择图片模态框标题"
-},
-"imageUrl": {
-  "message": "图片URL",
-  "description": "图片URL输入标签"
-},
-"uploadImage": {
-  "message": "上传图片",
-  "description": "上传图片标签"
-},
-"imageProcessingError": {
-  "message": "图片处理失败",
-  "description": "图片处理错误提示"
-},
-"ready": {
-  "message": "准备就绪",
-  "description": "初始化完成提示"
-},
-"renderingBookmarks": {
-  "message": "正在渲染书签...",
-  "description": "渲染书签进度提示"
-}
+  "selectImage": {
+    "message": "选择图片",
+    "description": "选择图片模态框标题"
+  },
+  "imageUrl": {
+    "message": "图片URL",
+    "description": "图片URL输入标签"
+  },
+  "uploadImage": {
+    "message": "上传图片",
+    "description": "上传图片标签"
+  },
+  "imageProcessingError": {
+    "message": "图片处理失败",
+    "description": "图片处理错误提示"
+  },
+  "ready": {
+    "message": "准备就绪",
+    "description": "初始化完成提示"
+  },
+  "renderingBookmarks": {
+    "message": "正在渲染书签...",
+    "description": "渲染书签进度提示"
+  },
+  "selectBackground": {
+    "message": "选择背景",
+    "description": "选择背景按钮文本"
+  },
+  "backgroundUrl": {
+    "message": "背景图片URL",
+    "description": "背景URL输入标签"
+  },
+  "uploadBackground": {
+    "message": "上传背景",
+    "description": "上传背景按钮文本"
+  },
+  "resetBackground": {
+    "message": "重置背景",
+    "description": "重置背景按钮文本"
+  }
 }
