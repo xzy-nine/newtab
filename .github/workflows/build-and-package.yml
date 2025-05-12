@@ -372,7 +372,7 @@ jobs:
         github-token: ${{ secrets.PAT }}
         script: |
           const releaseId = ${{ steps.create_release.outputs.id }};
-          const aiChangelog = `## 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
+          const aiChangelog = `# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
           ${{ steps.ai_changelog.outputs.ai_changelog }}
 
