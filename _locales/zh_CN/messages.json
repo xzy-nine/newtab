@@ -464,5 +464,29 @@
   "customBackgroundSuccess": {
     "message": "自定义背景图片已成功设置",
     "description": "自定义背景设置成功提示"
-  }
+  },
+"selectImage": {
+  "message": "选择图片",
+  "description": "选择图片模态框标题"
+},
+"imageUrl": {
+  "message": "图片URL",
+  "description": "图片URL输入标签"
+},
+"uploadImage": {
+  "message": "上传图片",
+  "description": "上传图片标签"
+},
+"imageProcessingError": {
+  "message": "图片处理失败",
+  "description": "图片处理错误提示"
+},
+"ready": {
+  "message": "准备就绪",
+  "description": "初始化完成提示"
+},
+"renderingBookmarks": {
+  "message": "正在渲染书签...",
+  "description": "渲染书签进度提示"
+}
 }
