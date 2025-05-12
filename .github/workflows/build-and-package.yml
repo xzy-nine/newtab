@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要优化变更日志的tag（如v1.0.0）'
+        required: true
+        type: string
 
 jobs:
   build:
