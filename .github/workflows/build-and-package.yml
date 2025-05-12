@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要优化变更日志的tag（如v1.0.0）'
+        required: true
+        type: string
 
 jobs:
   build:
@@ -93,3 +99,208 @@ jobs:
         asset_path: build/newtab-${{ env.VERSION }}.zip
         asset_name: newtab-${{ env.VERSION }}.zip
         asset_content_type: application/zip
+
+    - name: 使用AI优化变更日志
+      if: env.new_version == 'true' && env.tag_exists == 'false'
+      id: ai_changelog
+      continue-on-error: true
+      timeout-minutes: 60
+      run: |
+        # 获取原始变更日志
+        ORIGINAL_CHANGELOG=$(echo '${{ fromJson(env.CHANGELOG) }}')
+        
+        # 设置请求参数
+        MAX_RETRIES=3
+        MAX_TOKENS=1500
+        MAX_WAIT_MINUTES=60
+        
+        # 检查是否在错峰时间（北京时间00:30-08:30，对应UTC 16:30-00:30）
+        check_off_peak_time() {
+          local hour=$(date -u +%H)
+          local minute=$(date -u +%M)
+          local time_in_minutes=$((hour * 60 + minute))
+          local start_time=$((16 * 60 + 30))
+          local end_time=$((24 * 60 + 30))
+          if [ $time_in_minutes -ge $start_time ] || [ $time_in_minutes -le $((end_time - 24 * 60)) ]; then
+            return 0
+          else
+            if [ $time_in_minutes -lt $start_time ]; then
+              echo $((start_time - time_in_minutes))
+            else
+              echo $((start_time + 24 * 60 - time_in_minutes))
+            fi
+            return 1
+          fi
+        }
+        
+        wait_for_off_peak() {
+          local minutes_to_wait
+          if ! check_off_peak_time; then
+            minutes_to_wait=$?
+            if [ $minutes_to_wait -le $MAX_WAIT_MINUTES ]; then
+              echo "⏳ 距离错峰时段还有 $minutes_to_wait 分钟，开始等待..."
+              sleep $((minutes_to_wait * 60))
+              echo "✅ 已进入错峰时段，开始生成AI变更日志"
+              return 0
+            else
+              echo "⚠️ 距离错峰时段超过 $MAX_WAIT_MINUTES 分钟，将直接调用API"
+              return 1
+            fi
+          else
+            echo "✅ 当前已在错峰时段，开始生成AI变更日志"
+            return 0
+          fi
+        }
+        
+        wait_for_off_peak
+        
+        for i in $(seq 1 $MAX_RETRIES); do
+          echo "尝试第 $i 次生成AI变更日志..."
+          AI_CHANGELOG=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
+            -d "{
+              \"model\": \"deepseek-chat\",
+              \"messages\": [{\"role\": \"system\", \"content\": \"你是一个新标签页的拓展发布日志编辑请保持专业、简洁并引用原始提交ID和对应url以md格式\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为简洁、结构化的发布日志，按功能新增、问题修复和改进优化分类：$ORIGINAL_CHANGELOG\"}],
+              \"max_tokens\": $MAX_TOKENS
+            }" \
+            https://api.deepseek.com/v1/chat/completions | jq -r '.choices[0].message.content' || echo "")
+          
+          if [ ! -z "$AI_CHANGELOG" ] && [ "$AI_CHANGELOG" != "null" ]; then
+            echo "✅ AI变更日志生成成功"
+            break
+          fi
+          
+          if [ $i -eq $MAX_RETRIES ]; then
+            echo "::warning::AI变更日志生成失败"
+            exit 0
+          else
+            echo "⚠️ 生成失败，等待3秒后重试..."
+            sleep 3
+          fi
+        done
+        
+        AI_CHANGELOG="${AI_CHANGELOG//'%'/'%25'}"
+        AI_CHANGELOG="${AI_CHANGELOG//$'\n'/'%0A'}"
+        AI_CHANGELOG="${AI_CHANGELOG//$'\r'/'%0D'}"
+        
+        echo "ai_changelog=$AI_CHANGELOG" >> $GITHUB_OUTPUT
+
+    - name: 更新Release内容
+      if: env.new_version == 'true' && env.tag_exists == 'false' && steps.ai_changelog.outcome == 'success' && steps.ai_changelog.outputs.ai_changelog != ''
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.PAT }}
+        script: |
+          const releaseId = ${{ steps.create_release.outputs.id }};
+          const aiChangelog = `## 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]\n\n${{ steps.ai_changelog.outputs.ai_changelog }}\n\n## 原始提交记录\n\n${{ fromJson(env.CHANGELOG) }}`;
+          
+          try {
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+              body: aiChangelog
+            });
+            console.log('✅ 已成功更新AI优化的发布日志');
+          } catch (error) {
+            console.log('⚠️ 更新发布日志失败:', error.message);
+          }
+
+    - name: 手动处理指定tag的AI变更日志
+      if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
+      id: manual_ai_changelog
+      continue-on-error: true
+      timeout-minutes: 60
+      run: |
+        RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.event.inputs.tag }}")
+        
+        RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r '.id')
+        ORIGINAL_CHANGELOG=$(echo "$RELEASE_INFO" | jq -r '.body')
+        
+        if [[ "$ORIGINAL_CHANGELOG" == *"[AI生成的变更日志摘要]"* ]]; then
+          echo "⚠️ 此Release已包含AI生成的变更日志，跳过处理"
+          exit 0
+        fi
+        
+        echo "📝 正在处理tag '${{ github.event.inputs.tag }}' 的变更日志，Release ID: $RELEASE_ID"
+        
+        MAX_RETRIES=3
+        MAX_TOKENS=1500
+        MAX_WAIT_MINUTES=60
+        
+        check_off_peak_time() {
+          local hour=$(date -u +%H)
+          local minute=$(date -u +%M)
+          local time_in_minutes=$((hour * 60 + minute))
+          local start_time=$((16 * 60 + 30))
+          local end_time=$((24 * 60 + 30))
+          if [ $time_in_minutes -ge $start_time ] || [ $time_in_minutes -le $((end_time - 24 * 60)) ]; then
+            return 0
+          else
+            if [ $time_in_minutes -lt $start_time ]; then
+              echo $((start_time - time_in_minutes))
+            else
+              echo $((start_time + 24 * 60 - time_in_minutes))
+            fi
+            return 1
+          fi
+        }
+        
+        wait_for_off_peak() {
+          local minutes_to_wait
+          if ! check_off_peak_time; then
+            minutes_to_wait=$?
+            if [ $minutes_to_wait -le $MAX_WAIT_MINUTES ]; then
+              echo "⏳ 距离错峰时段还有 $minutes_to_wait 分钟，开始等待..."
+              sleep $((minutes_to_wait * 60))
+              echo "✅ 已进入错峰时段，开始生成AI变更日志"
+              return 0
+            else
+              echo "⚠️ 距离错峰时段超过 $MAX_WAIT_MINUTES 分钟，将直接调用API"
+              return 1
+            fi
+          else
+            echo "✅ 当前已在错峰时段，开始生成AI变更日志"
+            return 0
+          fi
+        }
+        
+        wait_for_off_peak
+        
+        for i in $(seq 1 $MAX_RETRIES); do
+          echo "尝试第 $i 次生成AI变更日志..."
+          AI_CHANGELOG=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
+            -d "{
+              \"model\": \"deepseek-chat\",
+              \"messages\": [{\"role\": \"system\", \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。对每个变更都必须包含原始提交ID作为引用：$ORIGINAL_CHANGELOG\"}],
+              \"max_tokens\": $MAX_TOKENS
+            }" \
+            https://api.deepseek.com/v1/chat/completions | jq -r '.choices[0].message.content' || echo "")
+          
+          if [ ! -z "$AI_CHANGELOG" ] && [ "$AI_CHANGELOG" != "null" ]; then
+            echo "✅ AI变更日志生成成功"
+            break
+          fi
+          
+          if [ $i -eq $MAX_RETRIES ]; then
+            echo "::warning::AI变更日志生成失败"
+            exit 0
+          else
+            echo "⚠️ 生成失败，等待3秒后重试..."
+            sleep 3
+          fi
+        done
+        
+        NEW_BODY="## 版本 ${{ github.event.inputs.tag }} 更新摘要 [AI生成的变更日志摘要]\n\n${AI_CHANGELOG}\n\n## 原始提交记录\n\n${ORIGINAL_CHANGELOG}"
+        
+        curl -s -X PATCH \
+          -H "Authorization: token ${{ secrets.PAT }}" \
+          -H "Content-Type: application/json" \
+          -d "{\"body\": $(echo "$NEW_BODY" | jq -R -s '.')}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}"
+        
+        echo "✅ 已成功更新 ${{ github.event.inputs.tag }} 的发布日志"
