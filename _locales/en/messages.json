@@ -484,5 +484,21 @@
   "renderingBookmarks": {
     "message": "Rendering bookmarks...",
     "description": "渲染书签进度提示"
+  },
+  "selectBackground": {
+    "message": "Select Background",
+    "description": "选择背景按钮文本"
+  },
+  "backgroundUrl": {
+    "message": "Background URL",
+    "description": "背景URL输入标签"
+  },
+  "uploadBackground": {
+    "message": "Upload Background",
+    "description": "上传背景按钮文本"
+  },
+  "resetBackground": {
+    "message": "Reset Background",
+    "description": "重置背景按钮文本"
   }
 }
