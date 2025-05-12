@@ -480,34 +480,15 @@ export const BookmarkManager = {
             
             // 添加事件
             shortcutButton.addEventListener('click', () => window.open(shortcut.url, "_blank"));
+            
+            // 直接调用图标选择器，不使用中间菜单层
             shortcutButton.addEventListener('contextmenu', event => {
                 event.preventDefault();
-                this.showShortcutContextMenu(event, shortcut);
+                this.showIconSelectorModal(shortcut);
             });
             
             shortcutList.appendChild(shortcutButton);
         });
-    },
-
-    /**
-     * 显示快捷方式上下文菜单
-     * @param {Event} event - 事件对象
-     * @param {Object} shortcut - 快捷方式数据
-     */
-    showShortcutContextMenu: function(event, shortcut) {
-        event.preventDefault();
-        Menu.ContextMenu.show(event, [
-            {
-                id: 'custom-icon',
-                text: I18n.getMessage('customIcon'),
-                callback: () => this.showIconSelectorModal(shortcut)
-            },
-            {
-                id: 'reset-icon',
-                text: I18n.getMessage('resetIcon'),
-                callback: () => this.resetShortcutIcon(shortcut)
-            }
-        ], {menuId: 'shortcut-context-menu'});
     },
 
     /**
@@ -664,6 +645,38 @@ export const BookmarkManager = {
                                 duration: 5000
                             });
                         }
+                    }
+                },
+                // 添加回调，在模态框打开后立即显示当前图标
+                onShow: async () => {
+                    // 获取预览区域
+                    const preview = document.getElementById('icon-selector-modal-preview');
+                    if (!preview) return;
+                    
+                    // 先显示加载状态
+                    preview.innerHTML = `<div class="loading-spinner"></div>`;
+                    
+                    try {
+                        // 检查是否有自定义图标
+                        const customIcons = await this.getCustomIcons();
+                        const customIcon = customIcons[shortcut.id];
+                        
+                        if (customIcon) {
+                            // 使用自定义图标
+                            preview.innerHTML = `<img src="${customIcon}" alt="Current Icon" class="preview-icon-img">`;
+                        } else {
+                            // 使用网站默认图标
+                            const iconUrl = await IconManager.getIconUrlAsync(shortcut.url);
+                            if (iconUrl) {
+                                preview.innerHTML = `<img src="${iconUrl}" alt="Current Icon" class="preview-icon-img">`;
+                            } else {
+                                // 如果获取失败，显示默认图标
+                                preview.innerHTML = `<img src="images/default_favicon.png" alt="Default Icon" class="preview-icon-img">`;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('加载当前图标失败:', error);
+                        preview.innerHTML = `<img src="images/default_favicon.png" alt="Default Icon" class="preview-icon-img">`;
                     }
                 }
             });

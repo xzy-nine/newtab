@@ -282,7 +282,7 @@ class BackgroundManager {
                     // 使用纯白色背景
                     container.classList.add('bg-white');
                     container.style.backgroundImage = 'none';
-                    Utils.UI.hideLoadingIndicator();
+                    Notification.hideLoadingIndicator();
                     return;
             }
 
@@ -386,6 +386,27 @@ class BackgroundManager {
             maxHeight: 1080,
             quality: 0.85,
             onReset: () => this.clearCustomBackground(),
+            onShow: () => {
+                // 在模态框显示后执行的操作
+                const preview = document.getElementById('background-selector-modal-preview');
+                
+                // 如果已有自定义背景，则显示当前背景预览
+                if (this.settings.customImageData && preview) {
+                    if (this.settings.customImageData.startsWith('http')) {
+                        // 如果是URL
+                        preview.innerHTML = `
+                            <div class="browser-frame"></div>
+                            <img src="${this.settings.customImageData}" alt="Current Background" class="preview-bg-img">
+                        `;
+                    } else {
+                        // 如果是Base64数据
+                        preview.innerHTML = `
+                            <div class="browser-frame"></div>
+                            <img src="${this.settings.customImageData}" alt="Current Background" class="preview-bg-img">
+                        `;
+                    }
+                }
+            },
             onConfirm: async (imageData) => {
                 if (imageData) {
                     try {
@@ -407,7 +428,7 @@ class BackgroundManager {
                             bgTypeSelect.value = 'custom';
                         }
                         
-                        otification.notify({
+                        Notification.notify({
                             title: I18n.getMessage('success'),
                             message: I18n.getMessage('customBackgroundSuccess') || '背景图片设置成功',
                             type: 'success',
@@ -415,7 +436,7 @@ class BackgroundManager {
                         });
                     } catch (error) {
                         console.error(I18n.getMessage('localStorageError'), error);
-                        otification.notify({
+                        Notification.notify({
                             title: I18n.getMessage('error') || '错误',
                             message: I18n.getMessage('backgroundSetFailed') || '背景图片设置失败',
                             type: 'error',
