@@ -710,7 +710,7 @@ export const BookmarkManager = {
             
             // 优先使用上传的图片
             if (iconFile) {
-                // 直接使用 Utils.blobToBase64
+                // 直接使用Utils工具函数
                 iconData = await Utils.blobToBase64(iconFile);
             } 
             // 其次使用URL
@@ -975,6 +975,7 @@ export const BookmarkManager = {
         // 创建图标
         const icon = Utils.createElement('div', 'bookmark-icon');
         const iconImg = Utils.createElement('img');
+        // 使用Utils.getDomain获取域名
         iconImg.src = bookmark.customIcon || `${Utils.getDomain(bookmark.url)}/favicon.ico`;
         iconImg.onerror = () => { iconImg.src = 'images/default_favicon.png'; };
         

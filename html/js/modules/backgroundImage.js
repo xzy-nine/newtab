@@ -75,26 +75,6 @@ class BackgroundManager {
                 await this.setImage();
             });
         }
-        
-        // 模糊效果滑块
-        const blurControl = document.getElementById('blur-control');
-        if (blurControl) {
-            blurControl.addEventListener('input', async (e) => {
-                this.settings.blur = parseInt(e.target.value);
-                this.applyEffects();
-                await chrome.storage.local.set({ backgroundBlur: this.settings.blur });
-            });
-        }
-        
-        // 暗化效果滑块
-        const darkControl = document.getElementById('dark-control');
-        if (darkControl) {
-            darkControl.addEventListener('input', async (e) => {
-                this.settings.dark = parseFloat(e.target.value);
-                this.applyEffects();
-                await chrome.storage.local.set({ backgroundDark: this.settings.dark });
-            });
-        }
     }
 
     /**
@@ -191,29 +171,25 @@ class BackgroundManager {
      * @returns {Promise<string|null>} 图片URL，失败返回null
      */
     async fetchBingImage() {
-        Notification.updateLoadingProgress(40, I18n.getMessage('loadingResources'));
-        
-        // 检查缓存
-        const cachedData = await chrome.storage.local.get(CACHE_KEY);
-        const now = Date.now();
-
-        // 使用缓存内图片（如未过期）
-        if (cachedData[CACHE_KEY] && (now - cachedData[CACHE_KEY].timestamp < CACHE_EXPIRATION)) {
-            return cachedData[CACHE_KEY].url;
-        }
-
-        Notification.updateLoadingProgress(50, I18n.getMessage('fetchingBingImage'));
-        
         try {
+            Notification.updateLoadingProgress(40, I18n.getMessage('loadingResources'));
+            
+            // 检查缓存
+            const cachedData = await chrome.storage.local.get(CACHE_KEY);
+            const now = Date.now();
+
+            // 使用缓存内图片（如未过期）
+            if (cachedData[CACHE_KEY] && (now - cachedData[CACHE_KEY].timestamp < CACHE_EXPIRATION)) {
+                return cachedData[CACHE_KEY].url;
+            }
+
+            Notification.updateLoadingProgress(50, I18n.getMessage('fetchingBingImage'));
+            
             // 必应API地址
             const apiUrl = 'https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1';
-            const response = await fetch(apiUrl);
             
-            if (!response.ok) {
-                throw new Error(`API responded with status: ${response.status}`);
-            }
-            
-            const data = await response.json();
+            // 使用Utils.fetchData替代原生fetch
+            const data = await Utils.fetchData(apiUrl);
             
             if (!data.images || !data.images.length) {
                 throw new Error('No images found in API response');
@@ -233,12 +209,20 @@ class BackgroundManager {
         } catch (error) {
             console.error('Error fetching Bing image:', error);
             
+            // 显示更友好的错误通知
+            Notification.notify({
+                title: I18n.getMessage('error') || '错误',
+                message: I18n.getMessage('bingImageFetchFailed') || '获取必应每日图片失败',
+                type: 'warning',
+                duration: 4000
+            });
+            
             // 回退策略：尝试使用上一个缓存（即使过期）
+            const cachedData = await chrome.storage.local.get(CACHE_KEY);
             if (cachedData[CACHE_KEY]) {
                 return cachedData[CACHE_KEY].url;
             }
             
-            // 如果没有缓存可用，返回null表示需要使用纯白背景
             return null;
         }
     }
@@ -261,6 +245,8 @@ class BackgroundManager {
                 return;
             }
 
+            Notification.updateLoadingProgress(20, I18n.getMessage('preparingBackground'));
+            
             // 根据背景类型选择图片URL
             let bgUrl;
             switch (this.settings.type) {
@@ -268,6 +254,7 @@ class BackgroundManager {
                     // 使用自定义图片
                     if (this.settings.customImageData) {
                         bgUrl = this.settings.customImageData;
+                        Notification.updateLoadingProgress(60, I18n.getMessage('loadingCustomBackground'));
                     } else {
                         // 如果没有自定义图片数据，则回退到必应
                         bgUrl = await this.fetchBingImage();
@@ -282,7 +269,8 @@ class BackgroundManager {
                     // 使用纯白色背景
                     container.classList.add('bg-white');
                     container.style.backgroundImage = 'none';
-                    Notification.hideLoadingIndicator();
+                    Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete'));
+                    setTimeout(() => Notification.hideLoadingIndicator(), 500);
                     return;
             }
 
@@ -295,7 +283,7 @@ class BackgroundManager {
                 return;
             }
 
-            Notification.updateLoadingProgress(70, I18n.getMessage('settingBackgroundType'));
+            Notification.updateLoadingProgress(80, I18n.getMessage('applyingBackground'));
             
             // 移除白色背景类（如果有）
             container.classList.remove('bg-white');
@@ -310,12 +298,12 @@ class BackgroundManager {
             setTimeout(() => Notification.hideLoadingIndicator(), 500);
         } catch (error) {
             console.error('Failed to set background image:', error);
+            Notification.hideLoadingIndicator(true); // 强制关闭加载指示器
             Notification.notify({
                 title: I18n.getMessage('error'),
                 message: I18n.getMessage('backgroundSetFailed'),
                 type: 'error'
             });
-            Notification.hideLoadingIndicator();
         }
     }
 

@@ -100,19 +100,5 @@ export const Utils = {
       Menu.ContextMenu.init(); // 初始化上下文菜单
     }
   },
-
-  /**
-   * 将文件转换为 Base64 编码
-   * @param {File} file - 要转换的文件
-   * @returns {Promise<string>} - 返回 Base64 编码的字符串
-   */
-  fileToBase64: (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-      reader.readAsDataURL(file);
-    });
-   }
-  }
+ }
 };

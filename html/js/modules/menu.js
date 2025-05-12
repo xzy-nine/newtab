@@ -402,7 +402,7 @@ export const Menu = {
                 preview.innerHTML = `<div class="loading-spinner"></div>`;
                 
                 // 压缩图像
-                const compressedImage = await Utils.fileToBase64(file);
+                const compressedImage = await Utils.blobToBase64(file);
                 
                 // 为不同模式设置不同的预览样式
                 if (mode === 'background') {
@@ -478,7 +478,7 @@ export const Menu = {
           if (file) {
             try {
               // 压缩并转换图像
-              imageData = await Utils.fileToBase64(file);
+              imageData = await Utils.blobToBase64(file);
             } catch (error) {
               console.error('Failed to process image:', error);
               Notification.notify({
