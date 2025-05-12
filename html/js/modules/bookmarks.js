@@ -6,6 +6,8 @@
 import { Utils } from './utils.js';
 import { I18n } from './i18n.js';
 import { IconManager } from './iconManager.js';
+import { Notification } from './notification.js';
+import { Menu } from './menu.js';
 
 // 书签数据
 let bookmarks = [];
@@ -23,8 +25,8 @@ export const BookmarkManager = {
     init: async function() {
         try {
             // 显示加载指示器
-            Utils.UI.showLoadingIndicator('bookmarks-container');
-            Utils.UI.updateLoadingProgress(10, I18n.getMessage('loadingBookmarks'));
+            Notification.showLoadingIndicator('bookmarks-container');
+            Notification.updateLoadingProgress(10, I18n.getMessage('loadingBookmarks'));
             
             // 并行加载数据提高效率
             const [_, chromeBookmarks] = await Promise.all([
@@ -32,14 +34,14 @@ export const BookmarkManager = {
                 this.getChromeBookmarks()
             ]);
             
-            Utils.UI.updateLoadingProgress(80, I18n.getMessage('renderingBookmarks'));
+            Notification.updateLoadingProgress(80, I18n.getMessage('renderingBookmarks'));
             this.renderBookmarks();
             this.initEvents();
             
-            Utils.UI.updateLoadingProgress(100, I18n.getMessage('ready'));
-            setTimeout(() => Utils.UI.hideLoadingIndicator(), 500);
+            Notification.updateLoadingProgress(100, I18n.getMessage('ready'));
+            setTimeout(() => Notification.hideLoadingIndicator(), 500);
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -58,7 +60,7 @@ export const BookmarkManager = {
             const result = await chrome.storage.sync.get('bookmarks');
             bookmarks = result.bookmarks || [];
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -99,7 +101,7 @@ export const BookmarkManager = {
                 this.initEvents();
             }, 0);
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -163,7 +165,7 @@ export const BookmarkManager = {
                 this.handleFolderClick(folderButton, folder);
             });
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -327,7 +329,7 @@ export const BookmarkManager = {
                 }
             }
         }).catch(err => {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: err.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -494,7 +496,7 @@ export const BookmarkManager = {
      */
     showShortcutContextMenu: function(event, shortcut) {
         event.preventDefault();
-        Utils.ContextMenu.show(event, [
+        Menu.ContextMenu.show(event, [
             {
                 id: 'custom-icon',
                 text: I18n.getMessage('customIcon'),
@@ -514,7 +516,7 @@ export const BookmarkManager = {
      * @param {Object} folder - 文件夹数据
      */
     showFolderContextMenu: function(event, folder) {
-        Utils.ContextMenu.show(event, [
+        Menu.ContextMenu.show(event, [
             {
                 id: 'open-all-bookmarks',
                 text: I18n.getMessage('openAllBookmarks'),
@@ -567,7 +569,7 @@ export const BookmarkManager = {
      * @param {number} index - 书签索引
      */
     showContextMenu: function(e, index) {
-        Utils.ContextMenu.show(e, [
+        Menu.ContextMenu.show(e, [
             {
                 id: 'bookmark-delete',
                 text: I18n.getMessage('delete'),
@@ -628,7 +630,7 @@ export const BookmarkManager = {
      */
     showIconSelectorModal: function(shortcut) {
         try {
-            Utils.ImageSelector.show({
+            Menu.ImageSelector.show({
                 title: I18n.getMessage('customIcon'),
                 modalId: 'icon-selector-modal',
                 mode: 'icon',
@@ -648,14 +650,14 @@ export const BookmarkManager = {
                             // 刷新显示
                             await this.reloadCurrentFolder();
                             
-                            Utils.UI.notify({
+                            Notification.notify({
                                 title: I18n.getMessage('success'),
                                 message: I18n.getMessage('iconUpdated'),
                                 type: 'success',
                                 duration: 2000
                             });
                         } catch (error) {
-                            Utils.UI.notify({
+                            Notification.notify({
                                 title: I18n.getMessage('errorTitle'),
                                 message: error.message || I18n.getMessage('genericError'),
                                 type: 'error',
@@ -666,7 +668,7 @@ export const BookmarkManager = {
                 }
             });
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -713,7 +715,7 @@ export const BookmarkManager = {
             // 刷新显示
             await this.reloadCurrentFolder();
             
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('success'),
                 message: I18n.getMessage('iconUpdated'),
                 type: 'success',
@@ -721,7 +723,7 @@ export const BookmarkManager = {
             });
             
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -786,7 +788,7 @@ export const BookmarkManager = {
                 }
             }
             
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('iconReset'),
                 message: I18n.getMessage('fetchingDefaultIcon'),
                 type: 'info',
@@ -794,7 +796,7 @@ export const BookmarkManager = {
             });
             
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -812,7 +814,7 @@ export const BookmarkManager = {
             const result = await chrome.storage.local.get('customIcons');
             return result.customIcons || {};
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -840,7 +842,7 @@ export const BookmarkManager = {
                 this.showShortcuts(folder);
             }
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -868,7 +870,7 @@ export const BookmarkManager = {
                 IconManager.getIconUrl(shortcut.url, element);
             }
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -960,7 +962,6 @@ export const BookmarkManager = {
         // 创建图标
         const icon = Utils.createElement('div', 'bookmark-icon');
         const iconImg = Utils.createElement('img');
-        // 使用Utils.getDomain替代手动提取域名
         iconImg.src = bookmark.customIcon || `${Utils.getDomain(bookmark.url)}/favicon.ico`;
         iconImg.onerror = () => { iconImg.src = 'images/default_favicon.png'; };
         
@@ -989,7 +990,7 @@ export const BookmarkManager = {
         try {
             await chrome.storage.sync.set({ bookmarks });
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
@@ -1024,7 +1025,7 @@ export const BookmarkManager = {
             await this.saveBookmarks();
             this.renderBookmarks();
         } catch (error) {
-            Utils.UI.notify({
+            Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
                 type: 'error',
