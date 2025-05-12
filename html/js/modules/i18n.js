@@ -45,10 +45,13 @@ export const I18n = {
     
     // 从内部翻译表获取
     if (translations[key] && translations[key].message) {
+      console.log(`使用内部翻译表: 键名 "${key}" => 值 "${translations[key].message}"`);
       return translations[key].message;
     }
     
     // 返回键名作为默认值
+    console.warn(`【未翻译】使用键名作为默认值: "${key}" - 查看调用堆栈↓`);
+    console.trace(); // 这会自动在控制台显示完整的调用堆栈
     return key;
   },
 
