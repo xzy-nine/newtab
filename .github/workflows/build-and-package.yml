@@ -36,7 +36,7 @@ jobs:
     - name: 比较版本
       id: compare_versions
       run: |
-        if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)",= "$VERSION" ]; then/.
+        if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then/.
             echo "new_version=true" >> $GITHUB_ENV
         else
             echo "new_version=false" >> $GITHUB_ENV
