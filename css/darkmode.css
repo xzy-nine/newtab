@@ -10,7 +10,7 @@
   
   /* 加载指示器样式调整 */
   #loading-overlay {
-    background-color: rgba(30, 30, 30, 0.9);
+    background-color: rgba(30, 30, 30, 0.95);
   }
   
   #loading-progress {
@@ -32,9 +32,12 @@
   }
   
   /* 上下文菜单样式调整 */
-  .context-menu {
+  .context-menu,
+  #bookmark-context-menu,
+  #shortcut-context-menu {
     background: #2a2a2a;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    border-color: #444;
   }
   
   .context-menu-item {
@@ -45,6 +48,24 @@
     background-color: #3a3a3a;
   }
   
+  /* 特定菜单项样式增强 - 修复可见性问题 */
+  #open-all-bookmarks {
+    color: #000000; 
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: background-color 0.2s, transform 0.1s;
+    text-shadow: 0 1px 2px rgba(0, 247, 255, 0.2);
+    margin: 4px 0;
+  }
+  
+  #open-all-bookmarks:hover {
+    background-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    border-left-color: #ffffff;
+  }
+
   /* 搜索框样式调整 */
   #search-box {
     background: rgba(30, 30, 30, 0.8);
@@ -84,10 +105,7 @@
     color: rgba(255, 255, 255, 0.9);
   }
   
-  .search-engine-item:hover {
-    background-color: #3a3a3a;
-  }
-  
+  .search-engine-item:hover,
   .search-engine-item.active {
     background-color: #3a3a3a;
   }
@@ -163,11 +181,8 @@
     color: #aaa;
   }
   
-  #bookmark-modal .image-preview {
-    border-color: #444;
-    background-color: #333;
-  }
-  
+  /* 图像预览区域 */
+  #bookmark-modal .image-preview,
   #icon-selector-modal .icon-option {
     border-color: #444;
     background-color: #333;
@@ -207,7 +222,7 @@
   }
   
   .notification-title {
-    color: rgba(255, 255, 255, 1);
+    color: #fff;
     font-weight: 600;
     margin-bottom: 5px;
   }
@@ -217,25 +232,12 @@
     line-height: 1.4;
   }
   
-  .notification-info { 
-    border-left-color: #555; 
-  }
-  
-  .notification-success {
-    border-left-color: #2ecc71;
-  }
-  
-  .notification-warning {
-    border-left-color: #f39c12;
-  }
-  
-  .notification-error {
-    border-left-color: #e74c3c;
-  }
-  
-  .notification-confirm { 
-    background-color: #2a2a2a; 
-  }
+  /* 通知类型颜色 */
+  .notification-info { border-left-color: #555; }
+  .notification-success { border-left-color: #2ecc71; }
+  .notification-warning { border-left-color: #f39c12; }
+  .notification-error { border-left-color: #e74c3c; }
+  .notification-confirm { background-color: #2a2a2a; }
   
   .notification-actions {
     margin-top: 8px;
@@ -302,13 +304,6 @@
     box-shadow: 0 0 5px rgba(58, 160, 255, 0.7), 0 0 10px rgba(58, 160, 255, 0.3);
   }
   
-  /* 上下文菜单额外调整 */
-  #bookmark-context-menu,
-  #shortcut-context-menu {
-    background: #2a2a2a;
-    border-color: #444;
-  }
-  
   /* 书签占位符调整 */
   .bookmark-placeholder {
     background-color: rgba(58, 160, 255, 0.2);
@@ -322,13 +317,24 @@
   
   /* 背景遮罩层在深色模式下默认显示 */
   #background-overlay {
-    display: block !important; /* 确保显示遮罩层 */
-    background-color: rgba(0, 0, 0, 0.4) !important; /* 40%的暗化程度 */
+    display: block !important;
+    background-color: rgba(0, 0, 0, 0.4) !important;
   }
   
   /* 保持背景容器的滤镜效果 */
   #background-container {
-    filter: brightness(0.85); /* 额外降低亮度 */
+    filter: brightness(0.85);
+  }
+  
+  /* 确保深色模式下背景按钮可见 */
+  #background-button {
+    background: var(--primary-color);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  }
+  
+  #background-button:hover {
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3), 0 0 15px var(--primary-color);
   }
 }
 
@@ -359,14 +365,13 @@
   color: white;
 }
 
-/* 工具提示样式调整 */
+/* 通用UI元素深色模式样式 */
 .tooltip {
   background-color: #2a2a2a;
   color: rgba(255, 255, 255, 0.9);
   border: 1px solid #444;
 }
 
-/* 标签样式调整 */
 .tag {
   background-color: #3a3a3a;
   color: rgba(255, 255, 255, 0.9);
@@ -377,7 +382,6 @@
   background-color: #4a4a4a;
 }
 
-/* 开关控件样式调整 */
 .switch {
   background-color: #444;
 }
@@ -390,7 +394,6 @@
   background-color: var(--primary-color);
 }
 
-/* 进度条样式调整 */
 .progress-bar {
   background-color: #333;
 }
@@ -399,12 +402,10 @@
   background-color: var(--primary-color);
 }
 
-/* 分隔线样式调整 */
 .divider {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* 下拉选择框样式调整 */
 .select-dropdown {
   background-color: #2a2a2a;
   border-color: #444;
@@ -415,7 +416,6 @@
   background-color: #3a3a3a;
 }
 
-/* 选项卡样式调整 */
 .tab {
   color: rgba(255, 255, 255, 0.7);
 }
@@ -429,53 +429,14 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
-/* 加载动画颜色调整 */
+/* 动画效果 */
 @keyframes loading-pulse {
-  0%, 100% {
-    background-color: rgba(58, 160, 255, 0.3);
-  }
-  50% {
-    background-color: rgba(58, 160, 255, 0.7);
-  }
+  0%, 100% { background-color: rgba(58, 160, 255, 0.3); }
+  50% { background-color: rgba(58, 160, 255, 0.7); }
 }
 
-/* 骨架屏加载动画 */
 @keyframes skeleton-loading {
-  0% {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  50% {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  100% {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-}
-
-/* 确保深色模式下背景按钮可见 */
-@media (prefers-color-scheme: dark) {
-  #background-button {
-    background: var(--primary-color);
-    color: #fff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-  }
-  
-  #background-button:hover {
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3), 0 0 15px var(--primary-color);
-  }
-}
-/* 适配深色模式 */
-@media (prefers-color-scheme: dark) {
-  #loading-overlay {
-    background-color: rgba(30, 30, 30, 0.95);
-  }
-  
-  #loading-message {
-    color: rgba(255, 255, 255, 0.9);
-  }
-  
-  #loading-progress {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
+  0%, 100% { background-color: rgba(255, 255, 255, 0.05); }
+  50% { background-color: rgba(255, 255, 255, 0.1); }
 }
 
