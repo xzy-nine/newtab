@@ -2,9 +2,8 @@
  * 菜单系统模块
  * 包含上下文菜单、模态框、表单模态框等功能
  */
-
-import { I18n } from './i18n.js';
 import { Utils } from './utils.js';
+import { I18n } from './i18n.js';
 
 /**
  * 菜单系统命名空间
@@ -91,8 +90,8 @@ export const Menu = {
         if (input) {
           formData[item.id] = input.value.trim();
           if (item.required && !formData[item.id]) {
-            input.classList.add('error');
             allFilled = false;
+            input.classList.add('error');
           }
         }
       });
@@ -100,12 +99,8 @@ export const Menu = {
       if (!allFilled) {
         let errorMessage = document.getElementById(`${modalId}-error`);
         if (!errorMessage) {
-          errorMessage = Utils.createElement(
-            'div', 
-            'form-error', 
-            { id: `${modalId}-error` }, 
-            I18n.getMessage('pleaseCompleteAllFields') || '请填写所有必填项'
-          );
+          errorMessage = Utils.createElement('div', 'form-error', { id: `${modalId}-error` }, 
+            I18n.getMessage('fillRequiredFields') || '请填写所有必填字段');
           formContainer.insertBefore(errorMessage, actionDiv);
         }
         return;
@@ -130,13 +125,15 @@ export const Menu = {
     initEvents: () => {
       document.querySelectorAll('.modal').forEach(modal => {
         modal.querySelectorAll('.modal-close').forEach(button => {
-          button.addEventListener('click', () => {
-            modal.style.display = 'none';
+          Utils.replaceEventHandler('.modal-close', 'click', () => {
+            modal.classList.remove('visible');
           });
         });
         
         modal.addEventListener('click', e => {
-          if (e.target === modal) modal.style.display = 'none';
+          if (e.target === modal) {
+            modal.classList.remove('visible');
+          }
         });
       });
     },
@@ -151,17 +148,14 @@ export const Menu = {
       modal.classList.add('visible');
       
       if (!modal.dataset.initialized) {
-        modal.querySelectorAll('.modal-close').forEach(button => {
-          const newButton = button.cloneNode(true);
-          button.parentNode.replaceChild(newButton, button);
-          
-          newButton.addEventListener('click', () => {
-            Menu.Modal.hide(modalId);
-          });
+        Utils.replaceEventHandler(`#${modalId} .modal-close`, 'click', () => {
+          modal.classList.remove('visible');
         });
         
         modal.addEventListener('click', e => {
-          if (e.target === modal) Menu.Modal.hide(modalId);
+          if (e.target === modal) {
+            modal.classList.remove('visible');
+          }
         });
         
         modal.dataset.initialized = 'true';
@@ -301,61 +295,71 @@ export const Menu = {
       let modal = document.getElementById(modalId);
       if (!modal) {
         modal = Utils.createElement('div', 'modal', {id: modalId});
-        const modalContent = Utils.createElement('div', 'modal-content');
         
-        // 为不同模式设置不同的模态框样式
-        if (mode === 'background') {
-          modalContent.classList.add('modal-content-wide');
-        } else if (mode === 'icon') {
-          modalContent.classList.add('modal-content-compact');
-        }
+        const modalContentClass = mode === 'background' ? 
+          'modal-content modal-content-wide' : 
+          'modal-content';
         
-        // 构建模态框HTML
-        let modalHtml = `
-          <span class="modal-close">&times;</span>
-          <h2>${title}</h2>
-          <div class="modal-form">
-        `;
+        const modalContent = Utils.createElement('div', modalContentClass);
+        
+        // 构建模态框内容
+        const modalClose = Utils.createElement('span', 'modal-close', {}, '&times;');
+        const modalTitle = Utils.createElement('h2', '', {}, title);
+        const modalForm = Utils.createElement('div', 'modal-form');
+        
+        // 添加到模态框
+        modalContent.appendChild(modalClose);
+        modalContent.appendChild(modalTitle);
         
         // URL输入框（如果允许）
         if (allowUrl) {
-          modalHtml += `
-            <div class="form-group">
-              <label for="${modalId}-url">${urlLabel}</label>
-              <input type="url" id="${modalId}-url" placeholder="${urlPlaceholder}">
-            </div>
-          `;
+          const formGroup = Utils.createElement('div', 'form-group');
+          const label = Utils.createElement('label', '', { for: `${modalId}-url` }, urlLabel);
+          const input = Utils.createElement('input', '', { 
+            id: `${modalId}-url`, 
+            type: 'url', 
+            placeholder: urlPlaceholder 
+          });
+          
+          formGroup.append(label, input);
+          modalForm.appendChild(formGroup);
         }
         
         // 文件上传（如果允许）
         if (allowUpload) {
-          modalHtml += `
-            <div class="form-group">
-              <label for="${modalId}-upload">${uploadLabel}</label>
-              <input type="file" id="${modalId}-upload" accept="image/*">
-            </div>
-          `;
+          const formGroup = Utils.createElement('div', 'form-group');
+          const label = Utils.createElement('label', '', { for: `${modalId}-upload` }, uploadLabel);
+          const input = Utils.createElement('input', '', { 
+            id: `${modalId}-upload`, 
+            type: 'file',
+            accept: 'image/*' 
+          });
+          
+          formGroup.append(label, input);
+          modalForm.appendChild(formGroup);
         }
         
-        // 根据模式调整预览区样式
-        const previewClass = mode === 'background' ? 'image-preview-bg' : 'image-preview-icon';
-        modalHtml += `<div class="image-preview ${previewClass}" id="${modalId}-preview"></div>`;
+        // 预览区
+        const previewClass = `image-preview ${mode === 'background' ? 'image-preview-bg' : 'image-preview-icon'}`;
+        const preview = Utils.createElement('div', previewClass, { id: `${modalId}-preview` });
+        modalForm.appendChild(preview);
         
         // 按钮组
-        modalHtml += `<div class="form-actions">`;
+        const formActions = Utils.createElement('div', 'form-actions');
         
         // 添加重置按钮（如果需要）
         if (showReset && typeof onReset === 'function') {
-          modalHtml += `<button id="${modalId}-reset" class="btn btn-danger">${resetText}</button>`;
+          const resetBtn = Utils.createElement('button', 'btn btn-danger', { id: `${modalId}-reset` }, resetText);
+          formActions.appendChild(resetBtn);
         }
         
-        modalHtml += `
-            <button id="${modalId}-cancel" class="btn">${cancelText}</button>
-            <button id="${modalId}-confirm" class="btn btn-primary">${confirmText}</button>
-          </div>
-        </div>`;
+        const cancelBtn = Utils.createElement('button', 'btn', { id: `${modalId}-cancel` }, cancelText);
+        const confirmBtn = Utils.createElement('button', 'btn btn-primary', { id: `${modalId}-confirm` }, confirmText);
         
-        modalContent.innerHTML = modalHtml;
+        formActions.append(cancelBtn, confirmBtn);
+        modalForm.appendChild(formActions);
+        
+        modalContent.appendChild(modalForm);
         modal.appendChild(modalContent);
         document.body.appendChild(modal);
       }
@@ -365,10 +369,10 @@ export const Menu = {
       
       // 如果存在onShow回调，在模态框显示后执行
       if (typeof options.onShow === 'function') {
-          // 延迟执行确保模态框已经显示
-          setTimeout(() => {
-              options.onShow();
-          }, 100);
+        // 延迟执行确保模态框已经显示
+        setTimeout(() => {
+          options.onShow();
+        }, 100);
       }
       
       // 清空旧数据
@@ -380,18 +384,25 @@ export const Menu = {
       const preview = document.getElementById(`${modalId}-preview`);
       if (preview) preview.innerHTML = '';
       
+      // 添加事件处理
+      this._bindImageSelectorEvents(modalId, options, maxWidth, maxHeight, quality, onConfirm, onCancel, onReset, showReset);
       
-      // 添加文件上传和预览功能
+      return modal;
+    },
+    
+    /**
+     * 为图像选择器绑定事件
+     * @private
+     */
+    _bindImageSelectorEvents: function(modalId, options, maxWidth, maxHeight, quality, onConfirm, onCancel, onReset, showReset) {
+      const { allowUpload, allowUrl } = options;
+      
+      // 处理上传图片事件
       if (allowUpload) {
         const uploadInput = document.getElementById(`${modalId}-upload`);
         if (uploadInput) {
-          // 移除旧事件并重置
-          const newUploadInput = uploadInput.cloneNode(true);
-          uploadInput.parentNode.replaceChild(newUploadInput, uploadInput);
-          newUploadInput.value = '';
-          
-          // 添加预览功能
-          newUploadInput.addEventListener('change', async function(e) {
+          // 替换输入元素以清除旧事件
+          Utils.replaceEventHandler(`#${modalId}-upload`, 'change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
             
@@ -526,8 +537,6 @@ export const Menu = {
           });
         }
       }
-      
-      return modal;
     }
   },
 };

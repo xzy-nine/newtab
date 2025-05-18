@@ -622,29 +622,7 @@ export const BookmarkManager = {
                 onReset: () => this.resetShortcutIcon(shortcut),
                 onConfirm: async (iconData) => {
                     if (iconData) {
-                        try {
-                            // 存储自定义图标
-                            const customIcons = await this.getCustomIcons();
-                            customIcons[shortcut.id] = iconData;
-                            await chrome.storage.local.set({ customIcons });
-                            
-                            // 刷新显示
-                            await this.reloadCurrentFolder();
-                            
-                            Notification.notify({
-                                title: I18n.getMessage('success'),
-                                message: I18n.getMessage('iconUpdated'),
-                                type: 'success',
-                                duration: 2000
-                            });
-                        } catch (error) {
-                            Notification.notify({
-                                title: I18n.getMessage('errorTitle'),
-                                message: error.message || I18n.getMessage('genericError'),
-                                type: 'error',
-                                duration: 5000
-                            });
-                        }
+                        await this.saveCustomIconForShortcut(shortcut, iconData);
                     }
                 },
                 // 添加回调，在模态框打开后立即显示当前图标
@@ -665,18 +643,20 @@ export const BookmarkManager = {
                             // 使用自定义图标
                             preview.innerHTML = `<img src="${customIcon}" alt="Current Icon" class="preview-icon-img">`;
                         } else {
-                            // 使用网站默认图标
-                            const iconUrl = await IconManager.getIconUrlAsync(shortcut.url);
-                            if (iconUrl) {
-                                preview.innerHTML = `<img src="${iconUrl}" alt="Current Icon" class="preview-icon-img">`;
-                            } else {
-                                // 如果获取失败，显示默认图标
-                                preview.innerHTML = `<img src="images/default_favicon.png" alt="Default Icon" class="preview-icon-img">`;
+                            // 尝试使用IconManager获取图标
+                            try {
+                                const iconUrl = await IconManager.getIconUrlAsync(shortcut.url);
+                                if (iconUrl) {
+                                    preview.innerHTML = `<img src="${iconUrl}" alt="Current Icon" class="preview-icon-img">`;
+                                    return;
+                                }
+                            } catch (e) {
+                                console.log('通过IconManager获取图标失败');
                             }
                         }
                     } catch (error) {
                         console.error('加载当前图标失败:', error);
-                        preview.innerHTML = `<img src="images/default_favicon.png" alt="Default Icon" class="preview-icon-img">`;
+                        preview.innerHTML = `<img src="Icon.png" alt="Default Icon" class="preview-icon-img">`;
                     }
                 }
             });
@@ -695,29 +675,8 @@ export const BookmarkManager = {
      * @param {Object} shortcut - 书签对象
      * @returns {Promise<void>}
      */
-    saveCustomIconForShortcut: async function(shortcut) {
+    saveCustomIconForShortcut: async function(shortcut, iconData) {
         try {
-            // 检查是否有URL输入
-            const iconUrlInput = document.getElementById('icon-url');
-            const iconUrl = iconUrlInput && iconUrlInput.value.trim();
-            
-            // 检查是否上传了图片
-            const iconUpload = document.getElementById('icon-upload');
-            const iconFile = iconUpload && iconUpload.files[0];
-            
-            // 图标数据
-            let iconData = null;
-            
-            // 优先使用上传的图片
-            if (iconFile) {
-                // 直接使用Utils工具函数
-                iconData = await Utils.blobToBase64(iconFile);
-            } 
-            // 其次使用URL
-            else if (iconUrl) {
-                iconData = iconUrl;
-            }
-            
             if (!iconData) return;
             
             // 存储自定义图标
@@ -977,7 +936,7 @@ export const BookmarkManager = {
         const iconImg = Utils.createElement('img');
         // 使用Utils.getDomain获取域名
         iconImg.src = bookmark.customIcon || `${Utils.getDomain(bookmark.url)}/favicon.ico`;
-        iconImg.onerror = () => { iconImg.src = 'images/default_favicon.png'; };
+        iconImg.onerror = () => { iconImg.src = 'Icon.png'; };
         
         icon.appendChild(iconImg);
         bookmarkElement.appendChild(icon);

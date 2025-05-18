@@ -3,6 +3,8 @@
  * 包含通用UI处理、通知、模态框等功能
  */
 import { Menu } from './menu.js';
+import { Notification } from './notification.js';
+import { I18n } from './i18n.js';
 
 /**
  * 工具函数命名空间
@@ -69,36 +71,109 @@ export const Utils = {
 
   calculateTotalHeight: element => element.scrollHeight * 1.1,
 
-  UI: {
-  Events: {
-    handleDocumentClick: e => {
-      document.querySelectorAll('.dropdown-menu.active').forEach(dropdown => {
-        if (!dropdown.parentElement.contains(e.target)) {
-          dropdown.classList.remove('active');
-        }
-      });
-    },
-
-    handlePageLoad: () => {
-      const searchInput = document.getElementById('search-input');
-      if (searchInput) setTimeout(() => searchInput.focus(), 100);
-    },
-    handleKeyDown: e => {
-      if (e.key === 'Escape') {
-        document.querySelectorAll('.modal').forEach(modal => {
-          modal.style.display = 'none';
-        });
-      }
-    },
-
-    initUIEvents: function() {
-      window.addEventListener('load', this.handlePageLoad);
-      window.addEventListener('resize', this.handleWindowResize);
-      document.addEventListener('keydown', this.handleKeyDown);
-      document.addEventListener('click', this.handleDocumentClick);
-      Menu.Modal.initEvents();
-      Menu.ContextMenu.init(); // 初始化上下文菜单
+  /**
+   * 统一错误处理
+   * @param {Error} error - 错误对象
+   * @param {string} customMessage - 自定义错误消息
+   * @param {boolean} throwError - 是否继续抛出错误
+   */
+  handleError: function(error, customMessage = '', throwError = false) {
+    console.error(error);
+    const message = customMessage || error.message || I18n.getMessage('genericError');
+    Notification.notify({
+      title: I18n.getMessage('errorTitle') || '错误',
+      message: message,
+      type: 'error',
+      duration: 5000
+    });
+    
+    if (throwError) {
+      throw error;
     }
   },
- }
+
+  /**
+   * 执行带有加载指示器的任务
+   * @param {Function} task - 要执行的异步任务
+   * @param {Object} options - 配置选项
+   * @returns {Promise<any>} - 任务结果
+   */
+  withLoading: async function(task, options = {}) {
+    const {
+      containerId = null,
+      startMessage = I18n.getMessage('loading') || '加载中',
+      successMessage = I18n.getMessage('ready') || '准备就绪',
+      errorMessage = null,
+      autoHide = true
+    } = options;
+    
+    try {
+      Notification.showLoadingIndicator(containerId);
+      Notification.updateLoadingProgress(10, startMessage);
+      
+      const result = await task();
+      
+      Notification.updateLoadingProgress(100, successMessage);
+      if (autoHide) {
+        setTimeout(() => Notification.hideLoadingIndicator(), 500);
+      }
+      
+      return result;
+    } catch (error) {
+      if (errorMessage) {
+        Notification.showErrorMessage(errorMessage);
+      } else {
+        Notification.showErrorMessage(error.message || I18n.getMessage('genericError') || '发生错误');
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * 安全地替换元素的事件处理器
+   * @param {string} selector - 元素选择器
+   * @param {string} event - 事件名称
+   * @param {Function} handler - 事件处理函数
+   */
+  replaceEventHandler: function(selector, event, handler) {
+    document.querySelectorAll(selector).forEach(element => {
+      const newElement = element.cloneNode(true);
+      element.parentNode.replaceChild(newElement, element);
+      newElement.addEventListener(event, handler);
+    });
+  },
+
+  UI: {
+    Events: {
+      handleDocumentClick: e => {
+        document.querySelectorAll('.dropdown-menu.active').forEach(dropdown => {
+          if (!dropdown.parentElement.contains(e.target)) {
+            dropdown.classList.remove('active');
+          }
+        });
+      },
+
+      handlePageLoad: () => {
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) setTimeout(() => searchInput.focus(), 100);
+      },
+      
+      handleKeyDown: e => {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+          });
+        }
+      },
+
+      initUIEvents: function() {
+        window.addEventListener('load', this.handlePageLoad);
+        window.addEventListener('resize', this.handleWindowResize);
+        document.addEventListener('keydown', this.handleKeyDown);
+        document.addEventListener('click', this.handleDocumentClick);
+        Menu.Modal.initEvents();
+        Menu.ContextMenu.init(); // 初始化上下文菜单
+      }
+    },
+  }
 };
