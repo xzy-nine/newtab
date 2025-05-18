@@ -174,7 +174,7 @@ jobs:
             # 构建请求体并打印前200个字符用于调试
             local request_body="{
               \"model\": \"deepseek-chat\",
-              \"messages\": [{\"role\": \"system\", \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。对每个变更都必须包含原始提交ID作为引用：${json_escaped_content:1:-1}\"}],
+              \"messages\": [{\"role\": \"system\", \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"}, {\"role\": \"user\", \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。其中功能新增只包含绝对的新功能,对每个变更都必须包含原始提交ID作为引用：${json_escaped_content:1:-1}\"}],
               \"max_tokens\": $MAX_TOKENS
             }"
             echo >&2 "请求体前200字符: ${request_body:0:200}..."
