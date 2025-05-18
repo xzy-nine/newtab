@@ -100,8 +100,6 @@ class BackgroundManager {
         // 左键点击 - 切换背景类型
         newButton.addEventListener('click', async () => {
             try {
-                // 保存旧的背景类型
-                const oldType = this.settings.type;
                 let imageUrl = null;
                 
                 // 根据是否有自定义图片决定切换类型
@@ -302,25 +300,6 @@ class BackgroundManager {
                     container.classList.add('bg-white');
                     container.style.backgroundImage = 'none';
                     
-                    // 确保不带背景的水波纹效果也能正常显示
-                    if (this.settings.type === 'default' && oldType !== 'default') {
-                        // 创建一个白色的水波纹效果
-                        const rippleElement = document.createElement('div');
-                        rippleElement.className = 'ripple-bg-transition bg-white';
-                        rippleElement.style.backgroundImage = 'none';
-                        document.body.appendChild(rippleElement);
-                        
-                        setTimeout(() => {
-                            rippleElement.classList.add('ripple-animation');
-                            
-                            setTimeout(() => {
-                                if (rippleElement.parentNode) {
-                                    document.body.removeChild(rippleElement);
-                                }
-                            }, 1500);
-                        }, 10);
-                    }
-                    
                     Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete'));
                     setTimeout(() => Notification.hideLoadingIndicator(), 500);
                     return;
@@ -432,19 +411,10 @@ class BackgroundManager {
                 
                 // 如果已有自定义背景，则显示当前背景预览
                 if (this.settings.customImageData && preview) {
-                    if (this.settings.customImageData.startsWith('http')) {
-                        // 如果是URL
-                        preview.innerHTML = `
-                            <div class="browser-frame"></div>
-                            <img src="${this.settings.customImageData}" alt="Current Background" class="preview-bg-img">
-                        `;
-                    } else {
-                        // 如果是Base64数据
-                        preview.innerHTML = `
-                            <div class="browser-frame"></div>
-                            <img src="${this.settings.customImageData}" alt="Current Background" class="preview-bg-img">
-                        `;
-                    }
+                    preview.innerHTML = `
+                        <div class="browser-frame"></div>
+                        <img src="${this.settings.customImageData}" alt="Current Background" class="preview-bg-img">
+                    `;
                 }
             },
             onConfirm: async (imageData) => {
@@ -599,108 +569,97 @@ class BackgroundManager {
             newBackgroundUrl = this.settings.customImageData;
         }
         
-        // 如果切换到纯白背景，使用简单渐变
+        const currentBg = document.getElementById('background-container');
+        if (!currentBg) return;
+        
+        // 切换到纯白背景的情况
         if (this.settings.type === 'default') {
-            const currentBg = document.getElementById('background-container');
-            if (currentBg) {
-                // 使用渐变效果过渡到白色，避免闪烁
-                currentBg.style.transition = 'opacity 0.8s ease';
-                currentBg.style.opacity = '0';
-                
-                setTimeout(() => {
-                    currentBg.classList.add('bg-white');
-                    currentBg.style.backgroundImage = 'none';
-                    currentBg.style.opacity = '1';
-                }, 800);
-            }
+            currentBg.style.transition = 'opacity 0.5s ease';
+            currentBg.style.opacity = '0';
+            
+            setTimeout(() => {
+                currentBg.classList.add('bg-white');
+                currentBg.style.backgroundImage = 'none';
+                currentBg.style.opacity = '1';
+            }, 500);
             return;
         }
         
-        // 确保容器存在
-        let bgContainer = document.querySelector('.bg-container');
-        if (!bgContainer) {
-            bgContainer = document.createElement('div');
-            bgContainer.className = 'bg-container';
-            document.body.appendChild(bgContainer);
-        }
-        
-        // 预加载图片，避免闪烁
+        // 预加载新背景图片
         const img = new Image();
-        img.onload = () => {
-            // 图片加载完成后再执行渐变
-            executeTransition();
-        };
         
-        img.onerror = () => {
-            console.error('背景图片加载失败');
-            // 即使加载失败也尝试执行过渡
-            executeTransition();
-        };
-        
-        // 设置图片来源
-        img.src = newBackgroundUrl;
-        
-        // 执行过渡动画的函数
-        const executeTransition = () => {
-            // 创建新背景元素
-            const newBgElement = document.createElement('div');
-            newBgElement.className = 'bg-transition';
-            newBgElement.style.backgroundImage = `url('${newBackgroundUrl}')`;
-            newBgElement.style.zIndex = '-3'; // 确保在底层
-            bgContainer.appendChild(newBgElement);
+        // 创建一个Promise来处理图片加载
+        const loadImage = new Promise((resolve) => {
+            img.onload = () => resolve(true);
+            img.onerror = () => {
+                console.error('背景图片加载失败:', newBackgroundUrl);
+                resolve(false);
+            };
+            img.src = newBackgroundUrl;
             
-            // 获取当前背景容器
-            const currentBg = document.getElementById('background-container');
+            // 如果图片已经缓存，onload可能不会触发
+            if (img.complete) resolve(true);
+        });
+        
+        // 使用Promise处理背景切换
+        loadImage.then(success => {
+            if (!success) {
+                Notification.notify({
+                    title: I18n.getMessage('error') || '错误',
+                    message: I18n.getMessage('backgroundImageLoadFailed') || '背景图片加载失败',
+                    type: 'error',
+                    duration: 3000
+                });
+                return;
+            }
             
-            // 在DOM更新之前暂停，确保新添加的元素被正确渲染
+            // 创建临时背景层
+            const tempBg = document.createElement('div');
+            tempBg.className = 'background-temp';
+            tempBg.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-image: url('${newBackgroundUrl}');
+                background-size: cover;
+                background-position: center;
+                z-index: -2;
+                opacity: 0;
+                transition: opacity 0.6s ease;
+            `;
+            document.body.appendChild(tempBg);
+            
+            // 确保DOM渲染完成后再执行淡入淡出
             requestAnimationFrame(() => {
-                // 先让新背景淡入
-                newBgElement.classList.add('fade-in');
+                // 1. 淡入临时背景
+                tempBg.style.opacity = '1';
                 
-                if (currentBg) {
-                    // 在新背景开始显示后，让当前背景淡出
-                    setTimeout(() => {
-                        currentBg.classList.add('fading');
-                    }, 100); // 稍微延迟，确保两个过渡不是完全同时的
-                }
-                
-                // 动画结束后更新实际背景
+                // 2. 在临时背景完全显示后，更新实际背景并移除临时元素
                 setTimeout(() => {
-                    if (currentBg) {
-                        // 当前背景已经淡出，现在更新它的图像并让它重新淡入
-                        currentBg.style.backgroundImage = `url('${newBackgroundUrl}')`;
-                        currentBg.classList.remove('bg-white');
-                        
-                        // 确保DOM更新后再移除fading类
-                        requestAnimationFrame(() => {
-                            currentBg.classList.remove('fading');
-                        });
-                    }
+                    // 更新实际背景
+                    currentBg.style.backgroundImage = `url('${newBackgroundUrl}')`;
+                    currentBg.classList.remove('bg-white');
                     
-                    // 在实际背景已经更新后，再延迟移除临时背景
+                    // 淡出并移除临时背景
                     setTimeout(() => {
-                        if (newBgElement && newBgElement.parentNode) {
-                            newBgElement.classList.remove('fade-in');
-                            
-                            // 先淡出临时背景，再移除它
-                            setTimeout(() => {
-                                if (newBgElement.parentNode) {
-                                    bgContainer.removeChild(newBgElement);
-                                }
-                            }, 500);
-                        }
-                    }, 500);
-                }, 800); // 与CSS中的transition时间匹配
+                        tempBg.style.opacity = '0';
+                        
+                        // 等待淡出完成后移除临时元素
+                        setTimeout(() => {
+                            if (document.body.contains(tempBg)) {
+                                document.body.removeChild(tempBg);
+                            }
+                        }, 600);
+                    }, 100);
+                }, 600);
             });
-        };
-        
-        // 如果图片已经缓存，onload可能不会触发，这种情况下直接执行过渡
-        if (img.complete) {
-            executeTransition();
-        }
+        });
     }
 }
 
+export { BackgroundManager };
 // 创建并导出背景图片管理器实例
 const backgroundManager = new BackgroundManager();
 
