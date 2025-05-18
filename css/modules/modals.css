@@ -104,121 +104,6 @@
   background-color: #c62828;
 }
 
-/* 书签模态框专用样式 */
-#bookmark-modal .form-group input[type="file"] {
-  padding: 5px 0;
-  border: none;
-}
-
-.image-preview,
-#bookmark-modal .image-preview {
-  width: 48px;
-  height: 48px;
-  margin-top: 5px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.image-preview {
-  margin: 15px 0;
-  text-align: center;
-  min-height: 200px; /* 增加最小高度 */
-  position: relative;
-  overflow: hidden;
-}
-
-.image-preview-icon {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #f5f5f5;
-  border-radius: 10px;
-  padding: 15px;
-  min-height: 192px; /* 保证最小高度和宽度一致 */
-  min-width: 192px; /* 保证方形的最小宽度 */
-  width: 192px; /* 固定宽度 */
-  height: 192px; /* 固定高度，保证方形 */
-  margin: 0 auto; /* 居中显示 */
-}
-
-.preview-icon-img {
-  max-width: 160px; /* 图标在方形内部最大宽度 */
-  max-height: 160px; /* 图标在方形内部最大高度 */
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.image-preview-bg {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #222;
-  border-radius: 10px;
-  padding: 10px;
-  min-height: 250px; /* 保持最小高度 */
-  width: 100%; /* 确保充满容器宽度 */
-  position: relative;
-  /* 使用固定的宽高比，模拟16:9的屏幕比例 */
-  aspect-ratio: 16/9;
-}
-
-.preview-bg-img {
-  width: 100%; /* 使图片宽度填满容器 */
-  height: 100%; /* 高度填满容器 */
-  object-fit: cover; /* 使用cover可以更好地模拟背景效果 */
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-}
-
-/* 添加一个模拟浏览器窗口的样式，让背景预览更真实 */
-.browser-frame {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  border-radius: 8px;
-  pointer-events: none;
-}
-
-.browser-frame::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 24px;
-  background-color: rgba(50, 50, 50, 0.7);
-  border-radius: 8px 8px 0 0;
-}
-
-.browser-frame::after {
-  content: '';
-  position: absolute;
-  top: 7px;
-  left: 10px;
-  width: 36px;
-  height: 10px;
-  display: flex;
-  gap: 6px;
-  background-image: radial-gradient(circle, #ff5f57 5px, transparent 0),
-                    radial-gradient(circle, #ffbd2e 5px, transparent 0),
-                    radial-gradient(circle, #28ca41 5px, transparent 0);
-  background-position: 0 0, 12px 0, 24px 0;
-  background-repeat: no-repeat;
-  background-size: 10px 10px;
-}
-
-.image-preview img {
-  max-width: 100%;
-  max-height: 100%;
-}
-
 /* 图标选择对话框 */
 #icon-selector-modal .icon-grid {
   display: grid;
@@ -281,121 +166,6 @@
 .notification-offset-0 { top: 20px; }
 .notification-offset-1 { top: 90px; }
 .notification-offset-2 { top: 160px; }
-.notification-offset-3 { top: 230px; }
-.notification-offset-4 { top: 300px; }
-.notification-offset-5 { top: 370px; }
-
-.notification-content {
-  padding: 10px;
-}
-
-.notification-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.notification-title {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.notification-message {
-  margin: 6px 0 0;
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.notification-close {
-  background: none;
-  border: none;
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-  margin: 0;
-}
-
-/* 通知类型 */
-.notification-info { border-left-color: #eaeaea; }
-.notification-error { border-left-color: #f44336; }
-.notification-warning { border-left-color: #fbbc05; }
-.notification-success { border-left-color: #34a853; }
-
-/* 确认通知 */
-.notification-confirm {
-  width: 300px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-/* 加载动画 */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(0,0,0,0.1);
-  border-radius: 50%;
-  border-top: 4px solid #3498db;
-  animation: spin 1s linear infinite;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-@keyframes spin {
-  0% { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-/* 通知消息的不透明度过渡 */
-#loading-message {
-  transition: opacity 0.2s;
-}
-
-/* 简洁加载提示 */
-.compact-loading {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  width: 200px;
-  height: auto;
-  max-height: 100px;
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: 8px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
-  z-index: 9999;
-  padding: 15px;
-}
-
-.compact-loading .loader-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  height: 100%;
-}
-
-.compact-loading .loader-spinner {
-  width: 20px;
-  height: 20px;
-}
-
-.compact-loading #loading-message {
-  font-size: 14px;
-}
-
-.compact-loading #loading-progress {
-  width: 100%;
-  height: 5px;
-}
 
 .error-message {
   color: #e53935;
@@ -429,4 +199,57 @@
 .notification-copy.copied {
   opacity: 1;
   color: #4caf50;
+}
+
+/* 图片预览组件 */
+.image-preview {
+  margin: 15px 0;
+  text-align: center;
+  min-height: 200px; /* 增加最小高度 */
+  position: relative;
+  overflow: hidden;
+}
+
+.image-preview-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f5f5f5;
+  border-radius: 10px;
+  padding: 15px;
+  min-height: 192px; /* 保证最小高度和宽度一致 */
+  min-width: 192px; /* 保证方形的最小宽度 */
+  width: 192px; /* 固定宽度 */
+  height: 192px; /* 固定高度，保证方形 */
+  margin: 0 auto; /* 居中显示 */
+}
+
+.preview-icon-img {
+  max-width: 160px; /* 图标在方形内部最大宽度 */
+  max-height: 160px; /* 图标在方形内部最大高度 */
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.image-preview-bg {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #222;
+  border-radius: 10px;
+  padding: 10px;
+  min-height: 250px; /* 保持最小高度 */
+  width: 100%; /* 确保充满容器宽度 */
+  position: relative;
+  /* 使用固定的宽高比，模拟16:9的屏幕比例 */
+  aspect-ratio: 16/9;
+}
+
+.preview-bg-img {
+  width: 100%; /* 使图片宽度填满容器 */
+  height: 100%; /* 高度填满容器 */
+  object-fit: cover; /* 使用cover可以更好地模拟背景效果 */
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }

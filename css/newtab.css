@@ -4,7 +4,7 @@
 @import 'modules/folders.css';    /* 文件夹相关样式 */
 @import 'modules/shortcuts.css';  /* 快捷方式按钮相关样式 */
 @import 'modules/modals.css';     /* 模态框相关样式 */
-@import 'darkmode.css';   /* 暗黑模式相关样式 */
+@import 'darkMode.css';   /* 暗黑模式相关样式 */
 @import 'responsive.css'; /* 响应式设计相关样式 */
 @import url('./modules/loading-notification.css'); /* 在适当位置添加导入 */
 

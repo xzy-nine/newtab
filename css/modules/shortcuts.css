@@ -8,7 +8,7 @@
   align-items: center; /* 设置垂直居中 */
   justify-content: center; /* 设置水平居中 */
   overflow-y: auto; /* 设置垂直滚动 */
-  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的黑色 */
+  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的灰色 */
   border-radius: 10px; /* 设置边框圆角为10px */
   margin-left: 10px; /* 设置左外边距为10px */
 }
@@ -131,25 +131,6 @@
 .add-bookmark {
   background: rgba(0, 120, 212, 0.2);
   border: 2px dashed var(--primary-color);
-}
-
-.add-icon {
-  font-size: 24px;
-  color: var(--primary-color);
-  margin-bottom: 5px;
-}
-
-/* 书签上下文菜单 */
-#bookmark-context-menu {
-  min-width: 150px;
-  border: 1px solid #ddd;
-}
-
-/* 拖放相关样式 */
-.bookmark.dragging {
-  opacity: 0.5;
-  position: absolute;
-  pointer-events: none;
 }
 
 /* 书签列表占位符 */

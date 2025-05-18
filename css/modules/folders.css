@@ -148,33 +148,10 @@
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* 文件夹图标样式 - 作为文件夹类型的视觉标识 */
-.folder-button .folder-icon {
-  /* 使用内容替换而非伪元素添加 */
-  width: 24px;
-  height: 24px;
-  margin-right: 5px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 禁用旧的伪元素图标样式，改为使用内容替换方案 */
+/* 移除旧的不必要的图标样式 */
 .folder-button.open .folder-icon::before,
 .folder-button:not(.open) .folder-icon::before {
   content: none; /* 禁用伪元素 */
-}
-
-/* 添加新样式以替代内联样式 */
-/* 文件夹内容缩进样式 - 根据层级设置不同的缩进值 */
-.folder-indent-0,
-.folder-indent-1,
-.folder-indent-2,
-.folder-indent-3,
-.folder-indent-4,
-.folder-indent-5,
-.folder-indent-6 {
-  margin-left: 0px; /* 移除所有内容的缩进 */
 }
 
 /* 初始隐藏状态样式 */
@@ -187,17 +164,6 @@
 
 /* 文件夹显示控制 */
 .folder-children.hidden {
-  display: none;
-}
-
-/* 快捷方式列表样式 */
-#shortcut-list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-}
-
-#shortcut-list.hidden {
   display: none;
 }
 
