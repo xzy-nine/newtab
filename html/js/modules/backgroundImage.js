@@ -603,13 +603,15 @@ class BackgroundManager {
         if (this.settings.type === 'default') {
             const currentBg = document.getElementById('background-container');
             if (currentBg) {
-                // 渐变到白色背景
-                currentBg.classList.add('fading');
+                // 使用渐变效果过渡到白色，避免闪烁
+                currentBg.style.transition = 'opacity 0.8s ease';
+                currentBg.style.opacity = '0';
+                
                 setTimeout(() => {
                     currentBg.classList.add('bg-white');
                     currentBg.style.backgroundImage = 'none';
-                    currentBg.classList.remove('fading');
-                }, 1000);
+                    currentBg.style.opacity = '1';
+                }, 800);
             }
             return;
         }
@@ -622,40 +624,80 @@ class BackgroundManager {
             document.body.appendChild(bgContainer);
         }
         
-        // 创建新背景元素
-        const newBgElement = document.createElement('div');
-        newBgElement.className = 'bg-transition';
-        newBgElement.style.backgroundImage = `url('${newBackgroundUrl}')`;
-        bgContainer.appendChild(newBgElement);
+        // 预加载图片，避免闪烁
+        const img = new Image();
+        img.onload = () => {
+            // 图片加载完成后再执行渐变
+            executeTransition();
+        };
         
-        // 获取当前背景容器
-        const currentBg = document.getElementById('background-container');
-        if (currentBg) {
-            // 渐变当前背景
-            currentBg.classList.add('fading');
-        }
+        img.onerror = () => {
+            console.error('背景图片加载失败');
+            // 即使加载失败也尝试执行过渡
+            executeTransition();
+        };
         
-        // 短暂延迟后开始显示新背景
-        setTimeout(() => {
-            newBgElement.classList.add('fade-in');
-        }, 50);
+        // 设置图片来源
+        img.src = newBackgroundUrl;
         
-        // 动画结束后更新实际背景
-        setTimeout(() => {
-            if (currentBg && newBackgroundUrl) {
-                // 更新背景图片
-                currentBg.style.backgroundImage = `url('${newBackgroundUrl}')`;
-                currentBg.classList.remove('bg-white');
-                currentBg.classList.remove('fading');
+        // 执行过渡动画的函数
+        const executeTransition = () => {
+            // 创建新背景元素
+            const newBgElement = document.createElement('div');
+            newBgElement.className = 'bg-transition';
+            newBgElement.style.backgroundImage = `url('${newBackgroundUrl}')`;
+            newBgElement.style.zIndex = '-3'; // 确保在底层
+            bgContainer.appendChild(newBgElement);
+            
+            // 获取当前背景容器
+            const currentBg = document.getElementById('background-container');
+            
+            // 在DOM更新之前暂停，确保新添加的元素被正确渲染
+            requestAnimationFrame(() => {
+                // 先让新背景淡入
+                newBgElement.classList.add('fade-in');
                 
-                // 移除临时背景
+                if (currentBg) {
+                    // 在新背景开始显示后，让当前背景淡出
+                    setTimeout(() => {
+                        currentBg.classList.add('fading');
+                    }, 100); // 稍微延迟，确保两个过渡不是完全同时的
+                }
+                
+                // 动画结束后更新实际背景
                 setTimeout(() => {
-                    if (newBgElement && newBgElement.parentNode) {
-                        bgContainer.removeChild(newBgElement);
+                    if (currentBg) {
+                        // 当前背景已经淡出，现在更新它的图像并让它重新淡入
+                        currentBg.style.backgroundImage = `url('${newBackgroundUrl}')`;
+                        currentBg.classList.remove('bg-white');
+                        
+                        // 确保DOM更新后再移除fading类
+                        requestAnimationFrame(() => {
+                            currentBg.classList.remove('fading');
+                        });
                     }
-                }, 200);
-            }
-        }, 1100);
+                    
+                    // 在实际背景已经更新后，再延迟移除临时背景
+                    setTimeout(() => {
+                        if (newBgElement && newBgElement.parentNode) {
+                            newBgElement.classList.remove('fade-in');
+                            
+                            // 先淡出临时背景，再移除它
+                            setTimeout(() => {
+                                if (newBgElement.parentNode) {
+                                    bgContainer.removeChild(newBgElement);
+                                }
+                            }, 500);
+                        }
+                    }, 500);
+                }, 800); // 与CSS中的transition时间匹配
+            });
+        };
+        
+        // 如果图片已经缓存，onload可能不会触发，这种情况下直接执行过渡
+        if (img.complete) {
+            executeTransition();
+        }
     }
 }
 

@@ -279,7 +279,7 @@
   background-position: center;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.8s ease-in-out;
   will-change: opacity;
 }
 
@@ -297,7 +297,7 @@
   z-index: -2;
   background-size: cover;
   background-position: center;
-  transition: opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.8s ease-in-out;
 }
 
 #background-container.fading {
@@ -314,5 +314,10 @@
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
+}
+
+/* 添加防闪烁样式 */
+.bg-white {
+  background-color: #ffffff !important;
 }
 
