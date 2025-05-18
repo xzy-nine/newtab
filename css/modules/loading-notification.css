@@ -56,6 +56,160 @@
   transition: all 0.3s ease;
 }
 
+/* 通知系统通用样式 */
+.notification {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 220px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  z-index: 3000;
+  transform: translateY(-100%); /* 初始位置在屏幕外 */
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+  border-left: 3px solid #eaeaea;
+}
+
+.notification.visible {
+  transform: translateY(0); /* 显示位置 */
+  opacity: 0.95;
+}
+
+/* 通知位置调整 */
+.notification-offset-0 { top: 20px; }
+.notification-offset-1 { top: 90px; }
+.notification-offset-2 { top: 160px; }
+.notification-offset-3 { top: 230px; }
+.notification-offset-4 { top: 300px; }
+.notification-offset-5 { top: 370px; }
+
+.notification-content {
+  padding: 10px;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.notification-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notification-message {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+
+/* 通知类型 */
+.notification-info { border-left-color: #eaeaea; }
+.notification-error { border-left-color: #f44336; }
+.notification-warning { border-left-color: #fbbc05; }
+.notification-success { border-left-color: #34a853; }
+
+/* 确认通知 */
+.notification-confirm {
+  width: 300px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.notification-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 24px;
+}
+
+/* 通知消息的不透明度过渡 */
+#loading-message {
+  transition: opacity 0.2s;
+}
+
+/* 简洁加载提示 */
+.compact-loading {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 200px;
+  height: auto;
+  max-height: 100px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  padding: 15px;
+}
+
+.compact-loading .loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+}
+
+.compact-loading .loader-spinner {
+  width: 20px;
+  height: 20px;
+}
+
+.compact-loading #loading-message {
+  font-size: 14px;
+}
+
+.compact-loading #loading-progress {
+  width: 100%;
+  height: 5px;
+}
+
+/* 复制按钮样式 */
+.notification-copy {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(0.6); /* 整体缩小尺寸 */
+}
+
+.notification-copy:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.notification-copy.copied {
+  opacity: 1;
+  color: #4caf50;
+}
+
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -66,28 +220,5 @@
   50% { opacity: 1; }
 }
 
-/* 深色模式适配 */
-@media (prefers-color-scheme: dark) {
-  .notification.loading-notification {
-    background-color: #333;
-  }
-  
-  #loading-message {
-    color: #ddd;
-  }
-  
-  .mini-progress {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-}
 
-/* 确保在小屏幕上显示合适大小 */
-@media (max-width: 480px) {
-  .notification.loading-notification {
-    width: 200px;
-  }
-  
-  #loading-message {
-    font-size: 11px;
-  }
-}
+

@@ -69,17 +69,11 @@
   margin-top: 5px;
 }
 
-.form-actions,
-.notification-actions {
+.form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
-}
-
-.notification-actions {
-  margin-top: 10px;
-  margin-bottom: 24px;
 }
 
 /* 按钮样式 */
@@ -140,65 +134,39 @@
   object-fit: contain;
 }
 
-/* 通知系统 */
-.notification {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  width: 220px;
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  z-index: 3000;
-  transform: translateY(-100%); /* 初始位置在屏幕外 */
-  transition: transform 0.3s ease, opacity 0.3s ease;
-  opacity: 0;
-  border-left: 3px solid #eaeaea;
+/* 加载动画 */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.notification.visible {
-  transform: translateY(0); /* 显示位置 */
-  opacity: 0.95;
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0,0,0,0.1);
+  border-radius: 50%;
+  border-top: 4px solid #3498db;
+  animation: spin 1s linear infinite;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-/* 通知位置调整 */
-.notification-offset-0 { top: 20px; }
-.notification-offset-1 { top: 90px; }
-.notification-offset-2 { top: 160px; }
+@keyframes spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 通知消息的不透明度过渡 */
+#loading-message {
+  transition: opacity 0.2s;
+}
 
 .error-message {
   color: #e53935;
   font-size: 14px;
   padding: 10px;
-}
-
-/* 复制按钮样式 */
-.notification-copy {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 3px;
-  opacity: 0.6;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform: scale(0.6); /* 整体缩小尺寸 */
-}
-
-.notification-copy:hover {
-  opacity: 1;
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.notification-copy.copied {
-  opacity: 1;
-  color: #4caf50;
 }
 
 /* 图片预览组件 */
