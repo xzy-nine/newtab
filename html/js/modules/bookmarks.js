@@ -20,26 +20,17 @@ let currentFolder = "";
 export const BookmarkManager = {
     /**
      * 初始化书签功能
-     * @returns {Promise<void>}
      */
     init: async function() {
         try {
-            // 显示加载指示器
-            Notification.showLoadingIndicator('bookmarks-container');
-            Notification.updateLoadingProgress(10, I18n.getMessage('loadingBookmarks'));
+            // 先初始化右键菜单功能
+            Menu.ContextMenu.init();
             
-            // 并行加载数据提高效率
-            const [_, chromeBookmarks] = await Promise.all([
-                this.loadBookmarks(),
-                this.getChromeBookmarks()
-            ]);
+            // 渲染文件夹（包括固定文件夹）
+            await this.renderFolders();
             
-            Notification.updateLoadingProgress(80, I18n.getMessage('renderingBookmarks'));
-            this.renderBookmarks();
-            this.initEvents();
-            
-            Notification.updateLoadingProgress(100, I18n.getMessage('ready'));
-            setTimeout(() => Notification.hideLoadingIndicator(), 500);
+            // 注册全局事件处理
+            document.addEventListener('contextmenu', this.handleContextMenu.bind(this));
         } catch (error) {
             Notification.notify({
                 title: I18n.getMessage('errorTitle'),
@@ -47,7 +38,6 @@ export const BookmarkManager = {
                 type: 'error',
                 duration: 5000
             });
-            throw error;
         }
     },
 
@@ -114,11 +104,16 @@ export const BookmarkManager = {
      * 创建根文件夹按钮
      * @param {Object} folder - 文件夹数据
      * @param {HTMLElement} container - 容器元素
+     * @param {boolean} isPinned - 是否为固定文件夹
      */
-    createRootFolderButton: function(folder, container) {
+    createRootFolderButton: function(folder, container, isPinned = false) {
         try {
             // 创建文件夹按钮
-            let folderButton = Utils.createElement("div", "folder-button", {id: `folder-${folder.id}`});
+            let folderButton = Utils.createElement("div", "folder-button", {
+                id: `folder-${folder.id}`,
+                'data-folder-id': folder.id,
+                'data-pinned': isPinned ? 'true' : 'false'
+            });
             
             // 检查是否有非空子文件夹
             const nonEmptySubFolders = folder.children.filter(child => 
@@ -129,7 +124,7 @@ export const BookmarkManager = {
             // 添加内容
             const folderContent = Utils.createElement("div", "folder-content folder-indent-0", {}, `
                 <span class="folder-arrow">${hasNonEmptySubFolders ? '▶' : ''}</span>
-                <span class="folder-icon">📁</span>
+                <span class="folder-icon">${isPinned ? '📌' : '📁'}</span>
                 <span class="folder-name">${folder.title || I18n.getMessage('untitledFolder')}</span>
             `);
             
@@ -497,21 +492,43 @@ export const BookmarkManager = {
      * @param {Object} folder - 文件夹数据
      */
     showFolderContextMenu: function(event, folder) {
-        Menu.ContextMenu.show(event, [
-            {
-                id: 'open-all-bookmarks',
-                text: I18n.getMessage('openAllBookmarks'),
-                callback: () => {
-                    // 打开文件夹中所有书签
-                    if (folder.children) {
-                        const bookmarks = folder.children.filter(item => item.url);
-                        bookmarks.forEach(bookmark => {
-                            window.open(bookmark.url, "_blank");
-                        });
+        // 检查文件夹是否已经被固定
+        let isPinned = false;
+        chrome.storage.local.get("pinnedFolders").then(data => {
+            const pinnedFolders = data.pinnedFolders || [];
+            isPinned = pinnedFolders.includes(folder.id);
+            
+            // 创建菜单项
+            const menuItems = [
+                // 添加固定/取消固定选项
+                {
+                    id: isPinned ? 'unpin-folder' : 'pin-folder',
+                    text: isPinned ? I18n.getMessage('unpinFolder') || '取消固定文件夹' : I18n.getMessage('pinFolder') || '固定文件夹',
+                    callback: () => {
+                        if (isPinned) {
+                            this.unpinFolder(folder);
+                        } else {
+                            this.pinFolder(folder);
+                        }
+                    }
+                },
+                {
+                    id: 'open-all-bookmarks',
+                    text: I18n.getMessage('openAllBookmarks'),
+                    callback: () => {
+                        // 打开文件夹中所有书签
+                        if (folder.children) {
+                            const bookmarks = folder.children.filter(item => item.url);
+                            bookmarks.forEach(bookmark => {
+                                window.open(bookmark.url, "_blank");
+                            });
+                        }
                     }
                 }
-            }
-        ], {menuId: 'folder-context-menu'});
+            ];
+            
+            Menu.ContextMenu.show(event, menuItems, {menuId: 'folder-context-menu'});
+        });
     },
 
     /**
@@ -1006,4 +1023,140 @@ export const BookmarkManager = {
             });
         }
     },
+
+    /**
+     * 固定文件夹到顶层
+     * @param {Object} folder - 要固定的文件夹
+     */
+    pinFolder: async function(folder) {
+        try {
+            // 获取当前固定的文件夹
+            const data = await chrome.storage.local.get("pinnedFolders");
+            const pinnedFolders = data.pinnedFolders || [];
+            
+            // 如果文件夹不在固定列表中，添加它
+            if (!pinnedFolders.includes(folder.id)) {
+                pinnedFolders.push(folder.id);
+                await chrome.storage.local.set({ pinnedFolders });
+                
+                // 更新UI，重新渲染文件夹列表
+                this.renderFolders();
+                
+                // 显示成功通知
+                Notification.notify({
+                    title: I18n.getMessage('success') || '成功',
+                    message: I18n.getMessage('folderPinned') || '文件夹已固定到顶层',
+                    type: 'success',
+                    duration: 2000
+                });
+            }
+        } catch (error) {
+            Notification.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
+        }
+    },
+
+    /**
+     * 取消固定文件夹
+     * @param {Object} folder - 要取消固定的文件夹
+     */
+    unpinFolder: async function(folder) {
+        try {
+            // 获取当前固定的文件夹
+            const data = await chrome.storage.local.get("pinnedFolders");
+            let pinnedFolders = data.pinnedFolders || [];
+            
+            // 从固定列表中移除文件夹
+            pinnedFolders = pinnedFolders.filter(id => id !== folder.id);
+            await chrome.storage.local.set({ pinnedFolders });
+            
+            // 更新UI，重新渲染文件夹列表
+            this.renderFolders();
+            
+            // 显示成功通知
+            Notification.notify({
+                title: I18n.getMessage('success') || '成功',
+                message: I18n.getMessage('folderUnpinned') || '文件夹已取消固定',
+                type: 'success',
+                duration: 2000
+            });
+        } catch (error) {
+            Notification.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
+        }
+    },
+
+    /**
+     * 渲染固定文件夹和普通文件夹
+     */
+    renderFolders: async function() {
+        try {
+            const container = document.getElementById("folder-list");
+            if (!container) return;
+            
+            // 清空当前容器
+            container.innerHTML = "";
+            
+            // 获取书签树
+            const bookmarks = await chrome.bookmarks.getTree();
+            const root = bookmarks[0];
+            
+            // 获取固定的文件夹列表
+            const data = await chrome.storage.local.get("pinnedFolders");
+            const pinnedFolders = data.pinnedFolders || [];
+            
+            // 先渲染固定文件夹
+            if (pinnedFolders.length > 0) {
+                const pinnedSection = Utils.createElement("div", "pinned-folders-section");
+                const pinnedHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('pinnedFolders') || '固定文件夹');
+                pinnedSection.appendChild(pinnedHeader);
+                
+                for (const folderId of pinnedFolders) {
+                    const folder = this.findFolderById(root, folderId);
+                    if (folder) {
+                        this.createRootFolderButton(folder, pinnedSection, true);
+                    }
+                }
+                
+                container.appendChild(pinnedSection);
+                
+                // 如果有固定文件夹，添加分隔线
+                if (pinnedFolders.length > 0) {
+                    container.appendChild(Utils.createElement("hr", "folder-section-divider"));
+                }
+            }
+            
+            // 渲染常规文件夹层级
+            const regularSection = Utils.createElement("div", "regular-folders-section");
+            
+            // 创建根文件夹按钮
+            for (let i = 0; i < root.children.length; i++) {
+                const folder = root.children[i];
+                if (!this.isFolderEmpty(folder)) {
+                    this.createRootFolderButton(folder, regularSection, false);
+                }
+            }
+            
+            container.appendChild(regularSection);
+            
+            // 应用选中的文件夹
+            this.applySelectedFolder(root);
+            this.initEvents();
+        } catch (error) {
+            Notification.notify({
+                title: I18n.getMessage('errorTitle'),
+                message: error.message || I18n.getMessage('genericError'),
+                type: 'error',
+                duration: 5000
+            });
+        }
+    }
 };

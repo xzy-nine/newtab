@@ -516,5 +516,25 @@
   "applyingBackground": {
     "message": "正在应用背景...",
     "description": "背景应用阶段提示"
+  },
+  "pinnedFolders": {
+    "message": "已固定文件夹",
+    "description": "固定文件夹标题"
+  },
+  "pinFolder": {
+    "message": "固定文件夹到顶层",
+    "description": "固定文件夹到顶层菜单项"
+  },
+  "unpinFolder": {
+    "message": "取消固定文件夹",
+    "description": "取消固定文件夹菜单项"
+  },
+  "folderPinned": {
+    "message": "文件夹已固定到顶层",
+    "description": "文件夹已固定提示"
+  },
+  "folderUnpinned": {
+    "message": "文件夹已取消固定",
+    "description": "文件夹已取消固定提示"
   }
 }
