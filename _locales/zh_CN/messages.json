@@ -504,5 +504,17 @@
   "resetBackground": {
     "message": "重置背景",
     "description": "重置背景按钮文本"
+  },
+  "preparingBackground": {
+    "message": "正在准备背景...",
+    "description": "背景准备阶段提示"
+  },
+  "loadingCustomBackground": {
+    "message": "正在加载自定义背景...",
+    "description": "自定义背景加载提示"
+  },
+  "applyingBackground": {
+    "message": "正在应用背景...",
+    "description": "背景应用阶段提示"
   }
 }

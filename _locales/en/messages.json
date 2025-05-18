@@ -500,5 +500,17 @@
   "resetBackground": {
     "message": "Reset Background",
     "description": "重置背景按钮文本"
+  },
+  "preparingBackground": {
+    "message": "Preparing background...",
+    "description": "背景准备阶段提示"
+  },
+  "loadingCustomBackground": {
+    "message": "Loading custom background...",
+    "description": "自定义背景加载提示"
+  },
+  "applyingBackground": {
+    "message": "Applying background...",
+    "description": "背景应用阶段提示"
   }
 }
