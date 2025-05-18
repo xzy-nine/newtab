@@ -235,3 +235,25 @@
   -ms-user-select: none; /* Internet Explorer/Edge */
 }
 
+/* 固定文件夹相关样式 */
+.pinned-folders-section {
+  margin-bottom: 8px;
+  width: 100%; /* 确保容器占满整个可用宽度 */
+}
+
+.section-header {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: 500;
+  margin: 8px 5px;
+  padding-left: 10px;
+  border-left: 3px solid var(--primary-color);
+  width: calc(100% - 15px); /* 确保标题宽度正确 */
+  box-sizing: border-box;
+}
+
+/* 确保固定文件夹按钮与普通文件夹按钮具有相同的宽度 */
+.pinned-folders-section .folder-button {
+  width: calc(100% - 5px); /* 与普通文件夹按钮保持一致的宽度 */
+  box-sizing: border-box;
+}

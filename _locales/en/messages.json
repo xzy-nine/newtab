@@ -405,7 +405,7 @@
   },
   "desktopInstructionMessage": {
     "message": "To use this extension as your new tab page, go to your browser extensions settings and choose 'Open New Tab page' from this extension's options.",
-    "description": "Instructions for desktop users on how to set this as their new tab page"
+    "description": "桌面用户如何将此扩展设置为新标签页的说明"
   },
   "mobileInstructionMessage": {
     "message": "To set this as your new tab page on mobile, copy this URL and set it as your homepage: {0}",
@@ -512,5 +512,25 @@
   "applyingBackground": {
     "message": "Applying background...",
     "description": "背景应用阶段提示"
+  },
+  "pinnedFolders": {
+    "message": "Pinned Folders",
+    "description": "固定文件夹标题"
+  },
+  "pinFolder": {
+    "message": "Pin Folder to Top",
+    "description": "固定文件夹到顶层菜单项"
+  },
+  "unpinFolder": {
+    "message": "Unpin Folder",
+    "description": "取消固定文件夹菜单项"
+  },
+  "folderPinned": {
+    "message": "Folder has been pinned to the top",
+    "description": "文件夹已固定提示"
+  },
+  "folderUnpinned": {
+    "message": "Folder has been unpinned",
+    "description": "文件夹已取消固定提示"
   }
 }

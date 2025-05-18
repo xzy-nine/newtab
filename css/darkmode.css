@@ -440,3 +440,44 @@
   50% { background-color: rgba(255, 255, 255, 0.1); }
 }
 
+/* 右键菜单深色模式增强 */
+.context-menu, 
+#folder-context-menu, 
+#bookmark-context-menu, 
+#shortcut-context-menu {
+  background: #2a2a2a;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+  border: 1px solid #444;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.context-menu-item,
+#pin-folder,
+#unpin-folder,
+#open-all-bookmarks {
+  color: rgba(255, 255, 255, 0.9); 
+  font-weight: normal;
+  padding: 8px 12px;
+  border-radius: 0;
+  transition: background-color 0.2s;
+  text-shadow: none;
+  margin: 0;
+  border-left: none;
+}
+
+.context-menu-item:hover,
+#pin-folder:hover,
+#unpin-folder:hover,
+#open-all-bookmarks:hover {
+  background-color: #3a3a3a;
+  transform: none;
+  box-shadow: none;
+  border-left: none;
+  color: var(--primary-color);
+}
+
+.context-menu-separator {
+  border-bottom: 1px solid #444;
+  margin: 4px 0;
+}
+
