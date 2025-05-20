@@ -532,5 +532,9 @@
   "folderUnpinned": {
     "message": "Folder has been unpinned",
     "description": "文件夹已取消固定提示"
+  },
+  "copyToClipboard": {
+    "message": "Copy to clipboard",
+    "description": "复制到剪贴板按钮文本"
   }
 }

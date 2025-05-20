@@ -348,13 +348,6 @@ export const Menu = {
       const preview = Utils.createElement('div', previewClass, { id: `${modalId}-preview` });
       modalForm.appendChild(preview);
       
-      // 添加提示信息
-      const infoText = mode === 'background' ? 
-        (I18n.getMessage('backgroundHint') || '选择或上传一张背景图片') :
-        (I18n.getMessage('iconHint') || '选择或上传一个图标');
-      const infoDiv = Utils.createElement('div', 'image-selector-info', {}, infoText);
-      modalForm.appendChild(infoDiv);
-      
       // 按钮组
       const formActions = Utils.createElement('div', 'form-actions');
       
