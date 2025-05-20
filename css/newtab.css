@@ -49,6 +49,7 @@
     z-index: -2;
     background-size: cover;
     background-position: center;
+    transition: opacity 0.5s ease;
   }
   
   /* 背景覆盖层 */
@@ -262,5 +263,61 @@
 .load-complete #loading-progress-bar {
   background: linear-gradient(90deg, #00c853, #64dd17);
   transition: all 0.3s ease;
+}
+
+
+
+/* 背景切换效果 */
+.bg-transition {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -3;
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+  will-change: opacity;
+}
+
+.bg-transition.fade-in {
+  opacity: 1;
+}
+
+/* 背景容器控制 */
+#background-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 0.8s ease-in-out;
+}
+
+#background-container.fading {
+  opacity: 0;
+}
+
+/* 背景容器 */
+.bg-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 添加防闪烁样式 */
+.bg-white {
+  background-color: #ffffff !important;
 }
 

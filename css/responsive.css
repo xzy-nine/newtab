@@ -218,3 +218,22 @@
     max-height: calc(100vh - 150px) !important; /* 更小的预留空间 */
   }
 }
+
+/* 确保在小屏幕上显示合适大小 */
+@media (max-width: 480px) {
+  .notification.loading-notification {
+    width: 200px;
+  }
+  
+  #loading-message {
+    font-size: 11px;
+  }
+  
+  .notification {
+    width: 180px;
+  }
+  
+  .notification-confirm {
+    width: 250px;
+  }
+}
