@@ -536,5 +536,9 @@
   "folderUnpinned": {
     "message": "文件夹已取消固定",
     "description": "文件夹已取消固定提示"
+  },
+  "copyToClipboard": {
+    "message": "复制按钮",
+    "description": "复制到剪贴板按钮文本"
   }
 }
