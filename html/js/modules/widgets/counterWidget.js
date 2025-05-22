@@ -158,25 +158,21 @@ export default {
      * @returns {number} 字体大小
      */
     calculateOptimalFontSize: function(textLength, width, height) {
-        // 基础大小随容器尺寸动态调整
+        // 改进字体大小计算逻辑，更加注重数字长度
         const baseSize = Math.min(width, height) / 4;
         
-        // 根据文本长度和容器大小调整
-        let adjustedSize = baseSize;
+        // 字体大小随数位数指数级缩小
+        const digitsFactor = Math.pow(0.8, Math.max(0, textLength - 2));
+        let adjustedSize = baseSize * digitsFactor;
         
-        if (textLength > 3) {
-            // 每增加一个字符减小字体
-            adjustedSize -= (textLength - 3) * (baseSize / 10);
-        }
-        
-        // 根据容器宽度调整
-        adjustedSize = Math.min(adjustedSize, width / 4.5);
+        // 根据容器宽度进一步调整
+        adjustedSize = Math.min(adjustedSize, width / (4 + textLength * 0.8));
         
         // 根据容器高度调整
         adjustedSize = Math.min(adjustedSize, height / 3.5);
         
         // 保持合理的字体大小范围
-        return Math.max(16, Math.min(adjustedSize, Math.max(64, width / 3)));
+        return Math.max(14, Math.min(adjustedSize, 64));
     },
     
     /**
@@ -189,10 +185,19 @@ export default {
         const countDisplay = content.querySelector('.counter-display');
         // 标题元素
         const titleElement = content.querySelector('.counter-title');
+        // 重置按钮元素
+        const resetButton = content.querySelector('.counter-reset');
         
-        // 增加按钮
-        content.querySelector('.increase').addEventListener('click', (e) => {
-            e.stopPropagation();
+        // 长按相关变量 - 移到函数外部使其成为模块级变量，让增减按钮共享
+        let pressTimer = null;
+        let isLongPressing = false;
+        let longPressInterval = null;
+        let longPressSpeed = 200; // 初始长按速度(ms)
+        let longPressSpeedupTimer = null;
+        let lastButtonReleaseTime = 0; // 记录上次按钮释放时间
+        
+        // 增加计数的函数
+        const increaseCount = () => {
             const currentCount = container.widgetData.count || 0;
             const newCount = currentCount + 1;
             
@@ -206,15 +211,18 @@ export default {
             const fontSize = this.calculateOptimalFontSize(newCount.toString().length, width, height);
             countDisplay.style.fontSize = `${fontSize}px`;
             
+            // 重置按钮恢复正常状态
+            resetButton.textContent = '重置';
+            resetButton.classList.remove('confirm');
+            
             // 触发数据变更事件
             document.dispatchEvent(new CustomEvent('widget-data-changed'));
-        });
+        };
         
-        // 减少按钮
-        content.querySelector('.decrease').addEventListener('click', (e) => {
-            e.stopPropagation();
+        // 减少计数的函数
+        const decreaseCount = () => {
             const currentCount = container.widgetData.count || 0;
-            const newCount = Math.max(0, currentCount - 1); // 不允许负数
+            const newCount = currentCount - 1; // 移除最小值限制，允许负数
             
             // 更新显示和数据
             countDisplay.textContent = newCount;
@@ -226,31 +234,234 @@ export default {
             const fontSize = this.calculateOptimalFontSize(newCount.toString().length, width, height);
             countDisplay.style.fontSize = `${fontSize}px`;
             
+            // 重置按钮恢复正常状态
+            resetButton.textContent = '重置';
+            resetButton.classList.remove('confirm');
+            
             // 触发数据变更事件
             document.dispatchEvent(new CustomEvent('widget-data-changed'));
+        };
+        
+        // 清除所有长按定时器
+        const clearAllTimers = () => {
+            if (pressTimer) clearTimeout(pressTimer);
+            if (longPressInterval) clearInterval(longPressInterval);
+            if (longPressSpeedupTimer) clearTimeout(longPressSpeedupTimer);
+            pressTimer = null;
+            longPressInterval = null;
+            longPressSpeedupTimer = null;
+            isLongPressing = false;
+            
+            // 记录按钮释放时间
+            lastButtonReleaseTime = Date.now();
+            
+            // 只有当超过1秒没有按压时才重置速度
+            setTimeout(() => {
+                if (Date.now() - lastButtonReleaseTime >= 5000) {
+                    longPressSpeed = 200; // 重置速度
+                }
+            }, 1000);
+        };
+        
+        // 增加按钮
+        const increaseButton = content.querySelector('.increase');
+        
+        // 鼠标按下/触摸开始
+        increaseButton.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            e.preventDefault(); // 防止文本选择
+            
+            // 先执行一次计数增加
+            increaseCount();
+            
+            // 设置长按定时器
+            pressTimer = setTimeout(() => {
+                isLongPressing = true;
+                // 开始连续增加
+                longPressInterval = setInterval(increaseCount, longPressSpeed);
+                
+                // 设置加速定时器 - 每隔1秒加快速度
+                longPressSpeedupTimer = setTimeout(function speedup() {
+                    if (longPressSpeed > 50) {
+                        longPressSpeed = Math.max(50, longPressSpeed - 30);
+                        // 清除旧的间隔并创建新的
+                        clearInterval(longPressInterval);
+                        longPressInterval = setInterval(increaseCount, longPressSpeed);
+                        // 继续加速
+                        longPressSpeedupTimer = setTimeout(speedup, 1000);
+                    }
+                }, 1000);
+                
+            }, 500); // 长按阈值500ms
         });
         
-        // 重置按钮
-        content.querySelector('.counter-reset').addEventListener('click', (e) => {
+        // 触摸开始 - 针对移动设备
+        increaseButton.addEventListener('touchstart', (e) => {
             e.stopPropagation();
+            e.preventDefault(); // 防止文本选择和滚动
             
-            // 重置为0
-            countDisplay.textContent = '0';
-            container.widgetData.count = 0;
+            // 先执行一次计数增加
+            increaseCount();
             
-            // 调整字体大小回到默认
-            const width = container.offsetWidth;
-            const height = container.offsetHeight;
-            const fontSize = this.calculateOptimalFontSize(1, width, height);
-            countDisplay.style.fontSize = `${fontSize}px`;
+            // 设置长按定时器
+            pressTimer = setTimeout(() => {
+                isLongPressing = true;
+                // 开始连续增加
+                longPressInterval = setInterval(increaseCount, longPressSpeed);
+                
+                // 设置加速定时器
+                longPressSpeedupTimer = setTimeout(function speedup() {
+                    if (longPressSpeed > 50) {
+                        longPressSpeed = Math.max(50, longPressSpeed - 30);
+                        // 清除旧的间隔并创建新的
+                        clearInterval(longPressInterval);
+                        longPressInterval = setInterval(increaseCount, longPressSpeed);
+                        // 继续加速
+                        longPressSpeedupTimer = setTimeout(speedup, 1000);
+                    }
+                }, 1000);
+                
+            }, 500); // 长按阈值500ms
+        });
+        
+        // 减少按钮
+        const decreaseButton = content.querySelector('.decrease');
+        
+        // 鼠标按下/触摸开始
+        decreaseButton.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            e.preventDefault(); // 防止文本选择
             
-            // 触发数据变更事件
-            document.dispatchEvent(new CustomEvent('widget-data-changed'));
+            // 先执行一次计数减少
+            decreaseCount();
+            
+            // 设置长按定时器
+            pressTimer = setTimeout(() => {
+                isLongPressing = true;
+                // 开始连续减少
+                longPressInterval = setInterval(decreaseCount, longPressSpeed);
+                
+                // 设置加速定时器
+                longPressSpeedupTimer = setTimeout(function speedup() {
+                    if (longPressSpeed > 50) {
+                        longPressSpeed = Math.max(50, longPressSpeed - 30);
+                        // 清除旧的间隔并创建新的
+                        clearInterval(longPressInterval);
+                        longPressInterval = setInterval(decreaseCount, longPressSpeed);
+                        // 继续加速
+                        longPressSpeedupTimer = setTimeout(speedup, 1000);
+                    }
+                }, 1000);
+                
+            }, 500); // 长按阈值500ms
+        });
+        
+        // 触摸开始 - 针对移动设备
+        decreaseButton.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            e.preventDefault(); // 防止文本选择和滚动
+            
+            // 先执行一次计数减少
+            decreaseCount();
+            
+            // 设置长按定时器
+            pressTimer = setTimeout(() => {
+                isLongPressing = true;
+                // 开始连续减少
+                longPressInterval = setInterval(decreaseCount, longPressSpeed);
+                
+                // 设置加速定时器
+                longPressSpeedupTimer = setTimeout(function speedup() {
+                    if (longPressSpeed > 50) {
+                        longPressSpeed = Math.max(50, longPressSpeed - 30);
+                        // 清除旧的间隔并创建新的
+                        clearInterval(longPressInterval);
+                        longPressInterval = setInterval(decreaseCount, longPressSpeed);
+                        // 继续加速
+                        longPressSpeedupTimer = setTimeout(speedup, 1000);
+                    }
+                }, 1000);
+                
+            }, 500); // 长按阈值500ms
+        });
+        
+        // 鼠标抬起/触摸结束 - 全局处理
+        document.addEventListener('mouseup', () => {
+            clearAllTimers();
+        });
+        
+        document.addEventListener('touchend', () => {
+            clearAllTimers();
+        });
+        
+        document.addEventListener('touchcancel', () => {
+            clearAllTimers();
+        });
+        
+        // 鼠标移出按钮也停止
+        increaseButton.addEventListener('mouseleave', () => {
+            if (isLongPressing) {
+                clearAllTimers();
+            }
+        });
+        
+        decreaseButton.addEventListener('mouseleave', () => {
+            if (isLongPressing) {
+                clearAllTimers();
+            }
+        });
+        
+        // 重置按钮 - 增加二次确认
+        let resetClickTime = 0;
+        
+        resetButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault(); // 防止文本选择
+            const now = Date.now();
+            
+            // 第一次点击
+            if (!resetButton.classList.contains('confirm') || now - resetClickTime > 3000) {
+                resetButton.textContent = '确认重置?';
+                resetButton.classList.add('confirm');
+                resetClickTime = now;
+                
+                // 3秒后自动恢复，如果没有第二次点击
+                setTimeout(() => {
+                    if (now === resetClickTime) { // 确保没有新的点击更新了时间戳
+                        resetButton.textContent = '重置';
+                        resetButton.classList.remove('confirm');
+                    }
+                }, 3000);
+                
+                return;
+            }
+            
+            // 第二次点击，检查时间间隔
+            if (now - resetClickTime > 1000) { // 至少0.1秒的间隔
+                // 执行重置
+                countDisplay.textContent = '0';
+                container.widgetData.count = 0;
+                
+                // 调整字体大小回到默认
+                const width = container.offsetWidth;
+                const height = container.offsetHeight;
+                const fontSize = this.calculateOptimalFontSize(1, width, height);
+                countDisplay.style.fontSize = `${fontSize}px`;
+                
+                // 重置按钮恢复正常状态
+                resetButton.textContent = '重置';
+                resetButton.classList.remove('confirm');
+                resetClickTime = 0;
+                
+                // 触发数据变更事件
+                document.dispatchEvent(new CustomEvent('widget-data-changed'));
+            }
         });
         
         // 双击标题进入编辑模式
         titleElement.addEventListener('dblclick', (e) => {
             e.stopPropagation();
+            e.preventDefault(); // 防止文本选择
             
             // 已经在编辑状态则不处理
             if (titleElement.classList.contains('editing')) return;
@@ -309,6 +520,10 @@ export default {
             inputElement.addEventListener('click', (e) => {
                 e.stopPropagation();
             });
+            
+            // 重置按钮恢复正常状态
+            resetButton.textContent = '重置';
+            resetButton.classList.remove('confirm');
         });
         
         // 点击其他地方关闭编辑
@@ -323,6 +538,12 @@ export default {
                 if (inputElement) {
                     inputElement.blur();
                 }
+            }
+            
+            // 点击外部区域时重置按钮恢复正常状态
+            if (!resetButton.contains(e.target) && resetButton.classList.contains('confirm')) {
+                resetButton.textContent = '重置';
+                resetButton.classList.remove('confirm');
             }
         });
     }

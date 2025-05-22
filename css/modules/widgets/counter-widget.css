@@ -8,6 +8,11 @@
     justify-content: space-between;
     padding: 8px;
     box-sizing: border-box;
+    /* 禁止文本选择 */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 .counter-title {
@@ -53,6 +58,7 @@
     margin: 0 5px;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: font-size 0.3s ease;
 }
 
 .counter-reset {
@@ -63,10 +69,22 @@
     margin-top: 4px;
     text-align: center;
     border-radius: 12px;
+    transition: all 0.2s ease;
 }
 
 .counter-reset:hover {
     background-color: #f0f0f0;
+}
+
+/* 重置确认状态 */
+.counter-reset.confirm {
+    color: #ffffff;
+    background-color: #ff5252;
+    font-weight: bold;
+}
+
+.counter-reset.confirm:hover {
+    background-color: #ff0000;
 }
 
 /* 紧凑布局样式 */
