@@ -1,11 +1,20 @@
 /* 计数器小部件样式 */
+.counter-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
 
-/* 计数器标题 */
 .counter-title {
   font-size: 14px;
   font-weight: 500;
   color: #333;
-  margin-bottom: 5px;
+  margin-top: 5px;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -21,56 +30,56 @@
 }
 
 /* 计数值显示 */
-.counter-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #0078d4;
-  text-align: center;
-  margin: 10px 0;
-  font-family: 'Consolas', monospace;
+.counter-display {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 10px 0;
+    color: #333;
+    /* 确保显示正确 */
+    display: block;
+    text-align: center;
 }
 
 /* 按钮区域 */
-.counter-buttons {
-  display: flex;
-  justify-content: space-between;
-  gap: 5px;
+.counter-controls {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0;
+    /* 确保按钮可见 */
+    width: 100%;
 }
 
 /* 计数器按钮 */
-.counter-btn {
-  flex: 1;
-  min-width: 30px;
-  height: 30px;
-  border-radius: 5px;
-  border: none;
-  background-color: #f0f0f0;
-  color: #333;
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s, transform 0.1s;
+.counter-button {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+    margin: 0 10px;
+    border: none;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    /* 确保按钮可点击 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.counter-btn:hover {
-  background-color: #e0e0e0;
-}
-
-.counter-btn:active {
-  transform: scale(0.95);
-}
-
-.counter-decrement {
-  color: #d9534f;
+.counter-button:hover {
+    background-color: #e0e0e0;
 }
 
 .counter-reset {
-  color: #5bc0de;
-  font-size: 12px;
+    margin-top: 15px;
+    font-size: 0.8rem;
+    color: #999;
+    cursor: pointer;
+    text-decoration: underline;
 }
 
-.counter-increment {
-  color: #5cb85c;
+.counter-reset:hover {
+    color: #666;
 }
+
+/* 移除可能导致冲突的重复样式 */

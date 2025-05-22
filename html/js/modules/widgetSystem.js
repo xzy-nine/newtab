@@ -13,7 +13,7 @@ let widgets = [];
 let widgetContainers = [];
 let dragData = null;
 
-/**
+/**,
  * 小部件系统API
  */
 export const WidgetSystem = {
@@ -86,6 +86,11 @@ export const WidgetSystem = {
                         x: parseInt(container.style.left) || 0,
                         y: parseInt(container.style.top) || 0
                     },
+                    // 保存尺寸信息
+                    size: {
+                        width: parseInt(container.style.width) || 200,
+                        height: parseInt(container.style.height) || 150
+                    },
                     fixed: container.dataset.fixed === 'true',
                     items: [...container.querySelectorAll('.widget-item')].map(item => ({
                         type: item.dataset.widgetType,
@@ -126,7 +131,6 @@ export const WidgetSystem = {
         const elementsAtPoint = document.elementsFromPoint(event.clientX, event.clientY);
         
         // 检查是否有更高层级的交互元素，避免小部件菜单干扰其他元素
-        // 增加对背景按钮和时钟的检查
         const hasHigherLevelInteractive = elementsAtPoint.some(el => 
             el.closest('#folder-list, #shortcut-list, #search-box, .bookmark, #background-button, #time') && 
             !el.closest('.widget-container')
@@ -150,7 +154,6 @@ export const WidgetSystem = {
             this.showWidgetContainerContextMenu(event, widgetContainer);
         } else if (
             // 在空白区域创建小部件容器，但排除特定区域
-            // 增加排除背景按钮和时钟的检查
             !event.target.closest('#folder-list, #shortcut-list, #search-box, .bookmark, #background-button, #time')
         ) {
             // 空白区域的右键菜单
@@ -189,14 +192,40 @@ export const WidgetSystem = {
      */
     showWidgetContainerContextMenu(event, container) {
         const menuItems = [
-            // 删除单个浮于最上层的选项
-            // {
-            //     id: 'float-to-top',
-            //     text: I18n.getMessage('floatToTop') || '临时浮于最上层',
-            //     callback: () => {
-            //         this.floatContainerToTop(container);
-            //     }
-            // },
+            {
+                id: 'resize-widget-container',
+                text: I18n.getMessage('resizeWidgetContainer') || '调整大小',
+                submenu: [
+                    {
+                        id: 'size-small',
+                        text: '小',
+                        callback: () => {
+                            this.resizeWidgetContainer(container, 180, 120);
+                        }
+                    },
+                    {
+                        id: 'size-medium',
+                        text: '中',
+                        callback: () => {
+                            this.resizeWidgetContainer(container, 220, 160);
+                        }
+                    },
+                    {
+                        id: 'size-large',
+                        text: '大',
+                        callback: () => {
+                            this.resizeWidgetContainer(container, 260, 200);
+                        }
+                    },
+                    {
+                        id: 'size-custom',
+                        text: '自定义',
+                        callback: () => {
+                            this.showResizeDialog(container);
+                        }
+                    }
+                ]
+            },
             {
                 id: 'delete-widget-container',
                 text: I18n.getMessage('deleteWidgetContainer') || '删除小部件容器',
@@ -207,6 +236,64 @@ export const WidgetSystem = {
         ];
         
         Menu.ContextMenu.show(event, menuItems, { menuId: 'widget-container-menu' });
+    },
+    
+    /**
+     * 显示调整大小对话框
+     * @param {HTMLElement} container - 小部件容器 
+     */
+    showResizeDialog(container) {
+        const currentWidth = parseInt(container.style.width) || 200;
+        const currentHeight = parseInt(container.style.height) || 150;
+        
+        const formItems = [
+            {
+                id: 'width',
+                label: '宽度',
+                type: 'number',
+                value: currentWidth,
+                min: 150,
+                max: 500
+            },
+            {
+                id: 'height',
+                label: '高度',
+                type: 'number',
+                value: currentHeight,
+                min: 100, 
+                max: 400
+            }
+        ];
+        
+        Menu.showFormModal(
+            '调整小部件大小',
+            formItems,
+            (formData) => {
+                const width = parseInt(formData.width) || 200;
+                const height = parseInt(formData.height) || 150;
+                this.resizeWidgetContainer(container, width, height);
+            },
+            '确定',
+            '取消'
+        );
+    },
+    
+    /**
+     * 调整小部件容器大小
+     * @param {HTMLElement} container - 小部件容器
+     * @param {number} width - 新宽度
+     * @param {number} height - 新高度
+     */
+    resizeWidgetContainer(container, width, height) {
+        // 限制最小尺寸
+        width = Math.max(150, width);
+        height = Math.max(100, height);
+        
+        container.style.width = `${width}px`;
+        container.style.height = `${height}px`;
+        
+        // 触发保存
+        document.dispatchEvent(new CustomEvent('widget-data-changed'));
     },
     
     /**
@@ -242,6 +329,207 @@ export const WidgetSystem = {
     },
     
     /**
+     * 添加小部件到容器
+     * @param {HTMLElement} container - 小部件容器
+     * @param {string} widgetType - 小部件类型
+     * @param {Object} widgetData - 小部件数据
+     * @returns {Promise<HTMLElement>} 创建的小部件元素
+     */
+    async addWidgetItem(container, widgetType, widgetData = {}) {
+        try {
+            const contentArea = container.querySelector('.widget-content');
+            if (!contentArea) throw new Error('找不到小部件内容区域');
+            
+            // 如果只有添加按钮，移除它
+            const addButton = contentArea.querySelector('.widget-add-button');
+            if (addButton && contentArea.children.length === 1) {
+                contentArea.removeChild(addButton);
+            }
+            
+            // 创建小部件项容器
+            const widgetItem = document.createElement('div');
+            widgetItem.className = 'widget-item';
+            widgetItem.dataset.widgetType = widgetType;
+            widgetItem.id = widgetData.id || `widget-${widgetType}-${Date.now()}`;
+            
+            // 存储小部件数据
+            widgetItem.widgetData = widgetData;
+            
+            // 添加加载指示器
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'widget-loading';
+            loadingIndicator.textContent = '加载中...';
+            widgetItem.appendChild(loadingIndicator);
+            
+            // 先添加到容器，让用户看到加载状态
+            contentArea.appendChild(widgetItem);
+            
+            // 根据类型加载小部件
+            let widgetModule;
+            try {
+                // 记录加载开始
+                console.log(`开始加载小部件模块: ${widgetType}`);
+                
+                switch(widgetType) {
+                    case 'counter':
+                        console.log('当前模块路径基准:', import.meta.url);
+                        try {
+                            // 修改为正确的相对路径
+                            const moduleURL = new URL('./widgets/counterWidget.js', import.meta.url).href;
+                            console.log('尝试加载模块:', moduleURL);
+                            widgetModule = await import(moduleURL);
+                        } catch (loadError) {
+                            console.error('模块加载错误详情:', loadError);
+                            // 尝试多种可能的路径
+                            try {
+                                const paths = [
+                                    '../widgets/counterWidget.js',
+                                    '/html/js/modules/widgets/counterWidget.js',
+                                    '/html/js/widgets/counterWidget.js',
+                                    './counterWidget.js'
+                                ];
+                                
+                                console.log('尝试备用路径加载');
+                                let loaded = false;
+                                
+                                for (const path of paths) {
+                                    if (loaded) break;
+                                    try {
+                                        const backupURL = new URL(path, import.meta.url).href;
+                                        console.log('尝试路径:', backupURL);
+                                        widgetModule = await import(backupURL);
+                                        loaded = true;
+                                        console.log('成功加载:', path);
+                                    } catch (e) {
+                                        console.log(`路径 ${path} 加载失败:`, e.message);
+                                    }
+                                }
+                                
+                                if (!loaded) {
+                                    throw new Error(`所有备用路径均加载失败`);
+                                }
+                            } catch (backupError) {
+                                console.error('所有路径尝试失败:', backupError);
+                                throw new Error(`无法加载计数器模块: ${loadError.message}`);
+                            }
+                        }
+                        console.log('计数器模块加载结果:', widgetModule);
+                        break;
+                    // 可以添加更多小部件类型
+                    default:
+                        throw new Error(`未知的小部件类型: ${widgetType}`);
+                }
+                
+                // 移除加载指示器
+                if (loadingIndicator && widgetItem.contains(loadingIndicator)) {
+                    widgetItem.removeChild(loadingIndicator);
+                }
+                
+                // 检查模块是否正确加载
+                if (!widgetModule) {
+                    throw new Error(`加载小部件模块 ${widgetType} 失败: 模块为空`);
+                }
+                
+                if (!widgetModule.default) {
+                    throw new Error(`小部件模块 ${widgetType} 缺少默认导出`);
+                }
+                
+                if (typeof widgetModule.default.initialize !== 'function') {
+                    throw new Error(`小部件模块 ${widgetType} 缺少initialize方法`);
+                }
+                
+                // 初始化小部件
+                console.log(`开始初始化小部件: ${widgetType}`, widgetData);
+                await widgetModule.default.initialize(widgetItem, widgetData);
+                
+                // 检查初始化后是否有内容
+                if (widgetItem.childElementCount === 0) {
+                    throw new Error(`小部件 ${widgetType} 初始化后内容为空`);
+                }
+                
+                // 设置为活动项
+                this.setActiveWidgetItem(container, Array.from(contentArea.children).indexOf(widgetItem));
+                
+                console.log(`小部件 ${widgetType} 初始化成功`);
+            } catch (error) {
+                console.error(`小部件 ${widgetType} 初始化失败:`, error);
+                
+                // 显示错误信息替代加载指示器
+                if (widgetItem.contains(loadingIndicator)) {
+                    widgetItem.removeChild(loadingIndicator);
+                }
+                
+                const errorElement = document.createElement('div');
+                errorElement.className = 'widget-error';
+                errorElement.innerHTML = `<div>加载失败: ${error.message}</div>
+                                     <button class="retry-button">重试</button>
+                                     <button class="remove-button">移除</button>`;
+                
+                // 添加重试和移除按钮的事件处理
+                widgetItem.appendChild(errorElement);
+                
+                // 绑定按钮事件
+                const retryButton = errorElement.querySelector('.retry-button');
+                const removeButton = errorElement.querySelector('.remove-button');
+                
+                if (retryButton) {
+                    retryButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // 移除错误显示
+                        widgetItem.removeChild(errorElement);
+                        // 重新尝试加载
+                        this.addWidgetItem(container, widgetType, widgetData);
+                        // 移除当前项
+                        this.removeWidgetItem(widgetItem);
+                    });
+                }
+                
+                if (removeButton) {
+                    removeButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.removeWidgetItem(widgetItem);
+                    });
+                }
+            }
+            
+            // 更新小圆点指示器
+            this.updateWidgetIndicators(container);
+            
+            // 保存状态
+            this.saveWidgets();
+            
+            return widgetItem;
+        } catch (error) {
+            console.error('添加小部件过程中发生错误:', error);
+            Utils.handleError(error, I18n.getMessage('addWidgetFailed') || '添加小部件失败');
+            return null;
+        }
+    },
+    
+    /**
+     * 移除小部件项
+     * @param {HTMLElement} widgetItem - 小部件项元素
+     */
+    removeWidgetItem(widgetItem) {
+        const container = widgetItem.closest('.widget-container');
+        const contentArea = container.querySelector('.widget-content');
+        
+        // 移除小部件
+        contentArea.removeChild(widgetItem);
+        
+        // 如果容器为空，添加"添加"按钮
+        if (contentArea.children.length === 0) {
+            this.addAddButton(container);
+        } else {
+            // 更新小圆点指示器
+            this.updateWidgetIndicators(container);
+        }
+        
+        // 保存状态
+        this.saveWidgets();
+    },
+    
+    /**
      * 创建小部件容器
      * @param {Object} data - 小部件容器数据
      * @returns {HTMLElement} 创建的小部件容器
@@ -255,6 +543,11 @@ export const WidgetSystem = {
         const position = data.position || { x: 100, y: 100 };
         container.style.left = `${position.x}px`;
         container.style.top = `${position.y}px`;
+        
+        // 设置尺寸
+        const size = data.size || { width: 200, height: 150 };
+        container.style.width = `${size.width}px`;
+        container.style.height = `${size.height}px`;
         
         // 设置固定状态
         container.dataset.fixed = data.fixed ? 'true' : 'false';
@@ -275,35 +568,59 @@ export const WidgetSystem = {
         pinButton.className = 'widget-pin-button';
         pinButton.title = data.fixed ? I18n.getMessage('unfixWidgetContainer') || '取消固定' : I18n.getMessage('fixWidgetContainer') || '固定小部件';
         pinButton.innerHTML = data.fixed ? '📌' : '📍';
-
-        // 使用更明确的事件处理
+        
         pinButton.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
             this.toggleFixedContainer(container);
         });
-
+        
         container.appendChild(pinButton);
+        
+        // 添加调整大小控制点
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'widget-resize-handle';
+        resizeHandle.title = '调整大小';
+        container.appendChild(resizeHandle);
         
         // 添加拖动事件
         this.setupDragHandlers(dragHandle, container);
         
+        // 添加调整大小事件
+        this.setupResizeHandlers(resizeHandle, container);
+        
+        // 创建内容区域包装器
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'widget-content-wrapper';
+        container.appendChild(contentWrapper);
+        
         // 创建内容区域
         const contentArea = document.createElement('div');
         contentArea.className = 'widget-content';
-        container.appendChild(contentArea);
+        contentWrapper.appendChild(contentArea);
         
+        // 添加小部件指示器容器
+        const indicatorsContainer = document.createElement('div');
+        indicatorsContainer.className = 'widget-indicators';
+        contentWrapper.appendChild(indicatorsContainer);
+
         // 如果有已保存的小部件，添加它们
         if (data.items && Array.isArray(data.items)) {
             data.items.forEach(item => {
                 this.addWidgetItem(container, item.type, item.data);
             });
+            
+            // 设置初始活动状态
+            this.setActiveWidgetItem(container, 0);
         }
         
         // 如果容器为空，添加一个"添加"按钮
         if (!data.items || data.items.length === 0) {
             this.addAddButton(container);
         }
+        
+        // 添加滚轮事件监听器
+        this.setupScrollHandlers(container);
         
         // 添加到DOM
         document.body.appendChild(container);
@@ -315,6 +632,148 @@ export const WidgetSystem = {
         this.saveWidgets();
         
         return container;
+    },
+    
+    /**
+     * 设置滚轮事件处理
+     * @param {HTMLElement} container - 小部件容器元素
+     */
+    setupScrollHandlers(container) {
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault(); // 防止页面滚动
+            
+            const contentArea = container.querySelector('.widget-content');
+            if (!contentArea || contentArea.children.length <= 1) return;
+            
+            const activeWidgetIndex = this.getActiveWidgetIndex(container);
+            const widgetItems = Array.from(contentArea.querySelectorAll('.widget-item'));
+            
+            // 确定滚动方向
+            const delta = e.deltaY || e.detail || e.wheelDelta;
+            const direction = delta > 0 ? 1 : -1;
+            
+            // 计算新的索引（循环滚动）
+            let newIndex = (activeWidgetIndex + direction) % widgetItems.length;
+            if (newIndex < 0) newIndex = widgetItems.length - 1;
+            
+            // 设置新的活动小部件
+            this.setActiveWidgetItem(container, newIndex);
+        }, { passive: false });
+    },
+    
+    /**
+     * 获取当前活动的小部件索引
+     * @param {HTMLElement} container - 小部件容器元素
+     * @returns {number} 活动小部件的索引
+     */
+    getActiveWidgetIndex(container) {
+        const contentArea = container.querySelector('.widget-content');
+        if (!contentArea) return -1;
+        
+        const widgetItems = Array.from(contentArea.querySelectorAll('.widget-item'));
+        return widgetItems.findIndex(item => item.classList.contains('active-widget'));
+    },
+    
+    /**
+     * 设置活动小部件
+     * @param {HTMLElement} container - 小部件容器元素
+     * @param {number} index - 要激活的小部件索引
+     */
+    setActiveWidgetItem(container, index) {
+        const contentArea = container.querySelector('.widget-content');
+        if (!contentArea) return;
+        
+        const widgetItems = Array.from(contentArea.querySelectorAll('.widget-item'));
+        if (widgetItems.length === 0) return;
+        
+        // 确保索引有效
+        const validIndex = Math.max(0, Math.min(index, widgetItems.length - 1));
+        
+        // 取消所有小部件的活动状态
+        widgetItems.forEach(item => {
+            item.classList.remove('active-widget');
+            item.style.opacity = '0';
+            item.style.visibility = 'hidden';
+            item.style.zIndex = '0'; // 修正: 降低非活动项的z-index
+        });
+        
+        // 设置新的活动小部件
+        widgetItems[validIndex].classList.add('active-widget');
+        widgetItems[validIndex].style.opacity = '1';
+        widgetItems[validIndex].style.visibility = 'visible';
+        widgetItems[validIndex].style.zIndex = '2'; // 修正: 提高活动项的z-index
+        
+        // 更新指示器
+        this.updateActiveIndicator(container, validIndex);
+        
+        console.log(`小部件已激活: 索引 ${validIndex}`);
+    },
+    
+    /**
+     * 更新小部件指示器
+     * @param {HTMLElement} container - 小部件容器元素
+     */
+    updateWidgetIndicators(container) {
+        const contentArea = container.querySelector('.widget-content');
+        const indicatorsContainer = container.querySelector('.widget-indicators');
+        
+        if (!contentArea || !indicatorsContainer) return;
+        
+        // 清空现有指示器
+        indicatorsContainer.innerHTML = '';
+        
+        // 获取小部件项
+        const widgetItems = contentArea.querySelectorAll('.widget-item');
+        if (widgetItems.length <= 1) {
+            indicatorsContainer.classList.add('hidden'); // 隐藏指示器
+            return;
+        }
+        
+        indicatorsContainer.classList.remove('hidden'); // 显示指示器
+        
+        // 创建指示器点
+        Array.from(widgetItems).forEach((_, index) => {
+            const indicator = document.createElement('span');
+            indicator.className = 'widget-indicator';
+            indicator.dataset.index = index;
+            
+            // 添加点击事件
+            indicator.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.setActiveWidgetItem(container, index);
+            });
+            
+            indicatorsContainer.appendChild(indicator);
+        });
+        
+        // 激活当前小部件的指示器
+        const activeIndex = this.getActiveWidgetIndex(container);
+        if (activeIndex === -1) {
+            // 如果没有活动的小部件，激活第一个
+            this.setActiveWidgetItem(container, 0);
+        } else {
+            this.updateActiveIndicator(container, activeIndex);
+        }
+    },
+    
+    /**
+     * 更新活动指示器
+     * @param {HTMLElement} container - 小部件容器元素
+     * @param {number} activeIndex - 活动小部件索引
+     */
+    updateActiveIndicator(container, activeIndex) {
+        const indicators = container.querySelectorAll('.widget-indicator');
+        if (!indicators.length) return;
+        
+        // 移除所有活动状态
+        Array.from(indicators).forEach(indicator => {
+            indicator.classList.remove('active');
+        });
+        
+        // 设置新的活动指示器
+        if (activeIndex >= 0 && activeIndex < indicators.length) {
+            indicators[activeIndex].classList.add('active');
+        }
     },
     
     /**
@@ -334,12 +793,6 @@ export const WidgetSystem = {
         addButton.innerHTML = '+';
         addButton.title = I18n.getMessage('addWidget') || '添加小部件';
         
-        // 使用click.bind确保正确的this指向
-        const clickHandler = this.showAddWidgetDialog.bind(this, container);
-        
-        // 移除旧事件处理器
-        addButton.removeEventListener('click', clickHandler);
-        // 添加新事件处理器
         addButton.addEventListener('click', (e) => {
             e.stopPropagation();
             this.showAddWidgetDialog(container);
@@ -392,82 +845,6 @@ export const WidgetSystem = {
             },
             // 未来可以添加更多小部件类型
         ];
-    },
-    
-    /**
-     * 添加小部件到容器
-     * @param {HTMLElement} container - 小部件容器
-     * @param {string} widgetType - 小部件类型
-     * @param {Object} widgetData - 小部件数据
-     * @returns {Promise<HTMLElement>} 创建的小部件元素
-     */
-    async addWidgetItem(container, widgetType, widgetData = {}) {
-        try {
-            const contentArea = container.querySelector('.widget-content');
-            if (!contentArea) throw new Error('找不到小部件内容区域');
-            
-            // 如果只有添加按钮，移除它
-            const addButton = contentArea.querySelector('.widget-add-button');
-            if (addButton && contentArea.children.length === 1) {
-                contentArea.removeChild(addButton);
-            }
-            
-            // 创建小部件项容器
-            const widgetItem = document.createElement('div');
-            widgetItem.className = 'widget-item';
-            widgetItem.dataset.widgetType = widgetType;
-            widgetItem.id = widgetData.id || `widget-${widgetType}-${Date.now()}`;
-            
-            // 存储小部件数据
-            widgetItem.widgetData = widgetData;
-            
-            // 根据类型加载小部件
-            let widgetModule;
-            switch(widgetType) {
-                case 'counter':
-                    widgetModule = await import('./widgets/counterWidget.js');
-                    break;
-                // 可以添加更多小部件类型
-                default:
-                    throw new Error(`未知的小部件类型: ${widgetType}`);
-            }
-            
-            // 初始化小部件
-            if (widgetModule && widgetModule.default) {
-                await widgetModule.default.initialize(widgetItem, widgetData);
-            }
-            
-            // 添加到容器
-            contentArea.appendChild(widgetItem);
-            
-            // 保存状态
-            this.saveWidgets();
-            
-            return widgetItem;
-        } catch (error) {
-            Utils.handleError(error, I18n.getMessage('addWidgetFailed') || '添加小部件失败');
-            return null;
-        }
-    },
-    
-    /**
-     * 移除小部件项
-     * @param {HTMLElement} widgetItem - 小部件项元素
-     */
-    removeWidgetItem(widgetItem) {
-        const container = widgetItem.closest('.widget-container');
-        const contentArea = container.querySelector('.widget-content');
-        
-        // 移除小部件
-        contentArea.removeChild(widgetItem);
-        
-        // 如果容器为空，添加"添加"按钮
-        if (contentArea.children.length === 0) {
-            this.addAddButton(container);
-        }
-        
-        // 保存状态
-        this.saveWidgets();
     },
     
     /**
@@ -526,6 +903,10 @@ export const WidgetSystem = {
         let isDragging = false;
         
         handle.addEventListener('mousedown', (e) => {
+            console.log('开始拖动尝试'); // 调试日志
+            e.preventDefault(); // 阻止默认行为
+            e.stopPropagation(); // 阻止事件冒泡
+            
             // 如果容器是固定的，不允许拖动
             if (container.dataset.fixed === 'true') {
                 // 显示提示信息
@@ -538,53 +919,126 @@ export const WidgetSystem = {
                 return;
             }
             
-            // 记录拖动开始
-            isDragging = false;
+            // 设置初始拖动状态
+            isDragging = true;
             
             // 记录初始位置
-            dragData = {
-                element: container,
-                startX: e.clientX,
-                startY: e.clientY,
-                startLeft: parseInt(container.style.left) || 0,
-                startTop: parseInt(container.style.top) || 0
-            };
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startLeft = parseInt(container.style.left) || 0;
+            const startTop = parseInt(container.style.top) || 0;
             
-            // 直接在元素上绑定临时事件处理
-            const handleMouseMove = (moveEvent) => {
-                // 设置为正在拖动
-                if (!isDragging) {
-                    isDragging = true;
-                    container.classList.add('widget-dragging');
-                }
+            container.classList.add('widget-dragging');
+            console.log('拖动状态已设置'); // 调试日志
+            
+            // 移动处理函数
+            function handleMouseMove(moveEvent) {
+                if (!isDragging) return;
                 
-                const dx = moveEvent.clientX - dragData.startX;
-                const dy = moveEvent.clientY - dragData.startY;
+                const dx = moveEvent.clientX - startX;
+                const dy = moveEvent.clientY - startY;
                 
                 // 计算新位置
-                const newLeft = Math.max(0, dragData.startLeft + dx);
-                const newTop = Math.max(0, dragData.startTop + dy);
+                const newLeft = Math.max(0, startLeft + dx);
+                const newTop = Math.max(0, startTop + dy);
                 
                 // 应用新位置
-                dragData.element.style.left = `${newLeft}px`;
-                dragData.element.style.top = `${newTop}px`;
+                container.style.left = `${newLeft}px`;
+                container.style.top = `${newTop}px`;
                 
                 moveEvent.preventDefault();
-            };
+                console.log(`移动到: ${newLeft}, ${newTop}`); // 调试日志
+            }
             
-            const handleMouseUp = (upEvent) => {
+            // 放开处理函数
+            function handleMouseUp() {
                 if (isDragging) {
-                    // 拖动结束，移除临时样式
+                    isDragging = false;
                     container.classList.remove('widget-dragging');
                     
                     // 触发位置变更事件
+                    document.dispatchEvent(new CustomEvent('widget-data-changed'));
+                    console.log('拖动结束'); // 调试日志
+                }
+                
+                // 移除临时事件处理
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            }
+            
+            // 绑定移动和放开事件
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        });
+    },
+    
+    /**
+     * 设置调整大小事件处理
+     * @param {HTMLElement} handle - 调整大小控制点元素
+     * @param {HTMLElement} container - 小部件容器元素
+     */
+    setupResizeHandlers(handle, container) {
+        let isResizing = false;
+        
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // 如果容器是固定的，不允许调整大小
+            if (container.dataset.fixed === 'true') {
+                // 显示提示信息
+                Notification.notify({
+                    title: I18n.getMessage('widgetFixed') || '小部件已固定',
+                    message: I18n.getMessage('unfixWidgetToResize') || '请先取消固定再调整大小',
+                    type: 'info',
+                    duration: 2000
+                });
+                return;
+            }
+            
+            // 设置初始调整状态
+            isResizing = true;
+            
+            // 记录初始位置和尺寸
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startWidth = parseInt(container.style.width) || 200;
+            const startHeight = parseInt(container.style.height) || 150;
+            
+            container.classList.add('widget-resizing');
+            
+            // 移动处理函数
+            function handleMouseMove(moveEvent) {
+                if (!isResizing) return;
+                
+                const dx = moveEvent.clientX - startX;
+                const dy = moveEvent.clientY - startY;
+                
+                // 计算新尺寸，确保最小尺寸
+                const newWidth = Math.max(150, startWidth + dx);
+                const newHeight = Math.max(100, startHeight + dy);
+                
+                // 应用新尺寸
+                container.style.width = `${newWidth}px`;
+                container.style.height = `${newHeight}px`;
+                
+                moveEvent.preventDefault();
+            }
+            
+            // 放开处理函数
+            function handleMouseUp() {
+                if (isResizing) {
+                    isResizing = false;
+                    container.classList.remove('widget-resizing');
+                    
+                    // 触发尺寸变更事件
                     document.dispatchEvent(new CustomEvent('widget-data-changed'));
                 }
                 
                 // 移除临时事件处理
                 document.removeEventListener('mousemove', handleMouseMove);
                 document.removeEventListener('mouseup', handleMouseUp);
-            };
+            }
             
             // 绑定移动和放开事件
             document.addEventListener('mousemove', handleMouseMove);
