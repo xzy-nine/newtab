@@ -54,6 +54,14 @@ export const WidgetSystem = {
             const data = await chrome.storage.local.get('widgets');
             widgets = data.widgets || [];
             
+            // 清除现有小部件容器
+            widgetContainers.forEach(container => {
+                if (document.body.contains(container)) {
+                    document.body.removeChild(container);
+                }
+            });
+            widgetContainers = [];
+            
             // 为每个保存的小部件容器创建DOM元素
             widgets.forEach(widgetData => {
                 this.createWidgetContainer(widgetData);
@@ -99,8 +107,8 @@ export const WidgetSystem = {
      * 设置右键菜单
      */
     setupContextMenus() {
-        // 使用replaceEventHandler优化事件绑定
-        Utils.replaceEventHandler('body', 'contextmenu', this.handleContextMenu.bind(this));
+        // 不要替换整个body的右键菜单事件，而是添加一个专门的监听器
+        document.addEventListener('contextmenu', this.handleContextMenu.bind(this));
     },
     
     /**
@@ -130,12 +138,12 @@ export const WidgetSystem = {
         const widgetItem = event.target.closest('.widget-item');
         const widgetContainer = event.target.closest('.widget-container');
         
-        if (widgetItem) {
-            // 小部件项的右键菜单
+        if (widgetItem && !event.target.closest('.widget-functional-area')) {
+            // 小部件项的右键菜单 - 确保不是在功能区点击
             event.preventDefault();
             this.showWidgetItemContextMenu(event, widgetItem);
-        } else if (widgetContainer) {
-            // 小部件容器的右键菜单
+        } else if (widgetContainer && !widgetItem) {
+            // 小部件容器的右键菜单 - 确保不是点击在小部件项上
             event.preventDefault();
             this.showWidgetContainerContextMenu(event, widgetContainer);
         } else if (
@@ -264,7 +272,14 @@ export const WidgetSystem = {
         pinButton.className = 'widget-pin-button';
         pinButton.title = data.fixed ? I18n.getMessage('unfixWidgetContainer') || '取消固定' : I18n.getMessage('fixWidgetContainer') || '固定小部件';
         pinButton.innerHTML = data.fixed ? '📌' : '📍';
-        pinButton.addEventListener('click', () => this.toggleFixedContainer(container));
+
+        // 使用更明确的事件处理
+        pinButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            this.toggleFixedContainer(container);
+        });
+
         container.appendChild(pinButton);
         
         // 添加拖动事件
@@ -316,7 +331,14 @@ export const WidgetSystem = {
         addButton.innerHTML = '+';
         addButton.title = I18n.getMessage('addWidget') || '添加小部件';
         
-        addButton.addEventListener('click', () => {
+        // 使用click.bind确保正确的this指向
+        const clickHandler = this.showAddWidgetDialog.bind(this, container);
+        
+        // 移除旧事件处理器
+        addButton.removeEventListener('click', clickHandler);
+        // 添加新事件处理器
+        addButton.addEventListener('click', (e) => {
+            e.stopPropagation();
             this.showAddWidgetDialog(container);
         });
         
@@ -498,6 +520,8 @@ export const WidgetSystem = {
      * @param {HTMLElement} container - 小部件容器元素
      */
     setupDragHandlers(handle, container) {
+        let isDragging = false;
+        
         handle.addEventListener('mousedown', (e) => {
             // 如果容器是固定的，不允许拖动
             if (container.dataset.fixed === 'true') {
@@ -511,9 +535,8 @@ export const WidgetSystem = {
                 return;
             }
             
-            // 阻止事件传播和默认行为
-            e.stopPropagation();
-            e.preventDefault();
+            // 记录拖动开始
+            isDragging = false;
             
             // 记录初始位置
             dragData = {
@@ -521,15 +544,17 @@ export const WidgetSystem = {
                 startX: e.clientX,
                 startY: e.clientY,
                 startLeft: parseInt(container.style.left) || 0,
-                startTop: parseInt(container.style.top) || 0,
-                dragging: true
+                startTop: parseInt(container.style.top) || 0
             };
-            
-            // 添加拖动中的样式
-            container.classList.add('widget-dragging');
             
             // 直接在元素上绑定临时事件处理
             const handleMouseMove = (moveEvent) => {
+                // 设置为正在拖动
+                if (!isDragging) {
+                    isDragging = true;
+                    container.classList.add('widget-dragging');
+                }
+                
                 const dx = moveEvent.clientX - dragData.startX;
                 const dy = moveEvent.clientY - dragData.startY;
                 
@@ -544,43 +569,64 @@ export const WidgetSystem = {
                 moveEvent.preventDefault();
             };
             
-            const handleMouseUp = () => {
-                // 移除拖动中的样式
-                container.classList.remove('widget-dragging');
+            const handleMouseUp = (upEvent) => {
+                if (isDragging) {
+                    // 拖动结束，移除临时样式
+                    container.classList.remove('widget-dragging');
+                    
+                    // 触发位置变更事件
+                    document.dispatchEvent(new CustomEvent('widget-data-changed'));
+                }
                 
-                // 保存新位置
-                this.saveWidgets();
-                
-                // 移除临时事件监听器
+                // 移除临时事件处理
                 document.removeEventListener('mousemove', handleMouseMove);
                 document.removeEventListener('mouseup', handleMouseUp);
-                
-                // 重置拖动数据
-                dragData = null;
             };
             
-            // 添加临时事件监听器
+            // 绑定移动和放开事件
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
         });
     },
     
     /**
-     * 处理窗口尺寸变化
+     * 窗口尺寸变化处理
      */
     handleWindowResize() {
-        // 确保所有小部件都在可视区域内
+        // 固定小部件位置
         widgetContainers.forEach(container => {
-            const rect = container.getBoundingClientRect();
-            
-            // 检查小部件是否超出窗口范围
-            if (rect.right > window.innerWidth) {
-                container.style.left = `${window.innerWidth - rect.width}px`;
-            }
-            
-            if (rect.bottom > window.innerHeight) {
-                container.style.top = `${window.innerHeight - rect.height}px`;
+            if (container.dataset.fixed === 'true') {
+                const position = {
+                    x: parseInt(container.style.left) || 0,
+                    y: parseInt(container.style.top) || 0
+                };
+                
+                // 计算新的位置，确保在可视区域内
+                const newPosition = this.calculateNewFixedPosition(position);
+                
+                container.style.left = `${newPosition.x}px`;
+                container.style.top = `${newPosition.y}px`;
             }
         });
     },
+    
+    /**
+     * 计算新的固定位置
+     * @param {Object} position - 当前位置信息
+     * @param {number} position.x - 当前X坐标
+     * @param {number} position.y - 当前Y坐标
+     * @returns {Object} 新的位置信息
+     */
+    calculateNewFixedPosition(position) {
+        const offset = 10; // 边缘留白
+        const newX = Math.min(window.innerWidth - offset, Math.max(offset, position.x));
+        const newY = Math.min(window.innerHeight - offset, Math.max(offset, position.y));
+        
+        return { x: newX, y: newY };
+    }
 };
+
+// 立即初始化
+WidgetSystem.init().catch(error => {
+    console.error('小部件系统初始化失败:', error);
+});
