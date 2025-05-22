@@ -1,0 +1,42 @@
+{
+  "loadingWidgets": {
+    "message": "Loading widgets...",
+    "description": "加载小部件提示"
+  },
+  "widgetsLoaded": {
+    "message": "Widgets loaded",
+    "description": "小部件加载完成提示"
+  },
+  "createWidgetContainer": {
+    "message": "Create widget container",
+    "description": "创建小部件容器按钮文本"
+  },
+  "deleteWidgetContainer": {
+    "message": "Delete widget container",
+    "description": "删除小部件容器按钮文本"
+  },
+  "addWidget": {
+    "message": "Add widget",
+    "description": "添加小部件按钮文本"
+  },
+  "removeWidget": {
+    "message": "Remove widget",
+    "description": "删除小部件按钮文本"
+  },
+  "unfixWidgetContainer": {
+    "message": "Unfix widget",
+    "description": "取消固定小部件按钮文本"
+  },
+  "fixWidgetContainer": {
+    "message": "Fix widget",
+    "description": "固定小部件按钮文本"
+  },
+  "addWidgetTitle": {
+    "message": "Add Widget",
+    "description": "添加小部件对话框标题"
+  },
+  "counterWidget": {
+    "message": "Counter",
+    "description": "计数器小部件名称"
+  }
+}

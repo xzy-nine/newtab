@@ -1,0 +1,62 @@
+{
+  "loadingWidgets": {
+    "message": "加载小部件中...",
+    "description": "加载小部件提示"
+  },
+  "widgetsLoaded": {
+    "message": "小部件加载完成",
+    "description": "小部件加载完成提示"
+  },
+  "createWidgetContainer": {
+    "message": "创建小部件容器",
+    "description": "创建小部件容器按钮文本"
+  },
+  "deleteWidgetContainer": {
+    "message": "删除小部件容器",
+    "description": "删除小部件容器按钮文本"
+  },
+  "addWidget": {
+    "message": "添加小部件",
+    "description": "添加小部件按钮文本"
+  },
+  "removeWidget": {
+    "message": "删除小部件",
+    "description": "删除小部件按钮文本"
+  },
+  "unfixWidgetContainer": {
+    "message": "取消固定",
+    "description": "取消固定小部件按钮文本"
+  },
+  "fixWidgetContainer": {
+    "message": "固定小部件",
+    "description": "固定小部件按钮文本"
+  },
+  "addWidgetTitle": {
+    "message": "添加小部件",
+    "description": "添加小部件对话框标题"
+  },
+  "add": {
+    "message": "添加",
+    "description": "添加按钮文本"
+  },
+  "cancel": {
+    "message": "取消",
+    "description": "取消按钮文本"
+  },
+  "counterWidget": {
+    "message": "计数器",
+    "description": "计数器小部件名称"
+  },
+  "addWidgetFailed": {
+    "message": "添加小部件失败",
+    "description": "添加小部件失败提示"
+  },
+  "widgetFixed": {
+    "message": "小部件已固定",
+    "description": "小部件已固定提示"
+  },
+  "unfixWidgetToMove": {
+    "message": "请先取消固定再移动",
+    "description": "移动前需要取消固定提示"
+  }
+}

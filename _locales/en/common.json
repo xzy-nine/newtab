@@ -39,6 +39,10 @@
     "message": "Continue",
     "description": "继续按钮文本"
   },
+  "add": {
+    "message": "Add",
+    "description": "添加按钮文本"
+  },
   "error": {
     "message": "Error",
     "description": "错误提示"
@@ -70,5 +74,9 @@
   "engineName": {
     "message": "Name",
     "description": "引擎名称"
+  },
+  "defaultBackground": {
+    "message": "Default",
+    "description": "默认背景名称"
   }
 }

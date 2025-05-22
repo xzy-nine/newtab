@@ -7,10 +7,6 @@
     "message": "Bing Daily Image",
     "description": "必应每日图片名称"
   },
-  "defaultBackground": {
-    "message": "Default",
-    "description": "默认背景名称"
-  },
   "settingBackgroundType": {
     "message": "Setting background type:",
     "description": "设置背景类型提示"
