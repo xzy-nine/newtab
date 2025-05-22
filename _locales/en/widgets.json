@@ -38,5 +38,9 @@
   "counterWidget": {
     "message": "Counter",
     "description": "计数器小部件名称"
+  },
+  "widgetsLoadComplete": {
+    "message": "Widgets loading complete",
+    "description": "小部件加载完成提示"
   }
 }

@@ -143,6 +143,10 @@
     "message": "事件初始化",
     "description": "事件初始化模块名称"
   },
+  "widgetSystem": {
+    "message": "小部件系统",
+    "description": "小部件系统模块名称"
+  },
   "backgroundLoadComplete": {
     "message": "背景图像加载完成",
     "description": "背景图像加载完成提示"

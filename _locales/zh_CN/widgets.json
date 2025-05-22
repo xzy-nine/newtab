@@ -58,5 +58,9 @@
   "unfixWidgetToMove": {
     "message": "请先取消固定再移动",
     "description": "移动前需要取消固定提示"
+  },
+  "widgetsLoadComplete": {
+    "message": "小部件加载完成",
+    "description": "小部件加载完成提示"
   }
 }

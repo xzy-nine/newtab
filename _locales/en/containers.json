@@ -139,6 +139,10 @@
     "message": "Event Initialization",
     "description": "事件初始化模块名称"
   },
+  "widgetSystem": {
+    "message": "Widget System",
+    "description": "小部件系统模块名称"
+  },
   "backgroundLoadComplete": {
     "message": "Background image loading complete",
     "description": "背景图像加载完成提示"
