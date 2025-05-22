@@ -11,6 +11,8 @@ import { ClockWidget } from './modules/clockWidget.js';
 import { Utils } from './modules/utils.js';
 import { Notification } from './modules/notification.js'; 
 import { Menu } from './modules/menu.js'; 
+// 添加 WidgetSystem 导入
+import { WidgetSystem } from './modules/widgetSystem.js';
 
 // 版本号
 let VERSION = '0.0.0'; 
@@ -98,7 +100,7 @@ async function init() {
         VERSION = await getExtensionVersion();
         
         // 初始化步骤计数
-        const totalModules = 5; 
+        const totalModules = 6; 
         let completedModules = 1; 
         const initSteps = [
             {
@@ -139,6 +141,13 @@ async function init() {
                 },
                 message: I18n.getMessage('loadingEvents'),
                 completeMessage: I18n.getMessage('loadingComplete'),
+                timeout: 5000
+            },
+            {
+                name: I18n.getMessage('widgetSystem') || '小部件系统',
+                action: WidgetSystem.init.bind(WidgetSystem),
+                message: I18n.getMessage('loadingWidgets') || '加载小部件系统...',
+                completeMessage: I18n.getMessage('widgetsLoadComplete') || '小部件系统加载完成',
                 timeout: 5000
             }
         ];
