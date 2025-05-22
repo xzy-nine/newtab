@@ -23,7 +23,7 @@ export const Menu = {
     const modal = Utils.createElement('div', 'modal', { id: modalId });
     
     const modalContent = Utils.createElement('div', 'modal-content', {}, 
-      `<span class="modal-close">&times;</span><h2>${title}</h2>`);
+      `<span class="modal-close">&times;</span><h2 class="modal-header">${title}</h2>`);
     
     const formContainer = Utils.createElement('div', 'modal-form');
     
@@ -73,6 +73,12 @@ export const Menu = {
     document.body.appendChild(modal);
     
     modal.style.display = 'block';
+    
+    // 添加拖动功能
+    Menu._makeModalDraggable(modal, modalContent);
+    
+    // 将模态框居中显示
+    Menu._centerModal(modal, modalContent);
     
     const close = () => {
       modal.style.display = 'none';
@@ -135,6 +141,12 @@ export const Menu = {
             modal.classList.remove('visible');
           }
         });
+        
+        // 为已有的模态框添加拖动功能
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+          Menu._makeModalDraggable(modal, modalContent);
+        }
       });
     },
 
@@ -158,7 +170,22 @@ export const Menu = {
           }
         });
         
+        // 添加拖动功能
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+          Menu._makeModalDraggable(modal, modalContent);
+          
+          // 初始化时居中显示
+          Menu._centerModal(modal, modalContent);
+        }
+        
         modal.dataset.initialized = 'true';
+      } else {
+        // 已初始化的模态框再次显示时居中
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+          Menu._centerModal(modal, modalContent);
+        }
       }
     },
 
@@ -519,4 +546,124 @@ export const Menu = {
       return modal;
     }
   },
+
+  /**
+   * 使模态框可拖动
+   * @param {HTMLElement} modal - 模态框元素
+   * @param {HTMLElement} modalContent - 模态框内容元素
+   */
+  _makeModalDraggable: function(modal, modalContent) {
+    let isDragging = false;
+    let offsetX, offsetY;
+    
+    // 查找模态框标题元素作为拖动区域
+    const dragHandle = modalContent.querySelector('.modal-header, h2');
+    
+    if (!dragHandle) return;
+    
+    // 添加指示可拖动的样式
+    dragHandle.classList.add('draggable');
+    
+    // 开始拖动
+    dragHandle.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return; // 只响应左键点击
+      
+      isDragging = true;
+      
+      // 计算鼠标在模态框内容中的位置偏移
+      const rect = modalContent.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      
+      // 防止文本选择
+      e.preventDefault();
+      
+      // 添加拖动中样式
+      modalContent.classList.add('dragging');
+    });
+    
+    // 拖动过程
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      // 计算新位置
+      const x = e.clientX - offsetX;
+      const y = e.clientY - offsetY;
+      
+      // 更新模态框位置
+      modalContent.style.left = `${x}px`;
+      modalContent.style.top = `${y}px`;
+      
+      // 确保模态框不会被拖出屏幕
+      Menu._keepModalInViewport(modalContent);
+    });
+    
+    // 结束拖动
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        modalContent.classList.remove('dragging');
+      }
+    });
+    
+    // 防止拖动过程中触发内部点击事件
+    modalContent.addEventListener('click', (e) => {
+      if (isDragging) {
+        e.stopPropagation();
+      }
+    });
+  },
+  
+  /**
+   * 使模态框保持在视窗内
+   * @param {HTMLElement} modalContent - 模态框内容元素
+   */
+  _keepModalInViewport: function(modalContent) {
+    const rect = modalContent.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // 检查并调整水平位置
+    if (rect.left < 0) {
+      modalContent.style.left = '0px';
+    } else if (rect.right > viewportWidth) {
+      modalContent.style.left = `${viewportWidth - rect.width}px`;
+    }
+    
+    // 检查并调整垂直位置
+    if (rect.top < 0) {
+      modalContent.style.top = '0px';
+    } else if (rect.bottom > viewportHeight) {
+      modalContent.style.top = `${viewportHeight - rect.height}px`;
+    }
+  },
+  
+  /**
+   * 使模态框居中显示
+   * @param {HTMLElement} modal - 模态框元素
+   * @param {HTMLElement} modalContent - 模态框内容元素
+   */
+  _centerModal: function(modal, modalContent) {
+    // 重置任何之前设置的位置
+    modalContent.style.position = 'relative';
+    modalContent.style.left = 'auto';
+    modalContent.style.top = 'auto';
+    modalContent.style.transform = 'none';
+    
+    // 必须在下一个宏任务中执行，确保元素已经渲染
+    setTimeout(() => {
+      // 获取模态框大小
+      const rect = modalContent.getBoundingClientRect();
+      
+      // 计算居中位置
+      const x = (window.innerWidth - rect.width) / 2;
+      const y = (window.innerHeight - rect.height) / 2;
+      
+      // 更新位置并使用绝对定位
+      modalContent.style.position = 'absolute';
+      modalContent.style.left = `${x}px`;
+      modalContent.style.top = `${y}px`;
+      modalContent.style.margin = '0';
+    }, 0);
+  }
 };

@@ -13,7 +13,8 @@
 .modal.visible {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* 改为flex-start以便支持绝对定位的子元素 */
+  padding-top: 50px; /* 添加顶部内边距，避免模态框紧贴顶部 */
 }
 
 .modal-content {
@@ -24,24 +25,64 @@
   width: 400px;
   max-width: 90%;
   position: relative;
+  margin: 0 auto; /* 水平居中 */
+  /* 新增拖动相关样式 */
+  transition: box-shadow 0.2s ease;
 }
 
-.modal-content-wide {
-  width: 90%;
-  max-width: 800px;
+/* 优化模态框标题区域，使标题位于左上角 */
+.modal-header, .modal-content h2 {
+  cursor: default;
+  user-select: none;
+  margin: 0 0 20px 0; /* 减小顶部边距，增加底部边距 */
+  font-size: 1.5em;
+  padding-right: 30px; /* 为关闭按钮留出空间 */
+  position: relative; /* 确保标题定位正确 */
+  color: #333; /* 标题文字颜色 */
+  border-bottom: 1px solid #eee; /* 添加下边框分隔标题区域 */
+  padding-bottom: 10px; /* 标题底部内边距 */
 }
 
-.modal-content-compact {
-  width: 90%;
-  max-width: 450px;
-}
-
+/* 关闭按钮样式优化，固定于右上角 */
 .modal-close {
   position: absolute;
-  top: 10px;
-  right: 15px;
-  font-size: 24px;
+  top: 15px; /* 位置调整 */
+  right: 15px; /* 靠右对齐 */
+  font-size: 24px; /* 增大字号 */
+  color: #999;
   cursor: pointer;
+  z-index: 10; /* 确保在其他元素之上 */
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+/* 关闭按钮悬停效果 */
+.modal-close:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #333;
+}
+
+/* 拖动时的样式 */
+.modal-content.dragging {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  opacity: 0.95;
+  cursor: move;
+}
+
+/* 模态框标题作为拖动句柄 */
+.modal-header.draggable, .modal-content h2.draggable {
+  cursor: move;
+  position: relative;
+}
+
+/* 拖动时的鼠标指针 */
+.modal-header.draggable:hover, .modal-content h2.draggable:hover {
+  cursor: move;
 }
 
 /* 通用表单元素 */
