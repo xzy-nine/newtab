@@ -1,0 +1,76 @@
+/* 计数器小部件样式 */
+
+/* 计数器标题 */
+.counter-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 5px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counter-title input {
+  width: 100%;
+  font-size: 14px;
+  padding: 2px 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+/* 计数值显示 */
+.counter-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #0078d4;
+  text-align: center;
+  margin: 10px 0;
+  font-family: 'Consolas', monospace;
+}
+
+/* 按钮区域 */
+.counter-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+/* 计数器按钮 */
+.counter-btn {
+  flex: 1;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  border: none;
+  background-color: #f0f0f0;
+  color: #333;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.counter-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.counter-btn:active {
+  transform: scale(0.95);
+}
+
+.counter-decrement {
+  color: #d9534f;
+}
+
+.counter-reset {
+  color: #5bc0de;
+  font-size: 12px;
+}
+
+.counter-increment {
+  color: #5cb85c;
+}
