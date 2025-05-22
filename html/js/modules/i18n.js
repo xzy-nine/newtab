@@ -4,7 +4,7 @@
  */
 
 let translations = {};
-let currentLanguage = 'en';
+let currentLanguage = 'en'
 // 翻译文件列表
 const TRANSLATION_FILES = ['messages', 'notifications', 'menus', 'containers', 'widgets'];
 
@@ -47,7 +47,6 @@ export const I18n = {
     
     // 从内部翻译表获取
     if (translations[key] && translations[key].message) {
-      console.log(`使用内部翻译表: 键名 "${key}" => 值 "${translations[key].message}"`);
       return translations[key].message;
     }
     
@@ -150,13 +149,23 @@ async function loadTranslationsFromFiles() {
         }
         
         const messagesData = await response.json();
+        // 添加调试信息
+        console.log(`${fileType}文件内容:`, messagesData);
+        
         // 合并翻译数据
         translations = { ...translations, ...messagesData };
-        console.log(`已加载 ${fileType} 翻译文件`);
+        console.log(`已加载 ${fileType} 翻译文件，当前翻译表大小: ${Object.keys(translations).length}`);
       } catch (error) {
         console.error(`加载 ${fileType} 翻译文件失败:`, error);
       }
     }
+    
+    // 添加调试信息，检查特定键是否存在
+    console.log('检查关键翻译项:',
+      'i18nModule' in translations,
+      'widgetSystem' in translations,
+      'widgetsLoadComplete' in translations
+    );
     
     console.log(getMessage('languageFileLoaded').replace('%s', locale));
   } catch (error) {
