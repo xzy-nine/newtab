@@ -23,6 +23,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    position: relative;
+    z-index: 2;  /* 确保标题在上层 */
+    background-color: inherit;  /* 继承父元素背景色，避免透明导致的遮挡 */
 }
 
 .counter-controls {

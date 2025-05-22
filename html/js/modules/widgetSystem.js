@@ -122,6 +122,7 @@ export const WidgetSystem = {
                         height: parseInt(container.style.height) || 150
                     },
                     fixed: container.dataset.fixed === 'true',
+                    activeIndex: this.getActiveWidgetIndex(container),
                     items: [...container.querySelectorAll('.widget-item')].map(item => ({
                         type: item.dataset.widgetType,
                         id: item.id,
@@ -271,41 +272,6 @@ export const WidgetSystem = {
         }
     },
 
-    /**
-     * 显示尺寸调整表单
-     */
-    showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight) {
-        const formItems = [
-            {
-                id: 'width',
-                label: '宽度',
-                type: 'number',
-                value: currentWidth,
-                min: minWidth,
-                max: 300  // 将最大宽度从 500 改为 300
-            },
-            {
-                id: 'height',
-                label: '高度',
-                type: 'number',
-                value: currentHeight,
-                min: minHeight, 
-                max: 300  // 将最大高度从 400 改为 300
-            }
-        ];
-        
-        Menu.showFormModal(
-            '调整小部件大小',
-            formItems,
-            (formData) => {
-                const width = parseInt(formData.width) || 200;
-                const height = parseInt(formData.height) || 150;
-                this.resizeWidgetContainer(container, width, height);
-            },
-            '确定',
-            '取消'
-        );
-    },
     
     /**
      * 调整小部件容器大小
@@ -639,8 +605,9 @@ export const WidgetSystem = {
                 this.addWidgetItem(container, item.type, item.data);
             });
             
-            // 设置初始活动状态
-            this.setActiveWidgetItem(container, 0);
+            // 设置初始活动状态，使用保存的activeIndex或默认为0
+            const activeIndex = typeof data.activeIndex !== 'undefined' ? data.activeIndex : 0;
+            this.setActiveWidgetItem(container, activeIndex);
         }
         
         // 如果容器为空，添加一个"添加"按钮
@@ -734,6 +701,9 @@ export const WidgetSystem = {
         
         // 更新指示器
         this.updateActiveIndicator(container, validIndex);
+        
+        // 保存活动状态的变更
+        document.dispatchEvent(new CustomEvent('widget-data-changed'));
     },
     
     /**
