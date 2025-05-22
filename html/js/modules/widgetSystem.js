@@ -23,6 +23,9 @@ export const WidgetSystem = {
      */
     async init() {
         try {
+            // 添加样式来使小部件内容居中
+            this.addWidgetStyles();
+            
             // 加载已保存的小部件数据
             await this.loadWidgets();
             
@@ -43,6 +46,8 @@ export const WidgetSystem = {
             return Promise.reject(error);
         }
     },
+    
+    
     
     /**
      * 加载已保存的小部件数据
@@ -193,40 +198,6 @@ export const WidgetSystem = {
     showWidgetContainerContextMenu(event, container) {
         const menuItems = [
             {
-                id: 'resize-widget-container',
-                text: I18n.getMessage('resizeWidgetContainer') || '调整大小',
-                submenu: [
-                    {
-                        id: 'size-small',
-                        text: '小',
-                        callback: () => {
-                            this.resizeWidgetContainer(container, 180, 120);
-                        }
-                    },
-                    {
-                        id: 'size-medium',
-                        text: '中',
-                        callback: () => {
-                            this.resizeWidgetContainer(container, 220, 160);
-                        }
-                    },
-                    {
-                        id: 'size-large',
-                        text: '大',
-                        callback: () => {
-                            this.resizeWidgetContainer(container, 260, 200);
-                        }
-                    },
-                    {
-                        id: 'size-custom',
-                        text: '自定义',
-                        callback: () => {
-                            this.showResizeDialog(container);
-                        }
-                    }
-                ]
-            },
-            {
                 id: 'delete-widget-container',
                 text: I18n.getMessage('deleteWidgetContainer') || '删除小部件容器',
                 callback: () => {
@@ -246,22 +217,55 @@ export const WidgetSystem = {
         const currentWidth = parseInt(container.style.width) || 200;
         const currentHeight = parseInt(container.style.height) || 150;
         
+        // 查找小部件类型获取合适的最小尺寸
+        const widgetItem = container.querySelector('.widget-item');
+        let minWidth = 150;  // 默认最小宽度
+        let minHeight = 100; // 默认最小高度
+        
+        if (widgetItem && widgetItem.dataset.widgetType === 'counter') {
+            // 针对计数器小部件使用特定尺寸限制
+            import('./widgets/counterWidget.js').then(module => {
+                if (module.default && module.default.config && module.default.config.min) {
+                    minWidth = module.default.config.min.width || minWidth;
+                    minHeight = module.default.config.min.height || minHeight;
+                    
+                    // 显示表单
+                    this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
+                } else {
+                    // 如果无法获取配置，使用默认值
+                    this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
+                }
+            }).catch(err => {
+                console.error('加载小部件配置失败:', err);
+                // 发生错误时使用默认值
+                this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
+            });
+        } else {
+            // 对于其他类型的小部件，使用默认值
+            this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
+        }
+    },
+
+    /**
+     * 显示尺寸调整表单
+     */
+    showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight) {
         const formItems = [
             {
                 id: 'width',
                 label: '宽度',
                 type: 'number',
                 value: currentWidth,
-                min: 150,
-                max: 500
+                min: minWidth,
+                max: 300  // 将最大宽度从 500 改为 300
             },
             {
                 id: 'height',
                 label: '高度',
                 type: 'number',
                 value: currentHeight,
-                min: 100, 
-                max: 400
+                min: minHeight, 
+                max: 300  // 将最大高度从 400 改为 300
             }
         ];
         
@@ -284,10 +288,49 @@ export const WidgetSystem = {
      * @param {number} width - 新宽度
      * @param {number} height - 新高度
      */
-    resizeWidgetContainer(container, width, height) {
-        // 限制最小尺寸
-        width = Math.max(150, width);
-        height = Math.max(100, height);
+    resizeWidgetContainer: function(container, width, height) {
+        // 查找小部件类型以获取适当的最小尺寸
+        const widgetItem = container.querySelector('.widget-item');
+        let minWidth = 150;  // 默认最小宽度
+        let minHeight = 100; // 默认最小高度
+        // 设置最大尺寸限制
+        const maxWidth = 300;
+        const maxHeight = 300;
+        
+        // 根据小部件类型获取特定的最小尺寸配置
+        if (widgetItem && widgetItem.dataset.widgetType) {
+            const widgetType = widgetItem.dataset.widgetType;
+            
+            // 异步导入小部件模块以获取其配置
+            import('./widgets/counterWidget.js').then(module => {
+                // 只有在模块加载成功时才应用特定的最小尺寸
+                if (module.default && module.default.config && module.default.config.min) {
+                    minWidth = module.default.config.min.width || minWidth;
+                    minHeight = module.default.config.min.height || minHeight;
+                    
+                    // 应用特定小部件的最小尺寸限制和最大尺寸限制
+                    width = Math.min(maxWidth, Math.max(minWidth, width));
+                    height = Math.min(maxHeight, Math.max(minHeight, height));
+                    
+                    // 设置容器尺寸
+                    container.style.width = `${width}px`;
+                    container.style.height = `${height}px`;
+                    
+                    // 调整小部件大小
+                    if (typeof module.default.adjustSize === 'function') {
+                        module.default.adjustSize(widgetItem);
+                    }
+                    
+                    // 触发保存
+                    document.dispatchEvent(new CustomEvent('widget-data-changed'));
+                }
+            }).catch(err => console.error('获取小部件配置失败:', err));
+            return; // 异步处理，提前返回
+        }
+        
+        // 如果没有找到特定小部件配置，使用默认限制
+        width = Math.min(maxWidth, Math.max(minWidth, width));
+        height = Math.min(maxHeight, Math.max(minHeight, height));
         
         container.style.width = `${width}px`;
         container.style.height = `${height}px`;
@@ -1005,6 +1048,12 @@ export const WidgetSystem = {
             const startWidth = parseInt(container.style.width) || 200;
             const startHeight = parseInt(container.style.height) || 150;
             
+            // 设置最大和最小尺寸限制
+            const maxWidth = 300;
+            const maxHeight = 300;
+            const minWidth = 150;
+            const minHeight = 100;
+            
             container.classList.add('widget-resizing');
             
             // 移动处理函数
@@ -1014,9 +1063,9 @@ export const WidgetSystem = {
                 const dx = moveEvent.clientX - startX;
                 const dy = moveEvent.clientY - startY;
                 
-                // 计算新尺寸，确保最小尺寸
-                const newWidth = Math.max(150, startWidth + dx);
-                const newHeight = Math.max(100, startHeight + dy);
+                // 计算新尺寸，确保在最小和最大尺寸限制内
+                const newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + dx));
+                const newHeight = Math.min(maxHeight, Math.max(minHeight, startHeight + dy));
                 
                 // 应用新尺寸
                 container.style.width = `${newWidth}px`;

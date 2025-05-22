@@ -67,14 +67,17 @@
 
 /* 内容区域调整 */
 .widget-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    overflow: hidden;
-    padding: 10px;
-    padding-bottom: 25px; /* 为指示器留出空间 */
-    position: relative;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px;
+  padding-bottom: 25px; /* 为指示器留出空间 */
+  position: relative;
+  box-sizing: border-box;
 }
 
 /* 添加按钮 */
@@ -101,6 +104,12 @@
 
 /* 小部件项 */
 .widget-item {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  text-align: center !important;
   background-color: rgba(255, 255, 255, 0.8);
   border-radius: 6px;
   padding: 10px;
@@ -108,13 +117,15 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease, visibility 0.3s ease;
   z-index: 1;
   box-sizing: border-box;
+}
+
+.widget-item > * {
+  margin: auto !important;
 }
 
 /* 活动状态小部件 */
@@ -277,12 +288,15 @@
 
 /* 调整内容区样式确保不覆盖调整大小控制点 */
 .widget-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    overflow: hidden;
-    padding: 10px;
-    padding-bottom: 25px; /* 为指示器留出空间 */
-    position: relative;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px;
+  padding-bottom: 25px; /* 为指示器留出空间 */
+  position: relative;
+  box-sizing: border-box;
 }
