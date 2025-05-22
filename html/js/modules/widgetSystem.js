@@ -416,6 +416,14 @@ export const WidgetSystem = {
                             console.error('模块加载错误详情:', loadError);
                         }
                         break;
+                    case 'timer':
+                        try {
+                            const moduleURL = new URL('./widgets/timerWidget.js', import.meta.url).href;
+                            widgetModule = await import(moduleURL);
+                        } catch (loadError) {
+                            console.error('模块加载错误详情:', loadError);
+                        }
+                        break;
                     // 可以添加更多小部件类型
                     default:
                         throw new Error(`未知的小部件类型: ${widgetType}`);
@@ -841,6 +849,7 @@ export const WidgetSystem = {
     getAvailableWidgets() {
         // 使用安全的国际化方法
         const counterText = getI18nMessage('counterWidget', '计数器');
+        const timerText = getI18nMessage('timerWidget', '计时器');
         
         // 此处应该动态获取所有可用小部件
         return [
@@ -848,6 +857,10 @@ export const WidgetSystem = {
                 type: 'counter', 
                 name: counterText
             },
+            {
+                type: 'timer',
+                name: timerText
+            }
             // 未来可以添加更多小部件类型
         ];
     },

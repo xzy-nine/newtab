@@ -1,0 +1,204 @@
+/**
+ * 计时器小部件样式 - 优化版
+ */
+
+.timer-widget {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    font-family: Arial, sans-serif;
+    user-select: none;
+    color: var(--text-color, #333);
+    background-color: var(--widget-bg-color, rgba(255, 255, 255, 0.7));
+    border-radius: 12px;
+    padding: 10px;
+    box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* 标题样式 */
+.timer-title {
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    font-size: 15px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: all 0.2s;
+    padding: 3px 0;
+}
+
+.timer-title:hover {
+    color: var(--accent-color, #3498db);
+}
+
+.timer-title.editing {
+    pointer-events: none;
+}
+
+.timer-title input {
+    width: 90%;
+    font-size: 15px;
+    border: none;
+    outline: none;
+    background: transparent;
+    border-bottom: 1px solid var(--accent-color, #3498db);
+    text-align: center;
+}
+
+/* 时间显示样式 */
+.timer-display {
+    font-size: 28px;
+    font-weight: bold;
+    text-align: center;
+    padding: 8px 0;
+    width: 100%;
+    user-select: text;
+    font-family: 'Courier New', monospace;
+    transition: all 0.2s;
+    background: rgba(0,0,0,0.03);
+    border-radius: 8px;
+    margin: 5px 0;
+}
+
+/* 按钮样式 */
+.timer-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 8px 0;
+    width: 100%;
+}
+
+.timer-button {
+    width: 45px;
+    height: 45px;
+    border: none;
+    background-color: var(--accent-color, #3498db);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.timer-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.timer-button:active {
+    transform: translateY(1px) scale(0.95);
+}
+
+.timer-button.active {
+    background-color: var(--active-color, #2ecc71);
+}
+
+.timer-button.destructive {
+    background-color: var(--warning-color, #e74c3c);
+}
+
+.timer-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 记录区域样式 */
+.timer-records-container {
+    width: 100%;
+    margin-top: 5px;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    flex-grow: 1;
+}
+
+.timer-records-container.has-records {
+    display: flex;
+}
+
+.timer-records-header {
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 4px;
+    color: var(--accent-color, #3498db);
+}
+
+.timer-records {
+    width: 100%;
+    flex-grow: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border-color, #eee);
+    border-radius: 8px;
+    font-size: 13px;
+    scrollbar-width: thin;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.timer-records::-webkit-scrollbar {
+    width: 4px;
+}
+
+.timer-records::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-color, #ccc);
+    border-radius: 2px;
+}
+
+.timer-record-item {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border-color, #eee);
+    display: flex;
+    justify-content: space-between;
+}
+
+.timer-record-item:last-child {
+    border-bottom: none;
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.timer-record-num {
+    font-weight: bold;
+    margin-right: 4px;
+    color: var(--accent-color, #3498db);
+}
+
+/* 布局适配 */
+.timer-widget.compact-layout .timer-display {
+    font-size: 22px;
+    padding: 5px 0;
+}
+
+.timer-widget.compact-layout .timer-controls {
+    gap: 10px;
+}
+
+.timer-widget.compact-layout .timer-button {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+}
+
+.timer-widget.large-layout .timer-display {
+    font-size: 36px;
+    padding: 10px 0;
+}
+
+.timer-widget.large-layout .timer-button {
+    width: 55px;
+    height: 55px;
+    font-size: 22px;
+}
