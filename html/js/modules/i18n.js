@@ -6,7 +6,7 @@
 let translations = {};
 let currentLanguage = 'en';
 // 翻译文件列表
-const TRANSLATION_FILES = ['common', 'notifications', 'menus', 'containers', 'widgets'];
+const TRANSLATION_FILES = ['messages', 'notifications', 'menus', 'containers', 'widgets'];
 
 /**
  * 国际化API

@@ -22,10 +22,7 @@ export const WidgetSystem = {
      * @returns {Promise<void>}
      */
     async init() {
-        try {
-            // 添加样式来使小部件内容居中
-            this.addWidgetStyles();
-            
+        try {          
             // 加载已保存的小部件数据
             await this.loadWidgets();
             
