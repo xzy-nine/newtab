@@ -408,52 +408,15 @@ export const WidgetSystem = {
             let widgetModule;
             try {
                 // 记录加载开始
-                console.log(`开始加载小部件模块: ${widgetType}`);
-                
                 switch(widgetType) {
                     case 'counter':
-                        console.log('当前模块路径基准:', import.meta.url);
                         try {
-                            // 修改为正确的相对路径
                             const moduleURL = new URL('./widgets/counterWidget.js', import.meta.url).href;
-                            console.log('尝试加载模块:', moduleURL);
+
                             widgetModule = await import(moduleURL);
                         } catch (loadError) {
                             console.error('模块加载错误详情:', loadError);
-                            // 尝试多种可能的路径
-                            try {
-                                const paths = [
-                                    '../widgets/counterWidget.js',
-                                    '/html/js/modules/widgets/counterWidget.js',
-                                    '/html/js/widgets/counterWidget.js',
-                                    './counterWidget.js'
-                                ];
-                                
-                                console.log('尝试备用路径加载');
-                                let loaded = false;
-                                
-                                for (const path of paths) {
-                                    if (loaded) break;
-                                    try {
-                                        const backupURL = new URL(path, import.meta.url).href;
-                                        console.log('尝试路径:', backupURL);
-                                        widgetModule = await import(backupURL);
-                                        loaded = true;
-                                        console.log('成功加载:', path);
-                                    } catch (e) {
-                                        console.log(`路径 ${path} 加载失败:`, e.message);
-                                    }
-                                }
-                                
-                                if (!loaded) {
-                                    throw new Error(`所有备用路径均加载失败`);
-                                }
-                            } catch (backupError) {
-                                console.error('所有路径尝试失败:', backupError);
-                                throw new Error(`无法加载计数器模块: ${loadError.message}`);
-                            }
                         }
-                        console.log('计数器模块加载结果:', widgetModule);
                         break;
                     // 可以添加更多小部件类型
                     default:
@@ -470,16 +433,7 @@ export const WidgetSystem = {
                     throw new Error(`加载小部件模块 ${widgetType} 失败: 模块为空`);
                 }
                 
-                if (!widgetModule.default) {
-                    throw new Error(`小部件模块 ${widgetType} 缺少默认导出`);
-                }
-                
-                if (typeof widgetModule.default.initialize !== 'function') {
-                    throw new Error(`小部件模块 ${widgetType} 缺少initialize方法`);
-                }
-                
                 // 初始化小部件
-                console.log(`开始初始化小部件: ${widgetType}`, widgetData);
                 await widgetModule.default.initialize(widgetItem, widgetData);
                 
                 // 检查初始化后是否有内容
@@ -489,8 +443,6 @@ export const WidgetSystem = {
                 
                 // 设置为活动项
                 this.setActiveWidgetItem(container, Array.from(contentArea.children).indexOf(widgetItem));
-                
-                console.log(`小部件 ${widgetType} 初始化成功`);
             } catch (error) {
                 console.error(`小部件 ${widgetType} 初始化失败:`, error);
                 
@@ -745,8 +697,6 @@ export const WidgetSystem = {
         
         // 更新指示器
         this.updateActiveIndicator(container, validIndex);
-        
-        console.log(`小部件已激活: 索引 ${validIndex}`);
     },
     
     /**
@@ -943,7 +893,6 @@ export const WidgetSystem = {
         let isDragging = false;
         
         handle.addEventListener('mousedown', (e) => {
-            console.log('开始拖动尝试'); // 调试日志
             e.preventDefault(); // 阻止默认行为
             e.stopPropagation(); // 阻止事件冒泡
             
@@ -969,7 +918,6 @@ export const WidgetSystem = {
             const startTop = parseInt(container.style.top) || 0;
             
             container.classList.add('widget-dragging');
-            console.log('拖动状态已设置'); // 调试日志
             
             // 移动处理函数
             function handleMouseMove(moveEvent) {
@@ -987,7 +935,6 @@ export const WidgetSystem = {
                 container.style.top = `${newTop}px`;
                 
                 moveEvent.preventDefault();
-                console.log(`移动到: ${newLeft}, ${newTop}`); // 调试日志
             }
             
             // 放开处理函数
@@ -998,7 +945,6 @@ export const WidgetSystem = {
                     
                     // 触发位置变更事件
                     document.dispatchEvent(new CustomEvent('widget-data-changed'));
-                    console.log('拖动结束'); // 调试日志
                 }
                 
                 // 移除临时事件处理

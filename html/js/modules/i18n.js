@@ -149,25 +149,13 @@ async function loadTranslationsFromFiles() {
         }
         
         const messagesData = await response.json();
-        // 添加调试信息
-        console.log(`${fileType}文件内容:`, messagesData);
         
         // 合并翻译数据
         translations = { ...translations, ...messagesData };
-        console.log(`已加载 ${fileType} 翻译文件，当前翻译表大小: ${Object.keys(translations).length}`);
       } catch (error) {
         console.error(`加载 ${fileType} 翻译文件失败:`, error);
       }
     }
-    
-    // 添加调试信息，检查特定键是否存在
-    console.log('检查关键翻译项:',
-      'i18nModule' in translations,
-      'widgetSystem' in translations,
-      'widgetsLoadComplete' in translations
-    );
-    
-    console.log(getMessage('languageFileLoaded').replace('%s', locale));
   } catch (error) {
     console.error(getMessage('loadTranslationError'), error);
   }
@@ -182,7 +170,6 @@ async function loadTranslationsFromFiles() {
  * 获取指定键的消息（模块内部使用）
  */
 function getMessage(key) {
-  // 简化版的 getMessage，用于模块内部使用
   if (!key) return '';
   
   if (translations[key] && translations[key].message) {
@@ -202,7 +189,6 @@ function initLanguageSelector() {
   languageSelect.addEventListener('change', async (e) => {
     const selectedLang = e.target.value;
     await I18n.changeLanguage(selectedLang);
-    // 刷新页面以应用新语言
     location.reload();
   });
 }

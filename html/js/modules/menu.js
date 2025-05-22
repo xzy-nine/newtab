@@ -408,9 +408,6 @@ export const Menu = {
         uploadInput.addEventListener('change', (e) => {
           const file = e.target.files[0];
           if (!file) return;
-          
-          console.log('File selected:', file.name); // 调试日志
-          
           const reader = new FileReader();
           reader.onload = function(event) {
             const imageData = event.target.result;
@@ -447,9 +444,6 @@ export const Menu = {
         urlInput.addEventListener('input', Utils.debounce(function() {
           const url = this.value.trim();
           if (!url) return;
-          
-          console.log('URL entered:', url); // 调试日志
-          
           const preview = document.getElementById(`${modalId}-preview`);
           if (!preview) return;
           
@@ -457,7 +451,6 @@ export const Menu = {
           
           const img = new Image();
           img.onload = function() {
-            console.log('Image loaded from URL'); // 调试日志
             if (mode === 'background') {
               // 背景图片预览 - 保持16:9比例并填满预览区域
               preview.innerHTML = `<img src="${url}" alt="" style="width: 100%; object-fit: cover; aspect-ratio: 16/9;">`;
@@ -486,8 +479,6 @@ export const Menu = {
         
         if (file) {
           try {
-            console.log('Processing file for confirmation'); // 调试日志
-            // 使用FileReader读取文件
             imageData = await new Promise((resolve, reject) => {
               const reader = new FileReader();
               reader.onload = (e) => resolve(e.target.result);
@@ -510,7 +501,6 @@ export const Menu = {
           const url = urlInput && urlInput.value.trim();
           if (url) {
             imageData = url;
-            console.log('Using URL for confirmation:', url); // 调试日志
           }
         }
         

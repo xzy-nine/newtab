@@ -26,7 +26,6 @@ export default {
      * @returns {Promise<void>}
      */
     initialize: async function(container, data = {}) {
-        console.log('初始化计数器小部件:', data);
         
         // 设置默认尺寸（确保实际应用）
         if (!container.style.width || parseInt(container.style.width) < this.config.default.width) {

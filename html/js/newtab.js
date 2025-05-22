@@ -11,7 +11,6 @@ import { ClockWidget } from './modules/clockWidget.js';
 import { Utils } from './modules/utils.js';
 import { Notification } from './modules/notification.js'; 
 import { Menu } from './modules/menu.js'; 
-// 添加 WidgetSystem 导入
 import { WidgetSystem } from './modules/widgetSystem.js';
 
 // 版本号
