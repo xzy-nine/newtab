@@ -12,6 +12,20 @@ import { Notification } from './notification.js';
 let widgets = [];
 let widgetContainers = [];
 let dragData = null;
+let isInitialized = false;
+
+/**
+ * 获取国际化消息或使用默认值
+ * @param {string} key - 国际化消息键
+ * @param {string} defaultText - 默认文本
+ */
+function getI18nMessage(key, defaultText) {
+    // 如果国际化模块尚未初始化，直接返回默认文本
+    if (!I18n.isInitialized) {
+        return defaultText;
+    }
+    return I18n.getMessage(key) || defaultText;
+}
 
 /**,
  * 小部件系统API
@@ -23,6 +37,17 @@ export const WidgetSystem = {
      */
     async init() {
         try {          
+            // 防止重复初始化
+            if (isInitialized) {
+                return Promise.resolve();
+            }
+            
+            // 等待100ms，给I18n模块一个初始化的机会
+            // 这是一个比较简单的解决方案，防止在主应用初始化过程中太早调用
+            if (!I18n.isInitialized) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
             // 加载已保存的小部件数据
             await this.loadWidgets();
             
@@ -37,6 +62,7 @@ export const WidgetSystem = {
             // 添加窗口尺寸变化监听，处理固定小部件位置
             window.addEventListener('resize', this.handleWindowResize.bind(this));
             
+            isInitialized = true;
             return Promise.resolve();
         } catch (error) {
             console.error('初始化小部件系统失败:', error);
@@ -44,13 +70,15 @@ export const WidgetSystem = {
         }
     },
     
-    
-    
     /**
      * 加载已保存的小部件数据
      * @returns {Promise<void>}
      */
     async loadWidgets() {
+        // 使用安全的国际化方法
+        const loadingMessage = getI18nMessage('loadingWidgets', '加载小部件中...');
+        const successMessage = getI18nMessage('widgetsLoaded', '小部件加载完成');
+        
         // 使用withLoading替代自行管理加载状态
         return Utils.withLoading(async () => {
             const data = await chrome.storage.local.get('widgets');
@@ -69,8 +97,8 @@ export const WidgetSystem = {
                 this.createWidgetContainer(widgetData);
             });
         }, {
-            startMessage: I18n.getMessage('loadingWidgets') || '加载小部件中...',
-            successMessage: I18n.getMessage('widgetsLoaded') || '小部件加载完成'
+            startMessage: loadingMessage,
+            successMessage: successMessage
         });
     },
     
@@ -348,17 +376,21 @@ export const WidgetSystem = {
         
         const container = widgetItem.closest('.widget-container');
         
+        // 使用安全的国际化方法
+        const addText = getI18nMessage('addWidget', '添加小部件');
+        const removeText = getI18nMessage('removeWidget', '删除小部件');
+        
         const menuItems = [
             {
                 id: 'add-widget',
-                text: I18n.getMessage('addWidget') || '添加小部件',
+                text: addText,
                 callback: () => {
                     this.showAddWidgetDialog(container);
                 }
             },
             {
                 id: 'remove-widget',
-                text: I18n.getMessage('removeWidget') || '删除小部件',
+                text: removeText,
                 callback: () => {
                     this.removeWidgetItem(widgetItem);
                 }
@@ -558,7 +590,12 @@ export const WidgetSystem = {
         // 创建固定按钮（图钉）
         const pinButton = document.createElement('button');
         pinButton.className = 'widget-pin-button';
-        pinButton.title = data.fixed ? I18n.getMessage('unfixWidgetContainer') || '取消固定' : I18n.getMessage('fixWidgetContainer') || '固定小部件';
+        
+        // 使用安全的国际化方法
+        const unfixText = getI18nMessage('unfixWidgetContainer', '取消固定');
+        const fixText = getI18nMessage('fixWidgetContainer', '固定小部件');
+        
+        pinButton.title = data.fixed ? unfixText : fixText;
         pinButton.innerHTML = data.fixed ? '📌' : '📍';
         
         pinButton.addEventListener('click', (e) => {
@@ -807,8 +844,13 @@ export const WidgetSystem = {
             value: false
         }));
         
+        // 使用安全的国际化方法
+        const titleText = getI18nMessage('addWidgetTitle', '添加小部件');
+        const addText = getI18nMessage('add', '添加');
+        const cancelText = getI18nMessage('cancel', '取消');
+        
         Menu.showFormModal(
-            I18n.getMessage('addWidgetTitle') || '添加小部件',
+            titleText,
             formItems,
             async (formData) => {
                 for (const [type, selected] of Object.entries(formData)) {
@@ -817,8 +859,8 @@ export const WidgetSystem = {
                     }
                 }
             },
-            I18n.getMessage('add') || '添加',
-            I18n.getMessage('cancel') || '取消'
+            addText,
+            cancelText
         );
     },
     
@@ -827,11 +869,14 @@ export const WidgetSystem = {
      * @returns {Array} 小部件类型列表
      */
     getAvailableWidgets() {
+        // 使用安全的国际化方法
+        const counterText = getI18nMessage('counterWidget', '计数器');
+        
         // 此处应该动态获取所有可用小部件
         return [
             { 
                 type: 'counter', 
-                name: I18n.getMessage('counterWidget') || '计数器'
+                name: counterText
             },
             // 未来可以添加更多小部件类型
         ];
@@ -898,10 +943,14 @@ export const WidgetSystem = {
             
             // 如果容器是固定的，不允许拖动
             if (container.dataset.fixed === 'true') {
+                // 使用安全的国际化方法
+                const fixedTitle = getI18nMessage('widgetFixed', '小部件已固定');
+                const fixedMessage = getI18nMessage('unfixWidgetToMove', '请先取消固定再移动');
+                
                 // 显示提示信息
                 Notification.notify({
-                    title: I18n.getMessage('widgetFixed') || '小部件已固定',
-                    message: I18n.getMessage('unfixWidgetToMove') || '请先取消固定再移动',
+                    title: fixedTitle,
+                    message: fixedMessage,
                     type: 'info',
                     duration: 2000
                 });
@@ -1075,7 +1124,7 @@ export const WidgetSystem = {
     }
 };
 
-// 立即初始化
-WidgetSystem.init().catch(error => {
-    console.error('小部件系统初始化失败:', error);
-});
+// 修改初始化方式：不再立即初始化，而是让主应用程序在正确的时序调用
+// WidgetSystem.init().catch(error => {
+//     console.error('小部件系统初始化失败:', error);
+// });
