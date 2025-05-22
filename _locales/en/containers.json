@@ -1,0 +1,194 @@
+{
+  "pinnedFolders": {
+    "message": "Pinned Folders",
+    "description": "固定文件夹标题"
+  },
+  "bingDailyImage": {
+    "message": "Bing Daily Image",
+    "description": "必应每日图片名称"
+  },
+  "defaultBackground": {
+    "message": "Default",
+    "description": "默认背景名称"
+  },
+  "settingBackgroundType": {
+    "message": "Setting background type:",
+    "description": "设置背景类型提示"
+  },
+  "customBackgroundExists": {
+    "message": "Custom background image status:",
+    "description": "自定义背景图片状态提示"
+  },
+  "currentBackgroundType": {
+    "message": "Current background type:",
+    "description": "当前背景类型提示"
+  },
+  "usingCachedImage": {
+    "message": "Using cached image, remaining time: %s hours %s minutes",
+    "description": "使用缓存图片提示"
+  },
+  "fetchingBingImage": {
+    "message": "Fetching Bing daily image...",
+    "description": "获取必应每日图片提示"
+  },
+  "bingApiError": {
+    "message": "Bing API error: %s",
+    "description": "必应API错误提示"
+  },
+  "invalidBingResponse": {
+    "message": "Invalid Bing API response",
+    "description": "无效的必应API响应提示"
+  },
+  "bingImageUrl": {
+    "message": "Bing image URL:",
+    "description": "必应图片地址提示"
+  },
+  "imageDownloadError": {
+    "message": "Image download failed",
+    "description": "图片下载失败提示"
+  },
+  "base64Generated": {
+    "message": "Base64 data generated:",
+    "description": "base64数据生成状态提示"
+  },
+  "localStorageError": {
+    "message": "Error saving to local storage:",
+    "description": "保存到本地存储时错误提示"
+  },
+  "bingImageError": {
+    "message": "Error fetching Bing image:",
+    "description": "获取必应图片时错误提示"
+  },
+  "enterEngineUrl": {
+    "message": "Please enter the search engine URL, e.g., https://www.google.com",
+    "description": "搜索引擎URL输入提示"
+  },
+  "savingSettings": {
+    "message": "Saving settings...",
+    "description": "正在保存设置提示"
+  },
+  "loadingResources": {
+    "message": "Loading resources...",
+    "description": "加载资源提示"
+  },
+  "loadingI18n": {
+    "message": "Loading internationalization resources...",
+    "description": "加载国际化资源提示"
+  },
+  "loadingIcons": {
+    "message": "Loading icon resources...",
+    "description": "加载图标资源提示"
+  },
+  "loadingBackground": {
+    "message": "Loading background image...",
+    "description": "加载背景图像提示"
+  },
+  "loadingSearch": {
+    "message": "Loading search engines...",
+    "description": "加载搜索引擎提示"
+  },
+  "loadingBookmarks": {
+    "message": "Loading bookmarks...",
+    "description": "加载书签提示"
+  },
+  "loadingClock": {
+    "message": "Loading clock widget...",
+    "description": "加载时钟组件提示"
+  },
+  "initializingTitle": {
+    "message": "New Tab Page initializing...",
+    "description": "新标签页初始化中提示"
+  },
+  "loadingEvents": {
+    "message": "Initializing event handlers...",
+    "description": "初始化事件处理提示"
+  },
+  "loadingComplete": {
+    "message": "Loading complete!",
+    "description": "加载完成提示"
+  },
+  "initTimeout": {
+    "message": "Initialization timeout",
+    "description": "初始化超时提示"
+  },
+  "moduleInitTimeout": {
+    "message": "{0} initialization timed out",
+    "description": "模块初始化超时提示"
+  },
+  "moduleLoadingFailed": {
+    "message": "{0} loading failed: {1}",
+    "description": "模块加载失败提示"
+  },
+  "i18nModule": {
+    "message": "Internationalization",
+    "description": "国际化模块名称"
+  },
+  "backgroundModule": {
+    "message": "Background Image",
+    "description": "背景图像模块名称"
+  },
+  "searchModule": {
+    "message": "Search Engine",
+    "description": "搜索引擎模块名称"
+  },
+  "bookmarkModule": {
+    "message": "Bookmarks",
+    "description": "书签模块名称"
+  },
+  "clockModule": {
+    "message": "Clock Widget",
+    "description": "时钟组件模块名称"
+  },
+  "eventsModule": {
+    "message": "Event Initialization",
+    "description": "事件初始化模块名称"
+  },
+  "backgroundLoadComplete": {
+    "message": "Background image loading complete",
+    "description": "背景图像加载完成提示"
+  },
+  "searchLoadComplete": {
+    "message": "Search engine loading complete",
+    "description": "搜索引擎加载完成提示"
+  },
+  "bookmarkLoadComplete": {
+    "message": "Bookmarks loading complete",
+    "description": "书签加载完成提示"
+  },
+  "clockLoadComplete": {
+    "message": "Clock widget loading complete",
+    "description": "时钟组件加载完成提示"
+  },
+  "postInitTasksError": {
+    "message": "Error in post-initialization tasks",
+    "description": "初始化后任务出错提示"
+  },
+  "fetchingDefaultIcon": {
+    "message": "Fetching default icon...",
+    "description": "获取默认图标提示"
+  },
+  "desktopInstructionMessage": {
+    "message": "To use this extension as your new tab page, go to your browser extensions settings and choose 'Open New Tab page' from this extension's options.",
+    "description": "桌面用户如何将此扩展设置为新标签页的说明"
+  },
+  "mobileInstructionMessage": {
+    "message": "To set this as your new tab page on mobile, copy this URL and set it as your homepage: {0}",
+    "description": "移动设备用户新标签页的说明"
+  },
+  "preparingBackground": {
+    "message": "Preparing background...",
+    "description": "背景准备阶段提示"
+  },
+  "loadingCustomBackground": {
+    "message": "Loading custom background...",
+    "description": "自定义背景加载提示"
+  },
+  "applyingBackground": {
+    "message": "Applying background...",
+    "description": "背景应用阶段提示"
+  },
+  "renderingBookmarks": {
+    "message": "Rendering bookmarks...",
+    "description": "渲染书签进度提示"
+  }
+}

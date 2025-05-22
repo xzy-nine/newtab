@@ -1,0 +1,102 @@
+{
+  "backgroundButton": {
+    "message": "Background",
+    "description": "背景按钮文本"
+  },
+  "customIcon": {
+    "message": "Custom Icon",
+    "description": "自定义图标"
+  },
+  "resetIcon": {
+    "message": "Reset Icon",
+    "description": "重置图标"
+  },
+  "editBookmark": {
+    "message": "Edit Bookmark",
+    "description": "编辑书签"
+  },
+  "addBookmark": {
+    "message": "Add Bookmark",
+    "description": "添加书签"
+  },
+  "addCustomSearchEngine": {
+    "message": "Add Custom Search Engine",
+    "description": "添加自定义搜索引擎"
+  },
+  "deleteSearchEngine": {
+    "message": "Delete Search Engine",
+    "description": "删除搜索引擎"
+  },
+  "refreshPage": {
+    "message": "Refresh Page",
+    "description": "刷新页面按钮"
+  },
+  "openFolder": {
+    "message": "Open Folder",
+    "description": "打开文件夹菜单项"
+  },
+  "openAllBookmarks": {
+    "message": "Open All Bookmarks",
+    "description": "打开所有书签菜单项"
+  },
+  "refreshBookmarks": {
+    "message": "Refresh Bookmarks",
+    "description": "刷新书签菜单项"
+  },
+  "uploadIcon": {
+    "message": "Upload Icon",
+    "description": "上传图标标签"
+  },
+  "iconUrl": {
+    "message": "Icon URL",
+    "description": "图标URL标签"
+  },
+  "pinFolder": {
+    "message": "Pin Folder to Top",
+    "description": "固定文件夹到顶层菜单项"
+  },
+  "unpinFolder": {
+    "message": "Unpin Folder",
+    "description": "取消固定文件夹菜单项"
+  },
+  "selectBackground": {
+    "message": "Select Background",
+    "description": "选择背景按钮文本"
+  },
+  "backgroundUrl": {
+    "message": "Background URL",
+    "description": "背景URL输入标签"
+  },
+  "uploadBackground": {
+    "message": "Upload Background",
+    "description": "上传背景按钮文本"
+  },
+  "resetBackground": {
+    "message": "Reset Background",
+    "description": "重置背景按钮文本"
+  },
+  "selectImage": {
+    "message": "Select Image",
+    "description": "选择图片模态框标题"
+  },
+  "imageUrl": {
+    "message": "Image URL",
+    "description": "图片URL输入标签"
+  },
+  "uploadImage": {
+    "message": "Upload Image",
+    "description": "上传图片标签"
+  },
+  "engineSearchUrl": {
+    "message": "Search URL (include %s as search term placeholder)",
+    "description": "搜索URL"
+  },
+  "engineIconUrl": {
+    "message": "Icon URL (optional)",
+    "description": "图标URL"
+  },
+  "setNewTab": {
+    "message": "Set as New Tab",
+    "description": "设置为新标签页按钮文本"
+  }
+}

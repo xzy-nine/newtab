@@ -5,6 +5,8 @@
 
 let translations = {};
 let currentLanguage = 'en';
+// 翻译文件列表
+const TRANSLATION_FILES = ['common', 'notifications', 'menus', 'containers'];
 
 /**
  * 国际化API
@@ -136,20 +138,49 @@ async function loadTranslationsFromFiles() {
       locale = 'ja'; // 如果有日语支持
     }
     
-    // 加载翻译文件
-    const response = await fetch(`/_locales/${locale}/messages.json`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // 清空当前翻译数据
+    translations = {};
+    
+    // 加载所有翻译文件
+    for (const fileType of TRANSLATION_FILES) {
+      try {
+        const response = await fetch(`/_locales/${locale}/${fileType}.json`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const messagesData = await response.json();
+        // 合并翻译数据
+        translations = { ...translations, ...messagesData };
+        console.log(`已加载 ${fileType} 翻译文件`);
+      } catch (error) {
+        console.error(`加载 ${fileType} 翻译文件失败:`, error);
+      }
     }
     
-    const messagesData = await response.json();
-    translations = messagesData;
-    
-    console.log(I18n.getMessage('languageFileLoaded').replace('%s', locale));
+    console.log(getMessage('languageFileLoaded').replace('%s', locale));
   } catch (error) {
-    console.error(I18n.getMessage('loadTranslationError'), error);
-    translations = {}; // 出错时使用空对象
+    console.error(getMessage('loadTranslationError'), error);
   }
+  
+  // 如果翻译对象为空，使用默认的空对象
+  if (Object.keys(translations).length === 0) {
+    translations = {};
+  }
+}
+
+/**
+ * 获取指定键的消息（模块内部使用）
+ */
+function getMessage(key) {
+  // 简化版的 getMessage，用于模块内部使用
+  if (!key) return '';
+  
+  if (translations[key] && translations[key].message) {
+    return translations[key].message;
+  }
+  
+  return key;
 }
 
 /**

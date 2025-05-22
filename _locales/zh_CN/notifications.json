@@ -1,0 +1,178 @@
+{
+  "welcomeTitle": {
+    "message": "欢迎",
+    "description": "欢迎标题"
+  },
+  "welcomeMessage": {
+    "message": "感谢使用我们的扩展。",
+    "description": "欢迎信息"
+  },
+  "updateTitle": {
+    "message": "更新成功",
+    "description": "更新标题"
+  },
+  "updateMessage": {
+    "message": "扩展已从版本 {0} 更新至 {1}",
+    "description": "更新信息"
+  },
+  "saveFailed": {
+    "message": "保存失败",
+    "description": "保存失败提示"
+  },
+  "loadTranslationError": {
+    "message": "加载翻译文件失败:",
+    "description": "加载翻译文件失败提示"
+  },
+  "languageFileLoaded": {
+    "message": "已加载语言文件: %s",
+    "description": "语言文件加载完成提示"
+  },
+  "backgroundSetFailed": {
+    "message": "背景图片设置失败，请检查文件名是否包含空格或特殊字符",
+    "description": "背景设置失败提示"
+  },
+  "localStorageImageFailed": {
+    "message": "从本地存储获取图片失败",
+    "description": "从本地存储获取图片失败提示"
+  },
+  "backgroundFetchFailed": {
+    "message": "获取壁纸失败",
+    "description": "获取壁纸失败提示"
+  },
+  "bingDailyBackgroundFailed": {
+    "message": "设置必应每日图片背景失败：",
+    "description": "设置必应每日图片背景失败提示"
+  },
+  "clearStorageError": {
+    "message": "清除存储失败，请查看控制台了解详情。",
+    "description": "清除存储失败提示"
+  },
+  "clearStorageSuccess": {
+    "message": "存储已成功清除，页面将刷新。",
+    "description": "存储已成功清除提示"
+  },
+  "clearStorageConfirm": {
+    "message": "确定要清除所有存储数据吗？此操作不可恢复。",
+    "description": "确认清除所有存储数据提示"
+  },
+  "fetchBookmarksFailed": {
+    "message": "获取书签失败",
+    "description": "获取书签失败提示"
+  },
+  "folderCreationError": {
+    "message": "创建文件夹出错",
+    "description": "创建文件夹错误提示"
+  },
+  "fetchFolderFailed": {
+    "message": "获取文件夹失败",
+    "description": "获取文件夹失败提示"
+  },
+  "reloadFailed": {
+    "message": "重新加载失败",
+    "description": "重新加载失败提示"
+  },
+  "fetchIconFailed": {
+    "message": "获取图标失败",
+    "description": "获取图标失败提示"
+  },
+  "iconReset": {
+    "message": "图标已重置",
+    "description": "图标已重置提示"
+  },
+  "saveIconFailed": {
+    "message": "保存图标失败",
+    "description": "保存图标失败提示"
+  },
+  "iconUpdated": {
+    "message": "图标已更新",
+    "description": "图标已更新提示"
+  },
+  "pleaseCompleteAllFields": {
+    "message": "请完成所有必填字段",
+    "description": "完成所有必填字段提示"
+  },
+  "cannotDeleteLastEngine": {
+    "message": "无法删除最后一个搜索引擎",
+    "description": "无法删除最后一个搜索引擎提示"
+  },
+  "confirmDeleteEngine": {
+    "message": "确定要删除此搜索引擎吗？",
+    "description": "确认删除搜索引擎提示"
+  },
+  "initializationFailed": {
+    "message": "初始化失败，请刷新页面重试。",
+    "description": "初始化失败提示"
+  },
+  "genericError": {
+    "message": "发生未知错误",
+    "description": "通用错误信息"
+  },
+  "copyError": {
+    "message": "复制失败",
+    "description": "复制失败提示"
+  },
+  "imageTypeError": {
+    "message": "请选择有效的图片文件。",
+    "description": "图片类型错误提示"
+  },
+  "imageTooLarge": {
+    "message": "图片文件不应超过50MB。",
+    "description": "图片过大提示"
+  },
+  "fetchCustomIconFailed": {
+    "message": "获取自定义图标失败：",
+    "description": "获取自定义图标失败提示"
+  },
+  "linkCopied": {
+    "message": "链接已复制到剪贴板",
+    "description": "链接复制成功提示"
+  },
+  "copyLinkFailed": {
+    "message": "复制链接到剪贴板失败",
+    "description": "链接复制失败提示"
+  },
+  "backgroundRemoved": {
+    "message": "自定义背景已移除",
+    "description": "自定义背景移除提示"
+  },
+  "switchedToBackground": {
+    "message": "已切换到%s背景",
+    "description": "切换到指定背景类型提示"
+  },
+  "clearCustomBackgroundError": {
+    "message": "清除自定义背景失败",
+    "description": "清除自定义背景失败提示"
+  },
+  "backgroundUpdated": {
+    "message": "背景已更新",
+    "description": "背景更新成功标题"
+  },
+  "bingDailyImageUpdated": {
+    "message": "必应每日图片已更新",
+    "description": "必应每日图片更新提示"
+  },
+  "backgroundUpdateFailed": {
+    "message": "背景更新失败",
+    "description": "背景更新失败标题"
+  },
+  "customBackgroundSuccess": {
+    "message": "自定义背景图片已成功设置",
+    "description": "自定义背景设置成功提示"
+  },
+  "imageProcessingError": {
+    "message": "图片处理失败",
+    "description": "图片处理错误提示"
+  },
+  "folderPinned": {
+    "message": "文件夹已固定到顶层",
+    "description": "文件夹已固定提示"
+  },
+  "folderUnpinned": {
+    "message": "文件夹已取消固定",
+    "description": "文件夹已取消固定提示"
+  },
+  "confirmDeleteBookmark": {
+    "message": "确定要删除此书签吗？",
+    "description": "确认删除书签提示"
+  }
+}

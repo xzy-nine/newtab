@@ -1,0 +1,74 @@
+{
+  "appName": {
+    "message": "Bookmark New Tab Extension",
+    "description": "应用程序的名称"
+  },
+  "appDescription": {
+    "message": "A clean and beautiful new tab extension with search engine switching, bookmark shortcuts, and background switching.",
+    "description": "应用程序的描述"
+  },
+  "newTab": {
+    "message": "New Tab",
+    "description": "标签页标题"
+  },
+  "loading": {
+    "message": "Loading...",
+    "description": "加载中提示"
+  },
+  "searchPlaceholder": {
+    "message": "Search here",
+    "description": "搜索框占位文本"
+  },
+  "ok": {
+    "message": "OK",
+    "description": "确定按钮文本"
+  },
+  "cancel": {
+    "message": "Cancel",
+    "description": "取消按钮文本"
+  },
+  "close": {
+    "message": "Close",
+    "description": "关闭按钮文本"
+  },
+  "confirm": {
+    "message": "Confirm",
+    "description": "确认按钮文本"
+  },
+  "continue": {
+    "message": "Continue",
+    "description": "继续按钮文本"
+  },
+  "error": {
+    "message": "Error",
+    "description": "错误提示"
+  },
+  "errorTitle": {
+    "message": "Error",
+    "description": "错误提示标题"
+  },
+  "success": {
+    "message": "Success",
+    "description": "成功提示"
+  },
+  "warning": {
+    "message": "Warning",
+    "description": "警告标题"
+  },
+  "copyToClipboard": {
+    "message": "Copy to clipboard",
+    "description": "复制到剪贴板按钮文本"
+  },
+  "ready": {
+    "message": "Ready",
+    "description": "初始化完成提示"
+  },
+  "untitledFolder": {
+    "message": "(Untitled Folder)",
+    "description": "无标题文件夹显示文本"
+  },
+  "engineName": {
+    "message": "Name",
+    "description": "引擎名称"
+  }
+}

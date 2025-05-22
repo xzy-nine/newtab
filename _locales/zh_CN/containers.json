@@ -1,0 +1,194 @@
+{
+  "pinnedFolders": {
+    "message": "已固定文件夹",
+    "description": "固定文件夹标题"
+  },
+  "bingDailyImage": {
+    "message": "必应每日图片",
+    "description": "必应每日图片名称"
+  },
+  "defaultBackground": {
+    "message": "默认背景",
+    "description": "默认背景名称"
+  },
+  "settingBackgroundType": {
+    "message": "正在设置背景类型：",
+    "description": "设置背景类型提示"
+  },
+  "customBackgroundExists": {
+    "message": "自定义背景图片状态：",
+    "description": "自定义背景图片状态提示"
+  },
+  "currentBackgroundType": {
+    "message": "当前背景类型：",
+    "description": "当前背景类型提示"
+  },
+  "usingCachedImage": {
+    "message": "使用缓存图片，剩余时间：%s小时%s分钟",
+    "description": "使用缓存图片提示"
+  },
+  "fetchingBingImage": {
+    "message": "正在获取必应每日图片...",
+    "description": "获取必应每日图片提示"
+  },
+  "bingApiError": {
+    "message": "必应API请求错误：%s",
+    "description": "必应API错误提示"
+  },
+  "invalidBingResponse": {
+    "message": "无效的必应API响应",
+    "description": "无效的必应API响应提示"
+  },
+  "bingImageUrl": {
+    "message": "必应图片地址：",
+    "description": "必应图片地址提示"
+  },
+  "imageDownloadError": {
+    "message": "图片下载失败",
+    "description": "图片下载失败提示"
+  },
+  "base64Generated": {
+    "message": "base64数据生成状态：",
+    "description": "base64数据生成状态提示"
+  },
+  "localStorageError": {
+    "message": "保存到本地存储时出错：",
+    "description": "保存到本地存储时错误提示"
+  },
+  "bingImageError": {
+    "message": "获取必应图片时出错：",
+    "description": "获取必应图片时错误提示"
+  },
+  "enterEngineUrl": {
+    "message": "请输入搜索引擎官网链接，例如：https://www.google.com",
+    "description": "搜索引擎URL输入提示"
+  },
+  "savingSettings": {
+    "message": "正在保存设置...",
+    "description": "正在保存设置提示"
+  },
+  "loadingResources": {
+    "message": "正在加载资源...",
+    "description": "加载资源提示"
+  },
+  "loadingI18n": {
+    "message": "正在加载国际化资源...",
+    "description": "加载国际化资源提示"
+  },
+  "loadingIcons": {
+    "message": "正在加载图标资源...",
+    "description": "加载图标资源提示"
+  },
+  "loadingBackground": {
+    "message": "正在加载背景图像...",
+    "description": "加载背景图像提示"
+  },
+  "loadingSearch": {
+    "message": "正在加载搜索引擎...",
+    "description": "加载搜索引擎提示"
+  },
+  "loadingBookmarks": {
+    "message": "正在加载书签...",
+    "description": "加载书签提示"
+  },
+  "loadingClock": {
+    "message": "正在加载时钟组件...",
+    "description": "加载时钟组件提示"
+  },
+  "initializingTitle": {
+    "message": "新标签页初始化中...",
+    "description": "新标签页初始化中提示"
+  },
+  "loadingEvents": {
+    "message": "正在初始化事件处理...",
+    "description": "初始化事件处理提示"
+  },
+  "loadingComplete": {
+    "message": "加载完成！",
+    "description": "加载完成提示"
+  },
+  "initTimeout": {
+    "message": "初始化超时",
+    "description": "初始化超时提示"
+  },
+  "moduleInitTimeout": {
+    "message": "{0}初始化超时",
+    "description": "模块初始化超时提示"
+  },
+  "moduleLoadingFailed": {
+    "message": "{0}加载失败: {1}",
+    "description": "模块加载失败提示"
+  },
+  "i18nModule": {
+    "message": "国际化",
+    "description": "国际化模块名称"
+  },
+  "backgroundModule": {
+    "message": "背景图像",
+    "description": "背景图像模块名称"
+  },
+  "searchModule": {
+    "message": "搜索引擎",
+    "description": "搜索引擎模块名称"
+  },
+  "bookmarkModule": {
+    "message": "书签",
+    "description": "书签模块名称"
+  },
+  "clockModule": {
+    "message": "时钟组件",
+    "description": "时钟组件模块名称"
+  },
+  "eventsModule": {
+    "message": "事件初始化",
+    "description": "事件初始化模块名称"
+  },
+  "backgroundLoadComplete": {
+    "message": "背景图像加载完成",
+    "description": "背景图像加载完成提示"
+  },
+  "searchLoadComplete": {
+    "message": "搜索引擎加载完成",
+    "description": "搜索引擎加载完成提示"
+  },
+  "bookmarkLoadComplete": {
+    "message": "书签加载完成",
+    "description": "书签加载完成提示"
+  },
+  "clockLoadComplete": {
+    "message": "时钟组件加载完成",
+    "description": "时钟组件加载完成提示"
+  },
+  "postInitTasksError": {
+    "message": "初始化后任务出错",
+    "description": "初始化后任务出错提示"
+  },
+  "fetchingDefaultIcon": {
+    "message": "正在获取默认图标...",
+    "description": "获取默认图标提示"
+  },
+  "desktopInstructionMessage": {
+    "message": "已经自动设置完成新标签页",
+    "description": "桌面用户新标签页的说明"
+  },
+  "mobileInstructionMessage": {
+    "message": "要在移动设备上将此设置为新标签页，请复制此URL并将其设置为您的主页: {0}",
+    "description": "移动设备用户新标签页的说明"
+  },
+  "preparingBackground": {
+    "message": "正在准备背景...",
+    "description": "背景准备阶段提示"
+  },
+  "loadingCustomBackground": {
+    "message": "正在加载自定义背景...",
+    "description": "自定义背景加载提示"
+  },
+  "applyingBackground": {
+    "message": "正在应用背景...",
+    "description": "背景应用阶段提示"
+  },
+  "renderingBookmarks": {
+    "message": "正在渲染书签...",
+    "description": "渲染书签进度提示"
+  }
+}
