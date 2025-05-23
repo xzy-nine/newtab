@@ -7,6 +7,7 @@ import { Utils } from './utils.js';
 import { I18n } from './i18n.js';
 import { Menu } from './menu.js';
 import { Notification } from './notification.js';
+import { WidgetRegistry } from './widgetRegistry.js';  // 导入注册中心
 
 // 储存小部件数据和实例
 let widgets = [];
@@ -273,7 +274,7 @@ export const WidgetSystem = {
      * @param {number} width - 新宽度
      * @param {number} height - 新高度
      */
-    resizeWidgetContainer: function(container, width, height) {
+    resizeWidgetContainer: async function(container, width, height) {
         // 查找小部件类型以获取适当的最小尺寸
         const widgetItem = container.querySelector('.widget-item');
         let minWidth = 150;  // 默认最小宽度
@@ -286,12 +287,14 @@ export const WidgetSystem = {
         if (widgetItem && widgetItem.dataset.widgetType) {
             const widgetType = widgetItem.dataset.widgetType;
             
-            // 异步导入小部件模块以获取其配置
-            import('./widgets/counterWidget.js').then(module => {
+            try {
+                // 从注册中心加载小部件模块
+                const widgetModule = await WidgetRegistry.loadWidget(widgetType);
+                
                 // 只有在模块加载成功时才应用特定的最小尺寸
-                if (module.default && module.default.config && module.default.config.min) {
-                    minWidth = module.default.config.min.width || minWidth;
-                    minHeight = module.default.config.min.height || minHeight;
+                if (widgetModule.default && widgetModule.default.config && widgetModule.default.config.min) {
+                    minWidth = widgetModule.default.config.min.width || minWidth;
+                    minHeight = widgetModule.default.config.min.height || minHeight;
                     
                     // 应用特定小部件的最小尺寸限制和最大尺寸限制
                     width = Math.min(maxWidth, Math.max(minWidth, width));
@@ -302,15 +305,24 @@ export const WidgetSystem = {
                     container.style.height = `${height}px`;
                     
                     // 调整小部件大小
-                    if (typeof module.default.adjustSize === 'function') {
-                        module.default.adjustSize(widgetItem);
+                    if (typeof widgetModule.default.adjustSize === 'function') {
+                        widgetModule.default.adjustSize(widgetItem);
                     }
                     
                     // 触发保存
                     document.dispatchEvent(new CustomEvent('widget-data-changed'));
                 }
-            }).catch(err => console.error('获取小部件配置失败:', err));
-            return; // 异步处理，提前返回
+            } catch (err) {
+                console.error('获取小部件配置失败:', err);
+                
+                // 失败时使用默认值
+                width = Math.min(maxWidth, Math.max(minWidth, width));
+                height = Math.min(maxHeight, Math.max(minHeight, height));
+                container.style.width = `${width}px`;
+                container.style.height = `${height}px`;
+                document.dispatchEvent(new CustomEvent('widget-data-changed'));
+            }
+            return;
         }
         
         // 如果没有找到特定小部件配置，使用默认限制
@@ -399,31 +411,10 @@ export const WidgetSystem = {
             // 标记处理中，防止重复添加
             widgetItem.dataset.processing = 'true';
             
-            // 根据类型加载小部件
+            // 从注册中心加载小部件模块
             let widgetModule;
             try {
-                // 记录加载开始
-                switch(widgetType) {
-                    case 'counter':
-                        try {
-                            const moduleURL = new URL('./widgets/counterWidget.js', import.meta.url).href;
-                            widgetModule = await import(moduleURL);
-                        } catch (loadError) {
-                            console.error('模块加载错误详情:', loadError);
-                        }
-                        break;
-                    case 'timer':
-                        try {
-                            const moduleURL = new URL('./widgets/timerWidget.js', import.meta.url).href;
-                            widgetModule = await import(moduleURL);
-                        } catch (loadError) {
-                            console.error('模块加载错误详情:', loadError);
-                        }
-                        break;
-                    // 可以添加更多小部件类型
-                    default:
-                        throw new Error(`未知的小部件类型: ${widgetType}`);
-                }
+                widgetModule = await WidgetRegistry.loadWidget(widgetType);
                 
                 // 检查元素是否仍在DOM中，防止在加载过程中被移除
                 if (!document.body.contains(widgetItem)) {
@@ -918,22 +909,8 @@ export const WidgetSystem = {
      * @returns {Array} 小部件类型列表
      */
     getAvailableWidgets() {
-        // 使用安全的国际化方法
-        const counterText = getI18nMessage('counterWidget', '计数器');
-        const timerText = getI18nMessage('timerWidget', '计时器');
-        
-        // 此处应该动态获取所有可用小部件
-        return [
-            { 
-                type: 'counter', 
-                name: counterText
-            },
-            {
-                type: 'timer',
-                name: timerText
-            }
-            // 未来可以添加更多小部件类型
-        ];
+        // 直接从注册中心获取所有已注册的小部件
+        return WidgetRegistry.getAllWidgets();
     },
     
     /**
