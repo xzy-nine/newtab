@@ -249,18 +249,22 @@ export const WidgetSystem = {
         let minWidth = 150;  // 默认最小宽度
         let minHeight = 100; // 默认最小高度
         
-        if (widgetItem && widgetItem.dataset.widgetType === 'counter') {
-            // 针对计数器小部件使用特定尺寸限制
-            import('./widgets/counterWidget.js').then(module => {
-                if (module.default && module.default.config && module.default.config.min) {
-                    minWidth = module.default.config.min.width || minWidth;
-                    minHeight = module.default.config.min.height || minHeight;
-                }
-            }).catch(err => {
-                console.error('加载小部件配置失败:', err);
-                // 发生错误时使用默认值
-                this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
-            });
+        if (widgetItem && widgetItem.dataset.widgetType) {
+            // 使用WidgetRegistry加载小部件配置
+            WidgetRegistry.loadWidget(widgetItem.dataset.widgetType)
+                .then(module => {
+                    if (module.default && module.default.config && module.default.config.min) {
+                        minWidth = module.default.config.min.width || minWidth;
+                        minHeight = module.default.config.min.height || minHeight;
+                    }
+                    // 显示调整大小表单
+                    this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
+                })
+                .catch(err => {
+                    console.error('加载小部件配置失败:', err);
+                    // 发生错误时使用默认值
+                    this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
+                });
         } else {
             // 对于其他类型的小部件，使用默认值
             this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
@@ -1154,8 +1158,3 @@ export const WidgetSystem = {
         return { x: newX, y: newY };
     }
 };
-
-// 修改初始化方式：不再立即初始化，而是让主应用程序在正确的时序调用
-// WidgetSystem.init().catch(error => {
-//     console.error('小部件系统初始化失败:', error);
-// });
