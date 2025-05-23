@@ -94,7 +94,12 @@ export const Menu = {
       formItems.forEach(item => {
         const input = document.getElementById(item.id);
         if (input) {
-          formData[item.id] = input.value.trim();
+          // 针对复选框特殊处理
+          if (item.type === 'checkbox') {
+            formData[item.id] = input.checked;  // 使用checked属性而不是value
+          } else {
+            formData[item.id] = input.value.trim();
+          }
           if (item.required && !formData[item.id]) {
             allFilled = false;
             input.classList.add('error');

@@ -286,17 +286,11 @@
     transition: none;
 }
 
-/* 调整内容区样式确保不覆盖调整大小控制点 */
-.widget-content {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  width: 100% !important;
-  height: 100% !important;
-  flex-direction: column;
-  overflow: hidden;
-  padding: 10px;
-  padding-bottom: 25px; /* 为指示器留出空间 */
-  position: relative;
-  box-sizing: border-box;
+/* 为容器右键菜单中的危险操作添加样式 */
+.context-menu-item.danger-item {
+  color: #d32f2f;
+}
+
+.context-menu-item.danger-item:hover {
+  background-color: rgba(211, 47, 47, 0.1);
 }

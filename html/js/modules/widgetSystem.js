@@ -254,12 +254,6 @@ export const WidgetSystem = {
                 if (module.default && module.default.config && module.default.config.min) {
                     minWidth = module.default.config.min.width || minWidth;
                     minHeight = module.default.config.min.height || minHeight;
-                    
-                    // 显示表单
-                    this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
-                } else {
-                    // 如果无法获取配置，使用默认值
-                    this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
                 }
             }).catch(err => {
                 console.error('加载小部件配置失败:', err);
@@ -402,6 +396,9 @@ export const WidgetSystem = {
             // 先添加到容器，让用户看到加载状态
             contentArea.appendChild(widgetItem);
             
+            // 标记处理中，防止重复添加
+            widgetItem.dataset.processing = 'true';
+            
             // 根据类型加载小部件
             let widgetModule;
             try {
@@ -410,7 +407,6 @@ export const WidgetSystem = {
                     case 'counter':
                         try {
                             const moduleURL = new URL('./widgets/counterWidget.js', import.meta.url).href;
-
                             widgetModule = await import(moduleURL);
                         } catch (loadError) {
                             console.error('模块加载错误详情:', loadError);
@@ -427,6 +423,12 @@ export const WidgetSystem = {
                     // 可以添加更多小部件类型
                     default:
                         throw new Error(`未知的小部件类型: ${widgetType}`);
+                }
+                
+                // 检查元素是否仍在DOM中，防止在加载过程中被移除
+                if (!document.body.contains(widgetItem)) {
+                    console.warn('小部件项在初始化过程中被移除');
+                    return null;
                 }
                 
                 // 移除加载指示器
@@ -449,6 +451,9 @@ export const WidgetSystem = {
                 
                 // 设置为活动项
                 this.setActiveWidgetItem(container, Array.from(contentArea.children).indexOf(widgetItem));
+                
+                // 清除处理标记
+                delete widgetItem.dataset.processing;
             } catch (error) {
                 console.error(`小部件 ${widgetType} 初始化失败:`, error);
                 
@@ -474,11 +479,11 @@ export const WidgetSystem = {
                     retryButton.addEventListener('click', (e) => {
                         e.stopPropagation();
                         // 移除错误显示
-                        widgetItem.removeChild(errorElement);
+                        if (contentArea.contains(widgetItem)) {
+                            contentArea.removeChild(widgetItem);
+                        }
                         // 重新尝试加载
                         this.addWidgetItem(container, widgetType, widgetData);
-                        // 移除当前项
-                        this.removeWidgetItem(widgetItem);
                     });
                 }
                 
@@ -488,6 +493,9 @@ export const WidgetSystem = {
                         this.removeWidgetItem(widgetItem);
                     });
                 }
+                
+                // 清除处理标记
+                delete widgetItem.dataset.processing;
             }
             
             // 更新小圆点指示器
@@ -827,14 +835,60 @@ export const WidgetSystem = {
         const addText = getI18nMessage('add', '添加');
         const cancelText = getI18nMessage('cancel', '取消');
         
+        // 防止重复操作
+        let isProcessing = false;
+        
         Menu.showFormModal(
             titleText,
             formItems,
             async (formData) => {
-                for (const [type, selected] of Object.entries(formData)) {
-                    if (selected) {
+                if (isProcessing) return; // 防止重复操作
+                isProcessing = true;
+                
+                try {
+                    // 记录需要添加的小部件类型
+                    const selectedWidgetTypes = [];
+                    
+                    // 检查每个小部件类型是否被选中
+                    Object.entries(formData).forEach(([key, value]) => {
+                        // 只有当值为 true 时才添加到选中列表
+                        if (value === true) {
+                            selectedWidgetTypes.push(key);
+                        }
+                    });
+                    
+                    // 如果没有选择任何小部件，显示提示
+                    if (selectedWidgetTypes.length === 0) {
+                        Notification.notify({
+                            title: getI18nMessage('notice', '提示'),
+                            message: getI18nMessage('noWidgetSelected', '未选择任何小部件'),
+                            type: 'info'
+                        });
+                        return;
+                    }
+                    
+                    // 按顺序添加选中的小部件
+                    for (const type of selectedWidgetTypes) {
                         await this.addWidgetItem(container, type);
                     }
+                    
+                    // 添加成功提示
+                    if (selectedWidgetTypes.length > 0) {
+                        Notification.notify({
+                            title: getI18nMessage('success', '成功'),
+                            message: getI18nMessage('widgetsAdded', '已添加所选小部件'),
+                            type: 'success'
+                        });
+                    }
+                } catch (error) {
+                    console.error('添加小部件失败:', error);
+                    Notification.notify({
+                        title: getI18nMessage('error', '错误'),
+                        message: getI18nMessage('addWidgetFailed', '添加小部件失败'),
+                        type: 'error'
+                    });
+                } finally {
+                    isProcessing = false;
                 }
             },
             addText,
