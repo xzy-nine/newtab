@@ -62,5 +62,13 @@
   "widgetsLoadComplete": {
     "message": "小部件加载完成",
     "description": "小部件加载完成提示"
+  },
+  "widgetsAdded": {
+    "message": "已添加所选小部件",
+    "description": "已添加所选小部件提示"
+  },
+  "unfixWidgetToResize": {
+    "message": "请先取消固定再调整大小",
+    "description": "调整大小前需要取消固定提示"
   }
 }

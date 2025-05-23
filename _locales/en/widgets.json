@@ -42,5 +42,33 @@
   "widgetsLoadComplete": {
     "message": "Widgets loading complete",
     "description": "小部件加载完成提示"
+  },
+  "widgetsAdded": {
+    "message": "Selected widgets added",
+    "description": "已添加所选小部件提示"
+  },
+  "addWidgetFailed": {
+    "message": "Failed to add widget",
+    "description": "添加小部件失败提示"
+  },
+  "add": {
+    "message": "Add",
+    "description": "添加按钮文本"
+  },
+  "cancel": {
+    "message": "Cancel",
+    "description": "取消按钮文本"
+  },
+  "widgetFixed": {
+    "message": "Widget fixed",
+    "description": "小部件已固定提示"
+  },
+  "unfixWidgetToMove": {
+    "message": "Please unfix before moving",
+    "description": "移动前需要取消固定提示"
+  },
+  "unfixWidgetToResize": {
+    "message": "Please unfix before resizing",
+    "description": "调整大小前需要取消固定提示"
   }
 }
