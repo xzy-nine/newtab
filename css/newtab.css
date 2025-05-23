@@ -5,10 +5,11 @@
 @import 'modules/shortcuts.css';  /* 快捷方式按钮相关样式 */
 @import 'modules/modals.css';     /* 模态框相关样式 */
 @import 'modules/widgets.css';    /* 小部件系统相关样式 */
-@import 'modules/widgets/counter-widget.css'; /* 计数器小部件样式 */
 @import 'darkMode.css';   /* 暗黑模式相关样式 */
 @import 'responsive.css'; /* 响应式设计相关样式 */
 @import url('./modules/loading-notification.css'); /* 加载，通知样式 */
+@import 'modules/widgets/counter-widget.css'; /* 计数器小部件样式 */
+@import 'modules/widgets/timer-widget.css'; /* 计时器小部件样式 */
 
 /* 主体样式文件 - 基础布局、通用样式和全局变量 */
 

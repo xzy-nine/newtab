@@ -835,91 +835,126 @@ export const WidgetSystem = {
      * 显示添加小部件对话框
      * @param {HTMLElement} container - 小部件容器
      */
-    showAddWidgetDialog(container) {
-        // 获取可用小部件列表
-        const availableWidgets = this.getAvailableWidgets();
-        
-        // 创建对话框选项
-        const formItems = availableWidgets.map(widget => ({
-            id: widget.type,
-            label: widget.name,
-            type: 'checkbox',
-            value: false
-        }));
-        
-        // 使用安全的国际化方法
-        const titleText = getI18nMessage('addWidgetTitle', '添加小部件');
-        const addText = getI18nMessage('add', '添加');
-        const cancelText = getI18nMessage('cancel', '取消');
-        
-        // 防止重复操作
-        let isProcessing = false;
-        
-        Menu.showFormModal(
-            titleText,
-            formItems,
-            async (formData) => {
-                if (isProcessing) return; // 防止重复操作
-                isProcessing = true;
-                
-                try {
-                    // 记录需要添加的小部件类型
-                    const selectedWidgetTypes = [];
+    async showAddWidgetDialog(container) {
+        try {
+            // 获取可用小部件列表，确保是数组
+            const availableWidgets = await this.getAvailableWidgets();
+            
+            // 如果不是数组或为空数组，显示提示
+            if (!Array.isArray(availableWidgets) || availableWidgets.length === 0) {
+                Notification.notify({
+                    title: getI18nMessage('notice', '提示'),
+                    message: getI18nMessage('noWidgetsAvailable', '没有可用的小部件'),
+                    type: 'info'
+                });
+                return;
+            }
+            
+            // 创建对话框选项
+            const formItems = availableWidgets.map(widget => ({
+                id: widget.type,
+                label: widget.name,
+                type: 'checkbox',
+                value: false
+            }));
+            
+            // 使用安全的国际化方法
+            const titleText = getI18nMessage('addWidgetTitle', '添加小部件');
+            const addText = getI18nMessage('add', '添加');
+            const cancelText = getI18nMessage('cancel', '取消');
+            
+            // 防止重复操作
+            let isProcessing = false;
+            
+            Menu.showFormModal(
+                titleText,
+                formItems,
+                async (formData) => {
+                    if (isProcessing) return; // 防止重复操作
+                    isProcessing = true;
                     
-                    // 检查每个小部件类型是否被选中
-                    Object.entries(formData).forEach(([key, value]) => {
-                        // 只有当值为 true 时才添加到选中列表
-                        if (value === true) {
-                            selectedWidgetTypes.push(key);
+                    try {
+                        // 记录需要添加的小部件类型
+                        const selectedWidgetTypes = [];
+                        
+                        // 检查每个小部件类型是否被选中
+                        Object.entries(formData).forEach(([key, value]) => {
+                            // 只有当值为 true 时才添加到选中列表
+                            if (value === true) {
+                                selectedWidgetTypes.push(key);
+                            }
+                        });
+                        
+                        // 如果没有选择任何小部件，显示提示
+                        if (selectedWidgetTypes.length === 0) {
+                            Notification.notify({
+                                title: getI18nMessage('notice', '提示'),
+                                message: getI18nMessage('noWidgetSelected', '未选择任何小部件'),
+                                type: 'info'
+                            });
+                            return;
                         }
-                    });
-                    
-                    // 如果没有选择任何小部件，显示提示
-                    if (selectedWidgetTypes.length === 0) {
+                        
+                        // 按顺序添加选中的小部件
+                        for (const type of selectedWidgetTypes) {
+                            await this.addWidgetItem(container, type);
+                        }
+                        
+                        // 添加成功提示
+                        if (selectedWidgetTypes.length > 0) {
+                            Notification.notify({
+                                title: getI18nMessage('success', '成功'),
+                                message: getI18nMessage('widgetsAdded', '已添加所选小部件'),
+                                type: 'success'
+                            });
+                        }
+                    } catch (error) {
+                        console.error('添加小部件失败:', error);
                         Notification.notify({
-                            title: getI18nMessage('notice', '提示'),
-                            message: getI18nMessage('noWidgetSelected', '未选择任何小部件'),
-                            type: 'info'
+                            title: getI18nMessage('error', '错误'),
+                            message: getI18nMessage('addWidgetFailed', '添加小部件失败'),
+                            type: 'error'
                         });
-                        return;
+                    } finally {
+                        isProcessing = false;
                     }
-                    
-                    // 按顺序添加选中的小部件
-                    for (const type of selectedWidgetTypes) {
-                        await this.addWidgetItem(container, type);
-                    }
-                    
-                    // 添加成功提示
-                    if (selectedWidgetTypes.length > 0) {
-                        Notification.notify({
-                            title: getI18nMessage('success', '成功'),
-                            message: getI18nMessage('widgetsAdded', '已添加所选小部件'),
-                            type: 'success'
-                        });
-                    }
-                } catch (error) {
-                    console.error('添加小部件失败:', error);
-                    Notification.notify({
-                        title: getI18nMessage('error', '错误'),
-                        message: getI18nMessage('addWidgetFailed', '添加小部件失败'),
-                        type: 'error'
-                    });
-                } finally {
-                    isProcessing = false;
-                }
-            },
-            addText,
-            cancelText
-        );
+                },
+                addText,
+                cancelText
+            );
+        } catch (error) {
+            console.error('获取可用小部件失败:', error);
+            Notification.notify({
+                title: getI18nMessage('error', '错误'),
+                message: getI18nMessage('loadingWidgetsFailed', '加载可用小部件失败'),
+                type: 'error'
+            });
+        }
     },
     
     /**
      * 获取可用的小部件列表
-     * @returns {Array} 小部件类型列表
+     * @returns {Promise<Array>} 小部件类型列表
      */
-    getAvailableWidgets() {
-        // 直接从注册中心获取所有已注册的小部件
-        return WidgetRegistry.getAllWidgets();
+    async getAvailableWidgets() {
+        try {
+            // 从注册中心获取所有已注册的小部件，添加 true 参数强制加载元数据
+            const widgets = await WidgetRegistry.getAllWidgets(true);
+            
+            // 确保返回数组
+            if (!widgets) return [];
+            if (Array.isArray(widgets)) return widgets;
+            
+            // 如果返回的是对象但不是数组，尝试转换为数组
+            if (typeof widgets === 'object') {
+                return Object.values(widgets);
+            }
+            
+            return [];
+        } catch (error) {
+            console.error('获取小部件列表失败:', error);
+            return [];
+        }
     },
     
     /**
