@@ -44,7 +44,7 @@ export const I18n = {
   /**
    * 获取指定key的翻译文本
    * @param {string} key - 翻译键值
-   * @returns {string} - 翻译后的文本
+   * @returns {string|null} - 翻译后的文本，未找到则返回null
    */
   getMessage: function(key) {
     if (!key) return '';
@@ -68,10 +68,10 @@ export const I18n = {
       return translations[key].message;
     }
     
-    // 返回键名作为默认值
-    console.warn(`【未翻译】使用键名作为默认值: "${key}" - 查看调用堆栈↓`);
+    // 不再返回键名作为默认值，而是返回null或undefined使得 || 操作符可以生效
+    console.warn(`【未翻译】未找到键 "${key}" 的翻译 - 查看调用堆栈↓`);
     console.trace(); // 这会自动在控制台显示完整的调用堆栈
-    return key;
+    return null; // 返回null使得 || 操作符可以生效
   },
 
   /**
@@ -253,7 +253,7 @@ function getMessage(key) {
     return translations[key].message;
   }
   
-  return key;
+  return null; // 返回null而不是键名
 }
 
 /**
