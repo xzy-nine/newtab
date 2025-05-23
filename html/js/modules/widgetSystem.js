@@ -520,6 +520,10 @@ export const WidgetSystem = {
         const container = widgetItem.closest('.widget-container');
         const contentArea = container.querySelector('.widget-content');
         
+        // 获取当前索引，用于后续处理
+        const currentItems = Array.from(contentArea.querySelectorAll('.widget-item'));
+        const currentIndex = currentItems.indexOf(widgetItem);
+        
         // 移除小部件
         contentArea.removeChild(widgetItem);
         
@@ -527,6 +531,19 @@ export const WidgetSystem = {
         if (contentArea.children.length === 0) {
             this.addAddButton(container);
         } else {
+            // 剩余小部件处理
+            const remainingItems = contentArea.querySelectorAll('.widget-item');
+            
+            // 如果还有小部件，激活一个小部件
+            if (remainingItems.length > 0) {
+                // 如果删除的是最后一个，选择前一个；否则保持当前索引
+                const nextActiveIndex = (currentIndex >= remainingItems.length) ? 
+                    remainingItems.length - 1 : currentIndex;
+                
+                // 激活选中的小部件
+                this.setActiveWidgetItem(container, nextActiveIndex);
+            }
+            
             // 更新小圆点指示器
             this.updateWidgetIndicators(container);
         }
