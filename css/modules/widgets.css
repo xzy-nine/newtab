@@ -314,3 +314,70 @@
 #folder-list, #shortcut-list, #search-box, .bookmark {
   position: relative;
 }
+
+/* 深色模式小部件样式 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --widget-bg-color: rgba(26, 26, 26, 0.8);
+    --widget-shadow-color: rgba(0, 0, 0, 0.4);
+    --widget-shadow-color-hover: rgba(0, 0, 0, 0.6);
+    --widget-drag-handle-bg: linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    --widget-drag-handle-bg-hover: linear-gradient(to right, rgba(58, 160, 255, 0.3), rgba(58, 160, 255, 0.1));
+    --widget-drag-handle-bg-fixed: linear-gradient(to right, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  }
+  
+  .widget-title {
+    color: #ffffff;
+  }
+  
+  .widget-container {
+    background-color: var(--widget-bg-color);
+    border: 1px solid #333;
+    box-shadow: 0 2px 10px var(--widget-shadow-color);
+  }
+  
+  .widget-container:hover {
+    box-shadow: 0 4px 15px var(--widget-shadow-color-hover);
+  }
+  
+  .widget-drag-handle {
+    background: var(--widget-drag-handle-bg);
+  }
+  
+  .widget-drag-handle:hover {
+    background: var(--widget-drag-handle-bg-hover);
+  }
+  
+  .widget-item {
+    background-color: var(--widget-bg-color);
+  }
+  
+  .widget-indicator {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .widget-indicator:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .widget-indicator.active {
+    background-color: var(--primary-color);
+  }
+  
+  .widget-resize-handle {
+    background: linear-gradient(135deg, transparent 50%, var(--primary-color) 50%);
+    opacity: 0.6;
+  }
+  
+  .widget-resize-handle:hover {
+    opacity: 1;
+  }
+  
+  .context-menu-item.danger-item {
+    color: var(--widget-danger-color);
+  }
+  
+  .context-menu-item.danger-item:hover {
+    background-color: rgba(211, 47, 47, 0.2);
+  }
+}

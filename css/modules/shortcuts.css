@@ -136,3 +136,66 @@
   border: 2px dashed #ccc;
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* 深色模式快捷方式样式 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --container-background: rgba(50, 50, 50, 0.7);
+    --shortcut-background: rgba(255, 255, 255, 0.9);
+    --shortcut-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    --shortcut-hover-shadow: 0 0 15px rgba(58, 160, 255, 0.6);
+    --text-color: #333;
+  }
+  
+  #shortcut-list {
+    background: var(--container-background);
+  }
+  
+  .shortcut-button {
+    background-color: var(--shortcut-background);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: var(--shortcut-shadow);
+    color: var(--text-color);
+  }
+  
+  .shortcut-button:hover, 
+  .shortcut-button:focus {
+    background-color: var(--primary-color);
+    color: white;
+    box-shadow: var(--shortcut-hover-shadow);
+    transform: scale(1.1);
+  }
+  
+  /* 调整图标亮度 */
+  .shortcut-button img {
+    filter: brightness(0.8) contrast(1.2);
+  }
+  
+  .shortcut-title {
+    color: inherit;
+    text-shadow: none;
+  }
+  
+  .bookmark {
+    background: rgba(40, 40, 40, 0.8);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+  }
+  
+  .bookmark:hover {
+    box-shadow: 0 0 15px rgba(58, 160, 255, 0.5);
+  }
+  
+  .bookmark-title {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .add-bookmark {
+    background: rgba(58, 160, 255, 0.15);
+    border-color: var(--primary-color);
+  }
+  
+  .bookmark-placeholder {
+    background-color: rgba(58, 160, 255, 0.2);
+    border: 2px dashed rgba(58, 160, 255, 0.5);
+  }
+}

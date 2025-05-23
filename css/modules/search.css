@@ -182,3 +182,73 @@
 .search-engine-add:hover {
   background-color: var(--menu-active-bg);
 }
+
+/* 深色模式搜索相关样式 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --search-bg-color: rgba(30, 30, 30, 0.8);
+    --search-bg-hover: rgba(40, 40, 40, 0.9);
+    --search-border-color: rgba(255, 255, 255, 0.1);
+    --search-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --search-shadow-hover: 0 4px 15px rgba(0, 0, 0, 0.4);
+    --search-focus-shadow: 0 0 0 2px rgba(58, 160, 255, 0.4);
+    --btn-hover-bg: rgba(255, 255, 255, 0.1);
+    --menu-bg: #2a2a2a;
+    --menu-active-bg: #3a3a3a;
+    --menu-border: #444;
+    --text-color: rgba(255, 255, 255, 0.9);
+    --icon-color: #aaa;
+  }
+  
+  #search-box {
+    background: var(--search-bg-color);
+    border-color: var(--search-border-color);
+    box-shadow: var(--search-shadow);
+  }
+  
+  #search-box:hover {
+    background: var(--search-bg-hover);
+    box-shadow: var(--search-shadow-hover);
+  }
+  
+  #search-box:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: var(--search-focus-shadow);
+  }
+  
+  #engine-button:hover {
+    background-color: var(--btn-hover-bg);
+  }
+  
+  #search-input {
+    color: var(--text-color);
+  }
+  
+  #search-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .search-engine-menu {
+    background: var(--menu-bg);
+    border: 1px solid var(--search-border-color);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+  
+  .search-engine-item {
+    color: var(--text-color);
+  }
+  
+  .search-engine-item:hover,
+  .search-engine-item.active {
+    background-color: var(--menu-active-bg);
+  }
+  
+  .search-engine-add {
+    border-top: 1px solid var(--menu-border);
+    color: var(--text-color);
+  }
+  
+  .search-engine-add:hover {
+    background-color: var(--menu-active-bg);
+  }
+}

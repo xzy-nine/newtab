@@ -5,7 +5,6 @@
 @import 'modules/shortcuts.css';  /* 快捷方式按钮相关样式 */
 @import 'modules/modals.css';     /* 模态框相关样式 */
 @import 'modules/widgets.css';    /* 小部件系统相关样式 */
-@import 'darkMode.css';           /* 暗黑模式相关样式 */
 @import 'responsive.css';         /* 响应式设计相关样式 */
 @import url('./modules/loading-notification.css'); /* 加载，通知样式 */
 @import 'modules/widgets/counter-widget.css';      /* 计数器小部件样式 */
@@ -318,4 +317,81 @@ input:-webkit-autofill:active {
 @keyframes fade-in-out {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
+}
+
+/* ===== 深色模式全局变量 ===== */
+@media (prefers-color-scheme: dark) {
+  /* 根变量调整 */
+  :root {
+    --primary-color: #3aa0ff;
+    --secondary-color: rgba(255, 255, 255, 0.5);
+    --background-color: #1a1a1a;
+    --text-color: rgba(255, 255, 255, 0.9);
+    --light-bg: #333;
+    --light-border: #444;
+    --overlay-color: rgba(0, 0, 0, 0.4);
+  }
+  
+  /* 背景容器深色模式 */
+  #background-container {
+    filter: brightness(0.85);
+  }
+
+  #background-overlay {
+    display: block !important;
+    background-color: rgba(0, 0, 0, 0.4) !important;
+  }
+  
+  /* 背景按钮深色模式 */
+  #background-button {
+    background: var(--primary-color);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  }
+  
+  #background-button:hover {
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3), 0 0 15px var(--primary-color);
+  }
+  
+  /* 加载指示器深色模式 */
+  #loading-overlay {
+    background-color: rgba(30, 30, 30, 0.95);
+  }
+  
+  #loading-progress {
+    background-color: #333;
+  }
+  
+  #loading-message {
+    color: #ddd;
+  }
+  
+  #loading-screen {
+    background: rgba(30, 30, 30, 0.7);
+  }
+  
+  #loading-progress-bar {
+    background-color: var(--primary-color);
+    box-shadow: 0 0 8px var(--primary-color);
+  }
+  
+  /* 滚动条深色模式 */
+  ::-webkit-scrollbar-track {
+    background: rgba(40, 40, 40, 0.5);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(100, 100, 100, 0.5);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(120, 120, 120, 0.7);
+  }
+  
+  /* 文本选择深色模式 */
+  ::selection {
+    background: var(--primary-color);
+    color: white;
+  }
 }

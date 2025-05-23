@@ -232,3 +232,22 @@
 .segment.active {
   opacity: 1;
 }
+
+/* 深色模式时钟样式 */
+@media (prefers-color-scheme: dark) {
+  .time {
+    color: rgba(255, 255, 255, 0.9);
+    -webkit-text-stroke-color: rgba(0, 0, 0, 0.3);
+  }
+  
+  .segment {
+    background-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 10px rgba(58, 160, 255, 0.7), 0 0 20px rgba(58, 160, 255, 0.3);
+  }
+  
+  .split::before, 
+  .split::after {
+    background-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 5px rgba(58, 160, 255, 0.7), 0 0 10px rgba(58, 160, 255, 0.3);
+  }
+}

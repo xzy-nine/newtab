@@ -248,3 +248,119 @@
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
+
+/* 深色模式通知样式 */
+@media (prefers-color-scheme: dark) {
+  .notification {
+    background-color: #2a2a2a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 400;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  
+  .notification-title {
+    color: #fff;
+    font-weight: 600;
+  }
+  
+  .notification-message {
+    color: #eee;
+  }
+  
+  .notification.loading-notification {
+    background-color: #2a2a2a;
+  }
+  
+  .notification-loading-message {
+    color: #eee;
+  }
+  
+  .mini-progress {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+  
+  .mini-loader-spinner {
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top: 2px solid var(--primary-color);
+  }
+  
+  .notification-loading-bar {
+    background: linear-gradient(90deg, var(--primary-color), #64b5ff);
+  }
+  
+  .notification-copy {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  .notification-copy:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+  
+  .notification-copy.copied {
+    color: #4caf50;
+  }
+  
+  .notification-info { border-left-color: #4a90e2; }
+  .notification-success { border-left-color: #2ecc71; }
+  .notification-warning { border-left-color: #f39c12; }
+  .notification-error { border-left-color: #e74c3c; }
+  .notification-confirm { background-color: #2a2a2a; }
+  
+  .notification-actions {
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  
+  .notification-button {
+    background-color: #3a3a3a;
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid #555;
+  }
+  
+  .notification-button:hover {
+    background-color: #4a4a4a;
+  }
+  
+  .notification-button.primary {
+    background-color: var(--primary-color);
+    border-color: transparent;
+    color: white;
+  }
+  
+  .notification-button.primary:hover {
+    box-shadow: 0 0 8px var(--primary-color);
+  }
+  
+  /* 强制覆盖通知样式 */
+  html body .notification,
+  html body .notification.loading-notification,
+  html body .notification.loading-notification .loading-content {
+    background-color: #2a2a2a !important;
+  }
+  
+  html body .notification-content,
+  html body .notification-actions,
+  html body .notification-confirm {
+    background-color: #2a2a2a !important;
+  }
+  
+  html body .notification-title {
+    color: #fff !important;
+  }
+  
+  html body .notification-message,
+  html body .notification-loading-message,
+  html body #loading-message {
+    color: #eee !important;
+  }
+  
+  html body .mini-loader-spinner {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    border-top-color: var(--primary-color) !important;
+  }
+  
+  html body .compact-loading {
+    background: rgba(40, 40, 40, 0.9) !important;
+  }
+}

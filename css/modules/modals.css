@@ -288,3 +288,53 @@
   font-size: 14px;
   padding: var(--spacing-md);
 }
+
+/* 深色模式模态框样式 */
+@media (prefers-color-scheme: dark) {
+  .modal-content {
+    background-color: #2a2a2a;
+    color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  }
+  
+  .form-group label {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .form-group input, 
+  .form-group textarea {
+    background-color: #333;
+    border-color: #444;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .form-group input:focus, 
+  .form-group textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(58, 160, 255, 0.3);
+  }
+  
+  .context-menu,
+  #bookmark-modal .image-preview,
+  #icon-selector-modal .icon-option {
+    background-color: #2a2a2a;
+    border-color: #444;
+  }
+  
+  .context-menu-item {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .context-menu-item:hover {
+    background-color: #3a3a3a;
+  }
+  
+  #icon-selector-modal .icon-grid {
+    background-color: #333;
+  }
+  
+  #icon-selector-modal .icon-option:hover {
+    border-color: var(--primary-color);
+    background-color: #2a3f5a;
+  }
+}
