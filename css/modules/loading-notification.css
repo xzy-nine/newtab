@@ -1,82 +1,61 @@
-/* 加载通知样式 */
-.notification.loading-notification {
-  width: 250px;
-  background-color: white;
-  border-left: 3px solid var(--primary-color, #0078d4);
+/* 变量定义层 */
+:root {
+  /* 颜色变量 */
+  --primary-color: #0078d4;
+  --primary-light: #42a5f5;
+  --success-color: #34a853;
+  --success-light: #64dd17;
+  --error-color: #f44336;
+  --warning-color: #fbbc05;
+  --neutral-color: #eaeaea;
+  
+  /* 尺寸与间距 */
+  --notification-width: 220px;
+  --notification-padding: 10px;
+  --border-radius: 4px;
+  --loader-size: 24px;
+  --progress-height: 4px;
+  
+  /* 动画与过渡 */
+  --transition-speed: 0.3s;
+  --animation-duration: 1.8s;
+  
+  /* 阴影 */
+  --shadow-default: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-strong: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.notification.loading-notification .loading-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 5px 0;
-}
-
-/* 小型加载动画 */
-.mini-loader-spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid rgba(0, 120, 212, 0.2);
-  border-top: 2px solid var(--primary-color, #0078d4);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
-/* 小型进度条 */
-.mini-progress {
-  width: 100%;
-  height: 4px;
-  background-color: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-  position: relative;
-}
-
-.notification-loading-bar {
-  width: 0; /* 初始宽度 */
-  height: 100%;
-  background: linear-gradient(90deg, #0078d4, #42a5f5);
-  border-radius: 2px;
-  transition: width 0.5s cubic-bezier(0.1, 0.7, 1.0, 0.1);
-}
-
-.notification-loading-message {
-  font-size: 12px;
-  color: #555;
-  text-align: center;
-  min-height: 16px;
-  animation: fade-in-out 1.8s infinite;
-  letter-spacing: 0.2px;
-}
-
-/* 加载完成样式 */
-.notification.loading-notification.load-complete #loading-progress-bar {
-  background: linear-gradient(90deg, #00c853, #64dd17);
-  transition: all 0.3s ease;
-}
-
-/* 通知系统通用样式 */
+/* 组件基础层 - 通知系统基础样式 */
 .notification {
   position: fixed;
   top: 20px;
   left: 20px;
-  width: 220px;
+  width: var(--notification-width);
   background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-default);
   overflow: hidden;
   z-index: 3000;
-  transform: translateY(-100%); /* 初始位置在屏幕外 */
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transform: translateY(-100%);
+  transition: transform var(--transition-speed) ease, opacity var(--transition-speed) ease;
   opacity: 0;
-  border-left: 3px solid #eaeaea;
+  border-left: 3px solid var(--neutral-color);
 }
 
 .notification.visible {
-  transform: translateY(0); /* 显示位置 */
+  transform: translateY(0);
   opacity: 0.95;
 }
+
+.notification-content {
+  padding: var(--notification-padding);
+}
+
+/* 通知类型 */
+.notification-info { border-left-color: var(--neutral-color); }
+.notification-error { border-left-color: var(--error-color); }
+.notification-warning { border-left-color: var(--warning-color); }
+.notification-success { border-left-color: var(--success-color); }
 
 /* 通知位置调整 */
 .notification-offset-0 { top: 20px; }
@@ -86,10 +65,7 @@
 .notification-offset-4 { top: 300px; }
 .notification-offset-5 { top: 370px; }
 
-.notification-content {
-  padding: 10px;
-}
-
+/* 通知内容结构 */
 .notification-header {
   display: flex;
   justify-content: space-between;
@@ -118,16 +94,73 @@
   margin: 0;
 }
 
-/* 通知类型 */
-.notification-info { border-left-color: #eaeaea; }
-.notification-error { border-left-color: #f44336; }
-.notification-warning { border-left-color: #fbbc05; }
-.notification-success { border-left-color: #34a853; }
+/* 子组件层 - 加载通知特有样式 */
+.notification.loading-notification {
+  width: 250px;
+  background-color: white;
+  border-left: 3px solid var(--primary-color);
+}
 
-/* 确认通知 */
+.notification.loading-notification .loading-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+/* 加载动画元素 */
+.mini-loader-spinner {
+  width: var(--loader-size);
+  height: var(--loader-size);
+  border: 2px solid rgba(0, 120, 212, 0.2);
+  border-top: 2px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+/* 进度条 */
+.mini-progress {
+  width: 100%;
+  height: var(--progress-height);
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.notification-loading-bar {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+}
+
+.notification-loading-message {
+  font-size: 12px;
+  color: #555;
+  text-align: center;
+  min-height: 16px;
+  animation: fade-in-out var(--animation-duration) infinite;
+  letter-spacing: 0.2px;
+}
+
+/* 加载完成状态 */
+.notification.loading-notification.load-complete #loading-progress-bar {
+  background: linear-gradient(90deg, var(--success-color), var(--success-light));
+  transition: all var(--transition-speed) ease;
+}
+
+/* 交互状态层 */
+#loading-message {
+  transition: opacity 0.2s;
+}
+
+/* 确认通知样式 */
 .notification-confirm {
   width: 300px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-strong);
 }
 
 .notification-actions {
@@ -138,12 +171,35 @@
   margin-bottom: 24px;
 }
 
-/* 通知消息的不透明度过渡 */
-#loading-message {
-  transition: opacity 0.2s;
+/* 复制按钮状态 */
+.notification-copy {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(0.6);
 }
 
-/* 简洁加载提示 */
+.notification-copy:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.notification-copy.copied {
+  opacity: 1;
+  color: var(--success-color);
+}
+
+/* 简洁加载提示 - 变体样式 */
 .compact-loading {
   position: fixed;
   top: 20px;
@@ -182,34 +238,7 @@
   height: 5px;
 }
 
-/* 复制按钮样式 */
-.notification-copy {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 3px;
-  opacity: 0.6;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform: scale(0.6); /* 整体缩小尺寸 */
-}
-
-.notification-copy:hover {
-  opacity: 1;
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.notification-copy.copied {
-  opacity: 1;
-  color: #4caf50;
-}
-
+/* 动画定义 */
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -219,6 +248,3 @@
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
-
-
-

@@ -1,10 +1,135 @@
-/* 计时器小部件样式 */
+/* ===== 1. 颜色系统与主题变量 ===== */
+/* 颜色系统 - 极简基础色板 */
+:root {
+    /* 基础色 - 每种色调只保留关键色值 */
+    --color-white: #fff;
+    --color-black: #212121;
+    
+    /* 绿色 - 只保留2个关键色阶 */
+    --color-green: #4caf50;  /* 主绿 */
+    --color-green-dark: #388e3c;  /* 深绿 */
+    
+    /* 红色 - 只保留2个关键色阶 */
+    --color-red: #f44336;    /* 主红 */
+    --color-red-dark: #c62828;    /* 深红 */
+    
+    /* 蓝色 - 精简为1个 */
+    --color-blue: #0078d4;
+    
+    /* 灰度 - 精简为4个关键色阶 */
+    --color-gray-100: #f5f5f5;   /* 最浅灰 */
+    --color-gray-300: #bdbdbd;   /* 中灰 */
+    --color-gray-500: #424242;   /* 深灰 */
+    --color-gray-700: #282828;   /* 近黑灰 */
+    
+    /* 文本颜色 - 基本明暗对比 */
+    --color-text-light: #333;
+    --color-text-dark: #e0e0e0;
+    
+    /* 透明色 - 保留必要透明度 */
+    --trans-light: 0.1;    /* 浅色透明度 */
+    --trans-dark: 0.3;     /* 深色透明度 */
+
+    /* ===== 语义变量 ===== */
+    
+    /* 默认为亮色模式 */
+    --bg-primary: var(--color-white);
+    --bg-secondary: var(--color-gray-100);
+    --bg-hover: var(--color-gray-300);
+    
+    --text-primary: var(--color-text-light);
+    --text-secondary: rgba(51, 51, 51, 0.7);
+    
+    --accent: var(--color-green);
+    --accent-dark: var(--color-green-dark);
+    --danger: var(--color-red);
+    --danger-dark: var(--color-red-dark);
+    --info: var(--color-blue);
+    
+    --control-bg: var(--color-gray-100);
+    --control-bg-hover: var(--color-gray-300);
+    
+    --shadow: rgba(0, 0, 0, var(--trans-light));
+    --control-overlay: rgba(0, 0, 0, var(--trans-light));
+    
+    --text-on-accent: var(--color-white);
+    
+    /* 特殊颜色 */
+    --separator-color: var(--accent);
+    --ms-color: var(--accent);
+}
+
+/* ===== 2. 主题模式 ===== */
+/* 深色模式颜色变量 - 自动切换 */
+@media (prefers-color-scheme: dark) {
+    :root {
+        /* 深色模式基础变量 */
+        --bg-primary: var(--color-black);
+        --bg-secondary: var(--color-black);  /* 使用相同的背景色 */
+        --bg-hover: var(--color-gray-500);
+        --bg-active: #616161;
+        
+        --text-primary: var(--color-text-dark);
+        --text-secondary: rgba(224, 224, 224, 0.7);
+        
+        --accent: var(--color-green-dark);
+        --accent-dark: var(--color-green);
+        --danger: var(--color-red-dark);
+        --danger-dark: var(--color-red);
+        
+        --control-bg: var(--color-gray-500);
+        --control-bg-hover: var(--color-gray-300);
+        
+        --shadow: rgba(0, 0, 0, var(--trans-dark));
+        --control-overlay: rgba(255, 255, 255, var(--trans-light));
+        
+        /* 特殊颜色 */
+        --separator-color: #66bb6a;
+        --ms-color: #81c784;
+    }
+}
+
+/* 媒体查询系统深色模式 */
+@media (prefers-color-scheme: dark) {
+    :root {
+        /* 深色模式颜色 */
+        --bg-primary: #212121;
+        --bg-secondary: #212121;  /* 统一为相同背景色 */
+        --bg-hover: #3d3d3d;
+        --bg-active: #616161;
+        
+        --text-primary: #e0e0e0;
+        --text-secondary: #bdbdbd;
+        
+        --accent-green: #388e3c;
+        --accent-green-dark: #2e7d32;
+        --accent-green-darker: #1b5e20;
+        --accent-green-light: rgba(76, 175, 80, 0.5);
+        
+        --accent-red: #c62828;
+        --accent-red-dark: #b71c1c;
+        --accent-red-darker: #8e0000;
+        
+        --control-bg: #424242;
+        --control-bg-hover: #616161;
+        
+        --shadow: rgba(0, 0, 0, 0.3);
+        --control-overlay: rgba(255, 255, 255, 0.15);
+        
+        /* 特殊颜色 */
+        --separator-color: #66bb6a;
+        --ms-color: #81c784;
+    }
+}
+
+/* ===== 3. 计时器基础布局 ===== */
+/* 计时器小部件基础容器 */
 .timer-widget {
     font-family: Arial, sans-serif;
     padding: 8px;
-    background-color: #fff;
+    background-color: var(--bg-primary);
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px var(--shadow);
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -21,16 +146,17 @@
     font-size: 14px;
     text-align: center;
     margin: 0 auto;
-    color: #333;
+    color: var(--text-primary);
 }
 
+/* ===== 4. 时间显示区域 ===== */
 /* 显示时间区域 */
 .timer-display {
     font-size: 28px;
     font-weight: bold;
     text-align: center;
     padding: 8px 0;
-    background-color: #f5f5f5;
+    background-color: var(--bg-secondary);
     border-radius: 4px;
     margin-bottom: 6px;
     font-family: 'Courier New', monospace;
@@ -39,6 +165,7 @@
     align-items: center;
     justify-content: center;
     height: 42px;
+    color: var(--info);
 }
 
 /* 数字容器 */
@@ -58,24 +185,21 @@
     transition: background-color 0.2s, color 0.2s;
     text-align: center;
     width: 18px;
+    border-color: var(--bg-primary);
+    outline: none;
+    box-shadow: none;
 }
 
 .time-digit:hover {
-    background-color: #e0e0e0;
+    background-color: var(--bg-hover);
     border-radius: 3px;
 }
 
 .time-digit.editing {
-    background-color: #4caf50;
-    color: white;
+    background-color: var(--accent);
+    color: var(--text-on-accent);
     border-radius: 3px;
     animation: blink 1s infinite;
-}
-
-@keyframes blink {
-    50% {
-        opacity: 0.5;
-    }
 }
 
 /* 毫秒样式调整 */
@@ -84,6 +208,7 @@
     position: relative;
     top: -3px;
     margin-left: 2px;
+    color: var(--ms-color);
 }
 
 /* 分隔符样式 */
@@ -92,11 +217,20 @@
     margin: 0 1px;
     width: 6px;
     text-align: center;
-    line-height: 28px; /* 与时间数字高度对齐 */
+    line-height: 28px;
     vertical-align: middle;
-    transform: translateX(-1px); /* 向左移动1像素 */
+    transform: translateX(-1px);
+    color: var(--separator-color);
 }
 
+/* ===== 5. 动画效果 ===== */
+@keyframes blink {
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ===== 6. 控制按钮 ===== */
 /* 主按钮 */
 .timer-main-btn {
     padding: 6px 0;
@@ -110,37 +244,37 @@
 }
 
 .timer-btn-start {
-    background-color: #4caf50;
-    color: white;
+    background-color: var(--accent);
+    color: var(--text-on-accent);
 }
 
 .timer-btn-pause {
-    background-color: #f44336;
-    color: white;
+    background-color: var(--danger);
+    color: var(--text-on-accent);
 }
 
 .timer-btn-start:hover {
-    background-color: #388e3c;
+    background-color: var(--accent-dark);
 }
 
 .timer-btn-pause:hover {
-    background-color: #d32f2f;
+    background-color: var(--danger-dark);
 }
 
 /* 重置按钮 */
 .timer-reset-btn {
     padding: 6px 8px;
-    background-color: #e0e0e0;
+    background-color: var(--control-bg);
     border: none;
     border-radius: 8px;
     cursor: pointer;
     font-size: 12px;
     min-width: 36px;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .timer-reset-btn:hover {
-    background-color: #bdbdbd;
+    background-color: var(--control-bg-hover);
 }
 
 /* 紧凑布局的控制区域 */
@@ -150,6 +284,7 @@
     margin-bottom: 6px;
 }
 
+/* ===== 7. 数字调节控件 ===== */
 /* 数字上下调节控件 */
 .digit-controls {
     position: absolute;
@@ -170,13 +305,14 @@
     transition: all 0.2s;
     height: 16px;
     line-height: 16px;
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: var(--control-overlay);
     width: 100%;
     text-align: center;
     border-radius: 3px 3px 0 0;
     position: absolute;
     top: -16px;
     left: 0;
+    color: var(--text-primary);
 }
 
 .digit-down {
@@ -187,22 +323,38 @@
     transition: all 0.2s;
     height: 16px;
     line-height: 16px;
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: var(--control-overlay);
     width: 100%;
     text-align: center;
     border-radius: 0 0 3px 3px;
     position: absolute;
     bottom: -16px;
     left: 0;
+    color: var(--text-primary);
 }
 
 .digit-up:hover, .digit-down:hover {
     opacity: 1;
-    background-color: rgba(76, 175, 80, 0.3);
+    background-color: var(--accent);
+    color: var(--text-on-accent);
 }
 
-/* 响应式调整 */
+/* ===== 8. 响应式布局 ===== */
+/* 中等屏幕 */
 @media (max-width: 180px) {
+    /* 基础组件响应式 */
+    .timer-widget {
+        padding: 6px;
+    }
+    
+    .timer-header {
+        margin-bottom: 4px;
+    }
+    
+    .timer-title {
+        font-size: 13px;
+    }
+    
     .timer-main-btn {
         padding: 5px 0;
         font-size: 12px;
@@ -217,6 +369,7 @@
     .timer-display {
         font-size: 24px;
         height: 36px;
+        padding: 6px 0;
     }
 
     .timer-display .ms-part {
@@ -232,18 +385,29 @@
     }
     
     .time-separator {
-        line-height: 24px; /* 小屏幕时的冒号对齐 */
+        line-height: 24px; 
         transform: translateX(-1px);
     }
 }
 
+/* 小屏幕 */
 @media (max-width: 140px) {
+    /* 更小屏幕的响应式 */
+    :root {
+        /* 深色模式下统一背景色 */
+        --bg-secondary: var(--bg-primary);
+    }
+    
     .timer-widget {
         padding: 5px;
     }
     
     .timer-header {
         margin-bottom: 3px;
+    }
+    
+    .timer-title {
+        font-size: 12px;
     }
     
     .timer-display {
@@ -266,10 +430,6 @@
         padding: 4px;
         font-size: 10px;
         min-width: 24px;
-    }
-    
-    .timer-title {
-        font-size: 12px;
     }
     
     .time-digit {
@@ -295,7 +455,7 @@
     }
     
     .time-separator {
-        line-height: 20px; /* 更小屏幕时的冒号对齐 */
+        line-height: 20px;
         transform: translateX(-0.5px);
     }
 }

@@ -1,71 +1,81 @@
 /* 小部件系统样式 */
 
-/* 小部件容器 */
+/* 1. 变量定义层 */
+:root {
+  /* 颜色系统 */
+  --widget-bg-color: rgba(255, 255, 255, 0.8);
+  --widget-shadow-color: rgba(0, 0, 0, 0.15);
+  --widget-shadow-color-hover: rgba(0, 0, 0, 0.3);
+  --widget-shadow-color-active: rgba(0, 0, 0, 0.4);
+  --widget-drag-handle-bg: linear-gradient(to right, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));
+  --widget-drag-handle-bg-hover: linear-gradient(to right, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
+  --widget-drag-handle-bg-fixed: linear-gradient(to right, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.02));
+  --widget-primary-color: #0078d4;
+  --widget-primary-color-hover: #0066cc;
+  --widget-danger-color: #d32f2f;
+  --widget-indicator-color: rgba(0, 0, 0, 0.3);
+  --widget-indicator-color-hover: rgba(0, 0, 0, 0.6);
+  --widget-resize-handle-color: rgba(0, 120, 212, 0.5);
+  --widget-resize-handle-color-hover: rgba(0, 120, 212, 0.8);
+  
+  /* 尺寸和间距 */
+  --widget-min-width: 150px;
+  --widget-min-height: 80px;
+  --widget-border-radius: 8px;
+  --widget-padding: 10px;
+  --widget-drag-handle-width: 10px;
+  --widget-drag-handle-width-hover: 15px;
+  
+  /* 动画与过渡 */
+  --widget-transition-normal: 0.3s;
+  --widget-transition-quick: 0.2s;
+}
+
+/* 2. 主要组件层 */
+/* 小部件容器基础样式 */
 .widget-container {
   position: absolute;
-  min-width: 150px;
-  min-height: 80px;
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  min-width: var(--widget-min-width);
+  min-height: var(--widget-min-height);
+  background-color: var(--widget-bg-color);
+  border-radius: var(--widget-border-radius);
+  box-shadow: 0 2px 10px var(--widget-shadow-color);
   display: flex;
   overflow: hidden;
-  transition: box-shadow 0.3s;
+  transition: box-shadow var(--widget-transition-normal);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
 }
 
-/* 拖动时临时提高层级，确保可见 */
-.widget-container.widget-dragging {
-  opacity: 0.8;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  cursor: move;
-  transition: none; /* 拖动时禁用过渡效果，使移动更流畅 */
-}
-
-/* 拖动中的小部件样式 */
-.widget-dragging {
-  opacity: 0.85;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
-  pointer-events: auto !important;
-  transition: none !important;
-}
-
-/* 拖动条样式 - 修复可见性和交互性 */
+/* 小部件拖动条 */
 .widget-drag-handle {
-    width: 10px;
-    height: 100%;
-    cursor: move;
-    background: linear-gradient(to right, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));
-    transition: background-color 0.2s, width 0.3s;
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 10; /* 提高 z-index 确保可以点击 */
-    pointer-events: auto; /* 确保接收鼠标事件 */
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--widget-drag-handle-width);
+  height: 100%;
+  background: var(--widget-drag-handle-bg);
+  cursor: move;
+  transition: background-color var(--widget-transition-quick), width var(--widget-transition-normal);
+  z-index: 10;
+  pointer-events: auto;
 }
 
-.widget-drag-handle:hover {
-    background: linear-gradient(to right, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
-    width: 15px;
-}
-
-/* 内容包装器 */
+/* 内容布局 */
 .widget-content-wrapper {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    margin-left: 10px; /* 为拖动条留出空间 */
-    margin-right: 5px;
-    margin-bottom: 5px;
-    overflow: hidden;
-    height: 100%;
-    box-sizing: border-box;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  margin-left: var(--widget-drag-handle-width);
+  margin-right: 5px;
+  margin-bottom: 5px;
+  overflow: hidden;
+  height: 100%;
+  box-sizing: border-box;
 }
 
-/* 内容区域调整 */
 .widget-content {
   display: flex !important;
   justify-content: center !important;
@@ -74,35 +84,13 @@
   height: 100% !important;
   flex-direction: column;
   overflow: hidden;
-  padding: 10px;
-  padding-bottom: 25px; /* 为指示器留出空间 */
+  padding: var(--widget-padding);
+  padding-bottom: 25px;
   position: relative;
   box-sizing: border-box;
 }
 
-/* 添加按钮 */
-.widget-add-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: var(--primary-color);
-  color: white;
-  font-size: 24px;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.2s, background-color 0.2s;
-  margin: 10px auto;
-}
-
-.widget-add-button:hover {
-  transform: scale(1.1);
-  background-color: #0066cc;
-}
-
-/* 小部件项 */
+/* 3. 小部件项目层 */
 .widget-item {
   display: flex !important;
   justify-content: center !important;
@@ -110,16 +98,16 @@
   width: 100% !important;
   height: 100% !important;
   text-align: center !important;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: var(--widget-bg-color);
   border-radius: 6px;
-  padding: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  padding: var(--widget-padding);
+  box-shadow: 0 1px 4px var(--widget-shadow-color);
   position: absolute;
   top: 0;
   left: 0;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  transition: opacity var(--widget-transition-normal) ease, visibility var(--widget-transition-normal) ease;
   z-index: 1;
   box-sizing: border-box;
 }
@@ -128,18 +116,51 @@
   margin: auto !important;
 }
 
-/* 活动状态小部件 */
-.widget-item.active-widget {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* 小部件项右键菜单触发区域 */
 .widget-item:not(.widget-functional-area) {
   cursor: context-menu;
 }
 
-/* 小部件固定按钮（图钉） */
+/* 小部件状态指示器 */
+.widget-indicators {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  height: 20px;
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  padding: 5px 0;
+  z-index: 5;
+}
+
+.widget-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--widget-indicator-color);
+  cursor: pointer;
+  transition: all var(--widget-transition-normal) ease;
+}
+
+/* 控制元素 */
+.widget-add-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--widget-primary-color);
+  color: white;
+  font-size: 24px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform var(--widget-transition-quick), background-color var(--widget-transition-quick);
+  margin: 10px auto;
+}
+
 .widget-pin-button {
   position: absolute;
   top: 5px;
@@ -155,8 +176,33 @@
   cursor: pointer;
   font-size: 16px;
   z-index: 3;
-  transition: transform 0.2s, opacity 0.3s;
+  transition: transform var(--widget-transition-quick), opacity var(--widget-transition-normal);
   opacity: 0.7;
+}
+
+.widget-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 15px;
+  height: 15px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, var(--widget-resize-handle-color) 50%);
+  border-radius: 0 0 5px 0;
+  z-index: 10;
+  transition: opacity var(--widget-transition-normal);
+  opacity: 0.7;
+}
+
+/* 4. 状态层 - 悬停状态 */
+.widget-drag-handle:hover {
+  background: var(--widget-drag-handle-bg-hover);
+  width: var(--widget-drag-handle-width-hover);
+}
+
+.widget-add-button:hover {
+  transform: scale(1.1);
+  background-color: var(--widget-primary-color-hover);
 }
 
 .widget-pin-button:hover {
@@ -164,28 +210,63 @@
   transform: scale(1.2);
 }
 
-/* 固定状态的小部件容器 */
+.widget-indicator:hover {
+  background-color: var(--widget-indicator-color-hover);
+}
+
+.widget-resize-handle:hover {
+  opacity: 1;
+  background: linear-gradient(135deg, transparent 50%, var(--widget-resize-handle-color-hover) 50%);
+}
+
+/* 5. 状态层 - 激活状态 */
+.widget-item.active-widget {
+  opacity: 1;
+  visibility: visible;
+}
+
+.widget-indicator.active {
+  background-color: var(--widget-primary-color);
+  transform: scale(1.2);
+}
+
+/* 6. 状态层 - 拖动状态 */
+.widget-container.widget-dragging {
+  opacity: 0.8;
+  box-shadow: 0 5px 15px var(--widget-shadow-color-hover);
+  cursor: move;
+  transition: none;
+}
+
+.widget-dragging {
+  opacity: 0.85;
+  box-shadow: 0 8px 20px var(--widget-shadow-color-active) !important;
+  pointer-events: auto !important;
+  transition: none !important;
+}
+
+.widget-container.widget-resizing {
+  opacity: 0.8;
+  transition: none;
+}
+
+/* 7. 状态层 - 固定状态 */
 .widget-container.widget-fixed {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px var(--widget-shadow-color);
   border: 1px solid rgba(0, 50, 200, 0.2);
 }
 
 .widget-container.widget-fixed .widget-pin-button {
   opacity: 1;
-  color: #0066cc;
+  color: var(--widget-primary-color-hover);
 }
 
-/* 固定状态时不隐藏拖动条，但改变其样式 */
 .widget-container.widget-fixed .widget-drag-handle {
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.02));
+  background: var(--widget-drag-handle-bg-fixed);
   cursor: not-allowed;
 }
 
-.widget-container.widget-fixed .widget-content {
-  padding-left: 20px; /* 保持与非固定状态一致 */
-}
-
-/* 加载和错误状态 */
+/* 8. 特殊状态层 */
 .widget-loading, .widget-error {
   display: flex;
   flex-direction: column;
@@ -199,7 +280,7 @@
 }
 
 .widget-error {
-  color: #d32f2f;
+  color: var(--widget-danger-color);
   gap: 10px;
 }
 
@@ -216,81 +297,20 @@
   background: #e0e0e0;
 }
 
-/* 确保其他主要元素具有更高的 z-index */
-#folder-list, #shortcut-list, #search-box, .bookmark {
-  position: relative;
-}
-
-/* 指示器样式 - 修改位置确保在底部 */
-.widget-indicators {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    height: 20px;
-    margin-top: auto; /* 推到底部 */
-    margin-bottom: 2px; /* 与底部保持间距 */
-    width: 100%;
-    position: absolute; /* 绝对定位 */
-    bottom: 0; /* 固定在底部 */
-    left: 0;
-    padding: 5px 0;
-    z-index: 5; /* 确保显示在上层 */
-}
-
 .widget-indicators.hidden {
-    display: none;
+  display: none;
 }
 
-.widget-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: rgba(0, 0, 0, 0.3); /* 更改为深色，提高可见度 */
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.widget-indicator.active {
-    background-color: #0078d4; /* 活动指示器使用主题色 */
-    transform: scale(1.2);
-}
-
-.widget-indicator:hover {
-    background-color: rgba(0, 0, 0, 0.6);
-}
-
-/* 调整大小控制点 */
-.widget-resize-handle {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 15px;
-    height: 15px;
-    cursor: nwse-resize;
-    background: linear-gradient(135deg, transparent 50%, rgba(0, 120, 212, 0.5) 50%);
-    border-radius: 0 0 5px 0;
-    z-index: 10;
-    transition: opacity 0.3s;
-    opacity: 0.7;
-}
-
-.widget-resize-handle:hover {
-    opacity: 1;
-    background: linear-gradient(135deg, transparent 50%, rgba(0, 120, 212, 0.8) 50%);
-}
-
-/* 调整大小时的样式 */
-.widget-container.widget-resizing {
-    opacity: 0.8;
-    transition: none;
-}
-
-/* 为容器右键菜单中的危险操作添加样式 */
+/* 9. 菜单项样式层 */
 .context-menu-item.danger-item {
-  color: #d32f2f;
+  color: var(--widget-danger-color);
 }
 
 .context-menu-item.danger-item:hover {
   background-color: rgba(211, 47, 47, 0.1);
+}
+
+/* 10. z-index 管理层 */
+#folder-list, #shortcut-list, #search-box, .bookmark {
+  position: relative;
 }

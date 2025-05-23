@@ -554,3 +554,55 @@
   margin: 4px 0;
 }
 
+/* 小部件深色模式支持 */
+.widget-title {
+  color: #ffffff;
+}
+
+  /* 小部件容器深色模式调整 */
+  .widget-container {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  }
+
+  .widget-container:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+  }
+
+  .widget-drag-handle {
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  }
+
+  .widget-drag-handle:hover {
+    background: linear-gradient(to right, rgba(58, 160, 255, 0.3), rgba(58, 160, 255, 0.1));
+  }
+
+  .widget-item {
+    background-color: #1a1a1a;
+  }
+
+  .widget-indicator {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .widget-indicator.active {
+    background-color: var(--primary-color);
+  }
+
+  .widget-indicator:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+  }
+
+  .widget-resize-handle {
+    background: linear-gradient(135deg, transparent 50%, var(--primary-color) 50%);
+    opacity: 0.6;
+  }
+
+  .widget-resize-handle:hover {
+    opacity: 1;
+    background: linear-gradient(135deg, transparent 50%, var(--primary-color) 50%);
+  }
+
+  
+

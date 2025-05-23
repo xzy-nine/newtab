@@ -1,50 +1,100 @@
-/* 搜索框相关样式 */
+/* 变量定义层 */
+:root {
+  --search-bg-color: rgba(255, 255, 255, 0.8);
+  --search-bg-hover: rgba(255, 255, 255, 0.9);
+  --search-border-color: rgba(0, 0, 0, 0.1);
+  --search-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  --search-shadow-hover: 0 4px 15px rgba(0, 0, 0, 0.15);
+  --search-focus-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+  --btn-hover-bg: rgba(0, 0, 0, 0.05);
+  --menu-bg: white;
+  --menu-active-bg: #f0f0f0;
+  --menu-border: #eee;
+  --text-color: #333;
+  --icon-color: #999;
+  --icon-danger: #ff4d4f;
+  --blur-amount: 10px;
+  --transition-normal: 0.2s;
+  --transition-slow: 0.3s;
+}
 
-#search-box { /* 搜索框容器 */
-  width: 61%; /* 设置宽度为61% */
-  height: 48px; /* 设置高度为48px */
-  display: flex; /* 设置为弹性布局 */
-  align-items: center; /* 设置垂直居中 */
-  border: 1px solid rgba(0, 0, 0, 0.1); /* 设置边框为1px的次要颜色 */
-  border-radius: 24px; /* 设置边框圆角为24px */
-  background: rgba(255, 255, 255, 0.8); /* 设置背景颜色为半透明白色 */
-  transition: box-shadow 0.3s, background 0.3s, transform 0.2s; /* 添加背景色过渡效果 */
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* 设置阴影为10px的次要颜色 */
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+/* 组件基础层 */
+#search-box {
   position: relative;
+  display: flex;
+  align-items: center;
+  width: 61%;
+  height: 48px;
+  border: 1px solid var(--search-border-color);
+  border-radius: 24px;
+  background: var(--search-bg-color);
+  box-shadow: var(--search-shadow);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  transition: box-shadow var(--transition-slow), 
+              background var(--transition-slow), 
+              transform var(--transition-normal);
   overflow: hidden;
 }
 
-#search-box:hover { /* 当鼠标移动到搜索框容器时 */
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+#search-box:hover {
+  background: var(--search-bg-hover);
+  box-shadow: var(--search-shadow-hover);
 }
 
 #search-box:focus-within {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+  box-shadow: var(--search-focus-shadow);
   transform: translateY(-2px);
 }
 
-#engine-button { /* 搜索引擎切换按钮 */
-  width: 40px; /* 设置宽度为40px */
-  height: 40px; /* 设置高度为40px */
-  flex-shrink: 0;
-  border: none; /* 设置无边框 */
-  border-radius: 50%; /* 设置边框圆角为50% */
-  background: transparent; /* 设置背景颜色为透明 */
-  cursor: pointer; /* 设置鼠标样式为指针 */
+/* 子组件层：搜索表单 */
+.search-form-container {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+}
+
+#search-input {
+  flex: 1;
+  height: 100%;
+  padding: 0 15px 0 0;
+  margin-right: 15px;
+  border: none;
+  border-radius: 24px;
+  background: transparent;
+  color: var(--text-color);
+  font-size: 16px;
+  font-family: var(--font-family);
+  transition: background var(--transition-slow);
+  cursor: text;
+  outline: none;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* 子组件层：搜索引擎按钮 */
+#engine-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  width: 40px;
+  height: 40px;
   margin-left: 6px;
-  transition: background-color 0.2s, transform 0.2s;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--transition-normal), 
+              transform var(--transition-normal);
 }
 
 #engine-button:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--btn-hover-bg);
   transform: scale(1.1);
 }
 
@@ -52,90 +102,49 @@
   transform: scale(0.95);
 }
 
-#engine-icon { /* 搜索引擎图标 */
-  width: 24px; /* 设置宽度为24% */
-  height: 24px; /* 设置高度为24px */
+#engine-icon {
+  width: 24px;
+  height: 24px;
   object-fit: contain;
-  transition: transform 0.3s;
+  transition: transform var(--transition-slow);
 }
 
 #engine-button:hover #engine-icon {
   transform: rotate(15deg);
 }
 
-/* 搜索表单容器 */
-.search-form-container {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  align-items: center;
-}
-
-#search-input { /* 搜索框输入框 */
-  flex: 1; /* 使用flex:1让输入框占据所有剩余空间 */
-  height: 100%; /* 设置高度为100% */
-  border: none; /* 设置无边框 */
-  border-radius: 24px; /* 设置边框圆角为24px */
-  background: transparent; /* 设置背景颜色为透明 */
-  font-size: 16px; /* 设置字体大小为16px */
-  font-family: var(--font-family); /* 设置字体族为根元素的字体族 */
-  padding: 0 15px 0 0; /* 减少右内边距，保留更多输入空间 */
-  color: #333;
-  -webkit-appearance: none; /* 移除Webkit浏览器默认样式 */
-  appearance: none; /* 移除默认样式 */
-  box-shadow: none !important; /* 禁用输入框阴影 */
-  outline: none !important; /* 禁用输入框轮廓 */
-  transition: background 0.3s;
-  margin-right: 15px; /* 增加右侧间距，与搜索引擎按钮分隔 */
-  cursor: text; /* 确保鼠标指针显示为文本编辑样式 */
-}
-
-#search-input:focus { /* 当搜索框输入框获得焦点时 */
-  outline: none; /* 设置无轮廓 */
-  box-shadow: none; /* 禁用输入框阴影 */
-  border: none; /* 设置无边框 */
-  -webkit-appearance: none; /* 移除Webkit浏览器默认样式 */
-  appearance: none; /* 移除默认样式 */
-}
-
-/* 搜索引擎菜单 */
+/* 子组件层：搜索引擎菜单 */
 .search-engine-menu {
-  position: fixed; /* 改为fixed定位 */
-  background: white;
+  position: fixed;
+  width: 200px;
+  max-height: 300px;
+  background: var(--menu-bg);
   border-radius: 5px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.2);
   z-index: 1000;
   display: none;
   overflow: auto;
-  max-height: 300px;
-  width: 200px;
-}
-
-/* 搜索引擎菜单定位和显示 */
-.search-engine-menu {
-  display: none; /* 默认隐藏 */
 }
 
 .search-engine-menu.visible {
   display: block;
 }
 
-/* 搜索引擎菜单位置控制 */
 .search-engine-menu-positioned {
-  left: 10px; /* 默认左侧定位 */
-  top: 50px; /* 默认顶部定位 */
+  left: 10px;
+  top: 50px;
 }
 
-/* 搜索引擎菜单项 */
+/* 子组件层：搜索引擎菜单项 */
 .search-engine-item {
-  padding: 10px;
   display: flex;
   align-items: center;
+  padding: 10px;
   cursor: pointer;
 }
 
 .search-engine-item.active {
-  background-color: #f0f0f0;
+  background-color: var(--menu-active-bg);
 }
 
 .search-engine-item img {
@@ -145,32 +154,31 @@
   object-fit: contain;
 }
 
-/* 搜索引擎删除按钮 */
 .search-engine-delete {
-  margin-left: auto;
-  color: #999;
-  font-size: 16px;
-  width: 24px;
-  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s, transform 0.2s;
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  color: var(--icon-color);
+  font-size: 16px;
+  transition: color var(--transition-normal), 
+              transform var(--transition-normal);
 }
 
 .search-engine-delete:hover {
-  color: #ff4d4f;
+  color: var(--icon-danger);
   transform: scale(1.2);
 }
 
-/* 添加搜索引擎按钮 */
 .search-engine-add {
   padding: 10px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--menu-border);
   text-align: center;
   cursor: pointer;
 }
 
 .search-engine-add:hover {
-  background-color: #f0f0f0;
+  background-color: var(--menu-active-bg);
 }

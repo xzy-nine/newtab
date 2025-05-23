@@ -1,4 +1,43 @@
-/* 计数器小部件样式 */
+/* 1. 变量定义层 - 精简后的颜色系统 */
+:root {
+    /* 基础色 - 减少为核心颜色 */
+    --white: #ffffff;
+    --black: #333333;
+    --primary-color: #0078d4;
+    --danger-color: #ff5252;
+    --success-color: #00c853;
+    
+    /* 派生颜色 - 使用基础色的不同透明度和色调 */
+    --background-color: var(--white);
+    --text-color: var(--black);
+    --border-color: rgba(0, 0, 0, 0.2);
+    
+    /* 按钮颜色系统 - 统一化 */
+    --button-bg: rgba(0, 0, 0, 0.1);
+    --button-bg-hover: rgba(0, 120, 212, 0.2);
+    
+    /* 阴影系统 - 统一使用基础色的透明度变体 */
+    --box-shadow-color: rgba(0, 0, 0, 0.1);
+    
+    /* 间距 - 保持不变 */
+    --widget-padding: 8px;
+    --button-size: 28px;
+    --compact-button-size: 24px;
+}
+
+/* 2. 主题模式层 - 深色模式变量 */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-color: #212121;
+        --text-color: var(--white);
+        --border-color: rgba(255, 255, 255, 0.2);
+        --button-bg: rgba(255, 255, 255, 0.1);
+        --button-bg-hover: rgba(0, 120, 212, 0.5);
+        --box-shadow-color: rgba(0, 0, 0, 0.5);
+    }
+}
+
+/* 3. 组件基础层 */
 .counter-widget {
     width: 100%;
     height: 100%;
@@ -6,15 +45,18 @@
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: 8px;
+    padding: var(--widget-padding);
     box-sizing: border-box;
-    /* 禁止文本选择 */
     user-select: none;
     -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 12px var(--box-shadow-color);
 }
 
+/* 4. 子组件层 */
+/* 标题组件 */
 .counter-title {
     font-weight: bold;
     width: 100%;
@@ -24,90 +66,11 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     position: relative;
-    z-index: 2;  /* 确保标题在上层 */
-    background-color: inherit;  /* 继承父元素背景色，避免透明导致的遮挡 */
+    z-index: 2;
+    background-color: inherit;
+    color: var(--text-color);
 }
 
-.counter-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    flex: 1;
-}
-
-.counter-button {
-    min-width: 28px;
-    min-height: 28px;
-    border: none;
-    border-radius: 50%;
-    background-color: #e0e0e0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 18px;
-    transition: background-color 0.2s;
-}
-
-.counter-button:hover {
-    background-color: #cccccc;
-}
-
-.counter-display {
-    flex: 1;
-    text-align: center;
-    font-weight: bold;
-    margin: 0 5px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: font-size 0.3s ease;
-}
-
-.counter-reset {
-    font-size: 12px;
-    color: #666;
-    cursor: pointer;
-    padding: 4px 8px;
-    margin-top: 4px;
-    text-align: center;
-    border-radius: 12px;
-    transition: all 0.2s ease;
-}
-
-.counter-reset:hover {
-    background-color: #f0f0f0;
-}
-
-/* 重置确认状态 */
-.counter-reset.confirm {
-    color: #ffffff;
-    background-color: #ff5252;
-    font-weight: bold;
-}
-
-.counter-reset.confirm:hover {
-    background-color: #00ff4c;
-}
-
-/* 紧凑布局样式 */
-.counter-widget.compact-layout .counter-title {
-    font-size: 12px;
-    margin-bottom: 2px;
-}
-
-.counter-widget.compact-layout .counter-button {
-    min-width: 24px;
-    min-height: 24px;
-    font-size: 16px;
-}
-
-.counter-widget.compact-layout .counter-reset {
-    font-size: 10px;
-    padding: 2px 6px;
-}
-
-/* 标题编辑样式 */
 .counter-title.editing {
     padding: 0;
 }
@@ -117,7 +80,109 @@
     padding: 2px;
     font-size: inherit;
     font-weight: bold;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     outline: none;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+/* 控制区域 */
+.counter-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    flex: 1;
+}
+
+/* 按钮组件 */
+.counter-button {
+    min-width: var(--button-size);
+    min-height: var(--button-size);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    background-color: var(--button-bg);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background-color 0.2s;
+}
+
+/* 计数显示 */
+.counter-display {
+    flex: 1;
+    text-align: center;
+    font-weight: bold;
+    margin: 0 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: font-size 0.3s ease;
+    color: var(--primary-color);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 重置按钮 */
+.counter-reset {
+    font-size: 12px;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 4px 8px;
+    margin-top: 4px;
+    text-align: center;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    background-color: var(--button-bg);
+    border: 1px solid var(--border-color);
+}
+
+/* 5. 交互状态层 */
+.counter-button:hover {
+    background-color: var(--button-bg-hover);
+    box-shadow: 0 0 8px var(--primary-color);
+}
+
+.counter-reset:hover {
+    background-color: var(--button-bg-hover);
+}
+
+/* 重置确认状态 */
+.counter-reset.confirm {
+    color: var(--white);
+    background-color: var(--danger-color);
+    font-weight: bold;
+    border: none;
+}
+
+.counter-reset.confirm:hover {
+    background-color: var(--success-color);
+}
+
+/* 6. 响应式适配层 */
+/* 紧凑布局样式 */
+.counter-widget.compact-layout .counter-title {
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.counter-widget.compact-layout .counter-button {
+    min-width: var(--compact-button-size);
+    min-height: var(--compact-button-size);
+    font-size: 16px;
+}
+
+.counter-widget.compact-layout .counter-reset {
+    font-size: 10px;
+    padding: 2px 6px;
+}
+
+/* 媒体查询合并 */
+@media (prefers-color-scheme: dark) {
+    .counter-title.editing input {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 5px var(--primary-shadow);
+    }
 }

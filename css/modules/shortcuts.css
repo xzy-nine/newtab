@@ -1,83 +1,91 @@
-/* 快捷方式按钮相关样式 */
-
-#shortcut-list { /* 快捷方式列表 */
-  width: 80%; /* 设置宽度为80% */
-  height: 100%; /* 设置高度为100% */
-  display: flex; /* 设置为弹性布局 */
-  flex-wrap: wrap; /* 设置为换行 */
-  align-items: center; /* 设置垂直居中 */
-  justify-content: center; /* 设置水平居中 */
-  overflow-y: auto; /* 设置垂直滚动 */
-  background: rgb(198 198 198 / 50%); /* 设置背景颜色为半透明的灰色 */
-  border-radius: 10px; /* 设置边框圆角为10px */
-  margin-left: 10px; /* 设置左外边距为10px */
+/* 变量定义 */
+:root {
+  --shortcut-background: rgba(255, 255, 255, 0.53);
+  --shortcut-border-radius: 8px;
+  --shortcut-margin: 10px;
+  --shortcut-shadow: 0 0 10px var(--secondary-color);
+  --shortcut-hover-shadow: 0 0 15px var(--secondary-color);
+  --shortcut-width: 80px;
+  --font-size-small: 12px;
+  --text-color: #333;
+  --container-background: rgba(198, 198, 198, 0.5);
 }
 
-/* 当快捷方式列表为空时，设置背景为完全透明 */
+/* 容器样式 */
+#shortcut-list {
+  width: 80%;
+  height: 100%;
+  margin-left: 10px;
+  background: var(--container-background);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+}
+
 #shortcut-list:empty {
   background: transparent;
 }
 
-.shortcut-button { /* 快捷方式按钮 */
-  width: 80px; /* 设置宽度为80px📏 */
-  aspect-ratio: 1 / 1; /* 设置宽高比为1:1 */
-  display: flex; /* 设置为弹性布局 */
-  flex-direction: column; /* 设置为垂直方向 */
-  align-items: center; /* 设置水平居中 */
-  justify-content: center; /* 设置垂直居中 */
-  border: none; /* 设置无边框 */
-  border-radius: 8px; /* 设置边框圆角为8px */
-  background: #ffffff87; /* 设置背景颜色为白色 */
-  box-shadow: 0 0 10px var(--secondary-color); /* 设置阴影为10px的次要颜色 */
-  cursor: pointer; /* 设置鼠标样式为指针 */
-  margin: 10px; /* 设置外边距为10px */
-  transition: box-shadow 0.3s, transform 0.3s ease; /* 设置阴影和变换的过渡时间为0.3秒 */
-  background-size: 60%; /* 设置背景图像的大小 */
-  background-position: center; /* 设置背景图像的位置 */
-  background-repeat: no-repeat; /* 设置背景图像不重复 */
-  text-align: center; /* 文本居中对齐 */
-  overflow: hidden; /* 隐藏溢出的文本 */
-  justify-content: center; /* 在主轴上居中对齐 */
-  padding-top: 50px; /* 在底部添加内边距来为文本留出空间 */
-  clip-path: inset(0 round 10px); /* 添加圆角矩形遮罩 */
-}
-
-.shortcut-button:hover { /* 鼠标移动到快捷方式按钮上时 */
-  box-shadow: 0 0 15px var(--secondary-color); /* 增加阴影 */
-  transform: scale(1.2); /* 放大按钮 */
-  overflow: visible; /* 取消隐藏溢出的文本 */
-  box-shadow: inset 0 0 10px var(--secondary-color); /* 设置阴影为内凹10px的次要颜色 */
-}
-
-.shortcut-button:active {
-  transform: scale(0.95); /* 缩小按钮 */
-  transition: transform 0.1s; /* 设置缩放动画的过渡时间为0.1秒 */
-}
-
-.shortcut-title {
-  font-size: 12px;
-  color: #333;
-  margin-top: 5px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.shortcut-title, .bookmark-title {
-  user-select: none; /* 防止文本被选中 */
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-/* 快捷方式上下文菜单 */
 #shortcut-context-menu {
   min-width: 150px;
   border: 1px solid #ddd;
 }
 
-/* 书签相关样式 */
+/* 公共样式 */
+.shortcut-title, .bookmark-title {
+  font-size: var(--font-size-small);
+  color: var(--text-color);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* 快捷方式按钮样式 */
+.shortcut-button {
+  width: var(--shortcut-width);
+  aspect-ratio: 1 / 1;
+  margin: var(--shortcut-margin);
+  padding-top: 50px;
+  background: var(--shortcut-background);
+  background-size: 60%;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: none;
+  border-radius: var(--shortcut-border-radius);
+  box-shadow: var(--shortcut-shadow);
+  clip-path: inset(0 round 10px);
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: box-shadow 0.3s, transform 0.3s ease;
+}
+
+/* 交互状态 */
+.shortcut-button:hover {
+  transform: scale(1.2);
+  box-shadow: inset 0 0 10px var(--secondary-color);
+  overflow: visible;
+}
+
+.shortcut-button:active {
+  transform: scale(0.95);
+  transition: transform 0.1s;
+}
+
+.shortcut-title {
+  margin-top: 5px;
+}
+
+/* 书签样式 */
 #custom-bookmark-container {
   display: flex;
   flex-wrap: wrap;
@@ -91,19 +99,19 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 80px;
-  height: 80px;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 8px;
+  width: var(--shortcut-width);
+  height: var(--shortcut-width);
   padding: 10px;
-  box-shadow: 0 0 10px var(--secondary-color);
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: var(--shortcut-border-radius);
+  box-shadow: var(--shortcut-shadow);
   cursor: pointer;
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .bookmark:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 15px var(--secondary-color);
+  box-shadow: var(--shortcut-hover-shadow);
 }
 
 .bookmark-icon {
@@ -118,22 +126,12 @@
   object-fit: contain;
 }
 
-.bookmark-title {
-  font-size: 12px;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  width: 100%;
-}
-
-/* 添加书签按钮样式 */
+/* 特殊书签样式 */
 .add-bookmark {
   background: rgba(0, 120, 212, 0.2);
   border: 2px dashed var(--primary-color);
 }
 
-/* 书签列表占位符 */
 .bookmark-placeholder {
   border: 2px dashed #ccc;
   background: rgba(255, 255, 255, 0.3);

@@ -1,157 +1,194 @@
-/* 模态框相关样式 */
+/* 1. CSS变量定义层 */
+:root {
+  /* 颜色系统 */
+  --color-primary: #007bff;
+  --color-primary-hover: #0069d9;
+  --color-danger: #e53935;
+  --color-danger-hover: #c62828;
+  --color-text-main: #333;
+  --color-text-secondary: #999;
+  --color-border: #ddd;
+  --color-border-hover: var(--color-primary);
+  --color-bg-light: #f5f5f5;
+  --color-bg-hover: #f0f7ff;
+  --color-bg-modal: white;
+  --color-bg-overlay: rgba(0, 0, 0, 0.5);
+  --color-bg-preview: #222;
+  
+  /* 间距与大小 */
+  --spacing-xs: 5px;
+  --spacing-sm: 8px;
+  --spacing-md: 10px;
+  --spacing-lg: 15px;
+  --spacing-xl: 20px;
+  
+  /* 边框与圆角 */
+  --border-radius-sm: 5px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 10px;
+  --box-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.1);
+  --box-shadow-md: 0 5px 15px rgba(0, 0, 0, 0.3);
+  --box-shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.4);
+  
+  /* 动画时间 */
+  --transition-fast: 0.2s ease;
+}
+
+/* 2. 基础模态框结构 */
 .modal {
-  display: none; /* 默认隐藏 */
+  display: none;
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--color-bg-overlay);
   z-index: 2000;
 }
 
 .modal.visible {
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* 改为flex-start以便支持绝对定位的子元素 */
-  padding-top: 50px; /* 添加顶部内边距，避免模态框紧贴顶部 */
+  align-items: flex-start;
+  padding-top: 50px;
 }
 
 .modal-content {
-  background-color: white;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  background-color: var(--color-bg-modal);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--box-shadow-md);
   width: 400px;
   max-width: 90%;
   position: relative;
-  margin: 0 auto; /* 水平居中 */
-  /* 新增拖动相关样式 */
-  transition: box-shadow 0.2s ease;
+  margin: 0 auto;
+  transition: box-shadow var(--transition-fast);
 }
 
-/* 优化模态框标题区域，使标题位于左上角 */
-.modal-header, .modal-content h2 {
+.modal-content.dragging {
+  box-shadow: var(--box-shadow-lg);
+  opacity: 0.95;
+  cursor: move;
+}
+
+/* 3. 模态框头部和标题 */
+.modal-header, 
+.modal-content h2 {
   cursor: default;
   user-select: none;
-  margin: 0 0 20px 0; /* 减小顶部边距，增加底部边距 */
+  margin: 0 0 var(--spacing-xl) 0;
   font-size: 1.5em;
-  padding-right: 30px; /* 为关闭按钮留出空间 */
-  position: relative; /* 确保标题定位正确 */
-  color: #333; /* 标题文字颜色 */
-  border-bottom: 1px solid #eee; /* 添加下边框分隔标题区域 */
-  padding-bottom: 10px; /* 标题底部内边距 */
+  padding-right: 30px;
+  position: relative;
+  color: var(--color-text-main);
+  border-bottom: 1px solid #eee;
+  padding-bottom: var(--spacing-md);
 }
 
-/* 关闭按钮样式优化，固定于右上角 */
+.modal-header.draggable, 
+.modal-content h2.draggable {
+  cursor: move;
+  position: relative;
+}
+
+.modal-header.draggable:hover, 
+.modal-content h2.draggable:hover {
+  cursor: move;
+}
+
 .modal-close {
   position: absolute;
-  top: 15px; /* 位置调整 */
-  right: 15px; /* 靠右对齐 */
-  font-size: 24px; /* 增大字号 */
-  color: #999;
+  top: 15px;
+  right: 15px;
+  font-size: 24px;
+  color: var(--color-text-secondary);
   cursor: pointer;
-  z-index: 10; /* 确保在其他元素之上 */
+  z-index: 10;
   width: 30px;
   height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
-/* 关闭按钮悬停效果 */
 .modal-close:hover {
   background-color: rgba(0, 0, 0, 0.05);
-  color: #333;
+  color: var(--color-text-main);
 }
 
-/* 拖动时的样式 */
-.modal-content.dragging {
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-  opacity: 0.95;
-  cursor: move;
-}
-
-/* 模态框标题作为拖动句柄 */
-.modal-header.draggable, .modal-content h2.draggable {
-  cursor: move;
-  position: relative;
-}
-
-/* 拖动时的鼠标指针 */
-.modal-header.draggable:hover, .modal-content h2.draggable:hover {
-  cursor: move;
-}
-
-/* 通用表单元素 */
+/* 4. 表单元素 */
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: var(--spacing-lg);
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: var(--spacing-xs);
   font-weight: bold;
 }
 
 .form-group input, 
 .form-group textarea {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
 }
 
 .form-error {
-  color: #e53935;
+  color: var(--color-danger);
   font-size: 0.9em;
-  margin-top: 5px;
+  margin-top: var(--spacing-xs);
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
 }
 
-/* 按钮样式 */
+/* 5. 按钮样式 */
 .btn {
-  padding: 8px 15px;
+  padding: var(--spacing-sm) var(--spacing-lg);
   border: none;
-  border-radius: 5px;
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
 }
 
 .btn-primary {
-  background-color: #007bff;
+  background-color: var(--color-primary);
   color: white;
 }
 
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
 .btn-danger {
-  background-color: #e53935;
+  background-color: var(--color-danger);
   color: white;
 }
 
 .btn-danger:hover {
-  background-color: #c62828;
+  background-color: var(--color-danger-hover);
 }
 
-/* 图标选择对话框 */
+/* 6. 图标选择器 */
 #icon-selector-modal .icon-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-top: 15px;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
 }
 
 #icon-selector-modal .icon-option {
   width: 48px;
   height: 48px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,8 +196,8 @@
 }
 
 #icon-selector-modal .icon-option:hover {
-  border-color: var(--primary-color);
-  background-color: #f0f7ff;
+  border-color: var(--color-border-hover);
+  background-color: var(--color-bg-hover);
 }
 
 #icon-selector-modal .icon-option img {
@@ -168,53 +205,17 @@
   max-height: 80%;
 }
 
-/* 模态框内预览图片样式 */
 #icon-preview img {
   max-width: 64px;
   max-height: 64px;
   object-fit: contain;
 }
 
-/* 加载动画 */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(0,0,0,0.1);
-  border-radius: 50%;
-  border-top: 4px solid #3498db;
-  animation: spin 1s linear infinite;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-@keyframes spin {
-  0% { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-/* 通知消息的不透明度过渡 */
-#loading-message {
-  transition: opacity 0.2s;
-}
-
-.error-message {
-  color: #e53935;
-  font-size: 14px;
-  padding: 10px;
-}
-
-/* 图片预览组件 */
+/* 7. 图片预览组件 */
 .image-preview {
-  margin: 15px 0;
+  margin: var(--spacing-lg) 0;
   text-align: center;
-  min-height: 200px; /* 增加最小高度 */
+  min-height: 200px;
   position: relative;
   overflow: hidden;
 }
@@ -223,42 +224,67 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #f5f5f5;
-  border-radius: 10px;
-  padding: 15px;
-  min-height: 192px; /* 保证最小高度和宽度一致 */
-  min-width: 192px; /* 保证方形的最小宽度 */
-  width: 192px; /* 固定宽度 */
-  height: 192px; /* 固定高度，保证方形 */
-  margin: 0 auto; /* 居中显示 */
+  background-color: var(--color-bg-light);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  width: 192px;
+  height: 192px;
+  margin: 0 auto;
 }
 
 .preview-icon-img {
-  max-width: 160px; /* 图标在方形内部最大宽度 */
-  max-height: 160px; /* 图标在方形内部最大高度 */
+  max-width: 160px;
+  max-height: 160px;
   object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--box-shadow-sm);
 }
 
 .image-preview-bg {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #222;
-  border-radius: 10px;
-  padding: 10px;
-  min-height: 250px; /* 保持最小高度 */
-  width: 100%; /* 确保充满容器宽度 */
+  background-color: var(--color-bg-preview);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-md);
+  width: 100%;
   position: relative;
-  /* 使用固定的宽高比，模拟16:9的屏幕比例 */
   aspect-ratio: 16/9;
 }
 
 .preview-bg-img {
-  width: 100%; /* 使图片宽度填满容器 */
-  height: 100%; /* 高度填满容器 */
-  object-fit: cover; /* 使用cover可以更好地模拟背景效果 */
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* 8. 加载状态动画 */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid var(--color-primary);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+#loading-message {
+  transition: opacity var(--transition-fast);
+}
+
+.error-message {
+  color: var(--color-danger);
+  font-size: 14px;
+  padding: var(--spacing-md);
 }
