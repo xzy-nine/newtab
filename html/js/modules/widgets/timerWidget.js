@@ -3,6 +3,14 @@
  */
 
 export default {
+    // 小部件元数据
+    metadata: {
+        name: '计时器',
+        description: '计时器小部件，可开始、暂停、记录和停止',
+        version: '1.0.0',
+        author: 'System'
+    },
+
     // 小部件尺寸配置
     config: {
         default: {
@@ -99,6 +107,33 @@ export default {
             this.adjustSize(container);
         });
         resizeObserver.observe(container);
+    },
+
+    /**
+     * 小部件被销毁时调用
+     * @param {HTMLElement} container - 小部件容器
+     */
+    destroy: function(container) {
+        // 清除更新间隔
+        if (container.updateInterval) {
+            clearInterval(container.updateInterval);
+            container.updateInterval = null;
+        }
+        
+        // 清除任何可能的resize observer
+        if (container._resizeObserver) {
+            container._resizeObserver.disconnect();
+            container._resizeObserver = null;
+        }
+    },
+
+    /**
+     * 保存小部件数据
+     * @param {HTMLElement} container - 小部件容器
+     * @returns {Object} 要保存的数据
+     */
+    getData: function(container) {
+        return container.widgetData || {};
     },
     
     /**

@@ -436,8 +436,13 @@ export const WidgetSystem = {
                     throw new Error(`加载小部件模块 ${widgetType} 失败: 模块为空`);
                 }
                 
+                // 检查initialize方法是否存在
+                if (typeof widgetModule.initialize !== 'function') {
+                    throw new Error(`小部件 ${widgetType} 缺少必要的 initialize 方法`);
+                }
+                
                 // 初始化小部件
-                await widgetModule.default.initialize(widgetItem, widgetData);
+                await widgetModule.initialize(widgetItem, widgetData);
                 
                 // 检查初始化后是否有内容
                 if (widgetItem.childElementCount === 0) {

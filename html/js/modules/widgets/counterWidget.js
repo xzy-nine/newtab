@@ -3,6 +3,14 @@
  */
 
 export default {
+    // 小部件元数据
+    metadata: {
+        name: '计数器',
+        description: '简单的计数器小部件，可增加、减少和重置数值',
+        version: '1.0.0',
+        author: 'System'
+    },
+    
     // 小部件尺寸配置
     config: {
         default: {
@@ -75,6 +83,35 @@ export default {
             this.adjustSize(container);
         });
         resizeObserver.observe(container);
+        
+        // 保存resize observer以便在销毁时清理
+        container._resizeObserver = resizeObserver;
+    },
+    
+    /**
+     * 小部件被销毁时调用
+     * @param {HTMLElement} container - 小部件容器
+     */
+    destroy: function(container) {
+        // 清除任何可能的resize observer
+        if (container._resizeObserver) {
+            container._resizeObserver.disconnect();
+            container._resizeObserver = null;
+        }
+        
+        // 清除可能存在的长按定时器
+        if (container._pressTimer) clearTimeout(container._pressTimer);
+        if (container._longPressInterval) clearInterval(container._longPressInterval);
+        if (container._longPressSpeedupTimer) clearTimeout(container._longPressSpeedupTimer);
+    },
+    
+    /**
+     * 保存小部件数据
+     * @param {HTMLElement} container - 小部件容器
+     * @returns {Object} 要保存的数据
+     */
+    getData: function(container) {
+        return container.widgetData || {};
     },
     
     /**
@@ -188,13 +225,13 @@ export default {
         // 重置按钮元素
         const resetButton = content.querySelector('.counter-reset');
         
-        // 长按相关变量 - 移到函数外部使其成为模块级变量，让增减按钮共享
-        let pressTimer = null;
-        let isLongPressing = false;
-        let longPressInterval = null;
-        let longPressSpeed = 200; // 初始长按速度(ms)
-        let longPressSpeedupTimer = null;
-        let lastButtonReleaseTime = 0; // 记录上次按钮释放时间
+        // 长按相关变量 - 保存到容器中以便清理
+        container._pressTimer = null;
+        container._isLongPressing = false;
+        container._longPressInterval = null;
+        container._longPressSpeed = 200; // 初始长按速度(ms)
+        container._longPressSpeedupTimer = null;
+        container._lastButtonReleaseTime = 0; // 记录上次按钮释放时间
         
         // 增加计数的函数
         const increaseCount = () => {
@@ -244,21 +281,21 @@ export default {
         
         // 清除所有长按定时器
         const clearAllTimers = () => {
-            if (pressTimer) clearTimeout(pressTimer);
-            if (longPressInterval) clearInterval(longPressInterval);
-            if (longPressSpeedupTimer) clearTimeout(longPressSpeedupTimer);
-            pressTimer = null;
-            longPressInterval = null;
-            longPressSpeedupTimer = null;
-            isLongPressing = false;
+            if (container._pressTimer) clearTimeout(container._pressTimer);
+            if (container._longPressInterval) clearInterval(container._longPressInterval);
+            if (container._longPressSpeedupTimer) clearTimeout(container._longPressSpeedupTimer);
+            container._pressTimer = null;
+            container._longPressInterval = null;
+            container._longPressSpeedupTimer = null;
+            container._isLongPressing = false;
             
             // 记录按钮释放时间
-            lastButtonReleaseTime = Date.now();
+            container._lastButtonReleaseTime = Date.now();
             
             // 只有当超过1秒没有按压时才重置速度
             setTimeout(() => {
-                if (Date.now() - lastButtonReleaseTime >= 5000) {
-                    longPressSpeed = 200; // 重置速度
+                if (Date.now() - container._lastButtonReleaseTime >= 5000) {
+                    container._longPressSpeed = 200; // 重置速度
                 }
             }, 1000);
         };
@@ -275,20 +312,20 @@ export default {
             increaseCount();
             
             // 设置长按定时器
-            pressTimer = setTimeout(() => {
-                isLongPressing = true;
+            container._pressTimer = setTimeout(() => {
+                container._isLongPressing = true;
                 // 开始连续增加
-                longPressInterval = setInterval(increaseCount, longPressSpeed);
+                container._longPressInterval = setInterval(increaseCount, container._longPressSpeed);
                 
                 // 设置加速定时器 - 每隔1秒加快速度
-                longPressSpeedupTimer = setTimeout(function speedup() {
-                    if (longPressSpeed > 50) {
-                        longPressSpeed = Math.max(50, longPressSpeed - 30);
+                container._longPressSpeedupTimer = setTimeout(function speedup() {
+                    if (container._longPressSpeed > 50) {
+                        container._longPressSpeed = Math.max(50, container._longPressSpeed - 30);
                         // 清除旧的间隔并创建新的
-                        clearInterval(longPressInterval);
-                        longPressInterval = setInterval(increaseCount, longPressSpeed);
+                        clearInterval(container._longPressInterval);
+                        container._longPressInterval = setInterval(increaseCount, container._longPressSpeed);
                         // 继续加速
-                        longPressSpeedupTimer = setTimeout(speedup, 1000);
+                        container._longPressSpeedupTimer = setTimeout(speedup, 1000);
                     }
                 }, 1000);
                 
@@ -304,20 +341,20 @@ export default {
             increaseCount();
             
             // 设置长按定时器
-            pressTimer = setTimeout(() => {
-                isLongPressing = true;
+            container._pressTimer = setTimeout(() => {
+                container._isLongPressing = true;
                 // 开始连续增加
-                longPressInterval = setInterval(increaseCount, longPressSpeed);
+                container._longPressInterval = setInterval(increaseCount, container._longPressSpeed);
                 
                 // 设置加速定时器
-                longPressSpeedupTimer = setTimeout(function speedup() {
-                    if (longPressSpeed > 50) {
-                        longPressSpeed = Math.max(50, longPressSpeed - 30);
+                container._longPressSpeedupTimer = setTimeout(function speedup() {
+                    if (container._longPressSpeed > 50) {
+                        container._longPressSpeed = Math.max(50, container._longPressSpeed - 30);
                         // 清除旧的间隔并创建新的
-                        clearInterval(longPressInterval);
-                        longPressInterval = setInterval(increaseCount, longPressSpeed);
+                        clearInterval(container._longPressInterval);
+                        container._longPressInterval = setInterval(increaseCount, container._longPressSpeed);
                         // 继续加速
-                        longPressSpeedupTimer = setTimeout(speedup, 1000);
+                        container._longPressSpeedupTimer = setTimeout(speedup, 1000);
                     }
                 }, 1000);
                 
@@ -336,20 +373,20 @@ export default {
             decreaseCount();
             
             // 设置长按定时器
-            pressTimer = setTimeout(() => {
-                isLongPressing = true;
+            container._pressTimer = setTimeout(() => {
+                container._isLongPressing = true;
                 // 开始连续减少
-                longPressInterval = setInterval(decreaseCount, longPressSpeed);
+                container._longPressInterval = setInterval(decreaseCount, container._longPressSpeed);
                 
                 // 设置加速定时器
-                longPressSpeedupTimer = setTimeout(function speedup() {
-                    if (longPressSpeed > 50) {
-                        longPressSpeed = Math.max(50, longPressSpeed - 30);
+                container._longPressSpeedupTimer = setTimeout(function speedup() {
+                    if (container._longPressSpeed > 50) {
+                        container._longPressSpeed = Math.max(50, container._longPressSpeed - 30);
                         // 清除旧的间隔并创建新的
-                        clearInterval(longPressInterval);
-                        longPressInterval = setInterval(decreaseCount, longPressSpeed);
+                        clearInterval(container._longPressInterval);
+                        container._longPressInterval = setInterval(decreaseCount, container._longPressSpeed);
                         // 继续加速
-                        longPressSpeedupTimer = setTimeout(speedup, 1000);
+                        container._longPressSpeedupTimer = setTimeout(speedup, 1000);
                     }
                 }, 1000);
                 
@@ -365,20 +402,20 @@ export default {
             decreaseCount();
             
             // 设置长按定时器
-            pressTimer = setTimeout(() => {
-                isLongPressing = true;
+            container._pressTimer = setTimeout(() => {
+                container._isLongPressing = true;
                 // 开始连续减少
-                longPressInterval = setInterval(decreaseCount, longPressSpeed);
+                container._longPressInterval = setInterval(decreaseCount, container._longPressSpeed);
                 
                 // 设置加速定时器
-                longPressSpeedupTimer = setTimeout(function speedup() {
-                    if (longPressSpeed > 50) {
-                        longPressSpeed = Math.max(50, longPressSpeed - 30);
+                container._longPressSpeedupTimer = setTimeout(function speedup() {
+                    if (container._longPressSpeed > 50) {
+                        container._longPressSpeed = Math.max(50, container._longPressSpeed - 30);
                         // 清除旧的间隔并创建新的
-                        clearInterval(longPressInterval);
-                        longPressInterval = setInterval(decreaseCount, longPressSpeed);
+                        clearInterval(container._longPressInterval);
+                        container._longPressInterval = setInterval(decreaseCount, container._longPressSpeed);
                         // 继续加速
-                        longPressSpeedupTimer = setTimeout(speedup, 1000);
+                        container._longPressSpeedupTimer = setTimeout(speedup, 1000);
                     }
                 }, 1000);
                 
@@ -400,13 +437,13 @@ export default {
         
         // 鼠标移出按钮也停止
         increaseButton.addEventListener('mouseleave', () => {
-            if (isLongPressing) {
+            if (container._isLongPressing) {
                 clearAllTimers();
             }
         });
         
         decreaseButton.addEventListener('mouseleave', () => {
-            if (isLongPressing) {
+            if (container._isLongPressing) {
                 clearAllTimers();
             }
         });
