@@ -11,6 +11,7 @@ import { ClockWidget } from './modules/clockWidget.js';
 import { Utils } from './modules/utils.js';
 import { Notification } from './modules/notification.js'; 
 import { Menu } from './modules/menu.js'; 
+import { WidgetSystem } from './modules/widgetSystem.js';
 
 // 版本号
 let VERSION = '0.0.0'; 
@@ -34,7 +35,7 @@ async function getExtensionVersion() {
 /**
  * 带超时的异步函数执行
  * @param {Function} asyncFunc - 异步函数
- * @param {number} timeout - 超时时间(毫秒)
+ * @param {number} timeout - 超时时间(毫秒),
  * @param {string} moduleName - 模块名称(用于错误信息)
  * @returns {Promise} - 处理结果
  */
@@ -81,26 +82,24 @@ async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
  */
 async function init() {
     try {
-        // 创建基本 UI 结构（不包括搜索框）
+        // 创建基本 UI 结构
         createBasicUI();
         
-        // 显示加载界面
-        Notification.showLoadingIndicator();
+        // 显示加载界面，使用静态文本而非国际化文本
+        Notification.showLoadingIndicator("加载中...");
         
         // 先初始化国际化模块，这样后面才能使用它
         await executeWithTimeout(
             () => I18n.init(), 
             5000, 
-            I18n.getMessage('i18nModule') || '国际化'
+            '国际化' // 不使用 getMessage，因为这时还未初始化
         );
         
         // 获取扩展版本
         VERSION = await getExtensionVersion();
         
-        // 初始化步骤计数
-        const totalModules = 5; 
-        let completedModules = 1; 
-        const initSteps = [
+        // 初始化步骤计数 - 先初始化非小部件相关的模块
+        const basicModules = [
             {
                 name: I18n.getMessage('backgroundModule') || '背景图像',
                 action: backgroundManager.initialize.bind(backgroundManager),
@@ -143,8 +142,12 @@ async function init() {
             }
         ];
 
-        // 依次执行初始化步骤
-        for (const step of initSteps) {
+        // 总模块数，包括后面的小部件系统
+        const totalModules = basicModules.length + 1;
+        let completedModules = 1; // 国际化模块已完成
+
+        // 依次执行基础模块初始化步骤
+        for (const step of basicModules) {
             try {
                 Notification.updateLoadingProgress((completedModules / totalModules) * 100, step.message);
                 await executeWithTimeout(step.action, step.timeout, step.name);
@@ -161,6 +164,38 @@ async function init() {
                     .replace('{0}', step.name)
                     .replace('{1}', error.message));
             }
+        }
+        
+        // 最后初始化小部件系统 - 确保在I18n初始化后调用
+        try {
+            const widgetStep = {
+                name: I18n.getMessage('widgetSystem') || '小部件系统',
+                message: I18n.getMessage('loadingWidgets') || '加载小部件系统...',
+                completeMessage: I18n.getMessage('widgetsLoadComplete') || '小部件系统加载完成',
+                timeout: 5000
+            };
+            
+            Notification.updateLoadingProgress((completedModules / totalModules) * 100, widgetStep.message);
+            await executeWithTimeout(
+                () => WidgetSystem.init(), 
+                widgetStep.timeout, 
+                widgetStep.name
+            );
+            completedModules++;
+            Notification.updateLoadingProgress(100, widgetStep.completeMessage);
+        } catch (error) {
+            console.error(`[初始化错误] 模块: 小部件系统`, {
+                错误信息: error.message,
+                错误堆栈: error.stack,
+                完成进度: `${completedModules}/${totalModules}`
+            });
+            // 小部件系统错误不阻止其他功能
+            Notification.notify({
+                title: I18n.getMessage('error') || '错误',
+                message: I18n.getMessage('widgetSystemError') || '小部件系统加载失败',
+                type: 'warning',
+                duration: 3000
+            });
         }
         
         await performPostInitTasks();

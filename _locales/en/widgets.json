@@ -1,0 +1,74 @@
+{
+  "loadingWidgets": {
+    "message": "Loading widgets...",
+    "description": "加载小部件提示"
+  },
+  "widgetsLoaded": {
+    "message": "Widgets loaded",
+    "description": "小部件加载完成提示"
+  },
+  "createWidgetContainer": {
+    "message": "Create widget container",
+    "description": "创建小部件容器按钮文本"
+  },
+  "deleteWidgetContainer": {
+    "message": "Delete widget container",
+    "description": "删除小部件容器按钮文本"
+  },
+  "addWidget": {
+    "message": "Add widget",
+    "description": "添加小部件按钮文本"
+  },
+  "removeWidget": {
+    "message": "Remove widget",
+    "description": "删除小部件按钮文本"
+  },
+  "unfixWidgetContainer": {
+    "message": "Unfix widget",
+    "description": "取消固定小部件按钮文本"
+  },
+  "fixWidgetContainer": {
+    "message": "Fix widget",
+    "description": "固定小部件按钮文本"
+  },
+  "addWidgetTitle": {
+    "message": "Add Widget",
+    "description": "添加小部件对话框标题"
+  },
+  "counterWidget": {
+    "message": "Counter",
+    "description": "计数器小部件名称"
+  },
+  "widgetsLoadComplete": {
+    "message": "Widgets loading complete",
+    "description": "小部件加载完成提示"
+  },
+  "widgetsAdded": {
+    "message": "Selected widgets added",
+    "description": "已添加所选小部件提示"
+  },
+  "addWidgetFailed": {
+    "message": "Failed to add widget",
+    "description": "添加小部件失败提示"
+  },
+  "add": {
+    "message": "Add",
+    "description": "添加按钮文本"
+  },
+  "cancel": {
+    "message": "Cancel",
+    "description": "取消按钮文本"
+  },
+  "widgetFixed": {
+    "message": "Widget fixed",
+    "description": "小部件已固定提示"
+  },
+  "unfixWidgetToMove": {
+    "message": "Please unfix before moving",
+    "description": "移动前需要取消固定提示"
+  },
+  "unfixWidgetToResize": {
+    "message": "Please unfix before resizing",
+    "description": "调整大小前需要取消固定提示"
+  }
+}

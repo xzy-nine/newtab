@@ -1,6 +1,6 @@
 /**
  * 工具函数模块
- * 包含通用UI处理、通知、模态框等功能
+ * 包含通用处理功能
  */
 import { Menu } from './menu.js';
 import { Notification } from './notification.js';

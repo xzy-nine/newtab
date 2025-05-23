@@ -1,0 +1,296 @@
+/* 小部件系统样式 */
+
+/* 小部件容器 */
+.widget-container {
+  position: absolute;
+  min-width: 150px;
+  min-height: 80px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  display: flex;
+  overflow: hidden;
+  transition: box-shadow 0.3s;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+/* 拖动时临时提高层级，确保可见 */
+.widget-container.widget-dragging {
+  opacity: 0.8;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  cursor: move;
+  transition: none; /* 拖动时禁用过渡效果，使移动更流畅 */
+}
+
+/* 拖动中的小部件样式 */
+.widget-dragging {
+  opacity: 0.85;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+  pointer-events: auto !important;
+  transition: none !important;
+}
+
+/* 拖动条样式 - 修复可见性和交互性 */
+.widget-drag-handle {
+    width: 10px;
+    height: 100%;
+    cursor: move;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));
+    transition: background-color 0.2s, width 0.3s;
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 10; /* 提高 z-index 确保可以点击 */
+    pointer-events: auto; /* 确保接收鼠标事件 */
+}
+
+.widget-drag-handle:hover {
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
+    width: 15px;
+}
+
+/* 内容包装器 */
+.widget-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    margin-left: 10px; /* 为拖动条留出空间 */
+    margin-right: 5px;
+    margin-bottom: 5px;
+    overflow: hidden;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+/* 内容区域调整 */
+.widget-content {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px;
+  padding-bottom: 25px; /* 为指示器留出空间 */
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* 添加按钮 */
+.widget-add-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  font-size: 24px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  margin: 10px auto;
+}
+
+.widget-add-button:hover {
+  transform: scale(1.1);
+  background-color: #0066cc;
+}
+
+/* 小部件项 */
+.widget-item {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  text-align: center !important;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  z-index: 1;
+  box-sizing: border-box;
+}
+
+.widget-item > * {
+  margin: auto !important;
+}
+
+/* 活动状态小部件 */
+.widget-item.active-widget {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 小部件项右键菜单触发区域 */
+.widget-item:not(.widget-functional-area) {
+  cursor: context-menu;
+}
+
+/* 小部件固定按钮（图钉） */
+.widget-pin-button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  z-index: 3;
+  transition: transform 0.2s, opacity 0.3s;
+  opacity: 0.7;
+}
+
+.widget-pin-button:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* 固定状态的小部件容器 */
+.widget-container.widget-fixed {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 50, 200, 0.2);
+}
+
+.widget-container.widget-fixed .widget-pin-button {
+  opacity: 1;
+  color: #0066cc;
+}
+
+/* 固定状态时不隐藏拖动条，但改变其样式 */
+.widget-container.widget-fixed .widget-drag-handle {
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.02));
+  cursor: not-allowed;
+}
+
+.widget-container.widget-fixed .widget-content {
+  padding-left: 20px; /* 保持与非固定状态一致 */
+}
+
+/* 加载和错误状态 */
+.widget-loading, .widget-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+  text-align: center;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.widget-error {
+  color: #d32f2f;
+  gap: 10px;
+}
+
+.widget-error button {
+  margin-top: 5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: none;
+  background: #f0f0f0;
+  cursor: pointer;
+}
+
+.widget-error button:hover {
+  background: #e0e0e0;
+}
+
+/* 确保其他主要元素具有更高的 z-index */
+#folder-list, #shortcut-list, #search-box, .bookmark {
+  position: relative;
+}
+
+/* 指示器样式 - 修改位置确保在底部 */
+.widget-indicators {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    height: 20px;
+    margin-top: auto; /* 推到底部 */
+    margin-bottom: 2px; /* 与底部保持间距 */
+    width: 100%;
+    position: absolute; /* 绝对定位 */
+    bottom: 0; /* 固定在底部 */
+    left: 0;
+    padding: 5px 0;
+    z-index: 5; /* 确保显示在上层 */
+}
+
+.widget-indicators.hidden {
+    display: none;
+}
+
+.widget-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.3); /* 更改为深色，提高可见度 */
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.widget-indicator.active {
+    background-color: #0078d4; /* 活动指示器使用主题色 */
+    transform: scale(1.2);
+}
+
+.widget-indicator:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* 调整大小控制点 */
+.widget-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 15px;
+    height: 15px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, rgba(0, 120, 212, 0.5) 50%);
+    border-radius: 0 0 5px 0;
+    z-index: 10;
+    transition: opacity 0.3s;
+    opacity: 0.7;
+}
+
+.widget-resize-handle:hover {
+    opacity: 1;
+    background: linear-gradient(135deg, transparent 50%, rgba(0, 120, 212, 0.8) 50%);
+}
+
+/* 调整大小时的样式 */
+.widget-container.widget-resizing {
+    opacity: 0.8;
+    transition: none;
+}
+
+/* 为容器右键菜单中的危险操作添加样式 */
+.context-menu-item.danger-item {
+  color: #d32f2f;
+}
+
+.context-menu-item.danger-item:hover {
+  background-color: rgba(211, 47, 47, 0.1);
+}
