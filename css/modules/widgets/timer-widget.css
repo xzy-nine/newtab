@@ -217,14 +217,6 @@
     content: "▼";
 }
 
-.digit-up:before {
-    content: "▲";
-}
-
-.digit-down:before {
-    content: "▼";
-}
-
 .digit-up:hover, .digit-down:hover {
     opacity: 1;
     background-color: var(--widget-control-bg-hover);
