@@ -1,14 +1,83 @@
-/* 变量定义 */
+/* 变量定义 - 简化版 */
 :root {
-  --shortcut-background: rgba(255, 255, 255, 0.53);
+  /* 核心颜色系统 - 减少为必要的基础颜色 */
+  --color-white: #fff;
+  --color-black: #000;
+  
+  /* 灰度色阶 - 统一使用三个等级 */
+  --color-gray-100: #f5f5f5; /* 亮灰 */
+  --color-gray-500: #999;    /* 中性灰 */
+  --color-gray-900: #555555;    /* 暗灰 */
+  
+  /* 主题色 */
+  --color-primary: #0078d4;
+  
+  /* RGB 值 - 仅保留必要的 */
+  --color-white-rgb: 255, 255, 255;
+  --color-black-rgb: 0, 0, 0;
+  --color-primary-rgb: 0, 120, 212;
+  --color-gray-100-rgb: 245, 245, 245;
+  --color-gray-500-rgb: 153, 153, 153;
+  --color-gray-900-rgb: 85, 85, 85;
+  
+  /* 统一透明度体系 */
+  --opacity-10: 0.1;  /* 极轻 - 用于微妙效果和阴影 */
+  --opacity-20: 0.2;  /* 轻 - 用于边框和背景 */
+  --opacity-40: 0.4;  /* 中 - 用于次要元素 */
+  --opacity-60: 0.6;  /* 高 - 用于主要元素 */
+  --opacity-80: 0.8;  /* 很高 - 接近不透明 */
+  --opacity-95: 0.95; /* 几乎不透明 - 用于菜单和重要面板 */
+  
+  /* 布局与尺寸 */
   --shortcut-border-radius: 8px;
   --shortcut-margin: 10px;
-  --shortcut-shadow: 0 0 10px var(--secondary-color);
-  --shortcut-hover-shadow: 0 0 15px var(--secondary-color);
   --shortcut-width: 80px;
   --font-size-small: 12px;
-  --text-color: #333;
-  --container-background: rgba(198, 198, 198, 0.5);
+  
+  /* 亮色模式功能性变量 */
+  --text-color: var(--color-gray-900);
+  --container-background: rgba(var(--color-white-rgb), var(--opacity-40));
+  --shortcut-background: rgba(var(--color-white-rgb), var(--opacity-60));
+  --shortcut-shadow: 0 0 10px rgba(var(--color-black-rgb), var(--opacity-10));
+  --shortcut-hover-shadow: 0 0 15px rgba(var(--color-primary-rgb), var(--opacity-20));
+  
+  /* 边框与面板 */
+  --element-border: 1px solid transparent;
+  --element-hover-border: 1px solid rgba(var(--color-primary-rgb), var(--opacity-40));
+  --menu-bg: rgba(var(--color-white-rgb), var(--opacity-95));
+  --menu-shadow: 0 5px 15px rgba(var(--color-black-rgb), var(--opacity-20));
+  
+  /* 书签相关 */
+  --bookmark-bg: rgba(var(--color-white-rgb), var(--opacity-60));
+  --add-bookmark-bg: rgba(var(--color-primary-rgb), var(--opacity-20));
+  --add-bookmark-border: 2px dashed var(--color-primary);
+  --placeholder-bg: rgba(var(--color-white-rgb), var(--opacity-20));
+  --placeholder-border: 2px dashed var(--color-gray-100);
+}
+
+/* 深色模式变量 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 功能性变量覆盖 - 简化颜色定义 */
+    --text-color: var(--color-gray-100);
+    --container-background: rgba(var(--color-black-rgb), var(--opacity-40)); 
+    --shortcut-background: rgba(var(--color-gray-900-rgb), var(--opacity-60)); 
+    --shortcut-shadow: 0 0 10px rgba(var(--color-black-rgb), var(--opacity-20));
+    --shortcut-hover-shadow: 0 0 15px rgba(var(--color-primary-rgb), var(--opacity-40));
+    
+    /* 边框与面板 - 简化定义 */
+    --element-border: 1px solid rgba(var(--color-white-rgb), var(--opacity-20));
+    --element-hover-border: 1px solid rgba(var(--color-primary-rgb), var(--opacity-60));
+    --menu-bg: rgba(var(--color-gray-900-rgb), var(--opacity-80));
+    --menu-shadow: var(--shortcut-shadow);
+    
+    /* 书签相关 - 统一样式 */
+    --bookmark-bg: var(--shortcut-background);
+    --add-bookmark-bg: rgba(var(--color-primary-rgb), var(--opacity-20));
+    --add-bookmark-border: 2px dashed var(--color-primary);
+    --placeholder-bg: rgba(var(--color-gray-900-rgb), var(--opacity-40));
+    --placeholder-border: 2px dashed var(--color-gray-500);
+  }
 }
 
 /* 容器样式 */
@@ -102,7 +171,7 @@
   width: var(--shortcut-width);
   height: var(--shortcut-width);
   padding: 10px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--bookmark-bg);
   border-radius: var(--shortcut-border-radius);
   box-shadow: var(--shortcut-shadow);
   cursor: pointer;
@@ -128,74 +197,50 @@
 
 /* 特殊书签样式 */
 .add-bookmark {
-  background: rgba(0, 120, 212, 0.2);
-  border: 2px dashed var(--primary-color);
+  background: var(--add-bookmark-bg);
+  border: var(--add-bookmark-border);
 }
 
 .bookmark-placeholder {
-  border: 2px dashed #ccc;
-  background: rgba(255, 255, 255, 0.3);
+  border: var(--placeholder-border);
+  background: var(--placeholder-bg);
 }
 
 /* 深色模式快捷方式样式 */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --container-background: rgba(50, 50, 50, 0.7);
-    --shortcut-background: rgba(255, 255, 255, 0.9);
-    --shortcut-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    --shortcut-hover-shadow: 0 0 15px rgba(58, 160, 255, 0.6);
-    --text-color: #333;
-  }
-  
   #shortcut-list {
-    background: var(--container-background);
+    border: var(--element-border);
   }
   
   .shortcut-button {
-    background-color: var(--shortcut-background);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: var(--shortcut-shadow);
-    color: var(--text-color);
+    border: var(--element-border);
   }
   
   .shortcut-button:hover, 
   .shortcut-button:focus {
-    background-color: var(--primary-color);
-    color: white;
+    background-color: rgba(var(--color-primary-rgb), 0.3);
+    color: #ffffff;
     box-shadow: var(--shortcut-hover-shadow);
-    transform: scale(1.1);
+    border: var(--element-hover-border);
   }
   
-  /* 调整图标亮度 */
-  .shortcut-button img {
-    filter: brightness(0.8) contrast(1.2);
-  }
-  
-  .shortcut-title {
-    color: inherit;
-    text-shadow: none;
-  }
+  /* 其他样式保持不变 */
   
   .bookmark {
-    background: rgba(40, 40, 40, 0.8);
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+    background: var(--bookmark-bg);
+    box-shadow: var(--shortcut-shadow);
+    border: var(--element-border);
   }
   
   .bookmark:hover {
-    box-shadow: 0 0 15px rgba(58, 160, 255, 0.5);
+    background: var(--bookmark-bg);
+    box-shadow: var(--shortcut-hover-shadow);
+    border: var(--element-hover-border);
   }
   
-  .bookmark-title {
-    color: rgba(255, 255, 255, 0.9);
-  }
-  
-  .add-bookmark {
-    background: rgba(58, 160, 255, 0.15);
-    border-color: var(--primary-color);
-  }
-  
-  .bookmark-placeholder {
-    background-color: rgba(58, 160, 255, 0.2);
-    border: 2px dashed rgba(58, 160, 255, 0.5);
+  #shortcut-context-menu {
+    background-color: var(--menu-bg);
+    border: var(--element-border);
+    box-shadow: var(--menu-shadow);
   }
 }
