@@ -119,7 +119,7 @@ export const BookmarkManager = {
             const nonEmptySubFolders = folder.children.filter(child => 
                 child.children && !this.isFolderEmpty(child)
             );
-            const hasNonEmptySubFolders = nonEmptySubFolders.length > 0;
+            const hasNonEmptySubFolders = nonEmptySubFolders.length > 0 && !isPinned; // 固定文件夹不展示子文件夹
             
             // 添加内容
             const folderContent = Utils.createElement("div", "folder-content folder-indent-0", {}, `
@@ -136,11 +136,11 @@ export const BookmarkManager = {
             // 添加按钮到父元素
             container.appendChild(folderButton);
             
-            // 只有存在非空子文件夹时才创建子容器
-            if (hasNonEmptySubFolders) {
+            // 只有非固定文件夹且存在非空子文件夹时才创建子容器
+            if (hasNonEmptySubFolders && !isPinned) {
                 // 创建子文件夹容器
                 let subFolderContainer = Utils.createElement("div", "folder-children folder-children-initial", 
-                                                    {id: `children-${folder.id}`});
+                                                {id: `children-${folder.id}`});
                 
                 // 添加到DOM
                 container.appendChild(subFolderContainer);
@@ -343,13 +343,14 @@ export const BookmarkManager = {
         
         const parent = folderButton.parentElement;
         const children = folderButton.nextElementSibling;
+        const isPinned = folderButton.getAttribute('data-pinned') === 'true';
         
-        // 判断是否有非空子文件夹
+        // 判断是否有非空子文件夹并且不是固定文件夹
         const hasChildren = children && children.classList.contains('folder-children') && 
-                            children.querySelector('.folder-button');
+                            children.querySelector('.folder-button') && !isPinned;
         
-        // 处理展开/折叠
-        if (hasChildren) {
+        // 处理展开/折叠，仅对非固定文件夹
+        if (hasChildren && !isPinned) {
             const isOpen = folderButton.classList.contains('open');
             
             // 关闭同级展开的文件夹
