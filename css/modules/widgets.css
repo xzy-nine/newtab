@@ -2,21 +2,48 @@
 
 /* 1. 变量定义层 */
 :root {
-  /* 颜色系统 */
-  --widget-bg-color: rgba(255, 255, 255, 0.8);
-  --widget-shadow-color: rgba(0, 0, 0, 0.15);
-  --widget-shadow-color-hover: rgba(0, 0, 0, 0.3);
-  --widget-shadow-color-active: rgba(0, 0, 0, 0.4);
-  --widget-drag-handle-bg: linear-gradient(to right, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));
-  --widget-drag-handle-bg-hover: linear-gradient(to right, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
-  --widget-drag-handle-bg-fixed: linear-gradient(to right, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.02));
-  --widget-primary-color: #0078d4;
-  --widget-primary-color-hover: #0066cc;
-  --widget-danger-color: #d32f2f;
-  --widget-indicator-color: rgba(0, 0, 0, 0.3);
-  --widget-indicator-color-hover: rgba(0, 0, 0, 0.6);
-  --widget-resize-handle-color: rgba(0, 120, 212, 0.5);
-  --widget-resize-handle-color-hover: rgba(0, 120, 212, 0.8);
+  /* 颜色系统 - 基础色板 */
+  --widget-white: #ffffff;
+  --widget-black: #212121;
+  --widget-primary-blue: #0078d4;
+  --widget-primary-blue-hover: #0066cc;
+  --widget-danger-red: #d32f2f;
+  --widget-danger-red-dark: #c62828;
+  --widget-success-green: #00c853;
+  --widget-gray-100: #f5f5f5;
+  --widget-gray-200: #e0e0e0;
+  --widget-gray-300: #bdbdbd;
+  --widget-gray-400: #757575;
+  --widget-gray-500: #424242;
+  --widget-gray-700: #282828;
+
+  /* 语义化颜色变量 - 亮色模式默认 */
+  --widget-bg-color: rgba(255, 255, 255, 0.75);
+  --widget-bg-solid: var(--widget-white);
+  --widget-text-color: var(--widget-black);
+  --widget-text-secondary: rgba(51, 51, 51, 0.7);
+  --widget-shadow-color: rgba(0, 0, 0, 0.1);
+  --widget-shadow-color-hover: rgba(0, 0, 0, 0.2);
+  --widget-shadow-color-active: rgba(0, 0, 0, 0.3);
+  --widget-primary-color: var(--widget-primary-blue);
+  --widget-primary-color-hover: var(--widget-primary-blue-hover);
+  --widget-danger-color: var(--widget-danger-red);
+  --widget-success-color: var(--widget-success-green);
+  --widget-text-on-accent: var(--widget-white);
+  
+  /* 控制元素颜色 */
+  --widget-control-bg: rgba(0, 0, 0, 0.05);
+  --widget-control-bg-hover: rgba(0, 120, 212, 0.15);
+  --widget-indicator-color: rgba(0, 0, 0, 0.2);
+  --widget-indicator-color-hover: rgba(0, 0, 0, 0.4);
+  
+  /* 特殊元素颜色 */
+  --widget-drag-handle-bg: linear-gradient(to right, rgba(0, 0, 0, 0.1), transparent);
+  --widget-drag-handle-bg-hover: linear-gradient(to right, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.05));
+  --widget-drag-handle-bg-fixed: linear-gradient(to right, rgba(0, 120, 212, 0.15), rgba(0, 120, 212, 0.05));
+  --widget-resize-handle-color: rgba(0, 120, 212, 0.3);
+  --widget-resize-handle-color-hover: rgba(0, 120, 212, 0.6);
+  --widget-separator-color: var(--widget-primary-color);
   
   /* 尺寸和间距 */
   --widget-min-width: 150px;
@@ -318,66 +345,38 @@
 /* 深色模式小部件样式 */
 @media (prefers-color-scheme: dark) {
   :root {
-    --widget-bg-color: rgba(26, 26, 26, 0.8);
-    --widget-shadow-color: rgba(0, 0, 0, 0.4);
-    --widget-shadow-color-hover: rgba(0, 0, 0, 0.6);
-    --widget-drag-handle-bg: linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-    --widget-drag-handle-bg-hover: linear-gradient(to right, rgba(58, 160, 255, 0.3), rgba(58, 160, 255, 0.1));
-    --widget-drag-handle-bg-fixed: linear-gradient(to right, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+    /* 语义化颜色变量 - 深色模式 */
+    --widget-bg-color: rgba(33, 33, 33, 0.75);
+    --widget-bg-solid: #1e1e1e;
+    --widget-text-color: rgba(255, 255, 255, 0.9);
+    --widget-text-secondary: rgba(255, 255, 255, 0.7);
+    --widget-shadow-color: rgba(0, 0, 0, 0.25);
+    --widget-shadow-color-hover: rgba(0, 0, 0, 0.4);
+    --widget-shadow-color-active: rgba(0, 0, 0, 0.5);
+    --widget-primary-color: #3a9fff;
+    --widget-primary-color-hover: #4dabff;
+    
+    /* 控制元素颜色 */
+    --widget-control-bg: rgba(255, 255, 255, 0.08);
+    --widget-control-bg-hover: rgba(58, 159, 255, 0.25);
+    --widget-indicator-color: rgba(255, 255, 255, 0.2);
+    --widget-indicator-color-hover: rgba(255, 255, 255, 0.4);
+    
+    /* 特殊元素颜色 */
+    --widget-drag-handle-bg: linear-gradient(to right, rgba(255, 255, 255, 0.1), transparent);
+    --widget-drag-handle-bg-hover: linear-gradient(to right, rgba(58, 159, 255, 0.25), rgba(58, 159, 255, 0.05));
+    --widget-drag-handle-bg-fixed: linear-gradient(to right, rgba(58, 159, 255, 0.2), rgba(58, 159, 255, 0.05));
+    --widget-resize-handle-color: rgba(58, 159, 255, 0.3);
+    --widget-resize-handle-color-hover: rgba(58, 159, 255, 0.6);
   }
   
-  .widget-title {
-    color: #ffffff;
-  }
-  
+  /* 移除深色模式下的边框，改用阴影来突出效果 */
   .widget-container {
-    background-color: var(--widget-bg-color);
-    border: 1px solid #333;
-    box-shadow: 0 2px 10px var(--widget-shadow-color);
+    border: none;
+    box-shadow: 0 2px 10px var(--widget-shadow-color), 0 0 0 1px rgba(255, 255, 255, 0.05);
   }
   
-  .widget-container:hover {
-    box-shadow: 0 4px 15px var(--widget-shadow-color-hover);
-  }
-  
-  .widget-drag-handle {
-    background: var(--widget-drag-handle-bg);
-  }
-  
-  .widget-drag-handle:hover {
-    background: var(--widget-drag-handle-bg-hover);
-  }
-  
-  .widget-item {
-    background-color: var(--widget-bg-color);
-  }
-  
-  .widget-indicator {
-    background-color: rgba(255, 255, 255, 0.3);
-  }
-  
-  .widget-indicator:hover {
-    background-color: rgba(255, 255, 255, 0.5);
-  }
-  
-  .widget-indicator.active {
-    background-color: var(--primary-color);
-  }
-  
-  .widget-resize-handle {
-    background: linear-gradient(135deg, transparent 50%, var(--primary-color) 50%);
-    opacity: 0.6;
-  }
-  
-  .widget-resize-handle:hover {
-    opacity: 1;
-  }
-  
-  .context-menu-item.danger-item {
-    color: var(--widget-danger-color);
-  }
-  
-  .context-menu-item.danger-item:hover {
-    background-color: rgba(211, 47, 47, 0.2);
+  .widget-container.widget-fixed {
+    box-shadow: 0 2px 8px var(--widget-shadow-color), 0 0 0 1px rgba(58, 159, 255, 0.15);
   }
 }

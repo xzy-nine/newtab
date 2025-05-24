@@ -1,41 +1,6 @@
-/* 1. 变量定义层 - 精简后的颜色系统 */
-:root {
-    /* 基础色 - 减少为核心颜色 */
-    --white: #ffffff;
-    --black: #333333;
-    --primary-color: #0078d4;
-    --danger-color: #ff5252;
-    --success-color: #00c853;
-    
-    /* 派生颜色 - 使用基础色的不同透明度和色调 */
-    --background-color: var(--white);
-    --text-color: var(--black);
-    --border-color: rgba(0, 0, 0, 0.2);
-    
-    /* 按钮颜色系统 - 统一化 */
-    --button-bg: rgba(0, 0, 0, 0.1);
-    --button-bg-hover: rgba(0, 120, 212, 0.2);
-    
-    /* 阴影系统 - 统一使用基础色的透明度变体 */
-    --box-shadow-color: rgba(0, 0, 0, 0.1);
-    
-    /* 间距 - 保持不变 */
-    --widget-padding: 8px;
-    --button-size: 28px;
-    --compact-button-size: 24px;
-}
+/* 计数器小部件样式 */
 
-/* 2. 主题模式层 - 深色模式变量 */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --background-color: #212121;
-        --text-color: var(--white);
-        --border-color: rgba(255, 255, 255, 0.2);
-        --button-bg: rgba(255, 255, 255, 0.1);
-        --button-bg-hover: rgba(0, 120, 212, 0.5);
-        --box-shadow-color: rgba(0, 0, 0, 0.5);
-    }
-}
+/* 使用主小部件CSS的通用变量，不再重复定义基础变量 */
 
 /* 3. 组件基础层 */
 .counter-widget {
@@ -49,11 +14,10 @@
     box-sizing: border-box;
     user-select: none;
     -webkit-user-select: none;
-    background-color: var(--background-color);
-    color: var(--text-color);
+    background-color: transparent; /* 移除背景色，使用父容器背景 */
+    color: var(--widget-text-color);
     /* 移除边框 */
     border: none;
-    box-shadow: 0 2px 12px var(--box-shadow-color);
 }
 
 /* 4. 子组件层 */
@@ -68,8 +32,8 @@
     white-space: nowrap;
     position: relative;
     z-index: 2;
-    background-color: inherit;
-    color: var(--text-color);
+    background-color: transparent;
+    color: var(--widget-text-color);
 }
 
 .counter-title.editing {
@@ -81,12 +45,18 @@
     padding: 2px;
     font-size: inherit;
     font-weight: bold;
-    /* 移除边框 */
-    border: none;
+    /* 移除边框，增加低透明度边框 */
+    border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 4px;
     outline: none;
-    background-color: var(--background-color);
-    color: var(--text-color);
+    background-color: var(--widget-bg-solid);
+    color: var(--widget-text-color);
+}
+
+@media (prefers-color-scheme: dark) {
+    .counter-title.editing input {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
 }
 
 /* 控制区域 */
@@ -100,19 +70,19 @@
 
 /* 按钮组件 */
 .counter-button {
-    min-width: var(--button-size);
-    min-height: var(--button-size);
-    /* 移除边框 */
+    min-width: 28px;
+    min-height: 28px;
+    /* 使用更柔和的边框 */
     border: none;
     border-radius: 50%;
-    background-color: var(--button-bg);
-    color: var(--primary-color);
+    background-color: var(--widget-control-bg);
+    color: var(--widget-primary-color);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-size: 18px;
-    transition: background-color 0.2s;
+    transition: all var(--widget-transition-quick);
 }
 
 /* 计数显示 */
@@ -123,46 +93,47 @@
     margin: 0 5px;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: font-size 0.3s ease;
-    color: var(--primary-color);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    color: var(--widget-primary-color);
+    text-shadow: 0 1px 2px var(--widget-shadow-color);
 }
 
 /* 重置按钮 */
 .counter-reset {
     font-size: 12px;
-    color: var(--text-color);
+    color: var(--widget-text-color);
     cursor: pointer;
     padding: 4px 8px;
     margin-top: 4px;
     text-align: center;
     border-radius: 12px;
-    transition: all 0.2s ease;
-    background-color: var(--button-bg);
+    transition: all var(--widget-transition-quick) ease;
+    background-color: var(--widget-control-bg);
     /* 移除边框 */
     border: none;
 }
 
 /* 5. 交互状态层 */
 .counter-button:hover {
-    background-color: var(--button-bg-hover);
-    box-shadow: 0 0 8px var(--primary-color);
+    background-color: var(--widget-control-bg-hover);
+    transform: scale(1.05);
+    box-shadow: 0 0 6px var(--widget-shadow-color-hover);
 }
 
 .counter-reset:hover {
-    background-color: var(--button-bg-hover);
+    background-color: var(--widget-control-bg-hover);
 }
 
 /* 重置确认状态 */
 .counter-reset.confirm {
-    color: var(--white);
-    background-color: var(--danger-color);
+    color: var(--widget-text-on-accent);
+    background-color: var(--widget-danger-color);
     font-weight: bold;
     border: none;
 }
 
 .counter-reset.confirm:hover {
-    background-color: var(--success-color);
+    background-color: var(--widget-danger-red-dark);
 }
 
 /* 6. 响应式适配层 */
@@ -173,20 +144,12 @@
 }
 
 .counter-widget.compact-layout .counter-button {
-    min-width: var(--compact-button-size);
-    min-height: var(--compact-button-size);
+    min-width: 24px;
+    min-height: 24px;
     font-size: 16px;
 }
 
 .counter-widget.compact-layout .counter-reset {
     font-size: 10px;
     padding: 2px 6px;
-}
-
-/* 媒体查询合并 */
-@media (prefers-color-scheme: dark) {
-    .counter-title.editing input {
-        border-color: transparent;
-        box-shadow: 0 0 5px var(--primary-shadow);
-    }
 }
