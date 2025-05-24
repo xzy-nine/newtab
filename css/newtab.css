@@ -12,38 +12,99 @@
 
 /* ===== 1. 变量定义层 ===== */
 :root {
-  /* 颜色系统 */
-  --primary-color: #0078d4;       /* 主要颜色 - 必应蓝 */
-  --secondary-color: #00000075;   /* 次要颜色 - 浅灰色 */
-  --success-color: #00c853;       /* 成功颜色 - 绿色 */
-  --success-light: #64dd17;       /* 浅绿色 */
-  --highlight-color: #42a5f5;     /* 高亮蓝 */
-  --background-color: #ffffff;    /* 背景色 - 白色 */
-  --overlay-color: rgba(0, 0, 0, 0); /* 遮罩层颜色 */
-  --text-color: #333333;          /* 文字颜色 */
-  --light-bg: #f0f0f0;            /* 浅色背景 */
-  --light-border: #f1f1f1;        /* 浅色边框 */
+  /* === 底层变量：颜色 === */
+  /* 基础色 */
+  --color-white: #ffffff;
+  --color-black: #000000;
   
-  /* 字体系统 */
+  /* 主题色 */
+  --color-primary: #0078d4;  /* 主蓝色 */
+  --color-primary-light: #42a5f5;
+  
+  /* 功能色 */
+  --color-success: #00c853;  /* 绿色 */
+  --color-success-light: #64dd17;
+  
+  /* 灰度阶梯 - 减少层级 */
+  --color-gray-100: #f0f0f0;  /* 最浅 */
+  --color-gray-300: #e0e0e0;
+  --color-gray-500: #9e9e9e;  /* 中性 */
+  --color-gray-700: #616161;
+  --color-gray-900: #333333;  /* 最深 */
+  
+  /* 功能性颜色映射 */
+  --color-background: var(--color-white);
+  --color-text: var(--color-gray-900);
+  --color-border: var(--color-gray-300);
+  --color-surface: var(--color-gray-100);
+  
+  /* 透明度系统 - 只保留常用值 */
+  --opacity-light: 0.2;    /* 轻微透明 */
+  --opacity-medium: 0.5;   /* 半透明 */
+  --opacity-high: 0.8;     /* 高透明度 */
+  --opacity-overlay: 0.95; /* 覆盖层透明度 */
+  
+  /* === 功能性颜色变量 === */
+  --color-background: var(--color-white);
+  --color-text: var(--color-gray-900);
+  --color-border-light: var(--color-gray-200);
+  --color-surface-light: var(--color-gray-100);
+  --color-overlay: rgba(0, 0, 0, 0);  /* 透明背景覆盖层 */
+  
+  /* === 尺寸系统 === */
+  --size-xs: 4px;
+  --size-sm: 8px;
+  --size-md: 16px;
+  --size-lg: 24px;
+  --size-xl: 32px;
+  
+  /* === 边框圆角 === */
+  --radius-sm: var(--size-xs);
+  --radius-md: 5px;
+  --radius-lg: 10px;
+  --radius-full: 25px;
+  
+  /* === 动画时间 === */
+  --time-fast: 0.1s;
+  --time-normal: 0.3s;
+  --time-slow: 0.5s;
+  --time-loading: 0.8s;
+  
+  /* === 阴影系统 === */
+  --shadow-normal: 0 2px 10px rgba(0, 0, 0, 0.2);
+  --shadow-soft: 0 0 10px rgba(0, 0, 0, 0.1);
+  --shadow-inset: inset 0 0 10px rgba(0, 0, 0, 0.2);
+  --shadow-focus: 0 0 8px var(--color-primary-500);
+  
+  /* === 字体系统 === */
   --font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", 
                  "Heiti SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+  --font-size-base: 16px;
+  --font-size-xs: calc(var(--font-size-base) * 0.75);  /* 12px */
+  --font-size-sm: calc(var(--font-size-base) * 0.875); /* 14px */
+  --font-size-md: var(--font-size-base);               /* 16px */
+  --font-size-lg: calc(var(--font-size-base) * 1.25);  /* 20px */
+  --font-size-xl: calc(var(--font-size-base) * 1.5);   /* 24px */
   
-  /* 阴影系统 */
-  --box-shadow: 0 0 10px var(--secondary-color);
-  --box-shadow-inset: inset 0 0 10px var(--secondary-color);
-  --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  /* 统一尺寸系统 */
+  /* 基础间距 */
+  --space-unit: 4px;
+  --space-xs: var(--space-unit);            /* 4px */
+  --space-sm: calc(var(--space-unit) * 2);  /* 8px */
+  --space-md: calc(var(--space-unit) * 4);  /* 16px */
+  --space-lg: calc(var(--space-unit) * 6);  /* 24px */
+  --space-xl: calc(var(--space-unit) * 8);  /* 32px */
   
-  /* 动画时间 */
-  --transition-fast: 0.1s;
-  --transition-normal: 0.3s;
-  --transition-slow: 0.5s;
-  --transition-loading: 0.8s;
+  /* 边框圆角 - 基于间距系统 */
+  --radius-sm: var(--space-xs);
+  --radius-md: var(--space-sm);
+  --radius-lg: calc(var(--space-unit) * 2.5);  /* 10px */
+  --radius-full: calc(var(--space-unit) * 6.25);  /* 25px */
   
-  /* 圆角 */
-  --border-radius-sm: 4px;
-  --border-radius-md: 5px;
-  --border-radius-lg: 10px;
-  --border-radius-full: 25px;
+  /* === 过渡效果 === */
+  --transition-fast: var(--time-fast) ease;
+  --transition-normal: var(--time-normal) cubic-bezier(0.19, 1, 0.22, 1);
+  --transition-loading: var(--time-slow) ease-in-out;
 }
 
 /* ===== 2. 全局重置与基础样式 ===== */
@@ -114,7 +175,7 @@ body {
   height: 100%;
   z-index: -1;
   display: none;
-  background-color: var(--overlay-color);
+  background-color: var(--color-overlay);
 }
 
 .bg-transition {
@@ -138,7 +199,7 @@ body {
 
 .bg-white {
   background-image: none;
-  background-color: var(--background-color) !important;
+  background-color: var(--color-background) !important;
 }
 
 /* ===== 5. 控制按钮 ===== */
@@ -149,18 +210,18 @@ body {
   bottom: 20px;
   right: 20px;
   border: none;
-  border-radius: var(--border-radius-full);
-  background: var(--primary-color);
+  border-radius: var(--radius-lg); 
+  background: var(--color-primary);
   color: white;
   font-size: 20px;
   font-family: var(--font-family);
-  box-shadow: var(--box-shadow);
+  box-shadow: var(--shadow-normal);
   cursor: pointer;
   transition: box-shadow var(--transition-normal);
 }
 
 #background-button:hover {
-  box-shadow: var(--box-shadow-inset);
+  box-shadow: var(--shadow-inset);
 }
 
 #background-button:active {
@@ -171,9 +232,9 @@ body {
 /* ===== 6. 上下文菜单 ===== */
 .context-menu {
   position: absolute;
-  background: var(--background-color);
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--card-shadow);
+  background: var(--color-background);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-normal);
   padding: 5px 0;
   min-width: 120px;
   z-index: 1000;
@@ -193,12 +254,12 @@ body {
   padding: 8px 15px;
   cursor: pointer;
   font-size: 14px;
-  color: var(--text-color);
+  color: var(--color-text);
   transition: background-color var(--transition-fast);
 }
 
 .context-menu-item:hover {
-  background-color: var(--light-bg);
+  background-color: var(--color-surface-light);
 }
 
 /* ===== 7. 加载指示器 ===== */
@@ -208,35 +269,21 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(255, 255, 255, 0.98);
+  background-color: rgba(255, 255, 255, var(--opacity-95));
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   z-index: 10000;
-  transition: all var(--transition-slow) cubic-bezier(0.19, 1, 0.22, 1);
+  transition: all var(--time-slow) cubic-bezier(0.19, 1, 0.22, 1);
   backdrop-filter: blur(5px);
-}
-
-#loading-overlay.hiding {
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-10px);
-}
-
-.loader-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
 }
 
 .loader-spinner {
   width: 50px;
   height: 50px;
-  border: 3px solid rgba(0, 120, 212, 0.2);
-  border-top: 3px solid var(--primary-color);
+  border: 3px solid rgba(0, 120, 212, var(--opacity-light));
+  border-top: 3px solid var(--color-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 10px;
@@ -245,8 +292,8 @@ body {
 #loading-progress {
   width: 240px;
   height: 4px;
-  background-color: rgba(0, 0, 0, 0.1);
-  border-radius: var(--border-radius-sm);
+  background-color: rgba(0, 0, 0, var(--opacity-light));
+  border-radius: var(--radius-sm);
   overflow: hidden;
   position: relative;
   margin: 5px 0;
@@ -254,21 +301,16 @@ body {
 
 #loading-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-color), var(--highlight-color));
-  border-radius: var(--border-radius-sm);
-  transition: width var(--transition-slow) cubic-bezier(0.1, 0.7, 1.0, 0.1);
-  box-shadow: 0 0 8px rgba(0, 120, 212, 0.5);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+  border-radius: var(--radius-sm);
+  transition: width var(--time-slow) cubic-bezier(0.1, 0.7, 1.0, 0.1);
+  box-shadow: 0 0 8px rgba(0, 120, 212, var(--opacity-medium));
   width: 0;
 }
 
-.load-complete #loading-progress-bar {
-  background: linear-gradient(90deg, var(--success-color), var(--success-light));
-  transition: all var(--transition-normal) ease;
-}
-
 #loading-message {
-  font-size: 16px;
-  color: var(--text-color);
+  font-size: var(--font-size-md);
+  color: var(--color-text);
   font-weight: 500;
   text-align: center;
   margin-top: 10px;
@@ -284,18 +326,18 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--light-border);
-  border-radius: var(--border-radius-lg);
+  background: var(--color-border-light);
+  border-radius: var(--radius-lg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--primary-color);
-  border-radius: var(--border-radius-lg);
-  border: 3px solid var(--background-color);
+  background: var(--color-primary);
+  border-radius: var(--radius-lg);
+  border: 3px solid var(--color-background);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--secondary-color);
+  background: var(--color-primary-light);
 }
 
 /* ===== 9. 表单元素增强 ===== */
@@ -321,15 +363,21 @@ input:-webkit-autofill:active {
 
 /* ===== 深色模式全局变量 ===== */
 @media (prefers-color-scheme: dark) {
-  /* 根变量调整 */
   :root {
-    --primary-color: #3aa0ff;
-    --secondary-color: rgba(255, 255, 255, 0.5);
-    --background-color: #1a1a1a;
-    --text-color: rgba(255, 255, 255, 0.9);
-    --light-bg: #333;
-    --light-border: #444;
-    --overlay-color: rgba(0, 0, 0, 0.4);
+    /* === 深色模式功能变量覆盖 === */
+    --color-background: #1a1a1a;
+    --color-text: rgba(255, 255, 255, 0.9);
+    --color-border-light: #444;
+    --color-surface-light: #333;
+    --color-overlay: rgba(0, 0, 0, 0.4);
+    
+    /* 深色模式调整主色 */
+    --color-primary-500: #3aa0ff;
+    
+    /* 深色模式特有功能变量 */
+    --shadow-normal: 0 2px 10px rgba(0, 0, 0, 0.4);
+    --shadow-soft: 0 0 10px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 8px var(--color-primary-500);
   }
   
   /* 背景容器深色模式 */
@@ -339,59 +387,59 @@ input:-webkit-autofill:active {
 
   #background-overlay {
     display: block !important;
-    background-color: rgba(0, 0, 0, 0.4) !important;
+    background-color: rgba(0, 0, 0, var(--opacity-40)) !important;
   }
   
   /* 背景按钮深色模式 */
   #background-button {
-    background: var(--primary-color);
-    color: #fff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    background: var(--color-primary);
+    color: var(--color-white);
+    box-shadow: 0 0 10px rgba(0, 0, 0, var(--opacity-medium));
   }
   
   #background-button:hover {
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3), 0 0 15px var(--primary-color);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, var(--opacity-light)), 0 0 15px var(--color-primary);
   }
   
   /* 加载指示器深色模式 */
   #loading-overlay {
-    background-color: rgba(30, 30, 30, 0.95);
+    background-color: rgba(30, 30, 30, var(--opacity-95));
   }
   
   #loading-progress {
-    background-color: #333;
+    background-color: var(--color-gray-900);
   }
   
   #loading-message {
-    color: #ddd;
+    color: var(--color-gray-100);
   }
   
   #loading-screen {
-    background: rgba(30, 30, 30, 0.7);
+    background: rgba(30, 30, 30, var(--opacity-70));
   }
   
   #loading-progress-bar {
-    background-color: var(--primary-color);
-    box-shadow: 0 0 8px var(--primary-color);
+    background-color: var(--color-primary);
+    box-shadow: 0 0 8px var(--color-primary);
   }
   
   /* 滚动条深色模式 */
   ::-webkit-scrollbar-track {
-    background: rgba(40, 40, 40, 0.5);
+    background: rgba(40, 40, 40, var(--opacity-medium));
   }
   
   ::-webkit-scrollbar-thumb {
-    background: rgba(100, 100, 100, 0.5);
-    border-radius: 4px;
+    background: rgba(100, 100, 100, var(--opacity-medium));
+    border-radius: var(--radius-sm);
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(120, 120, 120, 0.7);
+    background: rgba(120, 120, 120, var(--opacity-high));
   }
   
   /* 文本选择深色模式 */
   ::selection {
-    background: var(--primary-color);
+    background: var(--color-primary);
     color: white;
   }
 }
