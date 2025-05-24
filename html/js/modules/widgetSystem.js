@@ -7,7 +7,8 @@ import { Utils } from './utils.js';
 import { I18n } from './i18n.js';
 import { Menu } from './menu.js';
 import { Notification } from './notification.js';
-import { WidgetRegistry } from './widgetRegistry.js';  // 导入注册中心
+import { WidgetRegistry } from './widgetRegistry.js';
+import { GridSystem } from './gridSystem.js';  // 导入网格系统
 
 // 储存小部件数据和实例
 let widgets = [];
@@ -28,7 +29,7 @@ function getI18nMessage(key, defaultText) {
     return I18n.getMessage(key) || defaultText;
 }
 
-/**,
+/**
  * 小部件系统API
  */
 export const WidgetSystem = {
@@ -49,6 +50,9 @@ export const WidgetSystem = {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             
+            // 初始化网格系统
+            await GridSystem.init();
+            
             // 加载已保存的小部件数据
             await this.loadWidgets();
             
@@ -60,8 +64,38 @@ export const WidgetSystem = {
                 this.saveWidgets();
             });
             
-            // 添加窗口尺寸变化监听，处理固定小部件位置
-            window.addEventListener('resize', this.handleWindowResize.bind(this));
+            // 监听网格系统状态变化
+            document.addEventListener('grid-system-toggled', (e) => {
+                // 当网格系统状态改变时重新定位小部件
+                if (e.detail.enabled) {
+                    this.repositionWidgetsOnGridChange();
+                }
+            });
+            
+            // 监听网格尺寸变化
+            document.addEventListener('grid-dimensions-changed', () => {
+                // 网格尺寸变化时，重新定位所有小部件
+                if (GridSystem.gridEnabled) {
+                    this.repositionWidgetsOnGridChange();
+                }
+            });
+            
+            // 监听缩放事件
+            document.addEventListener('grid-zoom-changed', (e) => {
+                this.handleZoomChange(e.detail);
+            });
+            
+            // 添加窗口大小变化监听器，确保小部件在视口内
+            window.addEventListener('resize', GridSystem.debounce(() => {
+                if (!GridSystem.gridEnabled) {
+                    // 如果不启用网格系统，手动确保所有小部件在视口内
+                    widgetContainers.forEach(container => {
+                        this.ensureElementInViewport(container);
+                    });
+                    // 保存更新的位置
+                    this.saveWidgets();
+                }
+            }, 250));
             
             isInitialized = true;
             return Promise.resolve();
@@ -111,17 +145,31 @@ export const WidgetSystem = {
         try {
             // 只保存必要的数据
             const widgetsToSave = widgetContainers.map(container => {
+                // 获取绝对位置和尺寸
+                const pixelPosition = {
+                    x: parseInt(container.style.left) || 0,
+                    y: parseInt(container.style.top) || 0
+                };
+                
+                const pixelSize = {
+                    width: parseInt(container.style.width) || 200,
+                    height: parseInt(container.style.height) || 150
+                };
+                
+                // 获取网格位置信息
+                const gridPosition = {
+                    gridX: parseInt(container.dataset.gridX) || 0,
+                    gridY: parseInt(container.dataset.gridY) || 0,
+                    gridColumns: parseInt(container.dataset.gridColumns) || 1,
+                    gridRows: parseInt(container.dataset.gridRows) || 1
+                };
+                
                 return {
                     id: container.id,
-                    position: {
-                        x: parseInt(container.style.left) || 0,
-                        y: parseInt(container.style.top) || 0
-                    },
-                    // 保存尺寸信息
-                    size: {
-                        width: parseInt(container.style.width) || 200,
-                        height: parseInt(container.style.height) || 150
-                    },
+                    // 同时保存像素位置和相对网格位置
+                    position: pixelPosition,
+                    size: pixelSize,
+                    gridPosition: gridPosition,
                     fixed: container.dataset.fixed === 'true',
                     activeIndex: this.getActiveWidgetIndex(container),
                     items: [...container.querySelectorAll('.widget-item')].map(item => ({
@@ -230,48 +278,41 @@ export const WidgetSystem = {
                 callback: () => {
                     this.deleteWidgetContainer(container);
                 }
+            },
+            {
+                id: 'toggle-widget-fixed',
+                text: container.dataset.fixed === 'true' 
+                    ? (I18n.getMessage('unfixWidgetContainer') || '取消固定') 
+                    : (I18n.getMessage('fixWidgetContainer') || '固定位置'),
+                callback: () => {
+                    this.toggleFixedContainer(container);
+                }
+            },
+            {
+                type: 'separator'
+            },
+            {
+                id: 'toggle-grid-system',
+                text: GridSystem.gridEnabled 
+                    ? (I18n.getMessage('disableGridSystem') || '禁用网格系统') 
+                    : (I18n.getMessage('enableGridSystem') || '启用网格系统'),
+                callback: () => {
+                    GridSystem.toggleGridSystem(!GridSystem.gridEnabled);
+                }
+            },
+            {
+                id: 'toggle-grid-debug',
+                text: GridSystem.isDebugMode 
+                    ? (I18n.getMessage('hideGridLines') || '隐藏网格线') 
+                    : (I18n.getMessage('showGridLines') || '显示网格线'),
+                callback: () => {
+                    GridSystem.toggleGridDebug(!GridSystem.isDebugMode);
+                }
             }
         ];
         
         Menu.ContextMenu.show(event, menuItems, { menuId: 'widget-container-menu' });
-    },
-    
-    /**
-     * 显示调整大小对话框
-     * @param {HTMLElement} container - 小部件容器 
-     */
-    showResizeDialog(container) {
-        const currentWidth = parseInt(container.style.width) || 200;
-        const currentHeight = parseInt(container.style.height) || 150;
-        
-        // 查找小部件类型获取合适的最小尺寸
-        const widgetItem = container.querySelector('.widget-item');
-        let minWidth = 150;  // 默认最小宽度
-        let minHeight = 100; // 默认最小高度
-        
-        if (widgetItem && widgetItem.dataset.widgetType) {
-            // 使用WidgetRegistry加载小部件配置
-            WidgetRegistry.loadWidget(widgetItem.dataset.widgetType)
-                .then(module => {
-                    if (module.default && module.default.config && module.default.config.min) {
-                        minWidth = module.default.config.min.width || minWidth;
-                        minHeight = module.default.config.min.height || minHeight;
-                    }
-                    // 显示调整大小表单
-                    this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
-                })
-                .catch(err => {
-                    console.error('加载小部件配置失败:', err);
-                    // 发生错误时使用默认值
-                    this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
-                });
-        } else {
-            // 对于其他类型的小部件，使用默认值
-            this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
-        }
-    },
-
-    
+    },   
     /**
      * 调整小部件容器大小
      * @param {HTMLElement} container - 小部件容器
@@ -562,15 +603,35 @@ export const WidgetSystem = {
             id: data.id || `widget-container-${Date.now()}`
         });
         
-        // 设置位置
-        const position = data.position || { x: 100, y: 100 };
-        container.style.left = `${position.x}px`;
-        container.style.top = `${position.y}px`;
-        
-        // 设置尺寸
-        const size = data.size || { width: 200, height: 150 };
-        container.style.width = `${size.width}px`;
-        container.style.height = `${size.height}px`;
+        // 如果有网格位置信息且启用了网格，使用网格位置
+        if (data.gridPosition && GridSystem.gridEnabled) {
+            const pixelPos = GridSystem.gridToPixelPosition(data.gridPosition);
+            container.style.left = `${pixelPos.left}px`;
+            container.style.top = `${pixelPos.top}px`;
+            container.style.width = `${pixelPos.width}px`;
+            container.style.height = `${pixelPos.height}px`;
+            
+            // 存储网格位置数据
+            container.dataset.gridX = data.gridPosition.gridX;
+            container.dataset.gridY = data.gridPosition.gridY;
+            container.dataset.gridColumns = data.gridPosition.gridColumns;
+            container.dataset.gridRows = data.gridPosition.gridRows;
+        } else {
+            // 使用像素位置
+            const position = data.position || { x: 100, y: 100 };
+            container.style.left = `${position.x}px`;
+            container.style.top = `${position.y}px`;
+            
+            // 设置尺寸
+            const size = data.size || { width: 200, height: 150 };
+            container.style.width = `${size.width}px`;
+            container.style.height = `${size.height}px`;
+            
+            // 计算并存储网格位置
+            if (GridSystem.gridEnabled) {
+                GridSystem.updateElementGridData(container);
+            }
+        }
         
         // 设置固定状态
         container.dataset.fixed = data.fixed ? 'true' : 'false';
@@ -1051,8 +1112,8 @@ export const WidgetSystem = {
                 const dy = moveEvent.clientY - startY;
                 
                 // 计算新位置
-                const newLeft = Math.max(0, startLeft + dx);
-                const newTop = Math.max(0, startTop + dy);
+                let newLeft = Math.max(0, startLeft + dx);
+                let newTop = Math.max(0, startTop + dy);
                 
                 // 应用新位置
                 container.style.left = `${newLeft}px`;
@@ -1067,7 +1128,12 @@ export const WidgetSystem = {
                     isDragging = false;
                     container.classList.remove('widget-dragging');
                     
-                    // 触发位置变更事件
+                    if (GridSystem.gridEnabled) {
+                        // 使用网格系统吸附元素
+                        GridSystem.snapElementToGrid(container, true);
+                    }
+                    
+                    // 保存位置信息
                     document.dispatchEvent(new CustomEvent('widget-data-changed'));
                 }
                 
@@ -1131,8 +1197,8 @@ export const WidgetSystem = {
                 const dy = moveEvent.clientY - startY;
                 
                 // 计算新尺寸，确保在最小和最大尺寸限制内
-                const newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + dx));
-                const newHeight = Math.min(maxHeight, Math.max(minHeight, startHeight + dy));
+                let newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + dx));
+                let newHeight = Math.min(maxHeight, Math.max(minHeight, startHeight + dy));
                 
                 // 应用新尺寸
                 container.style.width = `${newWidth}px`;
@@ -1146,6 +1212,11 @@ export const WidgetSystem = {
                 if (isResizing) {
                     isResizing = false;
                     container.classList.remove('widget-resizing');
+                    
+                    if (GridSystem.gridEnabled) {
+                        // 使用网格系统吸附元素
+                        GridSystem.snapElementToGrid(container, true);
+                    }
                     
                     // 触发尺寸变更事件
                     document.dispatchEvent(new CustomEvent('widget-data-changed'));
@@ -1163,38 +1234,332 @@ export const WidgetSystem = {
     },
     
     /**
-     * 窗口尺寸变化处理
+     * 处理缩放变化
+     * @param {Object} zoomData - 缩放数据
      */
-    handleWindowResize() {
-        // 固定小部件位置
-        widgetContainers.forEach(container => {
-            if (container.dataset.fixed === 'true') {
-                const position = {
-                    x: parseInt(container.style.left) || 0,
-                    y: parseInt(container.style.top) || 0
-                };
+    handleZoomChange(zoomData) {
+        const { previousZoom, currentZoom, zoomRatio, zoomCompensation } = zoomData;
+        
+        // 获取有效的网格尺寸
+        const effectiveColumnCount = parseInt(document.body.dataset.effectiveColumnCount) || GridSystem.gridColumnCount;
+        const effectiveRowCount = parseInt(document.body.dataset.effectiveRowCount) || GridSystem.gridRowCount;
+        
+        // 记录当前网格尺寸信息，用于调整可能溢出的小部件
+        document.body.dataset.currentGridColumns = effectiveColumnCount;
+        document.body.dataset.currentGridRows = effectiveRowCount;
+        
+        if (GridSystem.gridEnabled) {
+            // 网格系统启用时，通过网格位置重定位小部件，并验证有效范围
+            this.repositionWidgetsOnGridChange(zoomCompensation, effectiveColumnCount, effectiveRowCount);
+        } else {
+            // 网格系统禁用时，根据缩放比例调整小部件位置和尺寸
+            widgetContainers.forEach(container => {
+                // 获取当前位置和尺寸
+                const left = parseInt(container.style.left) || 0;
+                const top = parseInt(container.style.top) || 0;
+                const width = parseInt(container.style.width) || 200;
+                const height = parseInt(container.style.height) || 150;
                 
-                // 计算新的位置，确保在可视区域内
-                const newPosition = this.calculateNewFixedPosition(position);
+                // 应用缩放补偿 - 这里使用乘法而不是除法
+                // 乘以补偿系数可保持小部件的相对位置不变
+                const compensatedLeft = Math.round(left * zoomCompensation);
+                const compensatedTop = Math.round(top * zoomCompensation);
+                const compensatedWidth = Math.round(width * zoomCompensation);
+                const compensatedHeight = Math.round(height * zoomCompensation);
                 
-                container.style.left = `${newPosition.x}px`;
-                container.style.top = `${newPosition.y}px`;
+                // 应用补偿后的尺寸和位置
+                container.style.left = `${compensatedLeft}px`;
+                container.style.top = `${compensatedTop}px`;
+                container.style.width = `${compensatedWidth}px`;
+                container.style.height = `${compensatedHeight}px`;
+                
+                // 设置缩放补偿CSS变量，供小部件内部元素使用
+                container.style.setProperty('--widget-zoom-compensation', zoomCompensation);
+                container.style.setProperty('--widget-inverse-zoom', 1/zoomCompensation);
+                
+                // 应用反向变换 - 使用CSS变量增强精度
+                if (zoomCompensation !== 1) {
+                    container.style.transform = `scale(${1/zoomCompensation})`;
+                    container.style.transformOrigin = 'top left';
+                } else {
+                    container.style.transform = '';
+                }
+                
+                // 确保小部件在视口内
+                this.ensureElementInViewport(container);
+            });
+            
+            // 保存新的位置
+            this.saveWidgets();
+        }
+    },
+    
+    /**
+     * 当网格系统改变时重新定位所有小部件
+     * @param {number} zoomCompensation - 缩放补偿系数
+     * @param {number} effectiveColumnCount - 有效列数
+     * @param {number} effectiveRowCount - 有效行数
+     */
+    repositionWidgetsOnGridChange(zoomCompensation = 1, effectiveColumnCount, effectiveRowCount) {
+        if (!effectiveColumnCount) {
+            effectiveColumnCount = parseInt(document.body.dataset.effectiveColumnCount) || GridSystem.gridColumnCount;
+        }
+        
+        if (!effectiveRowCount) {
+            effectiveRowCount = parseInt(document.body.dataset.effectiveRowCount) || GridSystem.gridRowCount;
+        }
+        
+        // 首先检测冲突的小部件并调整它们的位置，防止重叠
+        this.resolveWidgetConflicts(effectiveColumnCount, effectiveRowCount, zoomCompensation);
+        
+        // 排序处理 - 先处理固定的小部件
+        const sorted = [...widgetContainers].sort((a, b) => {
+            return (a.dataset.fixed === 'true' ? 1 : 0) - (b.dataset.fixed === 'true' ? 1 : 0);
+        });
+
+        sorted.forEach(container => {
+            // 先验证网格位置数据是否在有效范围内
+            const gridPosition = {
+                gridX: parseInt(container.dataset.gridX) || 0,
+                gridY: parseInt(container.dataset.gridY) || 0,
+                gridColumns: parseInt(container.dataset.gridColumns) || 1,
+                gridRows: parseInt(container.dataset.gridRows) || 1
+            };
+            
+            // 验证并调整网格位置 - 确保不超出网格边界
+            const validatedPosition = this.validateWidgetGridPosition(gridPosition, effectiveColumnCount, effectiveRowCount);
+            
+            // 更新容器的网格数据
+            container.dataset.gridX = validatedPosition.gridX;
+            container.dataset.gridY = validatedPosition.gridY;
+            container.dataset.gridColumns = validatedPosition.gridColumns;
+            container.dataset.gridRows = validatedPosition.gridRows;
+            
+            // 基于验证后的网格位置重新定位
+            GridSystem.repositionElementFromGridData(container);
+            
+            // 设置缩放补偿CSS变量，供小部件内部元素使用
+            container.style.setProperty('--widget-zoom-compensation', zoomCompensation);
+            container.style.setProperty('--widget-inverse-zoom', 1/zoomCompensation);
+            
+            // 精确应用反向变换
+            if (zoomCompensation !== 1) {
+                container.style.transform = `scale(${1/zoomCompensation})`;
+                container.style.transformOrigin = 'top left';
+            } else {
+                container.style.transform = '';
+            }
+        });
+        
+        // 保存更新后的位置
+        this.saveWidgets();
+    },
+    
+    /**
+     * 验证小部件网格位置，确保在有效范围内且不重叠
+     * @param {Object} gridPosition - 网格位置对象
+     * @param {number} maxColumns - 最大列数
+     * @param {number} maxRows - 最大行数
+     * @returns {Object} 调整后的网格位置
+     */
+    validateWidgetGridPosition(gridPosition, maxColumns, maxRows) {
+        const { gridX, gridY, gridColumns, gridRows } = gridPosition;
+        
+        // 确保小部件尺寸在允许范围内
+        const validColumns = Math.min(gridColumns, Math.max(1, maxColumns / 2));
+        const validRows = Math.min(gridRows, Math.max(1, maxRows / 2));
+        
+        // 确保小部件位置在网格范围内
+        const validX = Math.max(0, Math.min(maxColumns - validColumns, gridX));
+        const validY = Math.max(0, Math.min(maxRows - validRows, gridY));
+        
+        return {
+            gridX: validX,
+            gridY: validY,
+            gridColumns: validColumns,
+            gridRows: validRows
+        };
+    },
+    
+    /**
+     * 解决小部件在网格中的冲突
+     * @param {number} maxColumns - 最大列数
+     * @param {number} maxRows - 最大行数
+     * @param {number} zoomCompensation - 缩放补偿系数
+     */
+    resolveWidgetConflicts(maxColumns, maxRows, zoomCompensation = 1) {
+        // 创建网格占用状态矩阵
+        const gridState = Array(maxRows).fill().map(() => Array(maxColumns).fill(null));
+        
+        // 对小部件按照固定状态排序 - 固定的小部件优先占位
+        const sortedContainers = [...widgetContainers].sort((a, b) => {
+            const aFixed = a.dataset.fixed === 'true' ? 1 : 0;
+            const bFixed = b.dataset.fixed === 'true' ? 1 : 0;
+            return bFixed - aFixed; // 固定的优先
+        });
+        
+        // 首先标记所有固定小部件的位置
+        sortedContainers.filter(c => c.dataset.fixed === 'true').forEach(container => {
+            const gridX = parseInt(container.dataset.gridX) || 0;
+            const gridY = parseInt(container.dataset.gridY) || 0;
+            const gridColumns = parseInt(container.dataset.gridColumns) || 1;
+            const gridRows = parseInt(container.dataset.gridRows) || 1;
+            
+            // 标记小部件占用的网格位置
+            for (let y = gridY; y < Math.min(gridY + gridRows, maxRows); y++) {
+                for (let x = gridX; x < Math.min(gridX + gridColumns, maxColumns); x++) {
+                    if (gridState[y][x] === null) {
+                        gridState[y][x] = container;
+                    }
+                }
+            }
+        });
+        
+        // 然后检查并移动非固定的小部件
+        sortedContainers.filter(c => c.dataset.fixed !== 'true').forEach(container => {
+            const gridX = parseInt(container.dataset.gridX) || 0;
+            const gridY = parseInt(container.dataset.gridY) || 0;
+            const gridColumns = parseInt(container.dataset.gridColumns) || 1;
+            const gridRows = parseInt(container.dataset.gridRows) || 1;
+            
+            // 检查此小部件是否需要重定位
+            let needsRepositioning = false;
+            
+            // 检查小部件是否超出网格范围
+            if (gridX + gridColumns > maxColumns || gridY + gridRows > maxRows) {
+                needsRepositioning = true;
+            } else {
+                // 检查是否与其他小部件冲突
+                for (let y = gridY; y < gridY + gridRows; y++) {
+                    for (let x = gridX; x < gridX + gridColumns; x++) {
+                        if (gridState[y][x] !== null && gridState[y][x] !== container) {
+                            needsRepositioning = true;
+                            break;
+                        }
+                    }
+                    if (needsRepositioning) break;
+                }
+            }
+            
+            // 如果需要重定位，寻找新位置
+            if (needsRepositioning) {
+                const newPosition = this.findAvailableGridPosition(gridState, gridColumns, gridRows, maxColumns, maxRows);
+                
+                if (newPosition) {
+                    // 更新小部件位置
+                    container.dataset.gridX = newPosition.x;
+                    container.dataset.gridY = newPosition.y;
+                    
+                    // 标记新位置为已占用
+                    for (let y = newPosition.y; y < newPosition.y + gridRows; y++) {
+                        for (let x = newPosition.x; x < newPosition.x + gridColumns; x++) {
+                            if (y < maxRows && x < maxColumns) {
+                                gridState[y][x] = container;
+                            }
+                        }
+                    }
+                } else {
+                    // 如果找不到合适的位置，缩小小部件尺寸
+                    const scaledColumns = Math.max(1, Math.floor(gridColumns / 2));
+                    const scaledRows = Math.max(1, Math.floor(gridRows / 2));
+                    
+                    const scaledPosition = this.findAvailableGridPosition(gridState, scaledColumns, scaledRows, maxColumns, maxRows);
+                    
+                    if (scaledPosition) {
+                        container.dataset.gridX = scaledPosition.x;
+                        container.dataset.gridY = scaledPosition.y;
+                        container.dataset.gridColumns = scaledColumns;
+                        container.dataset.gridRows = scaledRows;
+                        
+                        // 标记新位置为已占用
+                        for (let y = scaledPosition.y; y < scaledPosition.y + scaledRows; y++) {
+                            for (let x = scaledPosition.x; x < scaledPosition.x + scaledColumns; x++) {
+                                if (y < maxRows && x < maxColumns) {
+                                    gridState[y][x] = container;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // 如果不需要重定位，标记当前位置为已占用
+                for (let y = gridY; y < Math.min(gridY + gridRows, maxRows); y++) {
+                    for (let x = gridX; x < Math.min(gridX + gridColumns, maxColumns); x++) {
+                        if (gridState[y][x] === null) {
+                            gridState[y][x] = container;
+                        }
+                    }
+                }
             }
         });
     },
     
     /**
-     * 计算新的固定位置
-     * @param {Object} position - 当前位置信息
-     * @param {number} position.x - 当前X坐标
-     * @param {number} position.y - 当前Y坐标
-     * @returns {Object} 新的位置信息
+     * 寻找网格中可用位置
+     * @param {Array} gridState - 网格占用状态
+     * @param {number} columns - 所需列数
+     * @param {number} rows - 所需行数
+     * @param {number} maxColumns - 最大列数
+     * @param {number} maxRows - 最大行数
+     * @returns {Object|null} 可用位置或null
      */
-    calculateNewFixedPosition(position) {
-        const offset = 10; // 边缘留白
-        const newX = Math.min(window.innerWidth - offset, Math.max(offset, position.x));
-        const newY = Math.min(window.innerHeight - offset, Math.max(offset, position.y));
+    findAvailableGridPosition(gridState, columns, rows, maxColumns, maxRows) {
+        for (let y = 0; y <= maxRows - rows; y++) {
+            for (let x = 0; x <= maxColumns - columns; x++) {
+                let available = true;
+                
+                // 检查此位置是否可用
+                checkPos: for (let dy = 0; dy < rows; dy++) {
+                    for (let dx = 0; dx < columns; dx++) {
+                        if (gridState[y + dy][x + dx] !== null) {
+                            available = false;
+                            break checkPos;
+                        }
+                    }
+                }
+                
+                if (available) {
+                    return { x, y };
+                }
+            }
+        }
         
-        return { x: newX, y: newY };
+        return null; // 找不到可用位置
+    },
+    
+    /**
+     * 确保元素在视口内
+     * @param {HTMLElement} element - 要检查的元素
+     */
+    ensureElementInViewport(element) {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // 获取元素位置
+        const left = parseInt(element.style.left) || 0;
+        const top = parseInt(element.style.top) || 0;
+        const width = parseInt(element.style.width) || 200;
+        const height = parseInt(element.style.height) || 150;
+        
+        // 确保右边不会超出视口
+        if (left + width > viewportWidth) {
+            element.style.left = `${Math.max(0, viewportWidth - width)}px`;
+        }
+        
+        // 确保底部不会超出视口
+        if (top + height > viewportHeight) {
+            element.style.top = `${Math.max(0, viewportHeight - height)}px`;
+        }
+        
+        // 确保左边不会超出视口
+        if (left < 0) {
+            element.style.left = "0px";
+        }
+        
+        // 确保顶部不会超出视口
+        if (top < 0) {
+            element.style.top = "0px";
+        }
     }
 };
+

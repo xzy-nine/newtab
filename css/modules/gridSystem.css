@@ -1,0 +1,107 @@
+/* 网格系统样式 */
+
+/* 1. 变量定义层 */
+:root {
+  /* 网格系统变量 */
+  --grid-cell-width: 20px;     /* 网格单元格宽度 */
+  --grid-cell-height: 20px;    /* 网格单元格高度 */
+  --grid-size: 20px;           /* 网格大小 */
+  --grid-gap: 10px;            /* 网格间隙 */
+  --grid-columns: 36;          /* 网格列数 */
+  --grid-rows: 20;             /* 网格行数 */
+  --grid-snap-threshold: 15px; /* 网格吸附阈值 */
+  --page-zoom: 1;              /* 页面缩放比例 */
+}
+
+/* 添加网格辅助线样式 */
+.show-grid::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(to right, rgba(0, 120, 255, 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 120, 255, 0.15) 1px, transparent 1px);
+  background-size: 
+    var(--grid-cell-width) var(--grid-cell-height);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* 为网格添加强调线，每5个单元格一条更明显的线 */
+.show-grid::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(to right, rgba(0, 120, 255, 0.3) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 120, 255, 0.3) 1px, transparent 1px);
+  background-size: 
+    calc(var(--grid-cell-width) * 5) calc(var(--grid-cell-height) * 5);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* 为深色模式调整网格颜色 */
+@media (prefers-color-scheme: dark) {
+  .show-grid::before {
+    background-image: 
+      linear-gradient(to right, rgba(58, 159, 255, 0.2) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(58, 159, 255, 0.2) 1px, transparent 1px);
+  }
+  
+  .show-grid::after {
+    background-image: 
+      linear-gradient(to right, rgba(58, 159, 255, 0.35) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(58, 159, 255, 0.35) 1px, transparent 1px);
+  }
+}
+
+/* 网格调试线样式 */
+.debug-grid {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9997;
+  pointer-events: none;
+}
+
+.grid-line {
+  position: absolute;
+  background-color: rgba(0, 120, 255, 0.2);
+}
+
+.grid-line.vertical {
+  width: 1px;
+  top: 0;
+}
+
+.grid-line.horizontal {
+  height: 1px;
+  left: 0;
+}
+
+/* 在深色模式中调整网格调试线颜色 */
+@media (prefers-color-scheme: dark) {
+  .grid-line {
+    background-color: rgba(58, 159, 255, 0.25);
+  }
+}
+
+/* 元素在网格中移动时的过渡效果 */
+.grid-snapping {
+  transition: left 0.15s ease-out, top 0.15s ease-out, 
+              width 0.15s ease-out, height 0.15s ease-out;
+}
+
+/* 小部件在网格中移动时的过渡效果 */
+.widget-container.grid-snapping {
+  transition: left 0.15s ease-out, top 0.15s ease-out;
+}
