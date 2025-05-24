@@ -155,7 +155,7 @@ body {
   bottom: 20px;
   right: 20px;
   border: none;
-  border-radius: var(--radius-lg); 
+  border-radius: 25px; /* 修改为25px，等于高度的一半，形成半圆效果 */
   background: var(--color-primary);
   color: white;
   font-size: 20px;
@@ -272,12 +272,12 @@ body {
 
 ::-webkit-scrollbar-track {
   background: var(--color-border-light);
-  border-radius: var(--radius-lg);
+  border-radius: 6px; /* 修改为半圆效果，值为宽度的一半 */
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-primary);
-  border-radius: var(--radius-lg);
+  border-radius: 6px; /* 修改为半圆效果，值为宽度的一半 */
   border: 3px solid var(--color-background);
 }
 
@@ -366,20 +366,6 @@ input:-webkit-autofill:active {
   #loading-progress-bar {
     background-color: var(--color-primary);
     box-shadow: 0 0 8px var(--color-primary);
-  }
-  
-  /* 滚动条深色模式 */
-  ::-webkit-scrollbar-track {
-    background: rgba(40, 40, 40, var(--opacity-medium));
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: rgba(100, 100, 100, var(--opacity-medium));
-    border-radius: var(--radius-sm);
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(120, 120, 120, var(--opacity-high));
   }
   
   /* 文本选择深色模式 */
