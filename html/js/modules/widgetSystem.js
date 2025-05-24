@@ -289,13 +289,6 @@ export const WidgetSystem = {
                 }
             },
             {
-                id: 'resize-widget-container',
-                text: I18n.getMessage('resizeWidgetContainer') || '调整大小',
-                callback: () => {
-                    this.showResizeDialog(container);
-                }
-            },
-            {
                 type: 'separator'
             },
             {
@@ -319,44 +312,7 @@ export const WidgetSystem = {
         ];
         
         Menu.ContextMenu.show(event, menuItems, { menuId: 'widget-container-menu' });
-    },
-    
-    /**
-     * 显示调整大小对话框
-     * @param {HTMLElement} container - 小部件容器 
-     */
-    showResizeDialog(container) {
-        const currentWidth = parseInt(container.style.width) || 200;
-        const currentHeight = parseInt(container.style.height) || 150;
-        
-        // 查找小部件类型获取合适的最小尺寸
-        const widgetItem = container.querySelector('.widget-item');
-        let minWidth = 150;  // 默认最小宽度
-        let minHeight = 100; // 默认最小高度
-        
-        if (widgetItem && widgetItem.dataset.widgetType) {
-            // 使用WidgetRegistry加载小部件配置
-            WidgetRegistry.loadWidget(widgetItem.dataset.widgetType)
-                .then(module => {
-                    if (module.default && module.default.config && module.default.config.min) {
-                        minWidth = module.default.config.min.width || minWidth;
-                        minHeight = module.default.config.min.height || minHeight;
-                    }
-                    // 显示调整大小表单
-                    this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
-                })
-                .catch(err => {
-                    console.error('加载小部件配置失败:', err);
-                    // 发生错误时使用默认值
-                    this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
-                });
-        } else {
-            // 对于其他类型的小部件，使用默认值
-            this.showResizeSizeForm(container, currentWidth, currentHeight, minWidth, minHeight);
-        }
-    },
-
-    
+    },   
     /**
      * 调整小部件容器大小
      * @param {HTMLElement} container - 小部件容器
