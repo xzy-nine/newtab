@@ -29,10 +29,10 @@ export const GridSystem = {
     gridGap: 10,             // 初始网格间隙（将被动态计算）
     snapThreshold: 15,       // 网格吸附阈值
     isDebugMode: false,      // 是否显示网格辅助线
-    gridColumnCount: 36,     // 列数，提供精细的水平网格
-    gridRowCount: 20,        // 行数，提供精细的垂直网格
-    minCellSize: 40,         // 最小单元格大小
-    minGridGap: 4,           // 最小网格间隙
+    gridColumnCount: 45,     // 列数，提供精细的水平网格
+    gridRowCount: 30,        // 行数，提供精细的垂直网格
+    minCellSize: 10,         // 最小单元格大小（从40减小到20）
+    minGridGap: 2,           // 最小网格间隙（从4减小到2）
 
     /**
      * 初始化网格系统
@@ -51,11 +51,13 @@ export const GridSystem = {
             // 应用网格调试样式
             this.applyGridStyles();
             
-            // 添加窗口大小变化监听器
-            window.addEventListener('resize', () => {
+            // 添加窗口大小变化监听器，使用防抖函数避免频繁触发
+            window.addEventListener('resize', this.debounce(() => {
                 this.calculateGridDimensions();
                 this.applyGridStyles();
-            });
+                // 触发网格调整事件，让小部件系统能够响应
+                document.dispatchEvent(new CustomEvent('grid-dimensions-changed'));
+            }, 250));
             
             // 添加页面缩放监听
             window.addEventListener('resize', this.handleZoomChange.bind(this));
@@ -78,44 +80,150 @@ export const GridSystem = {
     },
     
     /**
+     * 处理页面缩放事件
+     * 当页面缩放比例变化时，调整网格
+     */
+    handleZoomChange() {
+        // 检测当前页面缩放比例
+        const currentZoom = window.devicePixelRatio;
+        
+        // 获取之前的缩放比例
+        const previousZoom = parseFloat(document.body.dataset.previousZoom) || 1;
+        
+        // 存储当前缩放比例以供下次比较
+        document.body.dataset.previousZoom = currentZoom;
+        
+        // 如果缩放比例没有变化，不需要调整
+        if (Math.abs(previousZoom - currentZoom) < 0.01) return;
+        
+        // 计算缩放调整系数
+        const zoomRatio = currentZoom / previousZoom;
+        
+        if (this.isDebugMode) {
+            console.log(`页面缩放调整: ${previousZoom} -> ${currentZoom}, 比例: ${zoomRatio}`);
+        }
+        
+        // 改进的缩放补偿计算 - 增强极端情况下的鲁棒性
+        let zoomCompensation;
+        
+        if (currentZoom > 1) {
+            // 放大时使用严格的反比例，但设置上限防止极端情况
+            // 限制最小缩放补偿为0.1，防止网格过小导致布局问题
+            zoomCompensation = Math.max(0.1, 1 / currentZoom);
+        } else {
+            // 缩小时使用非线性补偿，但限制最大补偿比例
+            // 使用平方根函数使补偿更平滑
+            zoomCompensation = Math.min(3, Math.sqrt(1 / currentZoom));
+        }
+        
+        // 存储更精确的缩放补偿系数
+        document.body.dataset.zoomCompensation = zoomCompensation.toFixed(6);
+        document.body.dataset.currentZoomLevel = currentZoom.toFixed(6);
+        
+        // 在CSS变量中设置缩放补偿
+        document.documentElement.style.setProperty('--zoom-compensation', zoomCompensation);
+        document.documentElement.style.setProperty('--inverse-zoom', 1/zoomCompensation);
+        
+        // 重新计算网格尺寸
+        this.calculateGridDimensions();
+        this.applyGridStyles();
+        
+        // 触发缩放事件，让其他模块可以响应
+        document.dispatchEvent(new CustomEvent('grid-zoom-changed', {
+            detail: { 
+                previousZoom, 
+                currentZoom, 
+                zoomRatio,
+                zoomCompensation
+            }
+        }));
+        
+        // 如果启用了调试模式，更新网格线
+        if (this.isDebugMode) {
+            this.updateDebugGrid();
+        }
+    },
+
+    /**
+     * 计算网格尺寸，考虑页面缩放
+     */
+        /**
      * 计算网格尺寸，考虑页面缩放
      */
     calculateGridDimensions() {
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const currentZoom = window.devicePixelRatio;
+        const currentZoom = parseFloat(document.body.dataset.currentZoomLevel) || window.devicePixelRatio;
         
-        // 基于固定网格列数和行数计算单元格尺寸
-        const cellWidth = viewportWidth / this.gridColumnCount;
-        const cellHeight = viewportHeight / this.gridRowCount;
+        // 获取缩放补偿系数
+        const zoomCompensation = parseFloat(document.body.dataset.zoomCompensation) || 1;
         
-        // 确保网格间隙不小于最小值，且不超过单元格尺寸的15%
-        // 考虑缩放因素调整最小间隙
-        const minGapAdjusted = this.minGridGap / currentZoom;
-        this.gridGap = Math.max(minGapAdjusted, Math.min(Math.min(cellWidth, cellHeight) * 0.1, 15));
+        // 计算网格最小尺寸 - 防止极端情况下网格过小
+        const minCellSize = Math.max(10, this.minCellSize * zoomCompensation); // 减小最小值限制
         
-        // 计算实际网格单元格尺寸（不含间隙）
-        this.gridSize = Math.min(cellWidth, cellHeight) - this.gridGap;
+        // 固定网格总数
+        const totalGridCells = 2400; // 期望的总网格数
+        
+        // 计算最佳正方形格子大小 - 更倾向于较小的单元格
+        const aspectRatio = viewportWidth / viewportHeight;
+        
+        // 使用更激进的计算方法
+        // 假设列数 = sqrt(totalGridCells * aspectRatio * 1.2)，增加系数让单元格变小
+        const optimalColumns = Math.round(Math.sqrt(totalGridCells * aspectRatio * 1.2));
+        const optimalRows = Math.round(totalGridCells / optimalColumns);
+        
+        // 确保单元格是正方形，但允许更小的尺寸
+        const cellSize = Math.min(viewportWidth / optimalColumns, viewportHeight / optimalRows) * zoomCompensation;
+        
+        // 确保格子尺寸不小于最小值
+        const finalCellSize = Math.max(minCellSize, cellSize);
+        
+        // 重新计算能容纳的实际列数和行数
+        const effectiveColumnCount = Math.floor(viewportWidth / finalCellSize);
+        const effectiveRowCount = Math.floor(viewportHeight / finalCellSize);
+        
+        // 确保网格间隙不小于最小值，减小间隙占比
+        const minGapAdjusted = Math.max(1, this.minGridGap * zoomCompensation);
+        this.gridGap = Math.max(minGapAdjusted, Math.min(finalCellSize * 0.08, 10 * zoomCompensation));
+        
+        // 确保网格单元格尺寸合理
+        this.gridSize = finalCellSize - this.gridGap;
         
         // 储存计算出的网格尺寸和当前缩放比例
-        document.body.dataset.gridCellWidth = cellWidth;
-        document.body.dataset.gridCellHeight = cellHeight;
-        document.body.dataset.gridSize = this.gridSize;
-        document.body.dataset.gridGap = this.gridGap;
-        document.body.dataset.currentZoom = currentZoom;
+        document.body.dataset.gridCellWidth = finalCellSize.toFixed(2);
+        document.body.dataset.gridCellHeight = finalCellSize.toFixed(2);
+        document.body.dataset.gridSize = this.gridSize.toFixed(2);
+        document.body.dataset.gridGap = this.gridGap.toFixed(2);
+        document.body.dataset.effectiveColumnCount = effectiveColumnCount;
+        document.body.dataset.effectiveRowCount = effectiveRowCount;
         
         // 更新CSS变量
-        document.documentElement.style.setProperty('--grid-cell-width', `${cellWidth}px`);
-        document.documentElement.style.setProperty('--grid-cell-height', `${cellHeight}px`);
+        document.documentElement.style.setProperty('--grid-cell-width', `${finalCellSize}px`);
+        document.documentElement.style.setProperty('--grid-cell-height', `${finalCellSize}px`);
         document.documentElement.style.setProperty('--grid-size', `${this.gridSize}px`);
         document.documentElement.style.setProperty('--grid-gap', `${this.gridGap}px`);
-        document.documentElement.style.setProperty('--grid-columns', this.gridColumnCount);
-        document.documentElement.style.setProperty('--grid-rows', this.gridRowCount);
+        document.documentElement.style.setProperty('--grid-columns', effectiveColumnCount);
+        document.documentElement.style.setProperty('--grid-rows', effectiveRowCount);
         document.documentElement.style.setProperty('--page-zoom', currentZoom);
+        document.documentElement.style.setProperty('--zoom-compensation', zoomCompensation);
+        document.documentElement.style.setProperty('--inverse-zoom', 1/zoomCompensation);
         
         // 将这些变量同步到widget CSS变量
         document.documentElement.style.setProperty('--widget-grid-cell-size', `${this.gridSize}px`);
         document.documentElement.style.setProperty('--widget-grid-gap', `${this.gridGap}px`);
+        
+        // 更新有效网格列数和行数
+        this.effectiveColumnCount = effectiveColumnCount;
+        this.effectiveRowCount = effectiveRowCount;
+        
+        // 记录实际网格总数
+        const actualTotalCells = effectiveColumnCount * effectiveRowCount;
+        document.body.dataset.actualTotalGridCells = actualTotalCells;
+        
+        if (this.isDebugMode) {
+            console.log(`网格系统: ${effectiveColumnCount}x${effectiveRowCount} = ${actualTotalCells} 单元格 (目标: ${totalGridCells})`);
+            console.log(`单元格大小: ${finalCellSize.toFixed(2)}px, 间隙: ${this.gridGap.toFixed(2)}px`);
+        }
     },
 
     /**
@@ -169,49 +277,6 @@ export const GridSystem = {
             line.style.top = `${i * cellHeight}px`;
             line.style.width = '100%';
             debugGrid.appendChild(line);
-        }
-    },
-
-    /**
-     * 处理页面缩放事件
-     * 当页面缩放比例变化时，调整网格
-     */
-    handleZoomChange() {
-        // 检测当前页面缩放比例
-        const currentZoom = window.devicePixelRatio;
-        
-        // 获取之前的缩放比例
-        const previousZoom = parseFloat(document.body.dataset.previousZoom) || currentZoom;
-        
-        // 存储当前缩放比例以供下次比较
-        document.body.dataset.previousZoom = currentZoom;
-        
-        // 如果缩放比例没有变化，不需要调整
-        if (Math.abs(previousZoom - currentZoom) < 0.01) return;
-        
-        // 计算缩放调整系数
-        const zoomRatio = currentZoom / previousZoom;
-        
-        if (this.isDebugMode) {
-            console.log(`页面缩放调整: ${previousZoom} -> ${currentZoom}, 比例: ${zoomRatio}`);
-        }
-        
-        // 重新计算网格尺寸
-        this.calculateGridDimensions();
-        this.applyGridStyles();
-        
-        // 触发缩放事件，让其他模块可以响应
-        document.dispatchEvent(new CustomEvent('grid-zoom-changed', {
-            detail: { 
-                previousZoom, 
-                currentZoom, 
-                zoomRatio 
-            }
-        }));
-        
-        // 如果启用了调试模式，更新网格线
-        if (this.isDebugMode) {
-            this.updateDebugGrid();
         }
     },
 
@@ -425,13 +490,59 @@ export const GridSystem = {
             gridRows: parseInt(element.dataset.gridRows) || 1
         };
         
+        // 确保网格位置在合法的边界内
+        const validatedPosition = this.validateGridPosition(gridPosition);
+        
+        // 更新元素的网格数据
+        element.dataset.gridX = validatedPosition.gridX;
+        element.dataset.gridY = validatedPosition.gridY;
+        element.dataset.gridColumns = validatedPosition.gridColumns;
+        element.dataset.gridRows = validatedPosition.gridRows;
+        
         // 转换为像素位置
-        const pixelPosition = this.gridToPixelPosition(gridPosition);
+        const pixelPosition = this.gridToPixelPosition(validatedPosition);
         
         // 应用位置
         element.style.left = `${pixelPosition.left}px`;
         element.style.top = `${pixelPosition.top}px`;
         element.style.width = `${pixelPosition.width}px`;
         element.style.height = `${pixelPosition.height}px`;
+    },
+
+    /**
+     * 验证网格位置是否在合法范围内
+     * @param {Object} gridPosition - 网格位置对象
+     * @returns {Object} 调整后的网格位置对象
+     */
+    validateGridPosition(gridPosition) {
+        // 创建一个新对象，避免修改原对象
+        const validated = { ...gridPosition };
+        
+        // 确保列数和行数至少为1
+        validated.gridColumns = Math.max(1, Math.min(this.gridColumnCount, validated.gridColumns));
+        validated.gridRows = Math.max(1, Math.min(this.gridRowCount, validated.gridRows));
+        
+        // 确保网格位置不会超出边界
+        validated.gridX = Math.max(0, Math.min(validated.gridX, this.gridColumnCount - validated.gridColumns));
+        validated.gridY = Math.max(0, Math.min(validated.gridY, this.gridRowCount - validated.gridRows));
+        
+        return validated;
+    },
+
+    /**
+     * 防抖函数，限制函数调用频率
+     * @param {Function} func - 要执行的函数
+     * @param {number} wait - 等待时间（毫秒）
+     * @returns {Function} 防抖处理后的函数
+     */
+    debounce(func, wait) {
+        let timeout;
+        return function() {
+            const context = this, args = arguments;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                func.apply(context, args);
+            }, wait);
+        };
     }
 };

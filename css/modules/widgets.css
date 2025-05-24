@@ -78,6 +78,11 @@
   --grid-y: 0;
   --grid-columns: 1;
   --grid-rows: 1;
+  /* 应用缩放补偿 */
+  transform-origin: top left !important;
+  will-change: transform; /* 提升为合成层，优化渲染性能 */
+  backface-visibility: hidden; /* 防止渲染问题 */
+  -webkit-font-smoothing: subpixel-antialiased; /* 提高文字渲染质量 */
 }
 
 /* 小部件拖动条 */
@@ -143,6 +148,8 @@
   transition: opacity var(--widget-transition-normal) ease, visibility var(--widget-transition-normal) ease;
   z-index: 1;
   box-sizing: border-box;
+  /* 小部件内容适应缩放 */
+  transform-origin: top left !important;
 }
 
 .widget-item > * {
@@ -385,4 +392,29 @@
   .widget-container.widget-fixed {
     box-shadow: 0 2px 8px var(--widget-shadow-color), 0 0 0 1px rgba(58, 159, 255, 0.15);
   }
+}
+
+/* 当页面缩放时的网格调整 */
+.debug-grid .grid-line {
+    transform: scale(var(--zoom-compensation, 1));
+    transform-origin: top left;
+}
+
+/* 确保变换原点正确设置，使缩放从左上角开始 */
+.widget-container {
+    /* ... 现有样式 ... */
+    transform-origin: top left !important;
+    will-change: transform; /* 提升为合成层，优化渲染性能 */
+    backface-visibility: hidden; /* 防止渲染问题 */
+    -webkit-font-smoothing: subpixel-antialiased; /* 提高文字渲染质量 */
+}
+
+.widget-item {
+    /* ... 现有样式 ... */
+    transform-origin: top left !important;
+}
+
+/* 当使用变换时，确保内部元素的文本清晰度 */
+.widget-container[style*="transform"] .widget-item {
+    -webkit-font-smoothing: antialiased;
 }
