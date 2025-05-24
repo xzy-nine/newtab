@@ -56,6 +56,11 @@
   /* 动画与过渡 */
   --widget-transition-normal: 0.3s;
   --widget-transition-quick: 0.2s;
+
+  /* 网格系统变量 */
+  --widget-grid-cell-size: 20px;  /* 网格单元格大小 */
+  --widget-grid-gap: 10px;       /* 网格间隙 */
+  --widget-snap-threshold: 15px;  /* 吸附阈值 */
 }
 
 /* 2. 主要组件层 */
@@ -69,9 +74,15 @@
   box-shadow: 0 2px 10px var(--widget-shadow-color);
   display: flex;
   overflow: hidden;
-  transition: box-shadow var(--widget-transition-normal);
+  transition: box-shadow var(--widget-transition-normal), 
+              transform var(--widget-transition-quick);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
+  /* 添加网格位置属性 */
+  --grid-x: 0;
+  --grid-y: 0;
+  --grid-columns: 1;
+  --grid-rows: 1;
 }
 
 /* 小部件拖动条 */
@@ -379,4 +390,58 @@
   .widget-container.widget-fixed {
     box-shadow: 0 2px 8px var(--widget-shadow-color), 0 0 0 1px rgba(58, 159, 255, 0.15);
   }
+}
+
+/* 添加网格辅助线样式 (开发时可启用) */
+.show-grid::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(to right, rgba(0, 120, 255, 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 120, 255, 0.15) 1px, transparent 1px);
+  background-size: 
+    var(--grid-cell-width) var(--grid-cell-height);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* 为网格添加强调线，每5个单元格一条更明显的线 */
+.show-grid::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(to right, rgba(0, 120, 255, 0.3) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 120, 255, 0.3) 1px, transparent 1px);
+  background-size: 
+    calc(var(--grid-cell-width) * 5) calc(var(--grid-cell-height) * 5);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* 为深色模式调整网格颜色 */
+@media (prefers-color-scheme: dark) {
+  .show-grid::before {
+    background-image: 
+      linear-gradient(to right, rgba(58, 159, 255, 0.2) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(58, 159, 255, 0.2) 1px, transparent 1px);
+  }
+  
+  .show-grid::after {
+    background-image: 
+      linear-gradient(to right, rgba(58, 159, 255, 0.35) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(58, 159, 255, 0.35) 1px, transparent 1px);
+  }
+}
+
+/* 小部件在网格中移动时的过渡效果 */
+.widget-container.grid-snapping {
+  transition: left 0.15s ease-out, top 0.15s ease-out;
 }

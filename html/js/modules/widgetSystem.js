@@ -49,6 +49,20 @@ export const WidgetSystem = {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             
+            // 加载网格系统设置
+            const gridSettings = await chrome.storage.local.get(['widgetGridEnabled', 'widgetGridDebug']);
+            this.gridEnabled = gridSettings.widgetGridEnabled !== undefined ? gridSettings.widgetGridEnabled : true;
+            this.isDebugMode = gridSettings.widgetGridDebug || false;
+            
+            // 初始化网格系统
+            this.initGridSystem();
+            
+            // 如果网格调试已启用，显示网格线
+            if (this.isDebugMode) {
+                document.body.classList.add('show-grid');
+                this.updateDebugGrid();
+            }
+            
             // 加载已保存的小部件数据
             await this.loadWidgets();
             
@@ -60,8 +74,11 @@ export const WidgetSystem = {
                 this.saveWidgets();
             });
             
-            // 添加窗口尺寸变化监听，处理固定小部件位置
-            window.addEventListener('resize', this.handleWindowResize.bind(this));
+            // 添加缩放监听
+            window.visualViewport.addEventListener('resize', this.handleZoomChange.bind(this));
+            
+            // 初始记录缩放比例
+            document.body.dataset.previousZoom = window.devicePixelRatio;
             
             isInitialized = true;
             return Promise.resolve();
@@ -111,17 +128,31 @@ export const WidgetSystem = {
         try {
             // 只保存必要的数据
             const widgetsToSave = widgetContainers.map(container => {
+                // 获取绝对位置和尺寸
+                const pixelPosition = {
+                    x: parseInt(container.style.left) || 0,
+                    y: parseInt(container.style.top) || 0
+                };
+                
+                const pixelSize = {
+                    width: parseInt(container.style.width) || 200,
+                    height: parseInt(container.style.height) || 150
+                };
+                
+                // 获取网格位置信息
+                const gridPosition = {
+                    gridX: parseInt(container.dataset.gridX) || 0,
+                    gridY: parseInt(container.dataset.gridY) || 0,
+                    gridColumns: parseInt(container.dataset.gridColumns) || 1,
+                    gridRows: parseInt(container.dataset.gridRows) || 1
+                };
+                
                 return {
                     id: container.id,
-                    position: {
-                        x: parseInt(container.style.left) || 0,
-                        y: parseInt(container.style.top) || 0
-                    },
-                    // 保存尺寸信息
-                    size: {
-                        width: parseInt(container.style.width) || 200,
-                        height: parseInt(container.style.height) || 150
-                    },
+                    // 同时保存像素位置和相对网格位置
+                    position: pixelPosition,
+                    size: pixelSize,
+                    gridPosition: gridPosition,
                     fixed: container.dataset.fixed === 'true',
                     activeIndex: this.getActiveWidgetIndex(container),
                     items: [...container.querySelectorAll('.widget-item')].map(item => ({
@@ -229,6 +260,43 @@ export const WidgetSystem = {
                 text: I18n.getMessage('deleteWidgetContainer') || '删除小部件容器',
                 callback: () => {
                     this.deleteWidgetContainer(container);
+                }
+            },
+            {
+                id: 'toggle-widget-fixed',
+                text: container.dataset.fixed === 'true' 
+                    ? (I18n.getMessage('unfixWidgetContainer') || '取消固定') 
+                    : (I18n.getMessage('fixWidgetContainer') || '固定位置'),
+                callback: () => {
+                    this.toggleFixedContainer(container);
+                }
+            },
+            {
+                id: 'resize-widget-container',
+                text: I18n.getMessage('resizeWidgetContainer') || '调整大小',
+                callback: () => {
+                    this.showResizeDialog(container);
+                }
+            },
+            {
+                type: 'separator'
+            },
+            {
+                id: 'toggle-grid-system',
+                text: this.gridEnabled 
+                    ? (I18n.getMessage('disableGridSystem') || '禁用网格系统') 
+                    : (I18n.getMessage('enableGridSystem') || '启用网格系统'),
+                callback: () => {
+                    this.toggleGridSystem(!this.gridEnabled);
+                }
+            },
+            {
+                id: 'toggle-grid-debug',
+                text: this.isDebugMode 
+                    ? (I18n.getMessage('hideGridLines') || '隐藏网格线') 
+                    : (I18n.getMessage('showGridLines') || '显示网格线'),
+                callback: () => {
+                    this.toggleGridDebug(!this.isDebugMode);
                 }
             }
         ];
@@ -562,15 +630,35 @@ export const WidgetSystem = {
             id: data.id || `widget-container-${Date.now()}`
         });
         
-        // 设置位置
-        const position = data.position || { x: 100, y: 100 };
-        container.style.left = `${position.x}px`;
-        container.style.top = `${position.y}px`;
-        
-        // 设置尺寸
-        const size = data.size || { width: 200, height: 150 };
-        container.style.width = `${size.width}px`;
-        container.style.height = `${size.height}px`;
+        // 如果有网格位置信息且启用了网格，使用网格位置
+        if (data.gridPosition && this.gridEnabled) {
+            const pixelPos = this.gridToPixelPosition(data.gridPosition);
+            container.style.left = `${pixelPos.left}px`;
+            container.style.top = `${pixelPos.top}px`;
+            container.style.width = `${pixelPos.width}px`;
+            container.style.height = `${pixelPos.height}px`;
+            
+            // 存储网格位置数据
+            container.dataset.gridX = data.gridPosition.gridX;
+            container.dataset.gridY = data.gridPosition.gridY;
+            container.dataset.gridColumns = data.gridPosition.gridColumns;
+            container.dataset.gridRows = data.gridPosition.gridRows;
+        } else {
+            // 使用像素位置
+            const position = data.position || { x: 100, y: 100 };
+            container.style.left = `${position.x}px`;
+            container.style.top = `${position.y}px`;
+            
+            // 设置尺寸
+            const size = data.size || { width: 200, height: 150 };
+            container.style.width = `${size.width}px`;
+            container.style.height = `${size.height}px`;
+            
+            // 计算并存储网格位置
+            if (this.gridEnabled) {
+                this.updateGridPositionData(container);
+            }
+        }
         
         // 设置固定状态
         container.dataset.fixed = data.fixed ? 'true' : 'false';
@@ -1051,8 +1139,8 @@ export const WidgetSystem = {
                 const dy = moveEvent.clientY - startY;
                 
                 // 计算新位置
-                const newLeft = Math.max(0, startLeft + dx);
-                const newTop = Math.max(0, startTop + dy);
+                let newLeft = Math.max(0, startLeft + dx);
+                let newTop = Math.max(0, startTop + dy);
                 
                 // 应用新位置
                 container.style.left = `${newLeft}px`;
@@ -1067,7 +1155,39 @@ export const WidgetSystem = {
                     isDragging = false;
                     container.classList.remove('widget-dragging');
                     
-                    // 触发位置变更事件
+                    if (WidgetSystem.gridEnabled) {
+                        // 获取当前像素位置
+                        const currentLeft = parseInt(container.style.left) || 0;
+                        const currentTop = parseInt(container.style.top) || 0;
+                        const currentWidth = parseInt(container.style.width) || 200;
+                        const currentHeight = parseInt(container.style.height) || 150;
+                        
+                        // 转换为网格位置
+                        const gridPos = WidgetSystem.pixelToGridPosition(
+                            currentLeft, 
+                            currentTop, 
+                            currentWidth, 
+                            currentHeight
+                        );
+                        
+                        // 再从网格位置转回像素位置进行捕捉
+                        const snappedPos = WidgetSystem.gridToPixelPosition(gridPos);
+                        
+                        // 平滑过渡到网格位置
+                        container.classList.add('grid-snapping');
+                        container.style.left = `${snappedPos.left}px`;
+                        container.style.top = `${snappedPos.top}px`;
+                        
+                        // 更新网格位置数据
+                        WidgetSystem.updateGridPositionData(container);
+                        
+                        // 移除过渡类
+                        setTimeout(() => {
+                            container.classList.remove('grid-snapping');
+                        }, 200);
+                    }
+                    
+                    // 保存位置信息
                     document.dispatchEvent(new CustomEvent('widget-data-changed'));
                 }
                 
@@ -1131,8 +1251,8 @@ export const WidgetSystem = {
                 const dy = moveEvent.clientY - startY;
                 
                 // 计算新尺寸，确保在最小和最大尺寸限制内
-                const newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + dx));
-                const newHeight = Math.min(maxHeight, Math.max(minHeight, startHeight + dy));
+                let newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + dx));
+                let newHeight = Math.min(maxHeight, Math.max(minHeight, startHeight + dy));
                 
                 // 应用新尺寸
                 container.style.width = `${newWidth}px`;
@@ -1146,6 +1266,68 @@ export const WidgetSystem = {
                 if (isResizing) {
                     isResizing = false;
                     container.classList.remove('widget-resizing');
+                    
+                    if (WidgetSystem.gridEnabled) {
+                        // 获取当前尺寸并捕捉到网格
+                        const currentWidth = parseInt(container.style.width) || 200;
+                        const currentHeight = parseInt(container.style.height) || 150;
+                        
+            // 计算网格尺寸
+            const gridPosition = WidgetSystem.pixelToGridPosition(
+                parseInt(container.style.left) || 0,
+                parseInt(container.style.top) || 0,
+                currentWidth,
+                currentHeight
+            );
+            
+            // 根据网格位置计算像素尺寸
+            const pixelPosition = WidgetSystem.gridToPixelPosition(gridPosition);
+            
+            // 平滑过渡到网格尺寸
+            container.classList.add('grid-snapping');
+            container.style.width = `${pixelPosition.width}px`;
+            container.style.height = `${pixelPosition.height}px`;
+            
+            // 更新网格位置数据
+            WidgetSystem.updateGridPositionData(container);
+            
+            // 检查是否需要缩放
+            const minWidgetWidth = parseInt(container.dataset.minWidth) || 150;
+            const minWidgetHeight = parseInt(container.dataset.minHeight) || 100;
+            
+            if (pixelPosition.width < minWidgetWidth || pixelPosition.height < minWidgetHeight) {
+                // 计算缩放比例
+                const scaleX = pixelPosition.width / minWidgetWidth;
+                const scaleY = pixelPosition.height / minWidgetHeight;
+                const scale = Math.min(scaleX, scaleY);
+                
+                // 应用缩放到内容
+                const contentWrapper = container.querySelector('.widget-content-wrapper');
+                if (contentWrapper) {
+                    contentWrapper.style.transform = `scale(${scale})`;
+                    contentWrapper.style.transformOrigin = 'top left';
+                    
+                    // 标记容器已缩放
+                    container.dataset.scaled = 'true';
+                    container.dataset.scale = scale;
+                }
+            } else {
+                // 移除缩放
+                const contentWrapper = container.querySelector('.widget-content-wrapper');
+                if (contentWrapper) {
+                    contentWrapper.style.transform = '';
+                    
+                    // 清除缩放标记
+                    delete container.dataset.scaled;
+                    delete container.dataset.scale;
+                }
+            }
+            
+            // 移除过渡类
+            setTimeout(() => {
+                container.classList.remove('grid-snapping');
+            }, 200);
+                    }
                     
                     // 触发尺寸变更事件
                     document.dispatchEvent(new CustomEvent('widget-data-changed'));
@@ -1166,35 +1348,452 @@ export const WidgetSystem = {
      * 窗口尺寸变化处理
      */
     handleWindowResize() {
-        // 固定小部件位置
+        // 计算窗口网格尺寸
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const cellSize = this.gridSize + this.gridGap;
+        const gridColumns = Math.floor(viewportWidth / cellSize);
+        const gridRows = Math.floor(viewportHeight / cellSize);
+        
+        // 获取之前的viewport尺寸(如果有存储)
+        const previousGridColumns = parseInt(document.body.dataset.previousGridColumns) || gridColumns;
+        const previousGridRows = parseInt(document.body.dataset.previousGridRows) || gridRows;
+        
+        // 存储当前viewport网格尺寸
+        document.body.dataset.previousGridColumns = gridColumns;
+        document.body.dataset.previousGridRows = gridRows;
+        
+        // 如果网格尺寸没有变化，不需要重定位
+        if (previousGridColumns === gridColumns && previousGridRows === gridRows) return;
+        
+        // 计算缩放比例
+        const columnRatio = gridColumns / previousGridColumns;
+        const rowRatio = gridRows / previousGridRows;
+        
+        // 为所有小部件容器应用响应式重定位
         widgetContainers.forEach(container => {
-            if (container.dataset.fixed === 'true') {
-                const position = {
-                    x: parseInt(container.style.left) || 0,
-                    y: parseInt(container.style.top) || 0
-                };
-                
-                // 计算新的位置，确保在可视区域内
-                const newPosition = this.calculateNewFixedPosition(position);
-                
-                container.style.left = `${newPosition.x}px`;
-                container.style.top = `${newPosition.y}px`;
-            }
+            // 获取存储的网格位置
+            const gridX = parseInt(container.dataset.gridX) || 0;
+            const gridY = parseInt(container.dataset.gridY) || 0;
+            
+            // 适应新的网格尺寸
+            let newGridX = Math.round(gridX * columnRatio);
+            let newGridY = Math.round(gridY * rowRatio);
+            
+            // 确保不超出视口
+            newGridX = Math.min(newGridX, gridColumns - 1);
+            newGridY = Math.min(newGridY, gridRows - 1);
+            
+            // 更新位置
+            const newPosition = this.gridToPixelPosition({
+                gridX: newGridX,
+                gridY: newGridY,
+                gridColumns: parseInt(container.dataset.gridColumns) || 1,
+                gridRows: parseInt(container.dataset.gridRows) || 1
+            });
+            
+            // 应用新位置
+            container.classList.add('grid-snapping');
+            container.style.left = `${newPosition.left}px`;
+            container.style.top = `${newPosition.top}px`;
+            
+            // 更新存储的网格位置
+            container.dataset.gridX = newGridX;
+            container.dataset.gridY = newGridY;
+            
+            // 移除过渡类
+            setTimeout(() => {
+                container.classList.remove('grid-snapping');
+            }, 300);
         });
+        
+        // 保存更新后的位置
+        this.saveWidgets();
     },
     
     /**
-     * 计算新的固定位置
+     * 计算新的固定位置，考虑网格
      * @param {Object} position - 当前位置信息
-     * @param {number} position.x - 当前X坐标
-     * @param {number} position.y - 当前Y坐标
      * @returns {Object} 新的位置信息
      */
     calculateNewFixedPosition(position) {
-        const offset = 10; // 边缘留白
-        const newX = Math.min(window.innerWidth - offset, Math.max(offset, position.x));
-        const newY = Math.min(window.innerHeight - offset, Math.max(offset, position.y));
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
         
-        return { x: newX, y: newY };
-    }
+        let x = position.x;
+        let y = position.y;
+        
+        // 确保位置在视口范围内
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+        if (x > viewportWidth - 100) x = viewportWidth - 100;
+        if (y > viewportHeight - 100) y = viewportHeight - 100;
+        
+        // 如果启用网格，捕捉到网格
+        if (this.gridEnabled) {
+            x = this.snapToGrid(x);
+            y = this.snapToGrid(y);
+        }
+        
+        return { x, y };
+    },
+
+    // 添加到文件顶部的变量声明区域
+
+    gridEnabled: true,  // 默认启用网格
+    gridSize: 20,       // 初始网格单元格大小（将被动态计算）
+    gridGap: 10,        // 初始网格间隙（将被动态计算）
+    snapThreshold: 15,  // 网格吸附阈值
+    isDebugMode: false, // 是否显示网格辅助线
+    gridColumnCount: 36, // 从12增加到24列，提供更精细的水平网格
+    gridRowCount: 20,   // 从8增加到16行，提供更精细的垂直网格
+    minCellSize: 40,    // 从60减小到40，允许更小的网格单元
+    minGridGap: 4,      // 从5减少到4，允许更紧凑的网格
+
+    /**
+     * 初始化网格系统
+     */
+    initGridSystem() {
+        // 计算当前视口的网格尺寸
+        this.calculateGridDimensions();
+        
+        // 应用网格调试样式
+        this.applyGridStyles();
+        
+        // 添加窗口大小变化监听器
+        window.addEventListener('resize', () => {
+            this.calculateGridDimensions();
+            this.applyGridStyles();
+            this.repositionWidgetsOnResize();
+        });
+        
+        // 添加页面缩放监听
+        window.addEventListener('resize', this.handleZoomChange.bind(this));
+        
+        // 监听缩放事件 (Ctrl+滚轮缩放)
+        window.visualViewport.addEventListener('resize', this.handleZoomChange.bind(this));
+        
+        // 初始保存当前缩放比例
+        document.body.dataset.previousZoom = window.devicePixelRatio;
+    },
+
+    /**
+     * 计算网格尺寸，考虑页面缩放
+     */
+    calculateGridDimensions() {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const currentZoom = window.devicePixelRatio;
+        
+        // 基于固定网格列数和行数计算单元格尺寸
+        const cellWidth = viewportWidth / this.gridColumnCount;
+        const cellHeight = viewportHeight / this.gridRowCount;
+        
+        // 确保网格间隙不小于最小值，且不超过单元格尺寸的15%
+        // 考虑缩放因素调整最小间隙
+        const minGapAdjusted = this.minGridGap / currentZoom;
+        this.gridGap = Math.max(minGapAdjusted, Math.min(Math.min(cellWidth, cellHeight) * 0.1, 15));
+        
+        // 计算实际网格单元格尺寸（不含间隙）
+        this.gridSize = Math.min(cellWidth, cellHeight) - this.gridGap;
+        
+        // 储存计算出的网格尺寸和当前缩放比例
+        document.body.dataset.gridCellWidth = cellWidth;
+        document.body.dataset.gridCellHeight = cellHeight;
+        document.body.dataset.gridSize = this.gridSize;
+        document.body.dataset.gridGap = this.gridGap;
+        document.body.dataset.currentZoom = currentZoom;
+        
+        // 更新CSS变量
+        document.documentElement.style.setProperty('--grid-cell-width', `${cellWidth}px`);
+        document.documentElement.style.setProperty('--grid-cell-height', `${cellHeight}px`);
+        document.documentElement.style.setProperty('--grid-size', `${this.gridSize}px`);
+        document.documentElement.style.setProperty('--grid-gap', `${this.gridGap}px`);
+        document.documentElement.style.setProperty('--grid-columns', this.gridColumnCount);
+        document.documentElement.style.setProperty('--grid-rows', this.gridRowCount);
+        document.documentElement.style.setProperty('--page-zoom', currentZoom);
+        
+        // 将这些变量同步到widget-specific变量
+        document.documentElement.style.setProperty('--widget-grid-cell-size', `${this.gridSize}px`);
+        document.documentElement.style.setProperty('--widget-grid-gap', `${this.gridGap}px`);
+    },
+
+    /**
+     * 应用网格样式
+     */
+    applyGridStyles() {
+        // 更新CSS变量以支持网格显示和定位
+        document.documentElement.style.setProperty('--grid-cell-width', `${parseFloat(document.body.dataset.gridCellWidth)}px`);
+        document.documentElement.style.setProperty('--grid-cell-height', `${parseFloat(document.body.dataset.gridCellHeight)}px`);
+        document.documentElement.style.setProperty('--grid-size', `${this.gridSize}px`);
+        document.documentElement.style.setProperty('--grid-gap', `${this.gridGap}px`);
+        document.documentElement.style.setProperty('--grid-columns', this.gridColumnCount);
+        document.documentElement.style.setProperty('--grid-rows', this.gridRowCount);
+        
+        // 更新调试网格显示
+        if (this.isDebugMode) {
+            this.updateDebugGrid();
+        }
+    },
+
+    /**
+     * 更新调试网格显示
+     */
+    updateDebugGrid() {
+        let debugGrid = document.getElementById('debug-grid');
+        if (!debugGrid) {
+            debugGrid = document.createElement('div');
+            debugGrid.id = 'debug-grid';
+            debugGrid.className = 'debug-grid';
+            document.body.appendChild(debugGrid);
+        }
+        
+        // 清空网格
+        debugGrid.innerHTML = '';
+        
+        const cellWidth = parseFloat(document.body.dataset.gridCellWidth);
+        const cellHeight = parseFloat(document.body.dataset.gridCellHeight);
+        
+        // 创建网格线
+        for (let i = 0; i <= this.gridColumnCount; i++) {
+            const line = document.createElement('div');
+            line.className = 'grid-line vertical';
+            line.style.left = `${i * cellWidth}px`;
+            line.style.height = '100%';
+            debugGrid.appendChild(line);
+        }
+        
+        for (let i = 0; i <= this.gridRowCount; i++) {
+            const line = document.createElement('div');
+            line.className = 'grid-line horizontal';
+            line.style.top = `${i * cellHeight}px`;
+            line.style.width = '100%';
+            debugGrid.appendChild(line);
+        }
+    },
+
+    /**
+     * 处理页面缩放事件
+     * 当页面缩放比例变化时，调整小部件位置
+     */
+    handleZoomChange() {
+        // 检测当前页面缩放比例
+        const currentZoom = window.devicePixelRatio;
+        
+        // 如果存储了之前的缩放比例，计算变化率
+        const previousZoom = parseFloat(document.body.dataset.previousZoom) || currentZoom;
+        
+        // 存储当前缩放比例以供下次比较
+        document.body.dataset.previousZoom = currentZoom;
+        
+        // 如果缩放比例没有变化，不需要调整
+        if (Math.abs(previousZoom - currentZoom) < 0.01) return;
+        
+        // 计算缩放调整系数
+        const zoomRatio = currentZoom / previousZoom;
+        
+        if (this.isDebugMode) {
+            console.log(`页面缩放调整: ${previousZoom} -> ${currentZoom}, 比例: ${zoomRatio}`);
+        }
+        
+        if (this.gridEnabled) {
+            // 网格系统启用时，重新计算网格尺寸并重定位小部件
+            this.calculateGridDimensions();
+            this.applyGridStyles();
+            this.repositionWidgetsOnResize();
+        } else {
+            // 网格系统禁用时，根据缩放比例调整小部件位置和尺寸
+            widgetContainers.forEach(container => {
+                // 获取当前位置和尺寸
+                const left = parseInt(container.style.left) || 0;
+                const top = parseInt(container.style.top) || 0;
+                const width = parseInt(container.style.width) || 200;
+                const height = parseInt(container.style.height) || 150;
+                
+                // 应用缩放调整，保持位置不变
+                container.style.left = `${Math.round(left)}px`;
+                container.style.top = `${Math.round(top)}px`;
+                container.style.width = `${Math.round(width)}px`;
+                container.style.height = `${Math.round(height)}px`;
+            });
+        }
+        
+        // 如果启用了调试模式，更新网格线
+        if (this.isDebugMode) {
+            this.updateDebugGrid();
+        }
+    },
+
+    /**
+     * 切换网格调试模式
+     * @param {boolean} enable - 是否启用网格调试
+     */
+    toggleGridDebug(enable) {
+        this.isDebugMode = enable;
+        
+        if (enable) {
+            // 添加网格调试类
+            document.body.classList.add('show-grid');
+            
+            // 更新网格线
+            this.updateDebugGrid();
+            
+            // 显示成功消息
+            Notification.notify({
+                title: I18n.getMessage('gridDebugEnabled') || '网格调试已启用',
+                message: I18n.getMessage('gridDebugEnabledMessage') || '现在您可以看到网格线',
+                type: 'info',
+                duration: 2000
+            });
+        } else {
+            // 移除网格调试类
+            document.body.classList.remove('show-grid');
+            
+            // 移除调试网格元素
+            const debugGrid = document.getElementById('debug-grid');
+            if (debugGrid) {
+                debugGrid.remove();
+            }
+            
+            // 显示消息
+            Notification.notify({
+                title: I18n.getMessage('gridDebugDisabled') || '网格调试已禁用',
+                message: I18n.getMessage('gridDebugDisabledMessage') || '网格线已隐藏',
+                type: 'info',
+                duration: 2000
+            });
+        }
+        
+        // 保存设置
+        chrome.storage.local.set({ 'widgetGridDebug': enable });
+    },
+
+    /**
+     * 切换网格系统
+     * @param {boolean} enable - 是否启用网格系统
+     */
+    toggleGridSystem(enable) {
+        this.gridEnabled = enable;
+        
+        if (enable) {
+            // 计算并应用网格
+            this.calculateGridDimensions();
+            this.applyGridStyles();
+            
+            // 重新定位所有小部件到网格
+            this.repositionWidgetsOnResize();
+            
+            // 显示成功消息
+            Notification.notify({
+                title: I18n.getMessage('gridSystemEnabled') || '网格系统已启用',
+                message: I18n.getMessage('gridSystemEnabledMessage') || '小部件将吸附到网格',
+                type: 'success',
+                duration: 2000
+            });
+        } else {
+            // 显示消息
+            Notification.notify({
+                title: I18n.getMessage('gridSystemDisabled') || '网格系统已禁用',
+                message: I18n.getMessage('gridSystemDisabledMessage') || '小部件将自由放置',
+                type: 'info',
+                duration: 2000
+            });
+        }
+        
+        // 保存设置
+        chrome.storage.local.set({ 'widgetGridEnabled': enable });
+    },
+
+    /**
+     * 将网格位置转换为像素位置
+     * @param {Object} gridPosition - 网格位置对象 {gridX, gridY, gridColumns, gridRows}
+     * @returns {Object} 像素位置对象 {left, top, width, height}
+     */
+    gridToPixelPosition(gridPosition) {
+        // 获取当前的网格尺寸
+        const cellWidth = parseFloat(document.body.dataset.gridCellWidth) || 
+            window.innerWidth / this.gridColumnCount;
+        const cellHeight = parseFloat(document.body.dataset.gridCellHeight) || 
+            window.innerHeight / this.gridRowCount;
+
+        // 计算像素位置
+        const left = gridPosition.gridX * cellWidth;
+        const top = gridPosition.gridY * cellHeight;
+        const width = gridPosition.gridColumns * cellWidth;
+        const height = gridPosition.gridRows * cellHeight;
+
+        return { left, top, width, height };
+    },
+
+    /**
+     * 将像素位置转换为网格位置
+     * @param {number} left - 左侧像素位置
+     * @param {number} top - 顶部像素位置
+     * @param {number} width - 宽度像素值
+     * @param {number} height - 高度像素值
+     * @returns {Object} 网格位置对象 {gridX, gridY, gridColumns, gridRows}
+     */
+    pixelToGridPosition(left, top, width, height) {
+        // 获取当前的网格尺寸
+        const cellWidth = parseFloat(document.body.dataset.gridCellWidth) || 
+            window.innerWidth / this.gridColumnCount;
+        const cellHeight = parseFloat(document.body.dataset.gridCellHeight) || 
+            window.innerHeight / this.gridRowCount;
+
+        // 计算网格位置
+        const gridX = Math.round(left / cellWidth);
+        const gridY = Math.round(top / cellHeight);
+        const gridColumns = Math.max(1, Math.round(width / cellWidth));
+        const gridRows = Math.max(1, Math.round(height / cellHeight));
+
+        return { gridX, gridY, gridColumns, gridRows };
+    },
+
+    /**
+     * 更新小部件容器的网格位置数据
+     * @param {HTMLElement} container - 小部件容器元素
+     */
+    updateGridPositionData(container) {
+        // 获取像素位置
+        const left = parseInt(container.style.left) || 0;
+        const top = parseInt(container.style.top) || 0;
+        const width = parseInt(container.style.width) || 200;
+        const height = parseInt(container.style.height) || 150;
+
+        // 转换为网格位置
+        const gridPosition = this.pixelToGridPosition(left, top, width, height);
+
+        // 存储网格位置数据
+        container.dataset.gridX = gridPosition.gridX;
+        container.dataset.gridY = gridPosition.gridY;
+        container.dataset.gridColumns = gridPosition.gridColumns;
+        container.dataset.gridRows = gridPosition.gridRows;
+    },
+
+    /**
+     * 在窗口大小变化时重新定位小部件
+     */
+    repositionWidgetsOnResize() {
+        if (!this.gridEnabled) return;
+
+        widgetContainers.forEach(container => {
+            // 获取存储的网格位置
+            const gridPosition = {
+                gridX: parseInt(container.dataset.gridX) || 0,
+                gridY: parseInt(container.dataset.gridY) || 0,
+                gridColumns: parseInt(container.dataset.gridColumns) || 1,
+                gridRows: parseInt(container.dataset.gridRows) || 1
+            };
+
+            // 计算新的像素位置
+            const pixelPosition = this.gridToPixelPosition(gridPosition);
+
+            // 应用新位置
+            container.style.left = `${pixelPosition.left}px`;
+            container.style.top = `${pixelPosition.top}px`;
+            container.style.width = `${pixelPosition.width}px`;
+            container.style.height = `${pixelPosition.height}px`;
+        });
+    },
 };
+
