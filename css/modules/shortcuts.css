@@ -2,34 +2,8 @@
   #VARIABLES
 \*------------------------------------*/
 :root {
-  /* 颜色系统 - HSL (色相,饱和度,亮度) */
-  --hue-primary: 210; /* 蓝色主题 */
-  --hue-neutral: 0;   /* 灰度色阶 */
-  
-  /* 主色调 */
-  --color-primary: hsl(var(--hue-primary), 100%, 42%);
-  --color-primary-light: hsl(var(--hue-primary), 80%, 60%);
-  --color-primary-dark: hsl(var(--hue-primary), 100%, 32%);
-  
-  /* 核心纯色 */
-  --color-white: hsl(0, 0%, 100%);
-  --color-black: hsl(0, 0%, 0%);
-  
-  /* 灰度色阶 - 使用HSL便于调整亮度 */
-  --color-gray-100: hsl(var(--hue-neutral), 0%, 96%); /* 浅灰 */
-  --color-gray-500: hsl(var(--hue-neutral), 0%, 60%); /* 中性灰 */
-  --color-gray-900: hsl(var(--hue-neutral), 0%, 33%); /* 暗灰 */
-  
-  /* 透明度值 */
-  --opacity-10: 0.1;
-  --opacity-20: 0.2;
-  --opacity-40: 0.4;
-  --opacity-60: 0.6;
-  --opacity-80: 0.8;
-  --opacity-95: 0.95;
-  
-  /* 基本尺寸与间距 */
-  --shortcut-border-radius: 12px; /* 稍微增加圆角使边缘更柔和 */
+  /* 快捷方式特定尺寸和间距 */
+  --shortcut-border-radius: 12px;
   --shortcut-margin: 10px;
   --shortcut-width: 80px;
   --font-size-small: 12px;
@@ -38,36 +12,8 @@
   --icon-size: 32px;
   
   /* 动效参数 */
-  --transition-quick: 0.1s;
-  --transition-normal: 0.3s;
   --scale-hover: 1.05;
   --scale-active: 0.95;
-  
-  /* 亮色模式主题颜色 - 增加色差 */
-  --text-color: var(--color-gray-900);
-  --container-background: hsla(0, 0%, 100%, var(--opacity-20));
-  --container-inner-background: hsla(0, 0%, 92%, var(--opacity-60)); /* 稍微变亮 */
-  --shortcut-background: hsla(0, 0%, 100%, var(--opacity-80)); /* 提高不透明度 */
-  --shortcut-shadow-color: hsla(0, 0%, 0%, var(--opacity-20)); /* 增加阴影强度 */
-  --shortcut-hover-shadow-color: hsla(var(--hue-primary), 100%, 42%, var(--opacity-40)); /* 更强的悬停阴影 */
-  --shortcut-hover-background: hsla(var(--hue-primary), 100%, 42%, 0.5); /* 增加悬停背景色强度 */
-  --bookmark-bg-color: hsla(0, 0%, 100%, var(--opacity-80)); /* 增加书签背景不透明度 */
-  --add-bookmark-bg-color: hsla(var(--hue-primary), 100%, 42%, var(--opacity-30)); /* 增加添加书签按钮背景色强度 */
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* 深色模式主题颜色 - 显著增加色差 */
-    --text-color: var(--color-gray-100);
-    --container-background: hsla(0, 0%, 0%, var(--opacity-60));
-    --container-inner-background: hsla(0, 0%, 5%, var(--opacity-80)); /* 更暗的背景且不透明度更高 */
-    --shortcut-background: hsla(0, 0%, 35%, var(--opacity-95)); /* 明显更亮的按钮背景 */
-    --shortcut-shadow-color: hsla(0, 0%, 0%, var(--opacity-60)); /* 更强的阴影 */
-    --shortcut-hover-shadow-color: hsla(var(--hue-primary), 100%, 42%, var(--opacity-60)); /* 更强的悬停阴影 */
-    --shortcut-hover-background: hsla(var(--hue-primary), 80%, 50%, 0.7); /* 更亮的悬停背景 */
-    --bookmark-bg-color: hsla(0, 0%, 35%, var(--opacity-95)); /* 增加书签背景对比度 */
-    --add-bookmark-bg-color: hsla(var(--hue-primary), 100%, 42%, var(--opacity-50)); /* 更显眼的添加按钮 */
-  }
 }
 
 /*------------------------------------*\
@@ -76,7 +22,7 @@
 .shortcut-title, 
 .bookmark-title {
   font-size: var(--font-size-small);
-  color: var(--text-color);
+  color: var(--color-text);  /* 统一使用全局变量 */
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -92,14 +38,14 @@
   width: 80%;
   height: 100%;
   margin-left: 10px;
-  background: var(--container-inner-background);
+  background: var(--container-bg);
   border-radius: 10px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   overflow-y: auto;
-  box-shadow: inset 0 0 15px hsla(0, 0%, 0%, var(--opacity-10));
+  box-shadow: inset 0 0 15px var(--container-shadow);
   backdrop-filter: blur(3px);
   border: none;
 }
@@ -116,13 +62,13 @@
   aspect-ratio: 1 / 1;
   margin: var(--shortcut-margin);
   padding-top: 50px;
-  background: var(--shortcut-background);
+  background: var(--container-bg);  /* 使用统一的背景颜色变量 */
   background-size: 60%;
   background-position: center;
   background-repeat: no-repeat;
-  border: none; /* 移除默认边框 */
+  border: none;
   border-radius: var(--shortcut-border-radius);
-  box-shadow: 0 2px 8px var(--shortcut-shadow-color); /* 调整阴影替代边框 */
+  box-shadow: 0 2px 8px var(--container-shadow);  /* 使用统一的阴影变量 */
   clip-path: inset(0 round 10px);
   cursor: pointer;
   overflow: hidden;
@@ -134,35 +80,25 @@
   transition: 
     box-shadow var(--transition-normal), 
     transform var(--transition-normal) ease,
-    background-color var(--transition-normal),
-    border var(--transition-normal);
+    background-color var(--transition-normal);
 }
 
 .shortcut-button:hover {
   transform: scale(var(--scale-hover));
-  box-shadow: 0 4px 12px var(--shortcut-hover-shadow-color); /* 使用更明显的阴影效果代替边框 */
+  box-shadow: 0 4px 12px var(--container-shadow);
   overflow: visible;
-  background-color: var(--shortcut-hover-background);
-  color: var(--shortcut-hover-color);
-  border: none;
+  background-color: rgba(200, 200, 200, 0.9);  /* 加深背景色 */
 }
 
 .shortcut-button:active {
   transform: scale(var(--scale-active));
-  transition: transform var(--transition-quick);
+  background-color: var(--color-primary);  /* 按下时使用主题色 */
+  color: white;  /* 确保文字在主题色上可见 */
 }
 
 /*------------------------------------*\
   #BOOKMARKS
 \*------------------------------------*/
-#custom-bookmark-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--grid-gap);
-  justify-content: center;
-  margin-top: 20px;
-}
-
 .bookmark {
   display: flex;
   flex-direction: column;
@@ -171,83 +107,56 @@
   width: var(--shortcut-width);
   height: var(--shortcut-width);
   padding: 10px;
-  background: var(--bookmark-bg-color);
+  background: var(--container-bg);  /* 使用统一的背景颜色变量 */
   border-radius: var(--shortcut-border-radius);
-  box-shadow: 0 2px 8px var(--shortcut-shadow-color);
-  border: none; /* 移除默认边框 */
+  box-shadow: 0 2px 8px var(--container-shadow);  /* 使用统一的阴影变量 */
+  border: none;
   cursor: pointer;
   transition: 
     transform var(--transition-normal), 
-    box-shadow var(--transition-normal),
-    border var(--transition-normal);
+    box-shadow var(--transition-normal);
 }
 
 .bookmark:hover {
   transform: scale(var(--scale-hover));
-  box-shadow: 0 4px 12px var(--shortcut-hover-shadow-color);
-  border: none;
+  box-shadow: 0 4px 12px var(--container-shadow);
+  background-color: rgba(200, 200, 200, 0.9);  /* 加深背景色 */
 }
 
-.bookmark-icon {
-  width: var(--icon-size);
-  height: var(--icon-size);
-  margin-bottom: 5px;
-}
-
-.bookmark-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+.bookmark:active {
+  transform: scale(var(--scale-active));
+  background-color: var(--color-primary);  /* 按下时使用主题色 */
+  color: white;  /* 确保文字在主题色上可见 */
 }
 
 /* 特殊书签 */
 .add-bookmark {
-  background: var(--add-bookmark-bg-color);
-  border: 1px dashed hsla(var(--hue-primary), 100%, 42%, 0.4); /* 降低密度和不透明度 */
+  background: var(--container-bg);
+  border: 1px dashed var(--color-primary);
+}
+
+.add-bookmark:hover {
+  border: 1px dashed var(--color-primary-light);
 }
 
 .bookmark-placeholder {
-  border: 1px dashed hsla(0, 0%, 60%, 0.3); /* 更加微妙的虚线 */
-  background: var(--placeholder-bg-color);
+  border: 1px dashed var(--color-gray-300);
 }
 
+/* 深色模式调整 */
 @media (prefers-color-scheme: dark) {
-  .bookmark-placeholder {
-    border: 1px dashed hsla(0, 0%, 60%, 0.3); /* 深色模式下更淡的虚线边框 */
-  }
-}
-
-/*------------------------------------*\
-  #CONTEXT-MENU
-\*------------------------------------*/
-#shortcut-context-menu {
-  min-width: 150px;
-  background-color: var(--menu-bg-color);
-  border: none; /* 移除边框 */
-  box-shadow: 0 8px 20px var(--menu-shadow-color); /* 增强阴影效果代替边框 */
-  border-radius: var(--shortcut-border-radius);
-}
-
-/*------------------------------------*\
-  #RESPONSIVE
-\*------------------------------------*/
-@media (max-width: 768px) {
-  :root {
-    --shortcut-width: 70px;
-    --shortcut-margin: 8px;
-    --grid-gap: 10px;
+  /* 只调整主体色，不改变按钮背景色 */
+  body {
+    /* 深色模式下的主体色调整 */
+    --container-bg: rgba(40, 40, 40, 0.7);
+    --container-shadow: rgba(0, 0, 0, 0.3);
   }
   
-  #shortcut-list {
-    width: 95%;
-    margin-left: 5px;
-  }
-}
-
-@media (max-width: 480px) {
-  :root {
-    --shortcut-width: 60px;
-    --shortcut-margin: 5px;
-    --font-size-small: 10px;
+  /* 仅调整图标亮度，不改变定位方式 */
+  .shortcut-button img,
+  .bookmark img,
+  .shortcut-icon,
+  .bookmark-icon {
+    filter: brightness(1.2);  /* 略微提高图标亮度以增强可见度 */
   }
 }

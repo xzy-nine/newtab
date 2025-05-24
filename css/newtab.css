@@ -12,7 +12,7 @@
 
 /* ===== 1. 变量定义层 ===== */
 :root {
-  /* === 底层变量：颜色 === */
+  /* === 简化底层变量：颜色 === */
   /* 基础色 */
   --color-white: #ffffff;
   --color-black: #000000;
@@ -20,91 +20,36 @@
   /* 主题色 */
   --color-primary: #0078d4;  /* 主蓝色 */
   --color-primary-light: #42a5f5;
+  --color-primary-dark: #005a9e;
   
-  /* 功能色 */
-  --color-success: #00c853;  /* 绿色 */
-  --color-success-light: #64dd17;
-  
-  /* 灰度阶梯 - 减少层级 */
+  /* 灰度阶梯 - 简化为5个层次 */
   --color-gray-100: #f0f0f0;  /* 最浅 */
-  --color-gray-300: #e0e0e0;
+  --color-gray-300: #d0d0d0;
   --color-gray-500: #9e9e9e;  /* 中性 */
   --color-gray-700: #616161;
   --color-gray-900: #333333;  /* 最深 */
   
-  /* 功能性颜色映射 */
-  --color-background: var(--color-white);
-  --color-text: var(--color-gray-900);
-  --color-border: var(--color-gray-300);
-  --color-surface: var(--color-gray-100);
+  /* 透明度系统 - 简化为3个主要层次 */
+  --opacity-light: 0.2;     /* 轻微透明 */
+  --opacity-medium: 0.5;    /* 中等透明 */
+  --opacity-high: 0.8;      /* 高透明度 */
   
-  /* 透明度系统 - 只保留常用值 */
-  --opacity-light: 0.2;    /* 轻微透明 */
-  --opacity-medium: 0.5;   /* 半透明 */
-  --opacity-high: 0.8;     /* 高透明度 */
-  --opacity-overlay: 0.95; /* 覆盖层透明度 */
-  
-  /* === 功能性颜色变量 === */
-  --color-background: var(--color-white);
-  --color-text: var(--color-gray-900);
-  --color-border-light: var(--color-gray-200);
-  --color-surface-light: var(--color-gray-100);
-  --color-overlay: rgba(0, 0, 0, 0);  /* 透明背景覆盖层 */
-  
-  /* === 尺寸系统 === */
-  --size-xs: 4px;
-  --size-sm: 8px;
-  --size-md: 16px;
-  --size-lg: 24px;
-  --size-xl: 32px;
-  
-  /* === 边框圆角 === */
-  --radius-sm: var(--size-xs);
-  --radius-md: 5px;
-  --radius-lg: 10px;
-  --radius-full: 25px;
-  
-  /* === 动画时间 === */
-  --time-fast: 0.1s;
-  --time-normal: 0.3s;
-  --time-slow: 0.5s;
-  --time-loading: 0.8s;
-  
-  /* === 阴影系统 === */
-  --shadow-normal: 0 2px 10px rgba(0, 0, 0, 0.2);
-  --shadow-soft: 0 0 10px rgba(0, 0, 0, 0.1);
-  --shadow-inset: inset 0 0 10px rgba(0, 0, 0, 0.2);
-  --shadow-focus: 0 0 8px var(--color-primary-500);
-  
-  /* === 字体系统 === */
-  --font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", 
-                 "Heiti SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
-  --font-size-base: 16px;
-  --font-size-xs: calc(var(--font-size-base) * 0.75);  /* 12px */
-  --font-size-sm: calc(var(--font-size-base) * 0.875); /* 14px */
-  --font-size-md: var(--font-size-base);               /* 16px */
-  --font-size-lg: calc(var(--font-size-base) * 1.25);  /* 20px */
-  --font-size-xl: calc(var(--font-size-base) * 1.5);   /* 24px */
-  
-  /* 统一尺寸系统 */
-  /* 基础间距 */
-  --space-unit: 4px;
-  --space-xs: var(--space-unit);            /* 4px */
-  --space-sm: calc(var(--space-unit) * 2);  /* 8px */
-  --space-md: calc(var(--space-unit) * 4);  /* 16px */
-  --space-lg: calc(var(--space-unit) * 6);  /* 24px */
-  --space-xl: calc(var(--space-unit) * 8);  /* 32px */
-  
-  /* 边框圆角 - 基于间距系统 */
-  --radius-sm: var(--space-xs);
-  --radius-md: var(--space-sm);
-  --radius-lg: calc(var(--space-unit) * 2.5);  /* 10px */
-  --radius-full: calc(var(--space-unit) * 6.25);  /* 25px */
-  
-  /* === 过渡效果 === */
-  --transition-fast: var(--time-fast) ease;
-  --transition-normal: var(--time-normal) cubic-bezier(0.19, 1, 0.22, 1);
-  --transition-loading: var(--time-slow) ease-in-out;
+  /* === 统一容器颜色变量 === */
+  --container-bg: rgba(240, 240, 240, var(--opacity-medium));      /* 浅色模式 */
+  --container-border: rgba(0, 0, 0, var(--opacity-light));
+  --container-shadow: rgba(0, 0, 0, var(--opacity-light));
+}
+
+/* 深色模式全局变量 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* === 统一容器颜色变量 - 深色模式 === */
+    --container-bg: rgba(40, 40, 40, var(--opacity-high));
+    --container-border: rgba(255, 255, 255, var(--opacity-light));
+    --container-shadow: rgba(0, 0, 0, var(--opacity-medium));
+    
+    /* 其余深色模式变量保持不变... */
+  }
 }
 
 /* ===== 2. 全局重置与基础样式 ===== */

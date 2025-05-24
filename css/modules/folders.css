@@ -2,20 +2,18 @@
 
 /* 1. 变量定义层 */
 :root {
-  /* 基础色彩系统 */
-  --folder-bg-light: rgb(198 198 198 / 50%);
-  --folder-bg-white: #fff;
-  --folder-text-dark: #222;
-  --folder-hover-bg: rgba(0, 0, 0, 0.05);
-  --folder-shadow-color: var(--secondary-color);
-  --folder-border-color: rgba(0, 0, 0, 0.1);
-  
-  /* 间距与尺寸 */
+  /* 文件夹特定尺寸和间距 */
   --folder-border-radius: 10px;
   --folder-padding: 10px;
   --folder-margin: 4px;
   --folder-icon-size: 24px;
   --folder-min-height: 30px;
+  
+  /* 基于现有颜色变量映射功能变量 */
+  --folder-bg: var(--color-white);
+  --folder-border-color: var(--color-gray-300);
+  --folder-text-color: var(--color-gray-900);
+  --folder-hover-bg: var(--color-gray-100);
 }
 
 /* 2. 组件基础层 - 主容器 */
@@ -28,13 +26,15 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
-  background: var(--folder-bg-light);
+  background: var(--container-bg); /* 统一使用container-bg变量 */
   border-radius: var(--folder-border-radius);
   padding: var(--folder-padding) var(--folder-padding) calc(var(--folder-padding) * 2);
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
   user-select: none;
+  box-shadow: inset 0 0 15px var(--container-shadow); /* 添加一致的内阴影 */
+  backdrop-filter: blur(3px); /* 添加与shortcut-list一致的模糊效果 */
 }
 
 /* 3. 组件结构层 - 文件夹容器 */
@@ -46,11 +46,11 @@
   justify-content: flex-start;
   border: 1px solid var(--folder-border-color);
   border-radius: var(--folder-border-radius);
-  background: var(--folder-bg-white);
-  box-shadow: 0 0 10px var(--folder-shadow-color);
+  background: var(--folder-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   cursor: pointer;
   margin: var(--folder-margin) 0;
-  transition: background-color 0.2s, transform 0.1s;
+  transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
   overflow: hidden;
   z-index: 2;
   padding: 0;
@@ -99,6 +99,7 @@
   text-align: left;
   padding-right: 5px;
   font-size: 14px;
+  color: var(--folder-text-color);
 }
 
 .folder-arrow {
@@ -107,9 +108,9 @@
   transition: transform 0.3s ease;
   width: 12px;
   text-align: center;
-  color: var(--folder-text-dark);
+  color: var(--folder-text-color);
   font-weight: bold;
-  text-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
 .folder-arrow:empty {
@@ -119,8 +120,8 @@
 
 /* 5. 交互状态层 */
 .folder-button:hover {
-  box-shadow: inset 0 0 10px var(--folder-shadow-color);
   background-color: var(--folder-hover-bg);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
 }
 
 .folder-button:hover .folder-arrow {
@@ -151,7 +152,7 @@
 
 /* 选中状态样式 */
 .folder-button.selected {
-  background-color: var(--primary-color);
+  background-color: var(--color-primary);
   box-shadow: 0 0 12px rgba(66, 133, 244, 0.5);
 }
 
@@ -205,6 +206,14 @@
 
 /* 8. 深色模式样式适配 */
 @media (prefers-color-scheme: dark) {
+  :root {
+    /* 深色模式时重新映射功能变量 */
+    --folder-bg: var(--color-gray-900);
+    --folder-border-color: var(--color-gray-700);
+    --folder-text-color: var(--color-gray-100);
+    --folder-hover-bg: var(--color-gray-700);
+  }
+
   #folder-list {
     background: rgba(40, 40, 40, 0.7);
   }
