@@ -1,5 +1,5 @@
 /**
- * 精简版图标管理模块 - 处理网站图标的获,和缓存
+ * 精简版图标管理模块 - 处理网站图标的获取和缓存
  */
 
 import { Utils } from './utils.js';
@@ -24,38 +24,41 @@ export const IconManager = {
      */
     async getIconUrl(url, element = null) {
         if (!url) return DEFAULT_ICON;
-        
+
         const domain = Utils.getDomain(url);
-        
+
         // 1. 检查内存缓存
         if (iconCache.has(domain)) {
             const iconData = iconCache.get(domain).data;
             if (element) element.style.backgroundImage = `url(${this.stripFallbackPrefix(iconData)})`;
             return this.stripFallbackPrefix(iconData);
         }
-        
-        // 2. 设置默认图标
-        if (element) element.style.backgroundImage = `url(${DEFAULT_ICON})`;
 
+        // 2. 检查本地存储缓存
         try {
-            // 3. 检查本地存储缓存
-            const cached = await chrome.storage.local.get(url);
-            if (cached[url] && !cached[url].startsWith('data:text/html')) {
-                const iconData = cached[url];
+            const cached = await chrome.storage.local.get([url, domain]);
+            const iconData = cached[url] || cached[domain];
+            if (iconData && !iconData.startsWith('data:text/html')) {
                 if (element) element.style.backgroundImage = `url(${this.stripFallbackPrefix(iconData)})`;
                 await this.cacheIcon(domain, iconData);
                 return this.stripFallbackPrefix(iconData);
             }
+        } catch (e) {}
 
-            // 4. 尝试获取图标
-            const iconData = await this.fetchIconFromSources(url, domain);
-            
-            if (element) element.style.backgroundImage = `url(${this.stripFallbackPrefix(iconData)})`;
-            return this.stripFallbackPrefix(iconData);
-        } catch (error) {
-            console.error(I18n.getMessage('fetchIconFailed') + ':', error);
-            return DEFAULT_ICON;
-        }
+        // 3. 立即生成并显示基于域名前缀的替代图标
+        const fallbackIcon = this.generateInitialBasedIcon(domain);
+        if (element) element.style.backgroundImage = `url(${fallbackIcon})`;
+
+        // 4. 异步尝试获取真实图标，获取到后自动替换
+        this.fetchIconFromSources(url, domain).then(realIcon => {
+            if (realIcon && realIcon !== fallbackIcon) {
+                if (element && element.style.backgroundImage.includes(fallbackIcon)) {
+                    element.style.backgroundImage = `url(${this.stripFallbackPrefix(realIcon)})`;
+                }
+            }
+        });
+
+        return fallbackIcon;
     },
 
     /**
@@ -307,41 +310,43 @@ export const IconManager = {
      */
     async setIconForElement(img, url) {
         if (!img || !url) return;
-        
+
         try {
             const originalOpacity = img.style.opacity || '1';
             img.dataset.originalUrl = url;
-            
+
             // 避免重复处理
             if (img.dataset.processingUrl === url) return;
             img.dataset.processingUrl = url;
-            
+
             img.onerror = () => this.handleIconError(img);
-            
+
             const domain = Utils.getDomain(url);
-            
-            // 应用过渡效果
-            const applyTransition = () => {
-                img.style.opacity = '0.7';
-                setTimeout(() => { 
-                    if (img.isConnected) img.style.opacity = originalOpacity; 
-                }, 50);
-            };
-            
+
+            // 优先本地缓存
+            let iconData = null;
             if (iconCache.has(domain)) {
-                applyTransition();
-                img.src = this.stripFallbackPrefix(iconCache.get(domain).data);
+                iconData = iconCache.get(domain).data;
             } else {
-                if (img.src) applyTransition();
-                
-                const iconUrl = await this.getIconUrl(url);
-                
-                if (img.isConnected && img.dataset.processingUrl === url) {
-                    img.src = iconUrl;
-                    applyTransition();
-                }
+                const cached = await chrome.storage.local.get([url, domain]);
+                iconData = cached[url] || cached[domain];
+                if (iconData) await this.cacheIcon(domain, iconData);
             }
-            
+
+            // 没有则用替代图标
+            if (!iconData) {
+                iconData = this.generateInitialBasedIcon(domain);
+            }
+
+            img.src = this.stripFallbackPrefix(iconData);
+
+            // 异步尝试获取真实图标
+            this.fetchIconFromSources(url, domain).then(realIcon => {
+                if (realIcon && realIcon !== iconData && img.isConnected && img.dataset.originalUrl === url) {
+                    img.src = this.stripFallbackPrefix(realIcon);
+                }
+            });
+
             delete img.dataset.processingUrl;
         } catch (error) {
             img.src = DEFAULT_ICON;
