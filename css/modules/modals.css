@@ -289,6 +289,73 @@
   padding: var(--spacing-md);
 }
 
+/* 复选框与标签一行显示优化 */
+.form-group.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-group.checkbox-group label {
+  margin-bottom: 0;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+/* 自定义圆形复选框样式 */
+.form-group.checkbox-group input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-primary);
+  border-radius: 5px;
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  margin-right: var(--spacing-xs);
+  transition: border-color 0.2s, background 0.2s;
+  vertical-align: middle;
+}
+
+.form-group.checkbox-group input[type="checkbox"]:checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.form-group.checkbox-group input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  opacity: 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.form-group.checkbox-group input[type="checkbox"]:checked::after {
+  opacity: 1;
+}
+
+/* 深色模式下自定义复选框 */
+@media (prefers-color-scheme: dark) {
+  .form-group.checkbox-group input[type="checkbox"] {
+    background: #222;
+    border-color: var(--color-primary);
+  }
+  .form-group.checkbox-group input[type="checkbox"]:checked {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+}
+
 /* 深色模式模态框样式 */
 @media (prefers-color-scheme: dark) {
   .modal-content {
