@@ -194,7 +194,7 @@
 }
 
 .section-header {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-gray-900); /* 浅色模式下用深色字体 */
   font-size: 14px;
   font-weight: 500;
   margin: 8px 5px;
@@ -231,4 +231,7 @@
     color: #aaa;
   }
 
+  .section-header {
+    color: rgba(255, 255, 255, 0.7); /* 深色模式下用浅色字体 */
+  }
 }
