@@ -175,6 +175,7 @@ body {
 }
 
 /* ===== 6. 上下文菜单 ===== */
+/*
 .context-menu {
   position: absolute;
   background: var(--color-background);
@@ -206,6 +207,7 @@ body {
 .context-menu-item:hover {
   background-color: var(--color-surface-light);
 }
+*/
 
 /* ===== 7. 加载指示器 ===== */
 #loading-overlay {

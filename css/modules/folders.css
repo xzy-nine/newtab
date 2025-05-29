@@ -232,6 +232,7 @@
   }
 
   /* 文件夹上下文菜单 */
+  /*
   #folder-context-menu {
     background: #2a2a2a;
     box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
@@ -259,4 +260,5 @@
     border-left: none;
     color: var(--primary-color);
   }
+  */
 }
