@@ -341,16 +341,6 @@
   display: none;
 }
 
-/* 9. 菜单项样式层 */
-/*
-.context-menu-item.danger-item {
-  color: var(--widget-danger-color);
-}
-
-.context-menu-item.danger-item:hover {
-  background-color: rgba(211, 47, 47, 0.1);
-}
-*/
 
 /* 10. z-index 管理层 */
 #folder-list, #shortcut-list, #search-box, .bookmark {

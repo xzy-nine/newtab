@@ -174,40 +174,7 @@ body {
   transition: transform var(--transition-fast);
 }
 
-/* ===== 6. 上下文菜单 ===== */
-/*
-.context-menu {
-  position: absolute;
-  background: var(--color-background);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-normal);
-  padding: 5px 0;
-  min-width: 120px;
-  z-index: 1000;
-  display: none;
-}
 
-.context-menu.visible {
-  display: block;
-}
-
-.context-menu-positioned {
-  left: 0;
-  top: 0;
-}
-
-.context-menu-item {
-  padding: 8px 15px;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--color-text);
-  transition: background-color var(--transition-fast);
-}
-
-.context-menu-item:hover {
-  background-color: var(--color-surface-light);
-}
-*/
 
 /* ===== 7. 加载指示器 ===== */
 #loading-overlay {
