@@ -76,20 +76,17 @@ export const BookmarkManager = {
             
             folderList.innerHTML = '';
             
-            setTimeout(() => {
-                if (root && root.children) {
-                    const specialRootFolders = root.children;
-                    
-                    for (let specialRoot of specialRootFolders) {
-                        if (specialRoot.children && !this.isFolderEmpty(specialRoot)) {
-                            this.createRootFolderButton(specialRoot, folderList);
-                        }
+            if (root && root.children) {
+                const specialRootFolders = root.children;
+                
+                for (let specialRoot of specialRootFolders) {
+                    if (specialRoot.children && !this.isFolderEmpty(specialRoot)) {
+                        this.createRootFolderButton(specialRoot, folderList);
                     }
                 }
-                
-                this.applySelectedFolder(root);
-                this.initEvents();
-            }, 0);
+            }
+            
+            this.applySelectedFolder(root);
         } catch (error) {
             Notification.notify({
                 title: I18n.getMessage('errorTitle'),
@@ -108,6 +105,13 @@ export const BookmarkManager = {
      */
     createRootFolderButton: function(folder, container, isPinned = false) {
         try {
+            console.log('Creating root folder button:', {
+                folderId: folder.id,
+                folderTitle: folder.title,
+                isPinned: isPinned,
+                hasChildren: folder.children ? folder.children.length : 0
+            });
+            
             // 创建文件夹按钮
             let folderButton = Utils.createElement("div", "folder-button", {
                 id: `folder-${folder.id}`,
@@ -119,15 +123,34 @@ export const BookmarkManager = {
             const nonEmptySubFolders = folder.children.filter(child => 
                 child.children && !this.isFolderEmpty(child)
             );
-            const hasNonEmptySubFolders = nonEmptySubFolders.length > 0 && !isPinned; // 固定文件夹不展示子文件夹
+            const hasNonEmptySubFolders = nonEmptySubFolders.length > 0;
             
-            // 添加内容
-            const folderContent = Utils.createElement("div", "folder-content folder-indent-0", {}, `
-                <span class="folder-arrow">${hasNonEmptySubFolders ? '▶' : ''}</span>
-                <span class="folder-icon">${isPinned ? '📌' : '📁'}</span>
-                <span class="folder-name">${folder.title || I18n.getMessage('untitledFolder')}</span>
-            `);
+            // 创建文件夹内容
+            const folderContent = Utils.createElement("div", "folder-content folder-indent-0");
             
+            // 创建箭头元素 - 所有有子文件夹的文件夹都应该显示箭头
+            const arrowElement = Utils.createElement("span", "folder-arrow");
+            if (hasNonEmptySubFolders) {
+                arrowElement.textContent = '▶';
+                arrowElement.setAttribute('data-expandable', 'true');
+            } else {
+                arrowElement.setAttribute('data-expandable', 'false');
+                // 没有子文件夹时不显示箭头
+                arrowElement.style.display = 'none';
+            }
+            
+            // 创建图标元素
+            const iconElement = Utils.createElement("span", "folder-icon");
+            iconElement.textContent = isPinned ? '📌' : '📁';
+            
+            // 创建名称元素
+            const nameElement = Utils.createElement("span", "folder-name");
+            nameElement.textContent = folder.title || I18n.getMessage('untitledFolder');
+            
+            // 按顺序添加子元素
+            folderContent.appendChild(arrowElement);
+            folderContent.appendChild(iconElement);
+            folderContent.appendChild(nameElement);
             folderButton.appendChild(folderContent);
             
             // 存储文件夹数据到按钮元素
@@ -136,11 +159,16 @@ export const BookmarkManager = {
             // 添加按钮到父元素
             container.appendChild(folderButton);
             
-            // 只有非固定文件夹且存在非空子文件夹时才创建子容器
-            if (hasNonEmptySubFolders && !isPinned) {
+            // 所有有非空子文件夹的文件夹都应该创建子容器
+            if (hasNonEmptySubFolders) {
                 // 创建子文件夹容器
-                let subFolderContainer = Utils.createElement("div", "folder-children folder-children-initial", 
-                                                {id: `children-${folder.id}`});
+                let subFolderContainer = Utils.createElement("div", "folder-children", 
+                                        {id: `children-${folder.id}`});
+                
+                // 初始化为关闭状态
+                subFolderContainer.style.maxHeight = '0px';
+                subFolderContainer.style.opacity = '0';
+                subFolderContainer.style.pointerEvents = 'none';
                 
                 // 添加到DOM
                 container.appendChild(subFolderContainer);
@@ -152,14 +180,27 @@ export const BookmarkManager = {
                 for (let childFolder of sortedSubFolders) {
                     this.createFolderButtonsRecursive(childFolder, subFolderContainer, 1);
                 }
+                
+                console.log('Created sub-folder container with children:', {
+                    parentId: folder.id,
+                    childrenCount: sortedSubFolders.length,
+                    containerId: `children-${folder.id}`
+                });
             }
             
-            // 添加点击事件监听
-            folderButton.addEventListener('click', (event) => {
-                event.stopPropagation();
-                this.handleFolderClick(folderButton, folder);
+            // 添加事件监听
+            this.addFolderEventListeners(folderButton, folder);
+            
+            console.log('Created folder button successfully:', {
+                id: folderButton.id,
+                hasArrow: arrowElement.textContent.trim() !== '',
+                hasChildren: hasNonEmptySubFolders,
+                isPinned,
+                arrowExpandable: arrowElement.getAttribute('data-expandable')
             });
+            
         } catch (error) {
+            console.error('Error creating root folder button:', error);
             Notification.notify({
                 title: I18n.getMessage('errorTitle'),
                 message: error.message || I18n.getMessage('genericError'),
@@ -167,6 +208,178 @@ export const BookmarkManager = {
                 duration: 5000
             });
         }
+    },
+
+    /**
+     * 添加文件夹事件监听器
+     * @param {HTMLElement} folderButton - 文件夹按钮元素
+     * @param {Object} folder - 文件夹数据
+     */
+    addFolderEventListeners: function(folderButton, folder) {
+        const arrowElement = folderButton.querySelector('.folder-arrow');
+        const folderContent = folderButton.querySelector('.folder-content');
+        
+        // 为整个文件夹按钮添加点击事件
+        folderButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            
+            // 检查点击的是否是箭头区域
+            const clickedArrow = event.target === arrowElement || arrowElement.contains(event.target);
+            
+            if (clickedArrow && arrowElement && arrowElement.textContent.trim()) {
+                // 点击箭头 - 展开/收起子文件夹
+                console.log('Arrow clicked');
+                this.toggleFolderExpansion(folderButton);
+            } else {
+                // 点击其他区域 - 显示/隐藏快捷方式
+                console.log('Folder content clicked');
+                this.toggleFolderSelection(folderButton, folder);
+            }
+        });
+        
+        // 为箭头添加额外的点击事件（增强点击检测）
+        if (arrowElement && arrowElement.textContent.trim()) {
+            arrowElement.addEventListener('click', (event) => {
+                event.stopPropagation();
+                console.log('Arrow direct click');
+                this.toggleFolderExpansion(folderButton);
+            });
+        }
+    },
+
+    /**
+     * 切换文件夹展开/收起状态
+     * @param {HTMLElement} folderButton - 文件夹按钮元素
+     */
+    toggleFolderExpansion: function(folderButton) {
+        if (!folderButton) return;
+        
+        const children = folderButton.nextElementSibling;
+        const isPinned = folderButton.getAttribute('data-pinned') === 'true';
+        const arrowElement = folderButton.querySelector('.folder-arrow');
+        
+        console.log('toggleFolderExpansion called:', {
+            folderId: folderButton.id,
+            isPinned,
+            hasChildren: !!children,
+            childrenClasses: children ? children.className : 'none',
+            hasArrow: !!arrowElement,
+            arrowText: arrowElement ? arrowElement.textContent : 'none',
+            arrowExpandable: arrowElement ? arrowElement.getAttribute('data-expandable') : 'none'
+        });
+        
+        // 修复条件：检查是否有子元素容器和可展开的箭头
+        if (children && 
+            children.classList.contains('folder-children') && 
+            arrowElement && 
+            arrowElement.getAttribute('data-expandable') === 'true') {
+        
+            const isOpen = folderButton.classList.contains('open');
+            
+            if (isOpen) {
+                // 收起文件夹
+                console.log('Closing folder');
+                folderButton.classList.remove('open');
+                arrowElement.textContent = '▶';
+                children.style.maxHeight = '0px';
+                children.style.opacity = '0';
+                children.style.pointerEvents = 'none';
+                
+                // 递归关闭所有子文件夹
+                children.querySelectorAll('.folder-button.open').forEach(nestedButton => {
+                    nestedButton.classList.remove('open');
+                    const nestedArrow = nestedButton.querySelector('.folder-arrow');
+                    if (nestedArrow) nestedArrow.textContent = '▶';
+                    const nestedChildren = nestedButton.nextElementSibling;
+                    if (nestedChildren && nestedChildren.classList.contains('folder-children')) {
+                        nestedChildren.style.maxHeight = '0px';
+                        nestedChildren.style.opacity = '0';
+                        nestedChildren.style.pointerEvents = 'none';
+                    }
+                });
+            } else {
+                // 展开文件夹
+                console.log('Opening folder');
+                folderButton.classList.add('open');
+                arrowElement.textContent = '▼';
+                
+                // 先设置为自动高度来计算实际高度
+                children.style.maxHeight = 'none';
+                children.style.opacity = '1';
+                children.style.pointerEvents = 'auto';
+                
+                const scrollHeight = children.scrollHeight;
+                console.log('Calculated height:', scrollHeight);
+                
+                // 重置为0，然后动画到目标高度
+                children.style.maxHeight = '0px';
+                
+                // 使用 requestAnimationFrame 确保样式重置生效
+                requestAnimationFrame(() => {
+                    children.style.maxHeight = scrollHeight + 'px';
+                    
+                    // 动画完成后设置为auto以支持动态内容
+                    setTimeout(() => {
+                        if (folderButton.classList.contains('open')) {
+                            children.style.maxHeight = 'auto';
+                        }
+                    }, 300);
+                });
+                
+                this.ensureChildrenVisibility(folderButton);
+            }
+        } else {
+            console.log('Toggle blocked:', {
+                reason: !children ? 'no children' : 
+                       !children.classList.contains('folder-children') ? 'wrong class' : 
+                       !arrowElement ? 'no arrow' : 
+                       arrowElement.getAttribute('data-expandable') !== 'true' ? 'arrow not expandable' : 
+                       'unknown'
+            });
+        }
+    },
+
+    /**
+     * 切换文件夹选择状态（显示/隐藏快捷方式）
+     * @param {HTMLElement} folderButton - 文件夹按钮元素
+     * @param {Object} folder - 文件夹数据
+     */
+    toggleFolderSelection: function(folderButton, folder) {
+        if (!folderButton || !folder) return;
+        
+        const isCurrentlySelected = folderButton.classList.contains('selected');
+        
+        if (isCurrentlySelected) {
+            // 如果当前已选中，第二次点击则取消选中并隐藏快捷方式
+            folderButton.classList.remove('selected');
+            this.hideShortcuts();
+            currentFolder = "";
+            chrome.storage.local.remove('folder');
+        } else {
+            // 第一次点击或选择其他文件夹，显示快捷方式
+            this.showShortcuts(folder);
+            currentFolder = folder.id;
+            
+            // 保存当前选中的文件夹
+            chrome.storage.local.set({ folder: folder.id });
+            
+            // 更新选中状态
+            document.querySelectorAll('.folder-button.selected').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            folderButton.classList.add('selected');
+        }
+    },
+
+    /**
+     * 隐藏快捷方式
+     */
+    hideShortcuts: function() {
+        const shortcutList = document.getElementById("shortcut-list");
+        if (!shortcutList) return;
+        
+        shortcutList.innerHTML = "";
+        shortcutList.classList.add('hidden');
     },
 
     /**
@@ -252,6 +465,7 @@ export const BookmarkManager = {
             // 创建文件夹按钮元素
             let folderButton = Utils.createElement("div", "folder-button", {
                 id: `folder-${folder.id}`,
+                'data-folder-id': folder.id,
                 'data-folder-name': folder.title || I18n.getMessage('untitledFolder')
             });
             
@@ -261,21 +475,45 @@ export const BookmarkManager = {
             );
             const hasNonEmptySubFolders = nonEmptySubFolders.length > 0;
             
-            // 添加层级标识和展开/折叠指示器
-            const folderContent = Utils.createElement("div", `folder-content folder-indent-${level}`, {}, `
-                <span class="folder-arrow">${hasNonEmptySubFolders ? '▶' : ''}</span>
-                <span class="folder-icon">📁</span>
-                <span class="folder-name">${folder.title || I18n.getMessage('untitledFolder')}</span>
-            `);
+            // 创建文件夹内容
+            const folderContent = Utils.createElement("div", `folder-content folder-indent-${level}`);
             
+            // 创建箭头元素
+            const arrowElement = Utils.createElement("span", "folder-arrow");
+            if (hasNonEmptySubFolders) {
+                arrowElement.textContent = '▶';
+                arrowElement.setAttribute('data-expandable', 'true');
+            } else {
+                arrowElement.setAttribute('data-expandable', 'false');
+            }
+            
+            // 创建图标元素
+            const iconElement = Utils.createElement("span", "folder-icon");
+            iconElement.textContent = '📁';
+            
+            // 创建名称元素
+            const nameElement = Utils.createElement("span", "folder-name");
+            nameElement.textContent = folder.title || I18n.getMessage('untitledFolder');
+            
+            // 按顺序添加子元素
+            folderContent.appendChild(arrowElement);
+            folderContent.appendChild(iconElement);
+            folderContent.appendChild(nameElement);
             folderButton.appendChild(folderContent);
+            
             folderButton.folderData = folder;
             parentElement.appendChild(folderButton);
             
             // 只有存在非空子文件夹时才创建子容器
             if (hasNonEmptySubFolders) {
-                let subFolderContainer = Utils.createElement("div", "folder-children folder-children-initial", 
+                let subFolderContainer = Utils.createElement("div", "folder-children", 
                                                         {id: `children-${folder.id}`});
+                
+                // 初始化为关闭状态
+                subFolderContainer.style.maxHeight = '0px';
+                subFolderContainer.style.opacity = '0';
+                subFolderContainer.style.pointerEvents = 'none';
+                
                 parentElement.appendChild(subFolderContainer);
                 
                 // 排序子文件夹
@@ -287,11 +525,9 @@ export const BookmarkManager = {
                 }
             }
             
-            // 添加点击事件监听
-            folderButton.addEventListener('click', (event) => {
-                event.stopPropagation();
-                this.handleFolderClick(folderButton, folder);
-            });
+            // 添加事件监听
+            this.addFolderEventListeners(folderButton, folder);
+            
         } catch (error) {
             Notification.notify({
                 title: I18n.getMessage('errorTitle'),
@@ -330,108 +566,6 @@ export const BookmarkManager = {
                 type: 'error',
                 duration: 5000
             });
-        });
-    },
-
-    /**
-     * 处理文件夹点击事件
-     * @param {HTMLElement} folderButton - 文件夹按钮元素
-     * @param {Object} folder - 文件夹数据
-     */
-    handleFolderClick: function(folderButton, folder) {
-        if (!folderButton || !folder) return;
-        
-        const parent = folderButton.parentElement;
-        const children = folderButton.nextElementSibling;
-        const isPinned = folderButton.getAttribute('data-pinned') === 'true';
-        
-        // 判断是否有非空子文件夹并且不是固定文件夹
-        const hasChildren = children && children.classList.contains('folder-children') && 
-                            children.querySelector('.folder-button') && !isPinned;
-        
-        // 处理展开/折叠，仅对非固定文件夹
-        if (hasChildren && !isPinned) {
-            const isOpen = folderButton.classList.contains('open');
-            
-            // 关闭同级展开的文件夹
-            parent.querySelectorAll(':scope > .folder-button.open').forEach(openButton => {
-                if (openButton !== folderButton) {
-                    const openChildren = openButton.nextElementSibling;
-                    if (openChildren && openChildren.classList.contains('folder-children')) {
-                        this.closeFolder(openButton, openChildren);
-                    }
-                }
-            });
-            
-            // 展开或折叠
-            if (isOpen) {
-                this.closeFolder(folderButton, children);
-            } else {
-                this.openFolder(folderButton, children);
-                // 确保可视
-                setTimeout(() => this.ensureChildrenVisibility(folderButton), 300);
-            }
-        }
-        
-        // 显示快捷方式并更新状态
-        this.showShortcuts(folder);
-        currentFolder = folder.id;
-        
-        // 保存当前选中的文件夹
-        chrome.storage.local.set({ folder: folder.id });
-        
-        // 更新选中状态
-        document.querySelectorAll('.folder-button.selected').forEach(btn => {
-            btn.classList.remove('selected');
-        });
-        folderButton.classList.add('selected');
-    },
-
-    /**
-     * 打开文件夹
-     * @param {HTMLElement} button - 文件夹按钮元素
-     * @param {HTMLElement} children - 子元素容器
-     */
-    openFolder: function(button, children) {
-        button.classList.add('open');
-        
-        // 只有在有箭头内容时才旋转箭头
-        const arrow = button.querySelector('.folder-arrow');
-        if (arrow && arrow.textContent) {
-            arrow.textContent = '▼';
-        }
-        
-        // 使用直观的类名切换
-        children.classList.remove('folder-children-closed');
-        children.classList.add('folder-children-open');
-    },
-
-    /**
-     * 关闭文件夹
-     * @param {HTMLElement} button - 文件夹按钮元素
-     * @param {HTMLElement} children - 子元素容器
-     */
-    closeFolder: function(button, children) {
-        if (!children) return;
-        
-        button.classList.remove('open');
-        
-        // 更新箭头方向
-        const arrowElement = button.querySelector('.folder-arrow');
-        if (arrowElement && arrowElement.textContent) {
-            arrowElement.textContent = '▶';
-        }
-        
-        // 使用直观的类名切换
-        children.classList.remove('folder-children-open');
-        children.classList.add('folder-children-closed');
-        
-        // 递归关闭所有子文件夹
-        children.querySelectorAll('.folder-button.open').forEach(nestedButton => {
-            const nestedChildren = nestedButton.nextElementSibling;
-            if (nestedChildren && nestedChildren.classList.contains('folder-children')) {
-                this.closeFolder(nestedButton, nestedChildren);
-            }
         });
     },
 
@@ -1122,7 +1256,8 @@ export const BookmarkManager = {
                 
                 for (const folderId of pinnedFolders) {
                     const folder = this.findFolderById(root, folderId);
-                    if (folder) {
+                    if (folder && !this.isFolderEmpty(folder)) {
+                        // 明确标记为固定文件夹
                         this.createRootFolderButton(folder, pinnedSection, true);
                     }
                 }
@@ -1135,13 +1270,15 @@ export const BookmarkManager = {
                 }
             }
             
-            // 渲染常规文件夹层级
+            // 渲染常规文件夹层级 - 修复：明确标记为非固定文件夹
             const regularSection = Utils.createElement("div", "regular-folders-section");
             
-            // 创建根文件夹按钮
+            // 创建根文件夹按钮 - 只渲染未被固定的文件夹
             for (let i = 0; i < root.children.length; i++) {
                 const folder = root.children[i];
-                if (!this.isFolderEmpty(folder)) {
+                // 跳过空文件夹和已经被固定的文件夹
+                if (!this.isFolderEmpty(folder) && !pinnedFolders.includes(folder.id)) {
+                    // 明确标记为非固定文件夹
                     this.createRootFolderButton(folder, regularSection, false);
                 }
             }
@@ -1150,7 +1287,13 @@ export const BookmarkManager = {
             
             // 应用选中的文件夹
             this.applySelectedFolder(root);
-            this.initEvents();
+            
+            console.log('Folders rendered:', {
+                pinnedCount: pinnedFolders.length,
+                totalFolders: root.children.length,
+                regularFolders: root.children.filter(f => !this.isFolderEmpty(f) && !pinnedFolders.includes(f.id)).length
+            });
+            
         } catch (error) {
             Notification.notify({
                 title: I18n.getMessage('errorTitle'),
