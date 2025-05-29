@@ -239,18 +239,22 @@ export const SearchEngineAPI = {
         const searchInput = document.getElementById('search-input');
         if (searchInput) {
             // 焦点事件处理
-            searchInput.addEventListener('focus', () => {
-                searchInput.classList.add('focused');
+            searchInput.addEventListener('focus', function(e) {
+                // 仅在未选中内容时全选
+                if (this.selectionStart === this.selectionEnd) {
+                    this.select();
+                }
+                this.classList.add('focused');
             });
-            
+
             searchInput.addEventListener('blur', () => {
                 searchInput.classList.remove('focused');
             });
 
-            // 自动选择输入内容
-            searchInput.addEventListener('click', function() {
-                this.select();
-            });
+            // 移除 click 自动全选
+            // searchInput.addEventListener('click', function() {
+            //     this.select();
+            // });
         }
 
         // 确保每次页面交互后搜索框准备就绪
