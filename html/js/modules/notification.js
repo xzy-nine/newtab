@@ -9,27 +9,40 @@ import { Utils } from './utils.js';
 /**
  * 通知系统命名空间
  */
-export const Notification = {
-  /**
+export const Notification = {  /**
    * 显示通知
    * @param {Object} options 通知选项
    * @param {string} options.title 通知标题
    * @param {string} options.message 通知消息
    * @param {string} options.type 通知类型: 'info', 'success', 'warning', 'error', 'loading'
-   * @param {number} options.duration 显示持续时间(毫秒)，0表示不自动关闭
+   * @param {number} options.duration 显示持续时间(毫秒)，null表示使用默认时间(普通通知3秒，错误通知8秒)，0表示不自动关闭
    * @param {Array} options.buttons 按钮配置: [{text, class, callback}]
    * @param {Function} options.onClose 关闭回调函数
    * @returns {Object} 通知控制对象: {close, getElement}
-   */
-  notify: (options) => {
+   */notify: (options) => {
     const { 
       title = '', 
       message = '', 
       type = 'info', 
-      duration = 5000, 
+      duration = null, 
       buttons = null, 
       onClose = null 
     } = options;
+
+    // 智能设置持续时间
+    let finalDuration = duration;
+    if (finalDuration === null) {
+      if (type === 'error') {
+        // 错误通知显示更长时间（8秒）
+        finalDuration = 8000;
+      } else if (type === 'loading') {
+        // 加载通知不自动关闭
+        finalDuration = 0;
+      } else {
+        // 普通通知最多3秒
+        finalDuration = 3000;
+      }
+    }
 
     const notification = Utils.createElement('div', `notification notification-${type}`);
     notification.dataset.visible = 'false';
@@ -120,18 +133,17 @@ export const Notification = {
         }
       });
     }
-    
-    let timeoutId;
+      let timeoutId;
     
     // 添加可见性检查函数
     const checkVisibilityAndSetTimeout = () => {
-      if (notification.dataset.visible === 'true' && duration > 0) {
-        timeoutId = setTimeout(closeNotification, duration);
+      if (notification.dataset.visible === 'true' && finalDuration > 0) {
+        timeoutId = setTimeout(closeNotification, finalDuration);
       }
     };
     
     // 添加到通知管理系统
-    Notification.notificationManager.add(notification, duration, closeNotification, checkVisibilityAndSetTimeout);
+    Notification.notificationManager.add(notification, finalDuration, closeNotification, checkVisibilityAndSetTimeout);
     
     return { 
       close: closeNotification,

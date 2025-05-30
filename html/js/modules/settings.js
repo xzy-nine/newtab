@@ -548,11 +548,3 @@ export const Settings = {
     }
   }
 };
-
-// 挂载事件
-window.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('settings-btn');
-  if (btn) {
-    btn.addEventListener('click', Settings.open);
-  }
-});

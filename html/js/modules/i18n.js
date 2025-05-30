@@ -83,7 +83,6 @@ export const I18n = {
     // 返回默认值（如果提供）或null
     return defaultValue || null;
   },
-
   /**
    * 应用翻译到UI元素
    */
@@ -104,6 +103,12 @@ export const I18n = {
     document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
       const key = element.getAttribute('data-i18n-placeholder');
       element.placeholder = this.getMessage(key);
+    });
+    
+    // 更新title属性
+    document.querySelectorAll('[data-i18n-title]').forEach(element => {
+      const key = element.getAttribute('data-i18n-title');
+      element.title = this.getMessage(key);
     });
   },
 

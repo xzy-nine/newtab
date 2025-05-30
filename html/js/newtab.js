@@ -12,7 +12,7 @@ import { Utils } from './modules/utils.js';
 import { Notification } from './modules/notification.js'; 
 import { Menu } from './modules/menu.js'; 
 import { WidgetSystem } from './modules/widgetSystem.js';
-import './modules/settings.js';
+import { Settings } from './modules/settings.js';
 
 // 版本号
 let VERSION = '0.0.0'; 
@@ -238,9 +238,33 @@ function createBasicUI() {
         'data-i18n': 'backgroundButton'
     }); 
     
+    // 创建设置按钮
+    const settingsButton = Utils.createElement('button', '', { 
+        id: 'settings-btn',
+        title: '设置', // 临时使用中文，稍后通过国际化更新
+        'data-i18n-title': 'settingsTitle' // 添加国际化标记用于后续更新
+    });
+    
+    // 设置按钮的SVG图标
+    settingsButton.innerHTML = `
+        <svg class="settings-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="settings-label" data-i18n="settingsTitle">设置</span>
+    `;
+    
+    // 为设置按钮添加点击事件
+    settingsButton.addEventListener('click', () => {
+        if (typeof Settings !== 'undefined' && Settings.open) {
+            Settings.open();
+        }
+    });
+    
     // 添加所有元素到容器
     container.appendChild(bookmarkBox);
     container.appendChild(backgroundButton);
+    container.appendChild(settingsButton);
     
     // 移除可能存在的全屏加载元素
     const loadingOverlay = document.getElementById('loading-overlay');
