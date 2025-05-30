@@ -1,6 +1,9 @@
 import { Menu } from './menu.js';
 import { Utils } from './utils.js';
 import { I18n } from './i18n.js';
+import { SearchEngineAPI } from './searchEngine.js';
+import { Notification } from './notification.js';
+import { IconManager } from './iconManager.js'; // 添加 IconManager 导入
 
 export const Settings = {
   // 设置配置
@@ -51,6 +54,27 @@ export const Settings = {
           value: 500,
           unit: 'ms',
           description: '应用启动时的延迟时间'
+        }
+      ]
+    },
+    {
+      id: 'search-engines',
+      icon: '🔍',
+      title: '搜索引擎',
+      items: [
+        {
+          id: 'search-engine-list',
+          label: '搜索引擎管理',
+          type: 'custom',
+          description: '管理和配置搜索引擎'
+        },
+        {
+          id: 'add-search-engine',
+          label: '添加搜索引擎',
+          type: 'button',
+          buttonText: '添加自定义搜索引擎',
+          buttonClass: 'btn-primary',
+          description: '添加新的自定义搜索引擎'
         }
       ]
     },
@@ -126,6 +150,14 @@ export const Settings = {
           ],
           value: 'medium',
           description: '设置隐私保护级别'
+        },
+        {
+          id: 'clear-search-data',
+          label: '清除搜索数据',
+          type: 'button',
+          buttonText: '清除搜索引擎数据',
+          buttonClass: 'btn-warning',
+          description: '清除所有搜索引擎相关数据'
         },
         {
           id: 'clear-data',
@@ -211,7 +243,7 @@ export const Settings = {
     Menu.Modal.show(modalId);
   },
 
-  renderCategoryContent: (categoryId) => {
+  renderCategoryContent: async (categoryId) => {
     const category = Settings.categories.find(cat => cat.id === categoryId);
     if (!category) return;
     
@@ -228,15 +260,15 @@ export const Settings = {
     // 设置项容器
     const itemsContainer = Utils.createElement('div', 'settings-items');
     
-    category.items.forEach(item => {
-      const itemElement = Settings.createSettingItem(item);
+    for (const item of category.items) {
+      const itemElement = await Settings.createSettingItem(item);
       itemsContainer.appendChild(itemElement);
-    });
+    }
     
     contentArea.appendChild(itemsContainer);
   },
 
-  createSettingItem: (item) => {
+  createSettingItem: async (item) => {
     const itemElement = Utils.createElement('div', 'setting-item');
     
     // 设置项头部
@@ -308,6 +340,13 @@ export const Settings = {
         });
         itemControl.appendChild(radioGroup);
         break;
+
+      case 'custom':
+        if (item.id === 'search-engine-list') {
+          const searchEngineList = await Settings.createSearchEngineList();
+          itemControl.appendChild(searchEngineList);
+        }
+        break;
         
       case 'button':
         const button = Utils.createElement('button', `btn ${item.buttonClass || 'btn-primary'}`, {
@@ -315,7 +354,7 @@ export const Settings = {
           type: 'button'
         }, item.buttonText || item.label);
         
-        // 为清除数据按钮添加确认逻辑
+        // 为不同按钮添加特定的处理逻辑
         if (item.id === 'clear-data') {
           button.addEventListener('click', () => {
             if (confirm('确定要清除所有数据吗？此操作不可恢复。')) {
@@ -323,6 +362,51 @@ export const Settings = {
               sessionStorage.clear();
               alert('数据已清除');
             }
+          });
+        } else if (item.id === 'clear-search-data') {
+          button.addEventListener('click', async () => {
+            Notification.notify({
+              title: '确认操作',
+              message: '确定要清除所有搜索引擎数据吗？此操作不可恢复。',
+              duration: 0,
+              type: 'confirm',
+              buttons: [
+                {
+                  text: '确认',
+                  class: 'btn-primary confirm-yes',
+                  callback: async () => {
+                    const success = await SearchEngineAPI.clearStorage();
+                    if (success) {
+                      Notification.notify({
+                        title: '成功',
+                        message: '搜索引擎数据已清除，页面将刷新。',
+                        type: 'success',
+                        duration: 1500,
+                        onClose: () => {
+                          window.location.reload();
+                        }
+                      });
+                    } else {
+                      Notification.notify({
+                        title: '错误',
+                        message: '清除搜索引擎数据失败',
+                        type: 'error',
+                        duration: 3000
+                      });
+                    }
+                  }
+                },
+                {
+                  text: '取消',
+                  class: 'confirm-no',
+                  callback: () => {}
+                }
+              ]
+            });
+          });
+        } else if (item.id === 'add-search-engine') {
+          button.addEventListener('click', () => {
+            Settings.showAddSearchEngineModal();
           });
         }
         
@@ -332,6 +416,229 @@ export const Settings = {
     
     itemElement.append(itemHeader, itemControl);
     return itemElement;
+  },
+
+  createSearchEngineList: async () => {
+    const listContainer = Utils.createElement('div', 'search-engine-list-container');
+    
+    try {
+      const engines = await SearchEngineAPI.getAllEnginesAsync();
+      const currentEngine = SearchEngineAPI.getCurrentEngine();
+      
+      engines.forEach((engine, index) => {
+        const engineItem = Utils.createElement('div', 'search-engine-item-setting');
+        
+        // 引擎图标 - 使用 IconManager
+        const engineIcon = Utils.createElement('img', 'engine-icon', {
+          alt: engine.name,
+          style: 'width: 24px; height: 24px; object-fit: contain;'
+        });
+        
+        // 使用 IconManager 设置图标
+        IconManager.setIconForElement(engineIcon, engine.url);
+        engineIcon.onerror = () => IconManager.handleIconError(engineIcon, '../favicon.png');
+        
+        // 引擎名称
+        const engineName = Utils.createElement('div', 'engine-name', {}, engine.name);
+        
+        // 引擎URL
+        const engineUrl = Utils.createElement('div', 'engine-url', {}, engine.url);
+        
+        // 当前引擎标识
+        const isCurrentEngine = currentEngine && currentEngine.name === engine.name;
+        if (isCurrentEngine) {
+          engineItem.classList.add('current-engine');
+          const currentBadge = Utils.createElement('span', 'current-badge', {}, '当前');
+          engineItem.appendChild(currentBadge);
+        }
+        
+        // 引擎信息容器
+        const engineInfo = Utils.createElement('div', 'engine-info');
+        engineInfo.append(engineName, engineUrl);
+        
+        // 操作按钮
+        const engineActions = Utils.createElement('div', 'engine-actions');
+        
+        // 设为当前按钮
+        if (!isCurrentEngine) {
+          const setCurrentBtn = Utils.createElement('button', 'btn btn-small btn-primary', {}, '设为当前');
+          setCurrentBtn.addEventListener('click', async () => {
+            const success = await SearchEngineAPI.setCurrentEngine(index);
+            if (success) {
+              // 刷新搜索引擎列表
+              Settings.refreshSearchEngineList();
+            }
+          });
+          engineActions.appendChild(setCurrentBtn);
+        }
+        
+        // 编辑按钮
+        const editBtn = Utils.createElement('button', 'btn btn-small btn-secondary', {}, '编辑');
+        editBtn.addEventListener('click', () => {
+          Settings.showEditSearchEngineModal(engine, index);
+        });
+        engineActions.appendChild(editBtn);
+        
+        // 删除按钮
+        if (engines.length > 1) {
+          const deleteBtn = Utils.createElement('button', 'btn btn-small btn-danger', {}, '删除');
+          deleteBtn.addEventListener('click', () => {
+            Notification.notify({
+              title: '确认删除',
+              message: `确定要删除搜索引擎 "${engine.name}" 吗？`,
+              duration: 0,
+              type: 'confirm',
+              buttons: [
+                {
+                  text: '确认',
+                  class: 'btn-primary confirm-yes',
+                  callback: async () => {
+                    const success = await SearchEngineAPI.deleteEngine(index);
+                    if (success) {
+                      Settings.refreshSearchEngineList();
+                    }
+                  }
+                },
+                {
+                  text: '取消',
+                  class: 'confirm-no',
+                  callback: () => {}
+                }
+              ]
+            });
+          });
+          engineActions.appendChild(deleteBtn);
+        }
+        
+        engineItem.append(engineIcon, engineInfo, engineActions);
+        listContainer.appendChild(engineItem);
+      });
+      
+    } catch (error) {
+      console.error('创建搜索引擎列表失败:', error);
+      const errorMsg = Utils.createElement('div', 'error-message', {}, '加载搜索引擎列表失败');
+      listContainer.appendChild(errorMsg);
+    }
+    
+    return listContainer;
+  },
+
+  refreshSearchEngineList: async () => {
+    const listContainer = document.querySelector('.search-engine-list-container');
+    if (!listContainer) return;
+    
+    const newList = await Settings.createSearchEngineList();
+    listContainer.parentNode.replaceChild(newList, listContainer);
+  },
+
+  showAddSearchEngineModal: () => {
+    const formItems = [
+      {
+        type: 'text',
+        id: 'custom-engine-name',
+        label: '搜索引擎名称',
+        required: true
+      },
+      {
+        type: 'url',
+        id: 'custom-engine-url',
+        label: '搜索URL',
+        placeholder: 'https://www.example.com/search?q=%s',
+        required: true
+      },
+      {
+        type: 'url',
+        id: 'custom-engine-icon',
+        label: '图标URL（可选）',
+        required: false
+      }
+    ];
+
+    Menu.showFormModal(
+      '添加自定义搜索引擎',
+      formItems,
+      async (formData) => {
+        const name = formData['custom-engine-name'];
+        const url = formData['custom-engine-url'];
+        const icon = formData['custom-engine-icon'];
+        
+        const success = await SearchEngineAPI.addCustomEngine({ name, url, icon });
+        if (success) {
+          Settings.refreshSearchEngineList();
+          Notification.notify({
+            title: '成功',
+            message: '搜索引擎添加成功',
+            type: 'success',
+            duration: 2000
+          });
+        } else {
+          Notification.notify({
+            title: '错误',
+            message: '添加搜索引擎失败',
+            type: 'error',
+            duration: 3000
+          });
+        }
+      },
+      '确认',
+      '取消'
+    );
+  },
+
+  showEditSearchEngineModal: (engine, index) => {
+    const formItems = [
+      {
+        type: 'text',
+        id: 'edit-engine-name',
+        label: '搜索引擎名称',
+        value: engine.name,
+        required: true
+      },
+      {
+        type: 'url',
+        id: 'edit-engine-url',
+        label: '搜索URL',
+        value: engine.url,
+        required: true
+      },
+      {
+        type: 'url',
+        id: 'edit-engine-icon',
+        label: '图标URL（可选）',
+        value: engine.icon || '',
+        required: false
+      }
+    ];
+
+    Menu.showFormModal(
+      `编辑搜索引擎 - ${engine.name}`,
+      formItems,
+      async (formData) => {
+        const name = formData['edit-engine-name'];
+        const url = formData['edit-engine-url'];
+        const icon = formData['edit-engine-icon'];
+        
+        const success = await SearchEngineAPI.editEngine(index, { name, url, icon });
+        if (success) {
+          Settings.refreshSearchEngineList();
+          Notification.notify({
+            title: '成功',
+            message: '搜索引擎更新成功',
+            type: 'success',
+            duration: 2000
+          });
+        } else {
+          Notification.notify({
+            title: '错误',
+            message: '更新搜索引擎失败',
+            type: 'error',
+            duration: 3000
+          });
+        }
+      },
+      '保存',
+      '取消'
+    );
   },
 
   bindEvents: (modalId) => {

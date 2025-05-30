@@ -341,6 +341,94 @@
   transform: scale(0.98);
 }
 
+/* 搜索引擎列表样式 */
+.search-engine-list-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.search-engine-item-setting {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  background: #fafafa;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.search-engine-item-setting:hover {
+  background: #f0f0f0;
+  border-color: #d0d0d0;
+}
+
+.search-engine-item-setting.current-engine {
+  background: #e8f5e8;
+  border-color: #4caf50;
+}
+
+.search-engine-item-setting .engine-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.search-engine-item-setting .engine-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-engine-item-setting .engine-name {
+  font-weight: 500;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.search-engine-item-setting .engine-url {
+  font-size: 12px;
+  color: #666;
+  word-break: break-all;
+}
+
+.search-engine-item-setting .engine-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+.search-engine-item-setting .current-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #4caf50;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: auto;
+}
+
+.error-message {
+  text-align: center;
+  color: #f44336;
+  padding: 20px;
+  font-style: italic;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   #settings-btn {
