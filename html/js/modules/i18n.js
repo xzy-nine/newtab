@@ -8,6 +8,8 @@ let currentLanguage = 'en';
 let isInitialized = false;
 // 翻译文件列表
 const TRANSLATION_FILES = ['messages', 'notifications', 'menus', 'containers', 'widgets'];
+// 中文版本只需要加载包含 manifest.json 必需键值的 messages.json 文件
+const ZH_CN_AVAILABLE_FILES = ['messages'];
 
 /**
  * 国际化API
@@ -40,11 +42,10 @@ export const I18n = {
       throw error;
     }
   },
-
   /**
    * 获取指定key的翻译文本，支持默认值
    * @param {string} key - 翻译键值
-   * @param {string} defaultValue - 默认值，通常用于中文
+   * @param {string} defaultValue - 默认值，中文语言时直接使用此值
    * @returns {string} - 翻译后的文本
    */
   getMessage: function(key, defaultValue = '') {
@@ -54,13 +55,13 @@ export const I18n = {
       //console.warn('国际化模块尚未初始化，可能导致翻译缺失');
     }
 
-    // 如果是中文且提供了默认值，直接返回默认值
+    // 如果是中文且提供了默认值，直接返回默认值（因为中文有默认值机制）
     if (currentLanguage === 'zh' && defaultValue) {
       return defaultValue;
     }
 
     try {
-      // 首先尝试从Chrome i18n API获取
+      // 首先尝试从Chrome i18n API获取（主要用于manifest.json的键值）
       if (chrome && chrome.i18n) {
         const message = chrome.i18n.getMessage(key);
         if (message) return message;
@@ -193,24 +194,24 @@ async function loadTranslationsFromFiles() {
     if (currentLanguage === 'zh') {
       locale = 'zh_CN';
     } 
-    
-    // 清空当前翻译数据
+      // 清空当前翻译数据
     translations = {};
+      // 根据语言确定要加载的文件列表
+    // 中文只需要加载 messages.json（包含 manifest.json 必需的键值），其他键值使用默认值机制
+    const filesToLoad = (locale === 'zh_CN') ? ZH_CN_AVAILABLE_FILES : TRANSLATION_FILES;
     
     // 存储加载进度
     const loadResults = {
-      total: TRANSLATION_FILES.length,
+      total: filesToLoad.length,
       loaded: 0,
       failed: 0,
       keys: 0
     };
-    
-    // 加载所有翻译文件
-    const loadPromises = TRANSLATION_FILES.map(async (fileType) => {
+      // 加载翻译文件
+    const loadPromises = filesToLoad.map(async (fileType) => {
       try {
         //console.log(`尝试加载翻译文件: /_locales/${locale}/${fileType}.json`);
-        
-        const response = await fetch(`/_locales/${locale}/${fileType}.json`);
+          const response = await fetch(`/_locales/${locale}/${fileType}.json`);
         if (!response.ok) {
           console.warn(`无法加载 ${locale} 语言的 ${fileType}.json，尝试回退到英文版本`);
           

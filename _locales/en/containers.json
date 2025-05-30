@@ -190,8 +190,7 @@
   "applyingBackground": {
     "message": "Applying background...",
     "description": "背景应用阶段提示"
-  },
-  "renderingBookmarks": {
+  },  "renderingBookmarks": {
     "message": "Rendering bookmarks...",
     "description": "渲染书签进度提示"
   }

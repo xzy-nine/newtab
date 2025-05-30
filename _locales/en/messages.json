@@ -129,13 +129,16 @@
   "gridDebugEnabledMessage": {
     "message": "You can now see grid lines",
     "description": "网格调试启用通知消息"
-  },
-  "gridDebugDisabled": {
+  },  "gridDebugDisabled": {
     "message": "Grid Debug Disabled",
     "description": "网格调试禁用通知标题"
   },
   "gridDebugDisabledMessage": {
     "message": "Grid lines are hidden",
     "description": "网格调试禁用通知消息"
+  },
+  "languageChanged": {
+    "message": "Language settings changed, refreshing page...",
+    "description": "语言更改通知消息"
   }
 }
