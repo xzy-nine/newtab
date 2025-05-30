@@ -158,7 +158,7 @@ async function setUserLanguage() {
       currentLanguage = result.language;
     } else {
       const browserLang = navigator.language.slice(0, 2);
-      currentLanguage = ['en', 'zh', 'ja'].includes(browserLang) ? browserLang : 'en';
+      currentLanguage = ['en', 'zh'].includes(browserLang) ? browserLang : 'en';
       await chrome.storage.sync.set({ language: currentLanguage });
     }
   } catch (error) {
