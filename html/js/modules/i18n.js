@@ -266,4 +266,3 @@ function initLanguageSelector() {
     location.reload();
   });
 }
-
