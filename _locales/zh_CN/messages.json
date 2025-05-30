@@ -55,8 +55,16 @@
     "message": "警告",
     "description": "警告标题"
   },
+  "add": {
+    "message": "添加",
+    "description": "添加按钮文本"
+  },
+  "defaultBackground": {
+    "message": "默认",
+    "description": "默认背景名称"
+  },
   "copyToClipboard": {
-    "message": "复制按钮",
+    "message": "复制到剪贴板",
     "description": "复制到剪贴板按钮文本"
   },
   "ready": {
