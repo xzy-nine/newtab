@@ -610,5 +610,113 @@
   "widgetSystemError": {
     "message": "Widget system failed to load",
     "description": "小部件系统加载失败"
+  },
+  "bingDailyImage": {
+    "message": "Bing Daily Image",
+    "description": "必应每日图片名称"
+  },
+  "defaultBackground": {
+    "message": "Default Background",
+    "description": "默认背景名称"
+  },
+  "settingBackgroundType": {
+    "message": "Setting background type:",
+    "description": "设置背景类型提示"
+  },
+  "customBackgroundExists": {
+    "message": "Custom background image status:",
+    "description": "自定义背景图片状态提示"
+  },
+  "currentBackgroundType": {
+    "message": "Current background type:",
+    "description": "当前背景类型提示"
+  },
+  "usingCachedImage": {
+    "message": "Using cached image, remaining time: %s hours %s minutes",
+    "description": "使用缓存图片提示"
+  },
+  "bingApiError": {
+    "message": "Bing API error: %s",
+    "description": "必应API错误提示"
+  },
+  "invalidBingResponse": {
+    "message": "Invalid Bing API response",
+    "description": "无效的必应API响应提示"
+  },
+  "bingImageUrl": {
+    "message": "Bing image URL:",
+    "description": "必应图片地址提示"
+  },
+  "imageDownloadError": {
+    "message": "Image download failed",
+    "description": "图片下载失败提示"
+  },
+  "base64Generated": {
+    "message": "Base64 data generated:",
+    "description": "base64数据生成状态提示"
+  },
+  "bingImageError": {
+    "message": "Error fetching Bing image:",
+    "description": "获取必应图片时错误提示"
+  },
+  "enterEngineUrl": {
+    "message": "Please enter the search engine URL, e.g., https://www.google.com",
+    "description": "搜索引擎URL输入提示"
+  },
+  "savingSettings": {
+    "message": "Saving settings...",
+    "description": "正在保存设置提示"
+  },
+  "loadingI18n": {
+    "message": "Loading internationalization resources...",
+    "description": "加载国际化资源提示"
+  },
+  "loadingIcons": {
+    "message": "Loading icon resources...",
+    "description": "加载图标资源提示"
+  },
+  "initializingTitle": {
+    "message": "New Tab Page initializing...",
+    "description": "新标签页初始化中提示"
+  },
+  "initTimeout": {
+    "message": "Initialization timeout",
+    "description": "初始化超时提示"
+  },
+  "i18nModule": {
+    "message": "Internationalization",
+    "description": "国际化模块名称"
+  },
+  "renderingBookmarks": {
+    "message": "Rendering bookmarks...",
+    "description": "渲染书签进度提示"
+  },
+  "widgetsLoaded": {
+    "message": "Widgets loaded",
+    "description": "小部件加载完成提示"
+  },
+  "removeWidget": {
+    "message": "Remove widget",
+    "description": "删除小部件按钮文本"
+  },
+  "addWidgetTitle": {
+    "message": "Add Widget",
+    "description": "添加小部件对话框标题"
+  },
+  "counterWidget": {
+    "message": "Counter",
+    "description": "计数器小部件名称"
+  },
+  "widgetsAdded": {
+    "message": "Selected widgets added",
+    "description": "已添加所选小部件提示"
+  },
+  "add": {
+    "message": "Add",
+    "description": "添加按钮文本"
+  },
+  "unfixWidgetToMove": {
+    "message": "Please unfix before moving",
+    "description": "移动前需要取消固定提示"
   }
 }

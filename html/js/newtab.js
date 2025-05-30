@@ -18,6 +18,135 @@ import { Settings } from './modules/settings.js';
 let VERSION = '0.0.0'; 
 // 全局状态标志
 let isInitialized = false;
+// 直接读取的翻译数据缓存
+let directTranslations = {};
+let currentLanguage = 'en';
+
+/**
+ * 直接从JSON文件获取翻译文本（不依赖I18n模块）
+ * @param {string} key - 翻译键值
+ * @param {string} defaultValue - 默认值（中文）
+ * @returns {string} - 翻译后的文本
+ */
+async function getDirectMessage(key, defaultValue = '') {
+    if (!key) return defaultValue;
+    
+    // 如果当前是中文且提供了默认值，直接返回默认值
+    if (currentLanguage === 'zh' && defaultValue) {
+        return defaultValue;
+    }
+    
+    // 如果已经有缓存的翻译数据，直接使用
+    if (directTranslations[key] && directTranslations[key].message) {
+        return directTranslations[key].message;
+    }
+    
+    // 如果没有缓存，尝试加载翻译文件
+    if (Object.keys(directTranslations).length === 0) {
+        await loadDirectTranslations();
+        
+        // 再次尝试获取翻译
+        if (directTranslations[key] && directTranslations[key].message) {
+            return directTranslations[key].message;
+        }
+    }
+    
+    // 如果仍然找不到翻译，返回默认值
+    return defaultValue;
+}
+
+/**
+ * 直接加载翻译文件（同步方法，不依赖I18n模块）
+ * @returns {Promise<void>}
+ */
+async function loadDirectTranslations() {
+    try {
+        // 首先尝试获取用户设置的语言
+        try {
+            const result = await chrome.storage.sync.get('language');
+            if (result.language) {
+                currentLanguage = result.language;
+            } else {
+                // 默认使用中文，如果浏览器语言不是中文相关，则保持中文
+                const browserLang = navigator.language.slice(0, 2);
+                currentLanguage = ['zh', 'en'].includes(browserLang) ? browserLang : 'zh';
+            }
+        } catch (error) {
+            currentLanguage = 'zh'; // 错误时默认中文
+        }
+        
+        // 根据语言确定文件路径
+        let locale = currentLanguage === 'zh' ? 'zh_CN' : 'en';
+        
+        try {
+            const response = await fetch(`/_locales/${locale}/messages.json`);
+            if (!response.ok) {
+                // 如果当前语言文件加载失败，回退到中文版本
+                const fallbackResponse = await fetch('/_locales/zh_CN/messages.json');
+                if (fallbackResponse.ok) {
+                    directTranslations = await fallbackResponse.json();
+                } else {
+                    // 如果中文版本也失败，尝试英文版本
+                    const enResponse = await fetch('/_locales/en/messages.json');
+                    if (enResponse.ok) {
+                        directTranslations = await enResponse.json();
+                    }
+                }
+            } else {
+                directTranslations = await response.json();
+            }
+        } catch (error) {
+            console.error('直接加载翻译文件失败:', error);
+            // 使用中文翻译作为后备
+            directTranslations = {
+                loading: { message: "加载中..." },
+                loadingI18n: { message: "加载国际化资源..." },
+                initializingTitle: { message: "新标签页初始化中..." },
+                moduleInitTimeout: { message: "模块 {0} 初始化超时" },
+                backgroundModule: { message: "背景模块" },
+                searchModule: { message: "搜索引擎" },
+                bookmarkModule: { message: "书签" },
+                clockModule: { message: "时钟组件" },
+                eventsModule: { message: "事件初始化" },
+                widgetSystem: { message: "小部件系统" },
+                initializationFailed: { message: "初始化失败" },
+                error: { message: "错误" },
+                widgetSystemError: { message: "小部件系统加载失败" },
+                i18nModule: { message: "国际化模块" },
+                loadingBackground: { message: "加载背景..." },
+                backgroundLoadComplete: { message: "背景加载完成" },
+                loadingSearch: { message: "加载搜索引擎..." },
+                searchLoadComplete: { message: "搜索引擎加载完成" },
+                loadingBookmarks: { message: "加载书签..." },
+                bookmarkLoadComplete: { message: "书签加载完成" },
+                loadingClock: { message: "加载时钟组件..." },
+                clockLoadComplete: { message: "时钟组件加载完成" },
+                loadingEvents: { message: "初始化事件..." },
+                loadingComplete: { message: "加载完成" },
+                loadingWidgets: { message: "加载小部件系统..." },
+                widgetsLoadComplete: { message: "小部件系统加载完成" },
+                moduleLoadingFailed: { message: "模块加载失败" },
+                postInitTasksError: { message: "初始化后任务中的错误" },
+                welcomeTitle: { message: "欢迎使用" },
+                welcomeMessage: { message: "欢迎使用本扩展！" },
+                updateTitle: { message: "扩展已更新" },
+                updateMessage: { message: "扩展已从 {0} 升级到 {1}" },
+                setNewTab: { message: "设置新标签页" },
+                mobileInstructionMessage: { message: "请在浏览器设置中将新标签页设置为：{0}" },
+                desktopInstructionMessage: { message: "请在桌面浏览器设置中将本扩展设为新标签页" },
+                copyLink: { message: "复制链接" },
+                close: { message: "关闭" },
+                ok: { message: "确定" },
+                success: { message: "成功" },
+                linkCopied: { message: "链接已复制" },
+                copyError: { message: "复制失败:" },
+                copyLinkFailed: { message: "复制链接失败" }
+            };
+        }
+    } catch (error) {
+        console.error('加载直接翻译时发生错误:', error);
+    }
+}
 
 /**
  * 从manifest.json获取扩展版本号
@@ -66,7 +195,7 @@ async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
         new Promise((_, reject) => {
             setTimeout(() => {
                 if (!completed) {
-                    const timeoutError = new Error(I18n.getMessage('moduleInitTimeout').replace('{0}', moduleName));
+                    const timeoutError = new Error((directTranslations.moduleInitTimeout?.message || 'Module {0} initialization timeout').replace('{0}', moduleName));
                     console.error(`[模块超时] ${moduleName}`, {
                         超时时间: `${timeout}ms`,
                         模块名称: moduleName
@@ -83,16 +212,24 @@ async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
  */
 async function init() {
     try {
+        // 首先加载直接翻译数据
+        await loadDirectTranslations();
+        
         // 创建基本 UI 结构
         createBasicUI();
         
-        // 显示加载界面，使用静态文本而非国际化文本
-        Notification.showLoadingIndicator("加载中...");
-          // 先初始化国际化模块，这样后面才能使用它
+        // 显示加载界面，使用直接翻译
+        const loadingText = await getDirectMessage('loading', '加载中...');
+        Notification.showLoadingIndicator(loadingText);
+        
+        // 先初始化国际化模块，这样后面才能使用它
+        const i18nLoadingText = await getDirectMessage('loadingI18n', '加载国际化资源...');
+        Notification.updateLoadingProgress(10, i18nLoadingText);
+        
         await executeWithTimeout(
             () => I18n.init(), 
             5000, 
-            '国际化' // 不使用 getMessage，因为这时还未初始化
+            await getDirectMessage('i18nModule', '国际化模块')
         );
         
         // 国际化初始化完成后，重新应用翻译到UI元素
@@ -104,42 +241,42 @@ async function init() {
         // 初始化步骤计数 - 先初始化非小部件相关的模块
         const basicModules = [
             {
-                name: I18n.getMessage('backgroundModule', '背景图像'),
+                name: await getDirectMessage('backgroundModule', '背景模块'),
                 action: backgroundManager.initialize.bind(backgroundManager),
-                message: I18n.getMessage('loadingBackground', '加载背景图像...'),
-                completeMessage: I18n.getMessage('backgroundLoadComplete', '背景图像加载完成'),
+                message: await getDirectMessage('loadingBackground', '加载背景...'),
+                completeMessage: await getDirectMessage('backgroundLoadComplete', '背景加载完成'),
                 timeout: 5000
             },
             {
-                name: I18n.getMessage('searchModule', '搜索引擎'),
+                name: await getDirectMessage('searchModule', '搜索引擎'),
                 action: SearchEngineAPI.initialize.bind(SearchEngineAPI),
-                message: I18n.getMessage('loadingSearch', '加载搜索引擎...'),
-                completeMessage: I18n.getMessage('searchLoadComplete', '搜索引擎加载完成'),
+                message: await getDirectMessage('loadingSearch', '加载搜索引擎...'),
+                completeMessage: await getDirectMessage('searchLoadComplete', '搜索引擎加载完成'),
                 timeout: 5000
             },
             {
-                name: I18n.getMessage('bookmarkModule', '书签'),
+                name: await getDirectMessage('bookmarkModule', '书签'),
                 action: BookmarkManager.init.bind(BookmarkManager),
-                message: I18n.getMessage('loadingBookmarks', '加载书签...'),
-                completeMessage: I18n.getMessage('bookmarkLoadComplete', '书签加载完成'),
+                message: await getDirectMessage('loadingBookmarks', '加载书签...'),
+                completeMessage: await getDirectMessage('bookmarkLoadComplete', '书签加载完成'),
                 timeout: 5000
             },
             {
-                name: I18n.getMessage('clockModule', '时钟组件'),
+                name: await getDirectMessage('clockModule', '时钟组件'),
                 action: ClockWidget.init.bind(ClockWidget),
-                message: I18n.getMessage('loadingClock', '加载时钟组件...'),
-                completeMessage: I18n.getMessage('clockLoadComplete', '时钟组件加载完成'),
+                message: await getDirectMessage('loadingClock', '加载时钟组件...'),
+                completeMessage: await getDirectMessage('clockLoadComplete', '时钟组件加载完成'),
                 timeout: 5000
             },
             {
-                name: I18n.getMessage('eventsModule', '事件初始化'),
+                name: await getDirectMessage('eventsModule', '事件初始化'),
                 action: () => {
                     setupEvents();
                     I18n.setupEvents();
                     return Promise.resolve();
                 },
-                message: I18n.getMessage('loadingEvents', '初始化事件...'),
-                completeMessage: I18n.getMessage('loadingComplete', '加载完成'),
+                message: await getDirectMessage('loadingEvents', '初始化事件...'),
+                completeMessage: await getDirectMessage('loadingComplete', '加载完成'),
                 timeout: 5000
             }
         ];
@@ -162,18 +299,17 @@ async function init() {
                     完成进度: `${completedModules}/${totalModules}`,
                     当前步骤: step.message
                 });
-                throw new Error(I18n.getMessage('moduleLoadingFailed')
-                    .replace('{0}', step.name)
-                    .replace('{1}', error.message));
+                const errorMessage = await getDirectMessage('moduleLoadingFailed', '模块加载失败');
+                throw new Error(`${errorMessage}: ${step.name} - ${error.message}`);
             }
         }
         
         // 最后初始化小部件系统 - 确保在I18n初始化后调用
         try {
             const widgetStep = {
-                name: I18n.getMessage('widgetSystem', '小部件系统'),
-                message: I18n.getMessage('loadingWidgets', '加载小部件系统...'),
-                completeMessage: I18n.getMessage('widgetsLoadComplete', '小部件系统加载完成'),
+                name: await getDirectMessage('widgetSystem', '小部件系统'),
+                message: await getDirectMessage('loadingWidgets', '加载小部件系统...'),
+                completeMessage: await getDirectMessage('widgetsLoadComplete', '小部件系统加载完成'),
                 timeout: 5000
             };
             
@@ -193,8 +329,8 @@ async function init() {
             });
             // 小部件系统错误不阻止其他功能
             Notification.notify({
-                title: I18n.getMessage('error', '错误'),
-                message: I18n.getMessage('widgetSystemError', '小部件系统加载失败'),
+                title: await getDirectMessage('error', '错误'),
+                message: await getDirectMessage('widgetSystemError', '小部件系统加载失败'),
                 type: 'warning',
                 duration: 3000
             });
@@ -215,7 +351,8 @@ async function init() {
             扩展版本: VERSION
         });
         
-        Notification.showErrorMessage(I18n.getMessage('initializationFailed', '初始化失败'));
+        const errorMessage = await getDirectMessage('initializationFailed', '初始化失败');
+        Notification.showErrorMessage(errorMessage);
         Notification.hideLoadingIndicator();
     }
 }
@@ -343,7 +480,8 @@ async function performPostInitTasks() {
         await checkForUpdates();
         
     } catch (error) {
-        console.error(I18n.getMessage('postInitTasksError','初始化后任务中的错误'), error);
+        const errorMessage = await getDirectMessage('postInitTasksError', '初始化后任务中的错误');
+        console.error(errorMessage, error);
     }
 }
 
@@ -369,7 +507,7 @@ async function checkForUpdates() {
 /**
  * 显示欢迎消息
  */
-function showWelcomeMessage() {
+async function showWelcomeMessage() {
     const welcomeModal = document.getElementById('welcome-modal');
     if (welcomeModal) {
         // 使用模块化API
@@ -377,8 +515,8 @@ function showWelcomeMessage() {
     } else {
         // 如果没有预定义的欢迎模态框，使用通知
         Notification.notify({
-            title: I18n.getMessage('welcomeTitle', '欢迎使用'),
-            message: I18n.getMessage('welcomeMessage', '欢迎使用本扩展！'),
+            title: await getDirectMessage('welcomeTitle', '欢迎使用'),
+            message: await getDirectMessage('welcomeMessage', '欢迎使用本扩展！'),
             duration: 8000,
             type: 'success'
         });
@@ -390,138 +528,71 @@ function showWelcomeMessage() {
  * @param {string} oldVersion - 旧版本号
  * @param {string} newVersion - 新版本号
  */
-function showUpdateMessage(oldVersion, newVersion) {
+async function showUpdateMessage(oldVersion, newVersion) {
+    const title = await getDirectMessage('updateTitle', '扩展已更新');
+    const messageTemplate = await getDirectMessage('updateMessage', '扩展已从 {0} 升级到 {1}');
+    const message = messageTemplate.replace('{0}', oldVersion).replace('{1}', newVersion);
+    
     Notification.notify({
-        title: I18n.getMessage('updateTitle', '扩展已更新'),
-        message: I18n.getMessage('updateMessage', '扩展已从 {0} 升级到 {1}').replace('{0}', oldVersion).replace('{1}', newVersion),
+        title,
+        message,
         duration: 6000,
         type: 'info'
     });
 }
 
 /**
- * 刷新页面内容
- * 用于在标签页重新激活时更新内容
- */
-async function refreshPageContent() {
-    try {
-        // 使用新的背景管理器API
-        await backgroundManager.refresh();
-        ClockWidget.update();
-    } catch (error) {
-        // 静默处理错误
-    }
-}
-
-/**
- * 处理页面可见性变化
- */
-function handleVisibilityChange() {
-    if (!document.hidden && isInitialized) {
-        // 如果页面变为可见且已初始化，执行刷新操作
-        refreshPageContent();
-    }
-}
-
-// 添加可见性变化事件监听
-document.addEventListener('visibilitychange', handleVisibilityChange);
-
-// 页面加载完成后初始化应用
-document.addEventListener('DOMContentLoaded', init);
-
-// 统一处理加载超时保护
-document.addEventListener('DOMContentLoaded', () => {
-  // 主超时保护，8秒后如果仍在加载则强制隐藏
-  setTimeout(() => {
-    Notification.hideLoadingIndicator(true);
-  }, 8000);
-  
-  // 页面加载后的备份保护
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-      Notification.hideLoadingIndicator(true);
-    }, 2000);
-  });
-});
-
-// 添加消息监听器，用于接收背景脚本发送的消息
-chrome.runtime.onMessage && chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'showMobileInstruction') {
-    // 设置延迟函数，确保在页面初始化后执行
-    const showInstruction = () => {
-      showMobileInstruction(message.extensionUrl);
-      sendResponse({ received: true, status: 'success' });
-    };
-
-    // 根据初始化状态决定如何显示通知
-    if (isInitialized) {
-      showInstruction();
-    } else {
-      // 使用事件监听等待初始化完成
-      const readyStateCheckInterval = setInterval(() => {
-        if (document.readyState === "complete" && isInitialized) {
-          clearInterval(readyStateCheckInterval);
-          showInstruction();
-        }
-      }, 100);
-      
-      // 设置超时保护，确保响应不会永远挂起
-      setTimeout(() => {
-        clearInterval(readyStateCheckInterval);
-        showInstruction();
-      }, 5000);
-    }
-    
-    return true; // 保持异步响应
-  }
-});
-
-/**
  * 显示新标签页设置指导通知（根据设备类型显示不同内容）
  * @param {string} url - 扩展页面URL
  */
-function showMobileInstruction(url) {
+async function showMobileInstruction(url) {
     const finalUrl = url || chrome.runtime.getURL('html/newtab.html');
     // 检测是否为移动设备
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
+    const title = await getDirectMessage('setNewTab', '设置新标签页');
+    const mobileMessage = await getDirectMessage('mobileInstructionMessage', '请在浏览器设置中将新标签页设置为：{0}');
+    const desktopMessage = await getDirectMessage('desktopInstructionMessage', '请在桌面浏览器设置中将本扩展设为新标签页');
+    
     return Notification.notify({
-        title: I18n.getMessage('setNewTab', '设置新标签页'),
+        title,
         message: isMobile 
-            ? I18n.getMessage('mobileInstructionMessage', '请在浏览器设置中将新标签页设置为：{0}').replace('{0}', finalUrl)
-            : I18n.getMessage('desktopInstructionMessage', '请在桌面浏览器设置中将本扩展设为新标签页'),
+            ? mobileMessage.replace('{0}', finalUrl)
+            : desktopMessage,
         duration: isMobile ? 0 : 5000,
         type: 'info',
         buttons: isMobile ? [
             {
-                text: I18n.getMessage('copyLink', '复制链接'),
+                text: await getDirectMessage('copyLink', '复制链接'),
                 class: 'btn-primary',
-                callback: () => {
-                    navigator.clipboard.writeText(finalUrl)
-                        .then(() => Notification.notify({
-                            title: I18n.getMessage('success', '成功'), 
-                            message: I18n.getMessage('linkCopied', '链接已复制'), 
+                callback: async () => {
+                    try {
+                        await navigator.clipboard.writeText(finalUrl);
+                        Notification.notify({
+                            title: await getDirectMessage('success', '成功'), 
+                            message: await getDirectMessage('linkCopied', '链接已复制'), 
                             duration: 2000, 
                             type: 'success'
-                        }))
-                        .catch(err => {
-                            console.error(I18n.getMessage('copyError', '复制失败:'), err);
-                            Notification.notify({
-                                title: I18n.getMessage('error', '错误'), 
-                                message: I18n.getMessage('copyLinkFailed', '复制链接失败'), 
-                                duration: 2000, 
-                                type: 'error'
-                            });
                         });
+                    } catch (err) {
+                        const errorPrefix = await getDirectMessage('copyError', '复制失败:');
+                        console.error(errorPrefix, err);
+                        Notification.notify({
+                            title: await getDirectMessage('error', '错误'), 
+                            message: await getDirectMessage('copyLinkFailed', '复制链接失败'), 
+                            duration: 2000, 
+                            type: 'error'
+                        });
+                    }
                 }
             },
             {
-                text: I18n.getMessage('close', '关闭'),
+                text: await getDirectMessage('close', '关闭'),
                 class: 'btn-secondary'
             }
         ] : [
             {
-                text: I18n.getMessage('ok', '确定'),
+                text: await getDirectMessage('ok', '确定'),
                 class: 'btn-primary'
             }
         ]

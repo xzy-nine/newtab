@@ -6,10 +6,8 @@
 let translations = {};
 let currentLanguage = 'en';
 let isInitialized = false;
-// 翻译文件列表
-const TRANSLATION_FILES = ['messages', 'notifications', 'menus', 'containers', 'widgets'];
-// 中文版本只需要加载包含 manifest.json 必需键值的 messages.json 文件
-const ZH_CN_AVAILABLE_FILES = ['messages'];
+// 统一翻译文件名
+const TRANSLATION_FILE = 'messages';
 
 /**
  * 国际化API
@@ -194,63 +192,42 @@ async function loadTranslationsFromFiles() {
     if (currentLanguage === 'zh') {
       locale = 'zh_CN';
     } 
-      // 清空当前翻译数据
+    
+    // 清空当前翻译数据
     translations = {};
-      // 根据语言确定要加载的文件列表
-    // 中文只需要加载 messages.json（包含 manifest.json 必需的键值），其他键值使用默认值机制
-    const filesToLoad = (locale === 'zh_CN') ? ZH_CN_AVAILABLE_FILES : TRANSLATION_FILES;
     
-    // 存储加载进度
-    const loadResults = {
-      total: filesToLoad.length,
-      loaded: 0,
-      failed: 0,
-      keys: 0
-    };
-      // 加载翻译文件
-    const loadPromises = filesToLoad.map(async (fileType) => {
-      try {
-        //console.log(`尝试加载翻译文件: /_locales/${locale}/${fileType}.json`);
-          const response = await fetch(`/_locales/${locale}/${fileType}.json`);
-        if (!response.ok) {
-          console.warn(`无法加载 ${locale} 语言的 ${fileType}.json，尝试回退到英文版本`);
-          
-          const fallbackResponse = await fetch(`/_locales/en/${fileType}.json`);
-          if (!fallbackResponse.ok) {
-            throw new Error(`无法加载翻译文件: ${fileType}.json, 错误状态: ${fallbackResponse.status}`);
-          }
-          
-          const fallbackData = await fallbackResponse.json();
-          const keysCount = Object.keys(fallbackData).length;
-          translations = { ...translations, ...fallbackData };
-          
-          //console.log(`已从英文版本加载 ${fileType}.json (${keysCount} 项翻译)`);
-          loadResults.loaded++;
-          loadResults.keys += keysCount;
-        } else {
-          const messagesData = await response.json();
-          const keysCount = Object.keys(messagesData).length;
-          translations = { ...translations, ...messagesData };
-          
-          //console.log(`成功加载 ${locale} 版本的 ${fileType}.json (${keysCount} 项翻译)`);
-          loadResults.loaded++;
-          loadResults.keys += keysCount;
+    try {
+      console.log(`尝试加载翻译文件: /_locales/${locale}/${TRANSLATION_FILE}.json`);
+      const response = await fetch(`/_locales/${locale}/${TRANSLATION_FILE}.json`);
+      
+      if (!response.ok) {
+        console.warn(`无法加载 ${locale} 语言的 ${TRANSLATION_FILE}.json，尝试回退到英文版本`);
+        
+        const fallbackResponse = await fetch(`/_locales/en/${TRANSLATION_FILE}.json`);
+        if (!fallbackResponse.ok) {
+          throw new Error(`无法加载翻译文件: ${TRANSLATION_FILE}.json, 错误状态: ${fallbackResponse.status}`);
         }
-      } catch (error) {
-        console.error(`加载 ${fileType} 翻译文件失败:`, error);
-        loadResults.failed++;
+        
+        const fallbackData = await fallbackResponse.json();
+        const keysCount = Object.keys(fallbackData).length;
+        translations = fallbackData;
+        
+        console.log(`已从英文版本加载 ${TRANSLATION_FILE}.json (${keysCount} 项翻译)`);
+      } else {
+        const translationData = await response.json();
+        const keysCount = Object.keys(translationData).length;
+        translations = translationData;
+        
+        console.log(`成功加载 ${locale} 版本的 ${TRANSLATION_FILE}.json (${keysCount} 项翻译)`);
       }
-    });
-    
-    // 等待所有翻译文件加载完成
-    await Promise.all(loadPromises);
-    
-    // 报告加载结果
-    //console.log(`翻译文件加载完成: 成功=${loadResults.loaded}, 失败=${loadResults.failed}, 共加载 ${loadResults.keys} 条翻译`);
+    } catch (error) {
+      console.error(`加载 ${TRANSLATION_FILE} 翻译文件失败:`, error);
+      throw error;
+    }
     
     // 如果翻译对象为空，发出警告
     if (Object.keys(translations).length === 0) {
-      console.error('警告: 所有翻译加载失败，将使用空对象');
+      console.error('警告: 翻译加载失败，将使用空对象');
       translations = {};
     }
   } catch (error) {
