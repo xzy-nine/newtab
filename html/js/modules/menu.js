@@ -28,25 +28,43 @@ export const Menu = {
     const formContainer = Utils.createElement('div', 'modal-form');
     
     formItems.forEach(item => {
-      const formGroup = Utils.createElement('div', 'form-group');
-      
+      // 判断是否为checkbox
+      const groupClass = item.type === 'checkbox' ? 'form-group checkbox-group' : 'form-group';
+      const formGroup = Utils.createElement('div', groupClass);
+
       const label = Utils.createElement('label', '', { for: item.id }, item.label);
-      
+
       let input;
       if (item.type === 'textarea') {
         input = Utils.createElement('textarea', '', { id: item.id });
+      } else if (item.type === 'checkbox') {
+        input = Utils.createElement('input', '', {
+          id: item.id,
+          type: 'checkbox'
+        });
       } else {
-        input = Utils.createElement('input', '', { 
-          id: item.id, 
-          type: item.type || 'text' 
+        input = Utils.createElement('input', '', {
+          id: item.id,
+          type: item.type || 'text'
         });
       }
-      
+
       if (item.placeholder) input.placeholder = item.placeholder;
       if (item.required) input.required = true;
-      if (item.value) input.value = item.value;
-      
-      formGroup.append(label, input);
+      if (item.value !== undefined) {
+        if (item.type === 'checkbox') {
+          input.checked = !!item.value;
+        } else {
+          input.value = item.value;
+        }
+      }
+
+      // 复选框放在label前面
+      if (item.type === 'checkbox') {
+        formGroup.append(input, label);
+      } else {
+        formGroup.append(label, input);
+      }
       formContainer.appendChild(formGroup);
     });
     

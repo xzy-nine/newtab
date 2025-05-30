@@ -289,6 +289,73 @@
   padding: var(--spacing-md);
 }
 
+/* 复选框与标签一行显示优化 */
+.form-group.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-group.checkbox-group label {
+  margin-bottom: 0;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+/* 自定义圆形复选框样式 */
+.form-group.checkbox-group input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-primary);
+  border-radius: 5px;
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  margin-right: var(--spacing-xs);
+  transition: border-color 0.2s, background 0.2s;
+  vertical-align: middle;
+}
+
+.form-group.checkbox-group input[type="checkbox"]:checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.form-group.checkbox-group input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  opacity: 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.form-group.checkbox-group input[type="checkbox"]:checked::after {
+  opacity: 1;
+}
+
+/* 深色模式下自定义复选框 */
+@media (prefers-color-scheme: dark) {
+  .form-group.checkbox-group input[type="checkbox"] {
+    background: #222;
+    border-color: var(--color-primary);
+  }
+  .form-group.checkbox-group input[type="checkbox"]:checked {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+}
+
 /* 深色模式模态框样式 */
 @media (prefers-color-scheme: dark) {
   .modal-content {
@@ -338,3 +405,95 @@
     background-color: #2a3f5a;
   }
 }
+
+/* 9. 统一右键菜单（上下文菜单）样式 */
+.context-menu {
+  position: absolute;
+  background: var(--color-bg-modal, #fff);
+  border-radius: var(--border-radius-md, 8px);
+  box-shadow: var(--box-shadow-md, 0 5px 15px rgba(0,0,0,0.3));
+  padding: 5px 0;
+  min-width: 120px;
+  z-index: 3000;
+  display: none;
+  font-size: 14px;
+  color: var(--color-text-main, #333);
+  border: 1px solid var(--color-border, #ddd);
+  animation: fadeIn 0.18s;
+}
+
+.context-menu.visible {
+  display: block;
+}
+
+.context-menu-positioned {
+  left: 0;
+  top: 0;
+}
+
+.context-menu-item {
+  padding: 8px 15px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text-main, #333);
+  transition: background-color var(--transition-fast, 0.2s);
+  user-select: none;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+.context-menu-item:hover {
+  background-color: var(--color-bg-hover, #f0f7ff);
+  color: var(--color-primary, #007bff);
+}
+
+.context-menu-item.danger-item {
+  color: var(--color-danger, #e53935);
+}
+
+.context-menu-item.danger-item:hover {
+  background-color: rgba(211, 47, 47, 0.08);
+  color: var(--color-danger-hover, #c62828);
+}
+
+.context-menu-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--color-border, #ddd);
+  border: none;
+}
+
+/* 深色模式下右键菜单 */
+@media (prefers-color-scheme: dark) {
+  .context-menu {
+    background: #2a2a2a;
+    color: rgba(255,255,255,0.9);
+    border: 1px solid #444;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.5);
+  }
+  .context-menu-item {
+    color: rgba(255,255,255,0.9);
+  }
+  .context-menu-item:hover {
+    background-color: #3a3a3a;
+    color: var(--color-primary, #3aa0ff);
+  }
+  .context-menu-item.danger-item {
+    color: var(--color-danger, #e53935);
+  }
+  .context-menu-item.danger-item:hover {
+    background-color: rgba(211, 47, 47, 0.13);
+    color: var(--color-danger-hover, #c62828);
+  }
+  .context-menu-divider {
+    background: #444;
+  }
+}
+
+/* 动画 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
