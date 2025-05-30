@@ -287,27 +287,8 @@ export const WidgetSystem = {
                 callback: () => {
                     this.toggleFixedContainer(container);
                 }
-            },
-            {
+            },            {
                 type: 'separator'
-            },
-            {
-                id: 'toggle-grid-system',
-                text: GridSystem.gridEnabled 
-                    ? I18n.getMessage('disableGridSystem', '禁用网格系统') 
-                    : I18n.getMessage('enableGridSystem', '启用网格系统'),
-                callback: () => {
-                    GridSystem.toggleGridSystem(!GridSystem.gridEnabled);
-                }
-            },
-            {
-                id: 'toggle-grid-debug',
-                text: GridSystem.isDebugMode 
-                    ? I18n.getMessage('hideGridLines', '隐藏网格线') 
-                    : I18n.getMessage('showGridLines', '显示网格线'),
-                callback: () => {
-                    GridSystem.toggleGridDebug(!GridSystem.isDebugMode);
-                }
             }
         ];
         

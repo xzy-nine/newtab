@@ -4,6 +4,7 @@ import { I18n } from './i18n.js';
 import { SearchEngineAPI } from './searchEngine.js';
 import { Notification } from './notification.js';
 import { IconManager } from './iconManager.js';
+import { GridSystem } from './gridSystem.js';
 
 export const Settings = {
   // 设置配置 - 改为函数以支持动态翻译
@@ -35,6 +36,38 @@ export const Settings = {
           ],
           value: 'auto',
           description: I18n.getMessage('settingsThemeDesc', '选择应用的主题外观')
+        }
+      ]
+    },
+    {
+      id: 'grid-system',
+      icon: '📐',
+      title: I18n.getMessage('settingsGridSystem', '网格系统'),
+      items: [
+        {
+          id: 'grid-enabled',
+          label: I18n.getMessage('settingsGridEnabled', '启用网格系统'),
+          type: 'checkbox',
+          value: GridSystem.gridEnabled,
+          description: I18n.getMessage('settingsGridEnabledDesc', '启用后元素将自动吸附到网格位置')
+        },
+        {
+          id: 'grid-debug',
+          label: I18n.getMessage('settingsGridDebug', '显示网格线'),
+          type: 'checkbox',
+          value: GridSystem.isDebugMode,
+          description: I18n.getMessage('settingsGridDebugDesc', '显示网格辅助线，帮助对齐元素')
+        },
+        {
+          id: 'grid-snap-threshold',
+          label: I18n.getMessage('settingsGridSnapThreshold', '吸附阈值'),
+          type: 'range',
+          min: 5,
+          max: 30,
+          step: 1,
+          value: GridSystem.snapThreshold,
+          unit: 'px',
+          description: I18n.getMessage('settingsGridSnapThresholdDesc', '元素吸附到网格的距离阈值')
         }
       ]
     },
@@ -161,14 +194,25 @@ export const Settings = {
     // 设置项控件
     const itemControl = Utils.createElement('div', 'setting-control');
     
-    switch (item.type) {
-      case 'checkbox':
+    switch (item.type) {      case 'checkbox':
         const checkbox = Utils.createElement('input', 'setting-checkbox', {
           type: 'checkbox',
           id: item.id,
           checked: item.value
         });
         const checkboxLabel = Utils.createElement('label', 'checkbox-switch', { for: item.id });
+        
+        // 为网格系统设置添加事件监听
+        if (item.id === 'grid-enabled') {
+          checkbox.addEventListener('change', (e) => {
+            Settings.handleGridEnabledChange(e.target.checked);
+          });
+        } else if (item.id === 'grid-debug') {
+          checkbox.addEventListener('change', (e) => {
+            Settings.handleGridDebugChange(e.target.checked);
+          });
+        }
+        
         itemControl.append(checkbox, checkboxLabel);
         break;
         
@@ -185,10 +229,14 @@ export const Settings = {
         const rangeValue = Utils.createElement('span', 'range-value', {}, `${item.value}${item.unit || ''}`);
         rangeContainer.append(range, rangeValue);
         itemControl.appendChild(rangeContainer);
-        
-        // 更新显示值
+          // 更新显示值
         range.addEventListener('input', (e) => {
           rangeValue.textContent = `${e.target.value}${item.unit || ''}`;
+          
+          // 为网格吸附阈值添加实时更新
+          if (item.id === 'grid-snap-threshold') {
+            Settings.handleGridSnapThresholdChange(parseInt(e.target.value));
+          }
         });
         break;
         
@@ -540,11 +588,57 @@ export const Settings = {
         Settings.renderCategoryContent(Settings.currentCategory);
       });
     });
-    
-    // 添加拖动功能
+      // 添加拖动功能
     const modalContent = modal.querySelector('.modal-content');
     if (modalContent) {
       Menu._makeModalDraggable(modal, modalContent);
     }
+  },
+  /**
+   * 处理网格系统启用/禁用
+   * @param {boolean} enabled - 是否启用网格系统
+   */
+  handleGridEnabledChange(enabled) {
+    GridSystem.toggleGridSystem(enabled);
+    
+    // 显示通知
+    Notification.notify({
+      title: enabled 
+        ? I18n.getMessage('gridSystemEnabled', '网格系统已启用')
+        : I18n.getMessage('gridSystemDisabled', '网格系统已禁用'),
+      message: enabled
+        ? I18n.getMessage('gridSystemEnabledMessage', '元素将吸附到网格')
+        : I18n.getMessage('gridSystemDisabledMessage', '元素将自由放置'),
+      type: enabled ? 'success' : 'info',
+      duration: 2000
+    });
+  },
+
+  /**
+   * 处理网格调试模式切换
+   * @param {boolean} enabled - 是否启用调试模式
+   */
+  handleGridDebugChange(enabled) {
+    GridSystem.toggleGridDebug(enabled);
+    
+    // 显示通知
+    Notification.notify({
+      title: enabled
+        ? I18n.getMessage('gridDebugEnabled', '网格调试已启用')
+        : I18n.getMessage('gridDebugDisabled', '网格调试已禁用'),
+      message: enabled
+        ? I18n.getMessage('gridDebugEnabledMessage', '现在您可以看到网格线')
+        : I18n.getMessage('gridDebugDisabledMessage', '网格线已隐藏'),
+      type: 'info',
+      duration: 2000
+    });
+  },
+
+  /**
+   * 处理网格吸附阈值变化
+   * @param {number} threshold - 新的吸附阈值
+   */
+  handleGridSnapThresholdChange(threshold) {
+    GridSystem.setSnapThreshold(threshold);
   }
 };

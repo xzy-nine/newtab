@@ -74,9 +74,68 @@
   "untitledFolder": {
     "message": "(无标题文件夹)",
     "description": "无标题文件夹显示文本"
-  },
-  "engineName": {
+  },  "engineName": {
     "message": "名称",
     "description": "引擎名称"
+  },
+  "settingsGridSystem": {
+    "message": "网格系统",
+    "description": "网格系统设置分类标题"
+  },
+  "settingsGridEnabled": {
+    "message": "启用网格系统",
+    "description": "启用网格系统设置项标签"
+  },
+  "settingsGridEnabledDesc": {
+    "message": "启用后元素将自动吸附到网格位置",
+    "description": "启用网格系统设置项描述"
+  },
+  "settingsGridDebug": {
+    "message": "显示网格线",
+    "description": "显示网格线设置项标签"
+  },
+  "settingsGridDebugDesc": {
+    "message": "显示网格辅助线，帮助对齐元素",
+    "description": "显示网格线设置项描述"
+  },
+  "settingsGridSnapThreshold": {
+    "message": "吸附阈值",
+    "description": "网格吸附阈值设置项标签"
+  },
+  "settingsGridSnapThresholdDesc": {
+    "message": "元素吸附到网格的距离阈值",
+    "description": "网格吸附阈值设置项描述"
+  },
+  "gridSystemEnabled": {
+    "message": "网格系统已启用",
+    "description": "网格系统启用通知标题"
+  },
+  "gridSystemEnabledMessage": {
+    "message": "元素将吸附到网格",
+    "description": "网格系统启用通知消息"
+  },
+  "gridSystemDisabled": {
+    "message": "网格系统已禁用",
+    "description": "网格系统禁用通知标题"
+  },
+  "gridSystemDisabledMessage": {
+    "message": "元素将自由放置",
+    "description": "网格系统禁用通知消息"
+  },
+  "gridDebugEnabled": {
+    "message": "网格调试已启用",
+    "description": "网格调试启用通知标题"
+  },
+  "gridDebugEnabledMessage": {
+    "message": "现在您可以看到网格线",
+    "description": "网格调试启用通知消息"
+  },
+  "gridDebugDisabled": {
+    "message": "网格调试已禁用",
+    "description": "网格调试禁用通知标题"
+  },
+  "gridDebugDisabledMessage": {
+    "message": "网格线已隐藏",
+    "description": "网格调试禁用通知消息"
   }
 }
