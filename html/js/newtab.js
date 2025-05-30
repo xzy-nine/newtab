@@ -12,6 +12,7 @@ import { Utils } from './modules/utils.js';
 import { Notification } from './modules/notification.js'; 
 import { Menu } from './modules/menu.js'; 
 import { WidgetSystem } from './modules/widgetSystem.js';
+import './modules/settings.js';
 
 // 版本号
 let VERSION = '0.0.0'; 
