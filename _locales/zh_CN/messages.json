@@ -54,10 +54,17 @@
   "warning": {
     "message": "警告",
     "description": "警告标题"
-  },
-  "add": {
+  },  "add": {
     "message": "添加",
     "description": "添加按钮文本"
+  },
+  "backgroundButton": {
+    "message": "背景",
+    "description": "背景切换按钮文本"
+  },
+  "settingsTitle": {
+    "message": "设置",
+    "description": "设置按钮文本"
   },
   "defaultBackground": {
     "message": "默认",

@@ -88,13 +88,15 @@ async function init() {
         
         // 显示加载界面，使用静态文本而非国际化文本
         Notification.showLoadingIndicator("加载中...");
-        
-        // 先初始化国际化模块，这样后面才能使用它
+          // 先初始化国际化模块，这样后面才能使用它
         await executeWithTimeout(
             () => I18n.init(), 
             5000, 
             '国际化' // 不使用 getMessage，因为这时还未初始化
         );
+        
+        // 国际化初始化完成后，重新应用翻译到UI元素
+        I18n.applyTranslations();
         
         // 获取扩展版本
         VERSION = await getExtensionVersion();
@@ -231,12 +233,11 @@ function createBasicUI() {
     
     bookmarkBox.appendChild(folderList);
     bookmarkBox.appendChild(shortcutList);
-    
-    // 创建背景按钮
-    const backgroundButton = Utils.createElement('button', '', { 
+      // 创建背景按钮
+    const backgroundButton = Utils.createElement('button', '背景', { 
         id: 'background-button',
         'data-i18n': 'backgroundButton'
-    }); 
+    });
     
     // 创建设置按钮
     const settingsButton = Utils.createElement('button', '', { 
