@@ -275,6 +275,53 @@ export const BookmarkManager = {
     },
 
     /**
+     * 应用选中的文件夹
+     */
+    applySelectedFolder: function(root) {
+        chrome.storage.local.get("folder").then(data => {
+            let folder = data.folder || root.id;
+            currentFolder = folder;
+            
+            const selectedFolder = this.findFolderById(root, folder);
+            if (selectedFolder) {
+                this.showShortcuts(selectedFolder);
+                
+                // 清除所有选中状态
+                document.querySelectorAll('.folder-button.selected').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                
+                // 获取固定文件夹列表
+                chrome.storage.local.get("pinnedFolders").then(pinnedData => {
+                    const pinnedFolders = pinnedData.pinnedFolders || [];
+                    const isPinnedFolder = pinnedFolders.includes(folder);
+                    
+                    // 如果是固定文件夹，优先选中固定版本，否则选中原始版本
+                    if (isPinnedFolder) {
+                        // 选中固定版本
+                        const pinnedButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
+                        if (pinnedButton) {
+                            pinnedButton.classList.add('selected');
+                        }
+                    } else {
+                        // 选中原始版本
+                        const regularButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
+                        if (regularButton) {
+                            regularButton.classList.add('selected');
+                        }
+                    }
+                }).catch(err => {
+                    // 如果获取固定文件夹列表失败，则选中所有匹配的按钮
+                    const selectedButtons = document.querySelectorAll(`[data-folder-id="${folder}"]`);
+                    selectedButtons.forEach(button => {
+                        button.classList.add('selected');
+                    });
+                });
+            }
+        }).catch(err => this.showError(err));
+    },
+
+    /**
      * 切换文件夹选择状态
      */
     toggleFolderSelection: function(folderButton, folder) {
@@ -294,11 +341,31 @@ export const BookmarkManager = {
             currentFolder = folder.id;
             chrome.storage.local.set({ folder: folder.id });
             
-            // 更新选中状态
+            // 清除所有选中状态
             document.querySelectorAll('.folder-button.selected').forEach(btn => {
                 btn.classList.remove('selected');
             });
+            
+            // 只选中当前点击的按钮
             folderButton.classList.add('selected');
+            
+            // 如果点击的是固定文件夹，确保原始文件夹不被选中
+            const isPinned = folderButton.getAttribute('data-pinned') === 'true';
+            const folderId = folderButton.getAttribute('data-folder-id');
+            
+            if (isPinned) {
+                // 确保原始版本不被选中
+                const regularButton = document.querySelector(`[data-folder-id="${folderId}"][data-pinned="false"]`);
+                if (regularButton) {
+                    regularButton.classList.remove('selected');
+                }
+            } else {
+                // 确保固定版本不被选中
+                const pinnedButton = document.querySelector(`[data-folder-id="${folderId}"][data-pinned="true"]`);
+                if (pinnedButton) {
+                    pinnedButton.classList.remove('selected');
+                }
+            }
         }
     },
 
@@ -424,12 +491,36 @@ export const BookmarkManager = {
             if (selectedFolder) {
                 this.showShortcuts(selectedFolder);
                 
-                const selectedButtons = document.querySelectorAll(`[data-folder-id="${folder}"]`);
+                // 清除所有选中状态
                 document.querySelectorAll('.folder-button.selected').forEach(btn => {
                     btn.classList.remove('selected');
                 });
-                selectedButtons.forEach(button => {
-                    button.classList.add('selected');
+                
+                // 获取固定文件夹列表
+                chrome.storage.local.get("pinnedFolders").then(pinnedData => {
+                    const pinnedFolders = pinnedData.pinnedFolders || [];
+                    const isPinnedFolder = pinnedFolders.includes(folder);
+                    
+                    // 如果是固定文件夹，优先选中固定版本，否则选中原始版本
+                    if (isPinnedFolder) {
+                        // 选中固定版本
+                        const pinnedButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
+                        if (pinnedButton) {
+                            pinnedButton.classList.add('selected');
+                        }
+                    } else {
+                        // 选中原始版本
+                        const regularButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
+                        if (regularButton) {
+                            regularButton.classList.add('selected');
+                        }
+                    }
+                }).catch(err => {
+                    // 如果获取固定文件夹列表失败，则选中所有匹配的按钮
+                    const selectedButtons = document.querySelectorAll(`[data-folder-id="${folder}"]`);
+                    selectedButtons.forEach(button => {
+                        button.classList.add('selected');
+                    });
                 });
             }
         }).catch(err => this.showError(err));
