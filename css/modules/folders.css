@@ -30,8 +30,11 @@
   border-radius: var(--folder-border-radius);
   padding: var(--folder-padding) var(--folder-padding) calc(var(--folder-padding) * 2);
   position: relative;
+  /* 修复滚动问题 */
   overflow-y: auto;
   overflow-x: hidden;
+  /* 确保滚动条始终可用 */
+  scrollbar-width: thin;
   user-select: none;
   box-shadow: inset 0 0 15px var(--container-shadow); /* 添加一致的内阴影 */
   backdrop-filter: blur(3px); /* 添加与shortcut-list一致的模糊效果 */
@@ -66,8 +69,8 @@
   justify-content: flex-start;
   width: 100%;
   overflow: hidden;
-  /* 确保内容区域不会阻止事件冒泡 */
-  pointer-events: none;
+  /* 移除这行 - 它阻止了内容显示 */
+  /* pointer-events: none; */
 }
 
 .folder-children {
@@ -80,22 +83,31 @@
   position: relative;
   z-index: 1;
   pointer-events: none;
-  width: calc(100% - 10px);
+  width: calc(100% - 18px); /* 调整宽度以适应嵌套 */
   box-sizing: border-box;
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
               opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  /* 确保内容不会被截断 */
   min-height: 0;
 }
 
-/* 展开状态 */
-.folder-button.open + .folder-children {
+/* 展开状态 - 修复嵌套问题 */
+.folder-button.open + .folder-children,
+.folder-children.folder-children-open {
   opacity: 1;
   pointer-events: auto;
   z-index: 2;
-  /* 移除max-height限制，允许完全展开 */
-  max-height: none !important;
-  overflow: visible;
+  max-height: none !important; /* 使用none而不是固定值 */
+  overflow: visible !important; /* 确保所有嵌套内容可见 */
+  min-height: auto;
+  /* 确保嵌套容器有足够空间 */
+  height: auto;
+}
+
+/* 为嵌套文件夹添加特殊处理 */
+.folder-children .folder-children {
+  width: calc(100% - 15px); /* 递进减少宽度 */
+  margin-left: 8px; /* 递进缩进 */
+  padding-left: 6px;
 }
 
 /* 4. 子元素样式层 */
@@ -119,13 +131,15 @@
   padding-right: 5px;
   font-size: 14px;
   color: var(--folder-text-color);
+  /* 确保名称区域可以接收点击事件 */
+  pointer-events: auto;
 }
 
 .folder-arrow {
   font-size: 14px;
   margin-right: 6px;
-  width: 24px;  /* 增加宽度 */
-  height: 24px; /* 增加高度 */
+  width: 24px;
+  height: 24px;
   text-align: center;
   color: var(--folder-text-color);
   font-weight: bold;
@@ -134,16 +148,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px; /* 增加圆角 */
+  border-radius: 4px;
   background-color: transparent;
   transition: background-color 0.2s ease, transform 0.3s ease;
   flex-shrink: 0;
   /* 确保箭头可以接收点击事件 */
   pointer-events: auto;
-  /* 增加点击区域的内边距 */
-  padding: 4px; /* 增加内边距 */
-  margin: -4px 6px -4px -4px; /* 调整负边距以保持视觉位置 */
-  /* 添加最小点击区域 */
+  padding: 4px;
+  margin: -4px 6px -4px -4px;
   min-width: 32px;
   min-height: 32px;
 }
@@ -251,6 +263,11 @@
 .folder-indent-3 { padding-left: 45px; }
 .folder-indent-4 { padding-left: 60px; }
 .folder-indent-5 { padding-left: 75px; }
+.folder-indent-6 { padding-left: 90px; }
+.folder-indent-7 { padding-left: 105px; }
+.folder-indent-8 { padding-left: 120px; }
+.folder-indent-9 { padding-left: 135px; }
+.folder-indent-10 { padding-left: 150px; }
 
 /* 7. 组件变体层 - 固定文件夹 */
 .pinned-folders-section {
@@ -313,3 +330,110 @@
     color: #6bb6ff; /* 深色模式下使用更亮的蓝色 */
   }
 }
+
+/* 修复folder-list容器的滚动问题 */
+#folder-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+#folder-list::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
+}
+
+#folder-list::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.3);
+  border-radius: 3px;
+}
+
+#folder-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.5);
+}
+
+/* 为展开的文件夹添加特殊处理 */
+.folder-children.folder-children-open {
+  max-height: none !important;
+  overflow: visible !important;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.folder-children.folder-children-closed {
+  max-height: 0px !important;
+  overflow: hidden !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 确保嵌套文件夹的正确显示 */
+.folder-children .folder-button {
+  margin: 2px 0;
+  /* 确保按钮完全可见 */
+  min-height: var(--folder-min-height);
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important; /* 确保完全不透明 */
+  pointer-events: auto !important;
+  /* 确保按钮有足够的宽度 */
+  width: 100% !important;
+  box-sizing: border-box;
+  /* 防止内容被截断 */
+  position: relative;
+  z-index: auto;
+}
+
+/* 确保深层嵌套的内容可见 */
+.folder-children .folder-content {
+  pointer-events: auto !important;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100%;
+  /* 防止内容被父容器裁剪 */
+  position: relative;
+  z-index: auto;
+}
+
+/* 修复深层嵌套的展开状态 */
+.folder-children .folder-children.folder-children-open {
+  max-height: none !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* 确保第三级及更深层级的文件夹名称可见 */
+.folder-children .folder-children .folder-name {
+  opacity: 1 !important;
+  visibility: visible !important;
+  color: var(--folder-text-color) !important;
+  max-width: calc(100% - 60px); /* 为深层级调整宽度 */
+}
+
+/* 确保深层级的图标和箭头可见 */
+.folder-children .folder-children .folder-icon,
+.folder-children .folder-children .folder-arrow {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* 移除可能导致隐藏的样式 */
+.folder-children.folder-children-closed {
+  max-height: 0px !important;
+  overflow: hidden !important;
+  opacity: 0;
+  pointer-events: none;
+  /* 不要使用display: none，这会导致子元素计算问题 */
+}
+
+/* 调整层级缩进，确保深层级可见 */
+.folder-indent-3 { padding-left: 35px; } /* 减少缩进 */
+.folder-indent-4 { padding-left: 45px; }
+.folder-indent-5 { padding-left: 55px; }
+.folder-indent-6 { padding-left: 65px; }
+.folder-indent-7 { padding-left: 75px; }
+.folder-indent-8 { padding-left: 85px; }
+.folder-indent-9 { padding-left: 95px; }
+.folder-indent-10 { padding-left: 105px; }
