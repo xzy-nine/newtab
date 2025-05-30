@@ -293,7 +293,7 @@ function setupEvents() {
     return Promise.all([
         setupModuleWithTimeout(() => backgroundManager.setupEvents(), 'background'),
         setupModuleWithTimeout(() => SearchEngineAPI.setupEvents(), 'search'),
-        setupModuleWithTimeout(() => BookmarkManager.initEvents(), 'bookmark'),
+        setupModuleWithTimeout(() => BookmarkManager.init(), 'bookmark'),
         setupModuleWithTimeout(() => Utils.UI.Events.initUIEvents(), 'ui')
     ]).then(() => {
         // 检查是否有超时或错误的模块
