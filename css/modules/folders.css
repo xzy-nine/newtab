@@ -1,52 +1,43 @@
-/* 文件夹样式系统 */
+/* 文件夹样式系统 - 精简版 */
 
-/* 1. 变量定义层 */
+/* 变量定义 */
 :root {
-  /* 文件夹特定尺寸和间距 */
   --folder-border-radius: 10px;
   --folder-padding: 10px;
   --folder-margin: 4px;
-  --folder-icon-size: 24px;
   --folder-min-height: 30px;
+  --folder-indent-size: 20px;
   
-  /* 基于现有颜色变量映射功能变量 */
   --folder-bg: var(--color-white);
   --folder-border-color: var(--color-gray-300);
   --folder-text-color: var(--color-gray-900);
   --folder-hover-bg: var(--color-gray-100);
 }
 
-/* 2. 组件基础层 - 主容器 */
+/* 主容器 */
 #folder-list {
   min-width: 200px;
-  max-width: 280px;
+  max-width: 320px;
   height: 100%;
-  max-height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  background: var(--container-bg); /* 统一使用container-bg变量 */
+  align-items: flex-end;
+  background: var(--container-bg);
   border-radius: var(--folder-border-radius);
   padding: var(--folder-padding) var(--folder-padding) calc(var(--folder-padding) * 2);
-  position: relative;
-  /* 修复滚动问题 */
   overflow-y: auto;
   overflow-x: hidden;
-  /* 确保滚动条始终可用 */
   scrollbar-width: thin;
   user-select: none;
-  box-shadow: inset 0 0 15px var(--container-shadow); /* 添加一致的内阴影 */
-  backdrop-filter: blur(3px); /* 添加与shortcut-list一致的模糊效果 */
+  box-shadow: inset 0 0 15px var(--container-shadow);
+  backdrop-filter: blur(3px);
 }
 
-/* 3. 组件结构层 - 文件夹容器 */
+/* 文件夹按钮 */
 .folder-button {
-  width: calc(100% - 5px);
-  min-height: var(--folder-min-height);
+  min-height: 36px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
   border: 1px solid var(--folder-border-color);
   border-radius: var(--folder-border-radius);
   background: var(--folder-bg);
@@ -55,70 +46,66 @@
   margin: var(--folder-margin) 0;
   transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
   overflow: hidden;
-  z-index: 2;
-  padding: 0;
   box-sizing: border-box;
-  /* 确保按钮可以接收点击事件 */
-  pointer-events: auto;
+  width: 100%;
 }
 
+/* 层级缩进 - 使用通用选择器 */
+.folder-button[class*="folder-indent-"] {
+  margin-right: 0px;
+}
+
+.folder-button.folder-indent-1 { margin-left: calc(1 * var(--folder-indent-size)); width: calc(100% - 1 * var(--folder-indent-size)); }
+.folder-button.folder-indent-2 { margin-left: calc(2 * var(--folder-indent-size)); width: calc(100% - 2 * var(--folder-indent-size)); }
+.folder-button.folder-indent-3 { margin-left: calc(3 * var(--folder-indent-size)); width: calc(100% - 3 * var(--folder-indent-size)); }
+.folder-button.folder-indent-4 { margin-left: calc(4 * var(--folder-indent-size)); width: calc(100% - 4 * var(--folder-indent-size)); }
+.folder-button.folder-indent-5 { margin-left: calc(5 * var(--folder-indent-size)); width: calc(100% - 5 * var(--folder-indent-size)); }
+.folder-button.folder-indent-6 { margin-left: calc(6 * var(--folder-indent-size)); width: calc(100% - 6 * var(--folder-indent-size)); }
+.folder-button.folder-indent-7 { margin-left: calc(7 * var(--folder-indent-size)); width: calc(100% - 7 * var(--folder-indent-size)); }
+.folder-button.folder-indent-8 { margin-left: calc(8 * var(--folder-indent-size)); width: calc(100% - 8 * var(--folder-indent-size)); }
+.folder-button.folder-indent-9 { margin-left: calc(9 * var(--folder-indent-size)); width: calc(100% - 9 * var(--folder-indent-size)); }
+.folder-button.folder-indent-10 { margin-left: calc(10 * var(--folder-indent-size)); width: calc(100% - 10 * var(--folder-indent-size)); }
+
+/* 文件夹内容布局 */
 .folder-content {
   display: flex;
   align-items: center;
-  padding: 6px;
-  justify-content: flex-start;
+  padding: 4px 8px;
   width: 100%;
   overflow: hidden;
-  /* 移除这行 - 它阻止了内容显示 */
-  /* pointer-events: none; */
-}
-
-.folder-children {
-  display: block;
-  max-height: 0px;
-  opacity: 0;
-  overflow: hidden;
-  padding-left: 8px;
-  margin-left: 10px;
-  position: relative;
-  z-index: 1;
-  pointer-events: none;
-  width: calc(100% - 18px); /* 调整宽度以适应嵌套 */
   box-sizing: border-box;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  min-height: 0;
 }
 
-/* 展开状态 - 修复嵌套问题 */
-.folder-button.open + .folder-children,
-.folder-children.folder-children-open {
-  opacity: 1;
-  pointer-events: auto;
-  z-index: 2;
-  max-height: none !important; /* 使用none而不是固定值 */
-  overflow: visible !important; /* 确保所有嵌套内容可见 */
-  min-height: auto;
-  /* 确保嵌套容器有足够空间 */
-  height: auto;
+.folder-icon-name-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  overflow: hidden;
 }
 
-/* 为嵌套文件夹添加特殊处理 */
-.folder-children .folder-children {
-  width: calc(100% - 15px); /* 递进减少宽度 */
-  margin-left: 8px; /* 递进缩进 */
-  padding-left: 6px;
-}
-
-/* 4. 子元素样式层 */
-.folder-icon {
-  flex-shrink: 0;
-  width: var(--folder-icon-size);
-  height: var(--folder-icon-size);
-  margin-right: 5px;
-  display: inline-flex;
+/* 文件夹元素 */
+.folder-arrow {
+  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--folder-text-color);
+  font-weight: bold;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, transform 0.3s ease;
+  flex-shrink: 0;
+  margin-right: 4px;
+  cursor: pointer;
+}
+
+.folder-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  flex-shrink: 0;
+  font-size: 16px;
 }
 
 .folder-name {
@@ -126,157 +113,62 @@
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
-  max-width: 180px;
-  text-align: left;
+  font-size: 13px;
+  color: var(--folder-text-color);
+  min-width: 60px;
   padding-right: 5px;
-  font-size: 14px;
-  color: var(--folder-text-color);
-  /* 确保名称区域可以接收点击事件 */
-  pointer-events: auto;
 }
 
-.folder-arrow {
-  font-size: 14px;
-  margin-right: 6px;
-  width: 24px;
-  height: 24px;
-  text-align: center;
-  color: var(--folder-text-color);
-  font-weight: bold;
-  text-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  background-color: transparent;
-  transition: background-color 0.2s ease, transform 0.3s ease;
-  flex-shrink: 0;
-  /* 确保箭头可以接收点击事件 */
-  pointer-events: auto;
-  padding: 4px;
-  margin: -4px 6px -4px -4px;
-  min-width: 32px;
-  min-height: 32px;
-}
-
-.folder-arrow:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-  transform: scale(1.1);
-}
-
-.folder-arrow:empty {
-  margin-right: 0;
-  width: 0;
-  height: 0;
-  padding: 0;
-  margin: 0;
-  cursor: default;
-  display: none;
-  pointer-events: none;
-}
-
-.folder-button {
-  background-color: var(--folder-hover-bg);
-}
-
-/* 展开状态的箭头旋转 - 修复角度 */
-.folder-button.open .folder-arrow {
-  transform: none; /* 移除旋转变换，完全依赖文本替换 */
-}
-
-.folder-button.open .folder-arrow:hover {
-  transform: scale(1.1); /* 只保留缩放效果 */
-}
-
-/* 5. 交互状态层 */
+/* 交互状态 */
 .folder-button:hover {
   background-color: var(--folder-hover-bg);
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
 }
 
-.folder-button:hover .folder-arrow {
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
-}
-
 .folder-button:active {
   transform: scale(0.95);
-  transition: transform 0.1s;
 }
 
-.folder-button.open {
-  background-color: var(--folder-hover-bg);
-}
-
-/* 选中状态样式 - 降低视觉冲击 */
 .folder-button.selected {
-  background-color: rgba(66, 133, 244, 0.15); /* 降低透明度 */
+  background-color: rgba(66, 133, 244, 0.15);
   border-color: var(--color-primary);
-  box-shadow: 0 0 8px rgba(66, 133, 244, 0.25); /* 减少发光强度 */
+  box-shadow: 0 0 8px rgba(66, 133, 244, 0.25);
 }
 
 .folder-button.selected .folder-name,
-.folder-button.selected .folder-icon {
-  color: var(--color-primary); /* 使用主色调而不是白色 */
-}
-
+.folder-button.selected .folder-icon,
 .folder-button.selected .folder-arrow {
-  color: var(--color-primary); /* 使用主色调而不是白色 */
-  text-shadow: none; /* 移除文字阴影 */
+  color: var(--color-primary);
+}
+
+/* 文件夹展开/收缩 */
+.folder-children.folder-children-open {
+  max-height: none !important;
   opacity: 1;
-}
-
-/* 6. 辅助功能层 */
-.folder-children-initial {
-  max-height: 0;
-  opacity: 0;
-  display: block;
-  overflow: hidden;
-}
-
-.folder-children.hidden {
-  display: none;
-}
-
-.height-calculation-clone {
-  max-height: none;
-  opacity: 0;
-  position: absolute;
-  pointer-events: none;
-  visibility: hidden;
-}
-
-/* 展开状态保存相关样式 */
-.folder-button[data-expand-saved="true"] .folder-arrow {
-  opacity: 0.8;
-}
-
-.folder-children[data-restored="true"] {
-  /* 为已恢复状态的子容器添加标识 */
-  transition: none; /* 恢复时不使用动画 */
-}
-
-/* 文件夹层级指示器 */
-.folder-indent-0 { padding-left: 0px; }
-.folder-indent-1 { padding-left: 15px; }
-.folder-indent-2 { padding-left: 30px; }
-.folder-indent-3 { padding-left: 45px; }
-.folder-indent-4 { padding-left: 60px; }
-.folder-indent-5 { padding-left: 75px; }
-.folder-indent-6 { padding-left: 90px; }
-.folder-indent-7 { padding-left: 105px; }
-.folder-indent-8 { padding-left: 120px; }
-.folder-indent-9 { padding-left: 135px; }
-.folder-indent-10 { padding-left: 150px; }
-
-/* 7. 组件变体层 - 固定文件夹 */
-.pinned-folders-section {
-  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   width: 100%;
 }
 
+.folder-children.folder-children-closed {
+  max-height: 0px !important;
+  overflow: hidden !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 区域分隔 */
+.pinned-folders-section {
+  margin-bottom: 8px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
 .section-header {
-  color: var(--color-gray-900); /* 浅色模式下用深色字体 */
+  color: var(--color-gray-900);
   font-size: 14px;
   font-weight: 500;
   margin: 8px 5px;
@@ -284,54 +176,19 @@
   border-left: 3px solid var(--primary-color);
   width: calc(100% - 15px);
   box-sizing: border-box;
+  align-self: stretch;
 }
 
-/* 8. 深色模式样式适配 */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* 深色模式时重新映射功能变量 */
-    --folder-bg: var(--color-gray-900);
-    --folder-border-color: var(--color-gray-700);
-    --folder-text-color: var(--color-gray-100);
-    --folder-hover-bg: var(--color-gray-700);
-  }
-
-  #folder-list {
-    background: rgba(40, 40, 40, 0.7);
-  }
-  
-  .folder-button {
-    background: rgba(40, 40, 40, 0.9);
-    color: rgba(255, 255, 255, 0.9);
-  }
-  
-  .child-container {
-    border-left-color: #555;
-  }
-  
-  .folder-arrow {
-    color: #aaa;
-  }
-
-  .section-header {
-    color: rgba(255, 255, 255, 0.7); /* 深色模式下用浅色字体 */
-  }
-  
-  /* 深色模式下的选中状态调整 */
-  .folder-button.selected {
-    background-color: rgba(66, 133, 244, 0.2); /* 深色模式下稍微提高透明度 */
-    border-color: var(--color-primary);
-    box-shadow: 0 0 8px rgba(66, 133, 244, 0.3);
-  }
-  
-  .folder-button.selected .folder-name,
-  .folder-button.selected .folder-icon,
-  .folder-button.selected .folder-arrow {
-    color: #6bb6ff; /* 深色模式下使用更亮的蓝色 */
-  }
+.folder-section-divider {
+  border: none;
+  height: 1px;
+  background: var(--folder-border-color);
+  margin: 10px 0;
+  opacity: 0.5;
+  width: 100%;
 }
 
-/* 修复folder-list容器的滚动问题 */
+/* 滚动条样式 */
 #folder-list::-webkit-scrollbar {
   width: 6px;
 }
@@ -350,90 +207,32 @@
   background: rgba(0,0,0,0.5);
 }
 
-/* 为展开的文件夹添加特殊处理 */
-.folder-children.folder-children-open {
-  max-height: none !important;
-  overflow: visible !important;
-  opacity: 1;
-  pointer-events: auto;
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --folder-bg: var(--color-gray-900);
+    --folder-border-color: var(--color-gray-700);
+    --folder-text-color: var(--color-gray-100);
+    --folder-hover-bg: var(--color-gray-700);
+  }
+
+  #folder-list {
+    background: rgba(40, 40, 40, 0.7);
+  }
+  
+  .folder-button {
+    background: rgba(40, 40, 40, 0.9);
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .section-header {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  .folder-button.selected .folder-name,
+  .folder-button.selected .folder-icon,
+  .folder-button.selected .folder-arrow {
+    color: #6bb6ff;
+  }
 }
 
-.folder-children.folder-children-closed {
-  max-height: 0px !important;
-  overflow: hidden !important;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* 确保嵌套文件夹的正确显示 */
-.folder-children .folder-button {
-  margin: 2px 0;
-  /* 确保按钮完全可见 */
-  min-height: var(--folder-min-height);
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important; /* 确保完全不透明 */
-  pointer-events: auto !important;
-  /* 确保按钮有足够的宽度 */
-  width: 100% !important;
-  box-sizing: border-box;
-  /* 防止内容被截断 */
-  position: relative;
-  z-index: auto;
-}
-
-/* 确保深层嵌套的内容可见 */
-.folder-children .folder-content {
-  pointer-events: auto !important;
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  width: 100%;
-  /* 防止内容被父容器裁剪 */
-  position: relative;
-  z-index: auto;
-}
-
-/* 修复深层嵌套的展开状态 */
-.folder-children .folder-children.folder-children-open {
-  max-height: none !important;
-  overflow: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  display: block !important;
-  visibility: visible !important;
-}
-
-/* 确保第三级及更深层级的文件夹名称可见 */
-.folder-children .folder-children .folder-name {
-  opacity: 1 !important;
-  visibility: visible !important;
-  color: var(--folder-text-color) !important;
-  max-width: calc(100% - 60px); /* 为深层级调整宽度 */
-}
-
-/* 确保深层级的图标和箭头可见 */
-.folder-children .folder-children .folder-icon,
-.folder-children .folder-children .folder-arrow {
-  opacity: 1 !important;
-  visibility: visible !important;
-}
-
-/* 移除可能导致隐藏的样式 */
-.folder-children.folder-children-closed {
-  max-height: 0px !important;
-  overflow: hidden !important;
-  opacity: 0;
-  pointer-events: none;
-  /* 不要使用display: none，这会导致子元素计算问题 */
-}
-
-/* 调整层级缩进，确保深层级可见 */
-.folder-indent-3 { padding-left: 35px; } /* 减少缩进 */
-.folder-indent-4 { padding-left: 45px; }
-.folder-indent-5 { padding-left: 55px; }
-.folder-indent-6 { padding-left: 65px; }
-.folder-indent-7 { padding-left: 75px; }
-.folder-indent-8 { padding-left: 85px; }
-.folder-indent-9 { padding-left: 95px; }
-.folder-indent-10 { padding-left: 105px; }

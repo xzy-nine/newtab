@@ -155,7 +155,7 @@ export const BookmarkManager = {
             
             // 创建文件夹按钮
             let folderButton = Utils.createElement("div", "folder-button", {
-                id: `folder-${folder.id}${isPinned ? '-pinned' : ''}`, // 区分固定和常规版本
+                id: `folder-${folder.id}${isPinned ? '-pinned' : ''}`,
                 'data-folder-id': folder.id,
                 'data-pinned': isPinned ? 'true' : 'false'
             });
@@ -189,6 +189,9 @@ export const BookmarkManager = {
                 arrowElement.style.display = 'none';
             }
             
+            // 创建图标和名称的包装容器
+            const iconNameWrapper = Utils.createElement("div", "folder-icon-name-wrapper");
+            
             // 创建图标元素
             const iconElement = Utils.createElement("span", "folder-icon");
             iconElement.textContent = isPinned ? '📌' : '📁';
@@ -198,9 +201,11 @@ export const BookmarkManager = {
             nameElement.textContent = folder.title || I18n.getMessage('untitledFolder');
             
             // 按顺序添加子元素
+            iconNameWrapper.appendChild(iconElement);
+            iconNameWrapper.appendChild(nameElement);
+            
             folderContent.appendChild(arrowElement);
-            folderContent.appendChild(iconElement);
-            folderContent.appendChild(nameElement);
+            folderContent.appendChild(iconNameWrapper);
             folderButton.appendChild(folderContent);
             
             // 根据展开状态设置按钮状态
@@ -535,8 +540,8 @@ export const BookmarkManager = {
             // 跳过没有children属性的项目或空文件夹
             if (!folder.children || this.isFolderEmpty(folder)) return;
             
-            // 创建文件夹按钮元素
-            let folderButton = Utils.createElement("div", "folder-button", {
+            // 创建文件夹按钮元素 - 添加层级类到按钮本身
+            let folderButton = Utils.createElement("div", `folder-button folder-indent-${level}`, {
                 id: `folder-${folder.id}`,
                 'data-folder-id': folder.id,
                 'data-folder-name': folder.title || I18n.getMessage('untitledFolder')
@@ -551,8 +556,8 @@ export const BookmarkManager = {
             // 检查当前展开状态
             const isExpanded = expandedFolders.has(folder.id);
             
-            // 创建文件夹内容
-            const folderContent = Utils.createElement("div", `folder-content folder-indent-${level}`);
+            // 创建文件夹内容 - 移除层级类，因为现在在按钮上
+            const folderContent = Utils.createElement("div", "folder-content");
             
             // 创建箭头元素 - 使用统一的Unicode字符
             const arrowElement = Utils.createElement("span", "folder-arrow");
@@ -564,6 +569,9 @@ export const BookmarkManager = {
                 arrowElement.setAttribute('data-expandable', 'false');
             }
             
+            // 创建图标和名称的包装容器
+            const iconNameWrapper = Utils.createElement("div", "folder-icon-name-wrapper");
+            
             // 创建图标元素
             const iconElement = Utils.createElement("span", "folder-icon");
             iconElement.textContent = '📁';
@@ -573,9 +581,11 @@ export const BookmarkManager = {
             nameElement.textContent = folder.title || I18n.getMessage('untitledFolder');
             
             // 按顺序添加子元素
+            iconNameWrapper.appendChild(iconElement);
+            iconNameWrapper.appendChild(nameElement);
+            
             folderContent.appendChild(arrowElement);
-            folderContent.appendChild(iconElement);
-            folderContent.appendChild(nameElement);
+            folderContent.appendChild(iconNameWrapper);
             folderButton.appendChild(folderContent);
             
             // 根据展开状态设置按钮状态
@@ -589,7 +599,7 @@ export const BookmarkManager = {
             // 只有存在非空子文件夹时才创建子容器
             if (hasNonEmptySubFolders) {
                 let subFolderContainer = Utils.createElement("div", "folder-children", 
-                                                        {id: `children-${folder.id}`});
+                                                {id: `children-${folder.id}`});
                 
                 // 根据展开状态设置初始状态
                 if (isExpanded) {
