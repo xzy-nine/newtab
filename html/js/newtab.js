@@ -102,43 +102,42 @@ async function init() {
         // 初始化步骤计数 - 先初始化非小部件相关的模块
         const basicModules = [
             {
-                name: I18n.getMessage('backgroundModule') || '背景图像',
+                name: I18n.getMessage('backgroundModule', '背景图像'),
                 action: backgroundManager.initialize.bind(backgroundManager),
-                message: I18n.getMessage('loadingBackground'),
-                completeMessage: I18n.getMessage('backgroundLoadComplete') || '背景图像加载完成',
+                message: I18n.getMessage('loadingBackground', '加载背景图像...'),
+                completeMessage: I18n.getMessage('backgroundLoadComplete', '背景图像加载完成'),
                 timeout: 5000
             },
             {
-                name: I18n.getMessage('searchModule') || '搜索引擎',
+                name: I18n.getMessage('searchModule', '搜索引擎'),
                 action: SearchEngineAPI.initialize.bind(SearchEngineAPI),
-                message: I18n.getMessage('loadingSearch'),
-                completeMessage: I18n.getMessage('searchLoadComplete') || '搜索引擎加载完成',
+                message: I18n.getMessage('loadingSearch', '加载搜索引擎...'),
+                completeMessage: I18n.getMessage('searchLoadComplete', '搜索引擎加载完成'),
                 timeout: 5000
             },
             {
-                name: I18n.getMessage('bookmarkModule') || '书签',
+                name: I18n.getMessage('bookmarkModule', '书签'),
                 action: BookmarkManager.init.bind(BookmarkManager),
-                message: I18n.getMessage('loadingBookmarks'),
-                completeMessage: I18n.getMessage('bookmarkLoadComplete') || '书签加载完成',
+                message: I18n.getMessage('loadingBookmarks', '加载书签...'),
+                completeMessage: I18n.getMessage('bookmarkLoadComplete', '书签加载完成'),
                 timeout: 5000
             },
             {
-                name: I18n.getMessage('clockModule') || '时钟组件',
+                name: I18n.getMessage('clockModule', '时钟组件'),
                 action: ClockWidget.init.bind(ClockWidget),
-                message: I18n.getMessage('loadingClock'),
-                completeMessage: I18n.getMessage('clockLoadComplete') || '时钟组件加载完成',
+                message: I18n.getMessage('loadingClock', '加载时钟组件...'),
+                completeMessage: I18n.getMessage('clockLoadComplete', '时钟组件加载完成'),
                 timeout: 5000
             },
             {
-                name: I18n.getMessage('eventsModule') || '事件初始化',
+                name: I18n.getMessage('eventsModule', '事件初始化'),
                 action: () => {
                     setupEvents();
-                    // 确保国际化的事件也被设置
                     I18n.setupEvents();
                     return Promise.resolve();
                 },
-                message: I18n.getMessage('loadingEvents'),
-                completeMessage: I18n.getMessage('loadingComplete'),
+                message: I18n.getMessage('loadingEvents', '初始化事件...'),
+                completeMessage: I18n.getMessage('loadingComplete', '加载完成'),
                 timeout: 5000
             }
         ];
@@ -170,9 +169,9 @@ async function init() {
         // 最后初始化小部件系统 - 确保在I18n初始化后调用
         try {
             const widgetStep = {
-                name: I18n.getMessage('widgetSystem') || '小部件系统',
-                message: I18n.getMessage('loadingWidgets') || '加载小部件系统...',
-                completeMessage: I18n.getMessage('widgetsLoadComplete') || '小部件系统加载完成',
+                name: I18n.getMessage('widgetSystem', '小部件系统'),
+                message: I18n.getMessage('loadingWidgets', '加载小部件系统...'),
+                completeMessage: I18n.getMessage('widgetsLoadComplete', '小部件系统加载完成'),
                 timeout: 5000
             };
             
@@ -192,8 +191,8 @@ async function init() {
             });
             // 小部件系统错误不阻止其他功能
             Notification.notify({
-                title: I18n.getMessage('error') || '错误',
-                message: I18n.getMessage('widgetSystemError') || '小部件系统加载失败',
+                title: I18n.getMessage('error', '错误'),
+                message: I18n.getMessage('widgetSystemError', '小部件系统加载失败'),
                 type: 'warning',
                 duration: 3000
             });
@@ -214,7 +213,7 @@ async function init() {
             扩展版本: VERSION
         });
         
-        Notification.showErrorMessage(I18n.getMessage('initializationFailed'));
+        Notification.showErrorMessage(I18n.getMessage('initializationFailed', '初始化失败'));
         Notification.hideLoadingIndicator();
     }
 }
@@ -237,7 +236,7 @@ function createBasicUI() {
     const backgroundButton = Utils.createElement('button', '', { 
         id: 'background-button',
         'data-i18n': 'backgroundButton'
-    });
+    }); 
     
     // 添加所有元素到容器
     container.appendChild(bookmarkBox);
@@ -319,7 +318,7 @@ async function performPostInitTasks() {
         await checkForUpdates();
         
     } catch (error) {
-        console.error(I18n.getMessage('postInitTasksError') || 'Error in post-initialization tasks:', error);
+        console.error(I18n.getMessage('postInitTasksError','初始化后任务中的错误'), error);
     }
 }
 
@@ -353,10 +352,10 @@ function showWelcomeMessage() {
     } else {
         // 如果没有预定义的欢迎模态框，使用通知
         Notification.notify({
-            title: I18n.getMessage('welcomeTitle'),
-            message: I18n.getMessage('welcomeMessage'),
-            duration: 8000,  // 延长显示时间为 8 秒
-            type: 'success'  // 使用成功类型的通知样式
+            title: I18n.getMessage('welcomeTitle', '欢迎使用'),
+            message: I18n.getMessage('welcomeMessage', '欢迎使用本扩展！'),
+            duration: 8000,
+            type: 'success'
         });
     }
 }
@@ -368,8 +367,8 @@ function showWelcomeMessage() {
  */
 function showUpdateMessage(oldVersion, newVersion) {
     Notification.notify({
-        title: I18n.getMessage('updateTitle'),
-        message: I18n.getMessage('updateMessage').replace('{0}', oldVersion).replace('{1}', newVersion),
+        title: I18n.getMessage('updateTitle', '扩展已更新'),
+        message: I18n.getMessage('updateMessage', '扩展已从 {0} 升级到 {1}').replace('{0}', oldVersion).replace('{1}', newVersion),
         duration: 6000,
         type: 'info'
     });
@@ -462,29 +461,29 @@ function showMobileInstruction(url) {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     return Notification.notify({
-        title: I18n.getMessage('setNewTab'),
+        title: I18n.getMessage('setNewTab', '设置新标签页'),
         message: isMobile 
-            ? I18n.getMessage('mobileInstructionMessage', [finalUrl])
-            : I18n.getMessage('desktopInstructionMessage'),
+            ? I18n.getMessage('mobileInstructionMessage', '请在浏览器设置中将新标签页设置为：{0}').replace('{0}', finalUrl)
+            : I18n.getMessage('desktopInstructionMessage', '请在桌面浏览器设置中将本扩展设为新标签页'),
         duration: isMobile ? 0 : 5000,
         type: 'info',
         buttons: isMobile ? [
             {
-                text: I18n.getMessage('copyLink'),
+                text: I18n.getMessage('copyLink', '复制链接'),
                 class: 'btn-primary',
                 callback: () => {
                     navigator.clipboard.writeText(finalUrl)
                         .then(() => Notification.notify({
-                            title: I18n.getMessage('success'), 
-                            message: I18n.getMessage('linkCopied'), 
+                            title: I18n.getMessage('success', '成功'), 
+                            message: I18n.getMessage('linkCopied', '链接已复制'), 
                             duration: 2000, 
                             type: 'success'
                         }))
                         .catch(err => {
-                            console.error(I18n.getMessage('copyError') || '复制失败:', err);
+                            console.error(I18n.getMessage('copyError', '复制失败:'), err);
                             Notification.notify({
-                                title: I18n.getMessage('error'), 
-                                message: I18n.getMessage('copyLinkFailed'), 
+                                title: I18n.getMessage('error', '错误'), 
+                                message: I18n.getMessage('copyLinkFailed', '复制链接失败'), 
                                 duration: 2000, 
                                 type: 'error'
                             });
@@ -492,12 +491,12 @@ function showMobileInstruction(url) {
                 }
             },
             {
-                text: I18n.getMessage('close'),
+                text: I18n.getMessage('close', '关闭'),
                 class: 'btn-secondary'
             }
         ] : [
             {
-                text: I18n.getMessage('ok'),
+                text: I18n.getMessage('ok', '确定'),
                 class: 'btn-primary'
             }
         ]

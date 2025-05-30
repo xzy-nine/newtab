@@ -44,7 +44,7 @@ export const Notification = {
     
     // 添加复制按钮，但不为加载类型通知添加
     const copyButtonHtml = type !== 'loading' ? 
-      '<button class="notification-copy" title="' + (I18n.getMessage('copyToClipboard') || '复制内容') + '">' +
+      '<button class="notification-copy" title="' + I18n.getMessage('copyToClipboard', '复制内容') + '">' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>' +
       '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>' +
@@ -94,7 +94,7 @@ export const Notification = {
           navigator.clipboard.writeText(contentToCopy).then(() => {
             // 显示复制成功的反馈
             const originalTitle = copyButton.getAttribute('title');
-            copyButton.setAttribute('title', I18n.getMessage('copied') || '已复制');
+            copyButton.setAttribute('title', I18n.getMessage('copied', '已复制'));
             copyButton.classList.add('copied');
             
             // 1.5秒后恢复原始状态
@@ -208,12 +208,12 @@ export const Notification = {
     if (!loadingNotification) {
       // 创建加载通知
       const notification = Notification.notify({
-        title: I18n.getMessage('loading') || '加载中',
+        title: I18n.getMessage('loading', '加载中'),
         message: '<div class="loading-content">' +
                  '<div class="mini-loader-spinner"></div>' + 
                  '<div class="mini-progress">' +
                  '<div class="notification-loading-bar"></div></div>' +
-                 '<div class="notification-loading-message">' + I18n.getMessage('loading') + '</div>' +
+                 '<div class="notification-loading-message">' + I18n.getMessage('loading', '加载中') + '</div>' +
                  '</div>',
         type: 'loading',
         duration: 0 // 不自动关闭

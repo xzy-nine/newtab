@@ -74,14 +74,14 @@ export const Menu = {
       'button', 
       'btn', 
       { id: `${modalId}-cancel` },
-      cancelText || I18n.getMessage('cancel') || '取消'
+      cancelText || I18n.getMessage('cancel', '取消')
     );
 
     const confirmButton = Utils.createElement(
       'button', 
       'btn btn-primary', 
       { id: `${modalId}-confirm` },
-      confirmText || I18n.getMessage('confirm') || '确认'
+      confirmText || I18n.getMessage('confirm', '确认')
     );
     
     actionDiv.append(cancelButton, confirmButton);
@@ -129,7 +129,7 @@ export const Menu = {
         let errorMessage = document.getElementById(`${modalId}-error`);
         if (!errorMessage) {
           errorMessage = Utils.createElement('div', 'form-error', { id: `${modalId}-error` }, 
-            I18n.getMessage('fillRequiredFields') || '请填写所有必填字段');
+            I18n.getMessage('fillRequiredFields', '请填写所有必填字段'));
           formContainer.insertBefore(errorMessage, actionDiv);
         }
         return;
@@ -321,7 +321,7 @@ export const Menu = {
      */
     show: function(options = {}) {
       const {
-        title = I18n.getMessage('selectImage') || '选择图片',
+        title = I18n.getMessage('selectImage', '选择图片'),
         modalId = 'image-selector-modal',
         onConfirm = () => {},
         onReset = null,
@@ -330,15 +330,15 @@ export const Menu = {
         allowUpload = true,
         showReset = false,
         mode = 'icon', // 默认为图标模式
-        confirmText = I18n.getMessage('confirm') || '确认',
-        cancelText = I18n.getMessage('cancel') || '取消',
-        resetText = I18n.getMessage('resetIcon') || '重置',
+        confirmText = I18n.getMessage('confirm', '确认'),
+        cancelText = I18n.getMessage('cancel', '取消'),
+        resetText = I18n.getMessage('resetIcon', '重置'),
         urlPlaceholder = 'https://example.com/image.png',
         maxWidth = mode === 'icon' ? 256 : 1920,
         maxHeight = mode === 'icon' ? 256 : 1080,
         quality = 1,
-        urlLabel = I18n.getMessage('imageUrl') || '图片URL',
-        uploadLabel = I18n.getMessage('uploadImage') || '上传图片'
+        urlLabel = I18n.getMessage('imageUrl', '图片URL'),
+        uploadLabel = I18n.getMessage('uploadImage', '上传图片')
       } = options;
 
       // 删除旧的模态框（如果存在）以避免事件绑定问题
@@ -453,7 +453,7 @@ export const Menu = {
             console.error('FileReader error:', error); // 调试日志
             const preview = document.getElementById(`${modalId}-preview`);
             if (preview) {
-              preview.innerHTML = `<div class="error-message">${I18n.getMessage('imageLoadError') || '图片加载失败'}</div>`;
+              preview.innerHTML = `<div class="error-message">${I18n.getMessage('imageLoadError', '图片加载失败')}</div>`;
             }
           };
           
@@ -485,7 +485,7 @@ export const Menu = {
           
           img.onerror = function(error) {
             console.error('Image URL error:', error); // 调试日志
-            preview.innerHTML = `<div class="error-message">${I18n.getMessage('imageLoadError') || '图片加载失败'}</div>`;
+            preview.innerHTML = `<div class="error-message">${I18n.getMessage('imageLoadError', '图片加载失败')}</div>`;
           };
           
           img.src = url;
@@ -511,8 +511,8 @@ export const Menu = {
           } catch (error) {
             console.error('Failed to process image:', error);
             Notification.notify({
-              title: I18n.getMessage('error') || '错误',
-              message: error.message || I18n.getMessage('imageProcessingError') || '图片处理失败',
+              title: I18n.getMessage('error', '错误'),
+              message: error.message || I18n.getMessage('imageProcessingError', '图片处理失败'),
               type: 'error',
               duration: 5000
             });

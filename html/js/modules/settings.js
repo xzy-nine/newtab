@@ -11,51 +11,51 @@ export const Settings = {
     {
       id: 'general',
       icon: '⚙️',
-      title: I18n.getMessage('settingsGeneral') || '常规设置',
+      title: I18n.getMessage('settingsGeneral', '常规设置'),
       items: [
         {
           id: 'language',
-          label: I18n.getMessage('settingsLanguage') || '界面语言',
+          label: I18n.getMessage('settingsLanguage', '界面语言'),
           type: 'select',
           options: [
             { value: 'zh', label: '简体中文' },
             { value: 'en', label: 'English' }
           ],
           value: I18n.getCurrentLanguage(),
-          description: I18n.getMessage('settingsLanguageDesc') || '选择界面显示语言'
+          description: I18n.getMessage('settingsLanguageDesc', '选择界面显示语言')
         },
         {
           id: 'theme',
-          label: I18n.getMessage('settingsTheme') || '主题模式',
+          label: I18n.getMessage('settingsTheme', '主题模式'),
           type: 'radio',
           options: [
-            { value: 'auto', label: I18n.getMessage('themeAuto') || '跟随系统' },
-            { value: 'light', label: I18n.getMessage('themeLight') || '浅色模式' },
-            { value: 'dark', label: I18n.getMessage('themeDark') || '深色模式' }
+            { value: 'auto', label: I18n.getMessage('themeAuto', '跟随系统') },
+            { value: 'light', label: I18n.getMessage('themeLight', '浅色模式') },
+            { value: 'dark', label: I18n.getMessage('themeDark', '深色模式') }
           ],
           value: 'auto',
-          description: I18n.getMessage('settingsThemeDesc') || '选择应用的主题外观'
+          description: I18n.getMessage('settingsThemeDesc', '选择应用的主题外观')
         }
       ]
     },
     {
       id: 'search-engines',
       icon: '🔍',
-      title: I18n.getMessage('settingsSearchEngines') || '搜索引擎',
+      title: I18n.getMessage('settingsSearchEngines', '搜索引擎'),
       items: [
         {
           id: 'search-engine-list',
-          label: I18n.getMessage('settingsSearchEngineList') || '搜索引擎管理',
+          label: I18n.getMessage('settingsSearchEngineList', '搜索引擎管理'),
           type: 'custom',
-          description: I18n.getMessage('settingsSearchEngineListDesc') || '管理和配置搜索引擎'
+          description: I18n.getMessage('settingsSearchEngineListDesc', '管理和配置搜索引擎')
         },
         {
           id: 'add-search-engine',
-          label: I18n.getMessage('settingsAddSearchEngine') || '添加搜索引擎',
+          label: I18n.getMessage('settingsAddSearchEngine', '添加搜索引擎'),
           type: 'button',
-          buttonText: I18n.getMessage('addCustomSearchEngine') || '添加自定义搜索引擎',
+          buttonText: I18n.getMessage('addCustomSearchEngine', '添加自定义搜索引擎'),
           buttonClass: 'btn-primary',
-          description: I18n.getMessage('settingsAddSearchEngineDesc') || '添加新的自定义搜索引擎'
+          description: I18n.getMessage('settingsAddSearchEngineDesc', '添加新的自定义搜索引擎')
         }
       ]
     }
@@ -83,7 +83,7 @@ export const Settings = {
     // 模态框头部
     const modalHeader = Utils.createElement('div', 'modal-header');
     const closeBtn = Utils.createElement('span', 'modal-close', {}, '&times;');
-    const title = Utils.createElement('h2', '', {}, I18n.getMessage('settingsTitle') || '设置');
+    const title = Utils.createElement('h2', '', {}, I18n.getMessage('settingsTitle', '设置'));
     modalHeader.append(title, closeBtn);
     
     // 设置主体
@@ -211,8 +211,8 @@ export const Settings = {
               
               // 显示成功通知
               Notification.notify({
-                title: I18n.getMessage('success') || '成功',
-                message: I18n.getMessage('languageChanged') || '语言设置已更改，正在刷新页面...',
+                title: I18n.getMessage('success', '成功'),
+                message: I18n.getMessage('languageChanged', '语言设置已更改，正在刷新页面...'),
                 type: 'success',
                 duration: 2000
               });
@@ -226,8 +226,8 @@ export const Settings = {
               
               // 显示错误通知
               Notification.notify({
-                title: I18n.getMessage('error') || '错误',
-                message: I18n.getMessage('languageChangeError') || '语言设置更改失败',
+                title: I18n.getMessage('error', '错误'),
+                message: I18n.getMessage('languageChangeError', '语言设置更改失败'),
                 type: 'error',
                 duration: 3000
               });
@@ -317,7 +317,7 @@ export const Settings = {
         const isCurrentEngine = currentEngine && currentEngine.name === engine.name;
         if (isCurrentEngine) {
           engineItem.classList.add('current-engine');
-          const currentBadge = Utils.createElement('span', 'current-badge', {}, I18n.getMessage('currentEngine') || '当前');
+          const currentBadge = Utils.createElement('span', 'current-badge', {}, I18n.getMessage('currentEngine', '当前'));
           engineItem.appendChild(currentBadge);
         }
         
@@ -330,7 +330,7 @@ export const Settings = {
         
         // 设为当前按钮
         if (!isCurrentEngine) {
-          const setCurrentBtn = Utils.createElement('button', 'btn btn-small btn-primary', {}, I18n.getMessage('setAsCurrent') || '设为当前');
+          const setCurrentBtn = Utils.createElement('button', 'btn btn-small btn-primary', {}, I18n.getMessage('setAsCurrent', '设为当前'));
           setCurrentBtn.addEventListener('click', async () => {
             const success = await SearchEngineAPI.setCurrentEngine(index);
             if (success) {
@@ -342,7 +342,7 @@ export const Settings = {
         }
         
         // 编辑按钮
-        const editBtn = Utils.createElement('button', 'btn btn-small btn-secondary', {}, I18n.getMessage('edit') || '编辑');
+        const editBtn = Utils.createElement('button', 'btn btn-small btn-secondary', {}, I18n.getMessage('edit', '编辑'));
         editBtn.addEventListener('click', () => {
           Settings.showEditSearchEngineModal(engine, index);
         });
@@ -350,16 +350,16 @@ export const Settings = {
         
         // 删除按钮
         if (engines.length > 1) {
-          const deleteBtn = Utils.createElement('button', 'btn btn-small btn-danger', {}, I18n.getMessage('delete') || '删除');
+          const deleteBtn = Utils.createElement('button', 'btn btn-small btn-danger', {}, I18n.getMessage('delete', '删除'));
           deleteBtn.addEventListener('click', () => {
             Notification.notify({
-              title: I18n.getMessage('confirmDelete') || '确认删除',
-              message: `${I18n.getMessage('confirmDeleteEngine') || '确定要删除搜索引擎'} "${engine.name}" ${I18n.getMessage('confirmDeleteEngineSuffix') || '吗？'}`,
+              title: I18n.getMessage('confirmDelete', '确认删除'),
+              message: `${I18n.getMessage('confirmDeleteEngine', '确定要删除搜索引擎')} "${engine.name}" ${I18n.getMessage('confirmDeleteEngineSuffix', '吗？')}`,
               duration: 0,
               type: 'confirm',
               buttons: [
                 {
-                  text: I18n.getMessage('confirm') || '确认',
+                  text: I18n.getMessage('confirm', '确认'),
                   class: 'btn-primary confirm-yes',
                   callback: async () => {
                     const success = await SearchEngineAPI.deleteEngine(index);
@@ -369,7 +369,7 @@ export const Settings = {
                   }
                 },
                 {
-                  text: I18n.getMessage('cancel') || '取消',
+                  text: I18n.getMessage('cancel', '取消'),
                   class: 'confirm-no',
                   callback: () => {}
                 }
@@ -385,7 +385,7 @@ export const Settings = {
       
     } catch (error) {
       console.error('创建搜索引擎列表失败:', error);
-      const errorMsg = Utils.createElement('div', 'error-message', {}, I18n.getMessage('loadEngineListError') || '加载搜索引擎列表失败');
+      const errorMsg = Utils.createElement('div', 'error-message', {}, I18n.getMessage('loadEngineListError', '加载搜索引擎列表失败'));
       listContainer.appendChild(errorMsg);
     }
     
@@ -405,26 +405,26 @@ export const Settings = {
       {
         type: 'text',
         id: 'custom-engine-name',
-        label: I18n.getMessage('engineName') || '搜索引擎名称',
+        label: I18n.getMessage('engineName', '搜索引擎名称'),
         required: true
       },
       {
         type: 'url',
         id: 'custom-engine-url',
-        label: I18n.getMessage('engineSearchUrl') || '搜索URL',
+        label: I18n.getMessage('engineSearchUrl', '搜索URL'),
         placeholder: 'https://www.example.com/search?q=%s',
         required: true
       },
       {
         type: 'url',
         id: 'custom-engine-icon',
-        label: I18n.getMessage('engineIconUrl') || '图标URL（可选）',
+        label: I18n.getMessage('engineIconUrl', '图标URL（可选）'),
         required: false
       }
     ];
 
     Menu.showFormModal(
-      I18n.getMessage('addCustomSearchEngine') || '添加自定义搜索引擎',
+      I18n.getMessage('addCustomSearchEngine', '添加自定义搜索引擎'),
       formItems,
       async (formData) => {
         const name = formData['custom-engine-name'];
@@ -435,22 +435,22 @@ export const Settings = {
         if (success) {
           Settings.refreshSearchEngineList();
           Notification.notify({
-            title: I18n.getMessage('success') || '成功',
-            message: I18n.getMessage('addEngineSuccess') || '搜索引擎添加成功',
+            title: I18n.getMessage('success', '成功'),
+            message: I18n.getMessage('addEngineSuccess', '搜索引擎添加成功'),
             type: 'success',
             duration: 2000
           });
         } else {
           Notification.notify({
-            title: I18n.getMessage('error') || '错误',
-            message: I18n.getMessage('addEngineError') || '添加搜索引擎失败',
+            title: I18n.getMessage('error', '错误'),
+            message: I18n.getMessage('addEngineError', '添加搜索引擎失败'),
             type: 'error',
             duration: 3000
           });
         }
       },
-      I18n.getMessage('confirm') || '确认',
-      I18n.getMessage('cancel') || '取消'
+      I18n.getMessage('confirm', '确认'),
+      I18n.getMessage('cancel', '取消')
     );
   },
 
@@ -459,28 +459,28 @@ export const Settings = {
       {
         type: 'text',
         id: 'edit-engine-name',
-        label: I18n.getMessage('engineName') || '搜索引擎名称',
+        label: I18n.getMessage('engineName', '搜索引擎名称'),
         value: engine.name,
         required: true
       },
       {
         type: 'url',
         id: 'edit-engine-url',
-        label: I18n.getMessage('engineSearchUrl') || '搜索URL',
+        label: I18n.getMessage('engineSearchUrl', '搜索URL'),
         value: engine.url,
         required: true
       },
       {
         type: 'url',
         id: 'edit-engine-icon',
-        label: I18n.getMessage('engineIconUrl') || '图标URL（可选）',
+        label: I18n.getMessage('engineIconUrl', '图标URL（可选）'),
         value: engine.icon || '',
         required: false
       }
     ];
 
     Menu.showFormModal(
-      `${I18n.getMessage('editEngine') || '编辑搜索引擎'} - ${engine.name}`,
+      `${I18n.getMessage('editEngine', '编辑搜索引擎')} - ${engine.name}`,
       formItems,
       async (formData) => {
         const name = formData['edit-engine-name'];
@@ -491,22 +491,22 @@ export const Settings = {
         if (success) {
           Settings.refreshSearchEngineList();
           Notification.notify({
-            title: I18n.getMessage('success') || '成功',
-            message: I18n.getMessage('updateEngineSuccess') || '搜索引擎更新成功',
+            title: I18n.getMessage('success', '成功'),
+            message: I18n.getMessage('updateEngineSuccess', '搜索引擎更新成功'),
             type: 'success',
             duration: 2000
           });
         } else {
           Notification.notify({
-            title: I18n.getMessage('error') || '错误',
-            message: I18n.getMessage('updateEngineError') || '更新搜索引擎失败',
+            title: I18n.getMessage('error', '错误'),
+            message: I18n.getMessage('updateEngineError', '更新搜索引擎失败'),
             type: 'error',
             duration: 3000
           });
         }
       },
-      I18n.getMessage('save') || '保存',
-      I18n.getMessage('cancel') || '取消'
+      I18n.getMessage('save', '保存'),
+      I18n.getMessage('cancel', '取消')
     );
   },
 

@@ -250,7 +250,7 @@ export const WidgetSystem = {
         const menuItems = [
             {
                 id: 'create-widget-container',
-                text: I18n.getMessage('createWidgetContainer') || '创建小部件容器',
+                text: I18n.getMessage('createWidgetContainer', '创建小部件容器'),
                 callback: () => {
                     this.createWidgetContainer({ 
                         position: { 
@@ -274,7 +274,7 @@ export const WidgetSystem = {
         const menuItems = [
             {
                 id: 'delete-widget-container',
-                text: I18n.getMessage('deleteWidgetContainer') || '删除小部件容器',
+                text: I18n.getMessage('deleteWidgetContainer', '删除小部件容器'),
                 callback: () => {
                     this.deleteWidgetContainer(container);
                 }
@@ -282,8 +282,8 @@ export const WidgetSystem = {
             {
                 id: 'toggle-widget-fixed',
                 text: container.dataset.fixed === 'true' 
-                    ? (I18n.getMessage('unfixWidgetContainer') || '取消固定') 
-                    : (I18n.getMessage('fixWidgetContainer') || '固定位置'),
+                    ? I18n.getMessage('unfixWidgetContainer', '取消固定') 
+                    : I18n.getMessage('fixWidgetContainer', '固定位置'),
                 callback: () => {
                     this.toggleFixedContainer(container);
                 }
@@ -294,8 +294,8 @@ export const WidgetSystem = {
             {
                 id: 'toggle-grid-system',
                 text: GridSystem.gridEnabled 
-                    ? (I18n.getMessage('disableGridSystem') || '禁用网格系统') 
-                    : (I18n.getMessage('enableGridSystem') || '启用网格系统'),
+                    ? I18n.getMessage('disableGridSystem', '禁用网格系统') 
+                    : I18n.getMessage('enableGridSystem', '启用网格系统'),
                 callback: () => {
                     GridSystem.toggleGridSystem(!GridSystem.gridEnabled);
                 }
@@ -303,8 +303,8 @@ export const WidgetSystem = {
             {
                 id: 'toggle-grid-debug',
                 text: GridSystem.isDebugMode 
-                    ? (I18n.getMessage('hideGridLines') || '隐藏网格线') 
-                    : (I18n.getMessage('showGridLines') || '显示网格线'),
+                    ? I18n.getMessage('hideGridLines', '隐藏网格线') 
+                    : I18n.getMessage('showGridLines', '显示网格线'),
                 callback: () => {
                     GridSystem.toggleGridDebug(!GridSystem.isDebugMode);
                 }
@@ -548,7 +548,7 @@ export const WidgetSystem = {
             return widgetItem;
         } catch (error) {
             console.error('添加小部件过程中发生错误:', error);
-            Utils.handleError(error, I18n.getMessage('addWidgetFailed') || '添加小部件失败');
+            Utils.handleError(error, I18n.getMessage('addWidgetFailed', '添加小部件失败'));
             return null;
         }
     },
@@ -882,7 +882,7 @@ export const WidgetSystem = {
         const addButton = document.createElement('button');
         addButton.className = 'widget-add-button';
         addButton.innerHTML = '+';
-        addButton.title = I18n.getMessage('addWidget') || '添加小部件';
+        addButton.title = I18n.getMessage('addWidget', '添加小部件');
         
         addButton.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1048,7 +1048,7 @@ export const WidgetSystem = {
             
             if (pinButton) {
                 pinButton.innerHTML = '📍';
-                pinButton.title = I18n.getMessage('fixWidgetContainer') || '固定小部件';
+                pinButton.title = I18n.getMessage('fixWidgetContainer', '固定小部件');
             }
         } else {
             // 固定小部件
@@ -1057,7 +1057,7 @@ export const WidgetSystem = {
             
             if (pinButton) {
                 pinButton.innerHTML = '📌';
-                pinButton.title = I18n.getMessage('unfixWidgetContainer') || '取消固定';
+                pinButton.title = I18n.getMessage('unfixWidgetContainer', '取消固定');
             }
         }
         
@@ -1164,8 +1164,8 @@ export const WidgetSystem = {
             if (container.dataset.fixed === 'true') {
                 // 显示提示信息
                 Notification.notify({
-                    title: I18n.getMessage('widgetFixed') || '小部件已固定',
-                    message: I18n.getMessage('unfixWidgetToResize') || '请先取消固定再调整大小',
+                    title: I18n.getMessage('widgetFixed', '小部件已固定'),
+                    message: I18n.getMessage('unfixWidgetToResize', '请先取消固定再调整大小'),
                     type: 'info',
                     duration: 2000
                 });

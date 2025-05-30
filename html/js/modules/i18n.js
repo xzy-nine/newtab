@@ -42,17 +42,23 @@ export const I18n = {
   },
 
   /**
-   * 获取指定key的翻译文本
+   * 获取指定key的翻译文本，支持默认值
    * @param {string} key - 翻译键值
-   * @returns {string|null} - 翻译后的文本，未找到则返回null
+   * @param {string} defaultValue - 默认值，通常用于中文
+   * @returns {string} - 翻译后的文本
    */
-  getMessage: function(key) {
+  getMessage: function(key, defaultValue = '') {
     if (!key) return '';
     
     if (!isInitialized) {
       //console.warn('国际化模块尚未初始化，可能导致翻译缺失');
     }
-    
+
+    // 如果是中文且提供了默认值，直接返回默认值
+    if (currentLanguage === 'zh' && defaultValue) {
+      return defaultValue;
+    }
+
     try {
       // 首先尝试从Chrome i18n API获取
       if (chrome && chrome.i18n) {
@@ -68,10 +74,14 @@ export const I18n = {
       return translations[key].message;
     }
     
-    // 不再返回键名作为默认值，而是返回null或undefined使得 || 操作符可以生效
-    console.warn(`【未翻译】未找到键 "${key}" 的翻译 - 查看调用堆栈↓`);
-    console.trace(); // 这会自动在控制台显示完整的调用堆栈
-    return null; // 返回null使得 || 操作符可以生效
+    // 如果找不到翻译且不是中文，记录警告
+    if (currentLanguage !== 'zh') {
+      console.warn(`【未翻译]未找到键 "${key}" 的翻译 - 查看调用堆栈↓`);
+      console.trace();
+    }
+
+    // 返回默认值（如果提供）或null
+    return defaultValue || null;
   },
 
   /**

@@ -144,8 +144,8 @@ class BackgroundManager {
             } catch (error) {
                 console.error('背景切换失败:', error);
                 Notification.notify({
-                    title: I18n.getMessage('error') || '错误',
-                    message: I18n.getMessage('backgroundSwitchFailed') || '背景切换失败',
+                    title: I18n.getMessage('error', '错误'),
+                    message: I18n.getMessage('backgroundSwitchFailed', '背景切换失败'),
                     type: 'error',
                     duration: 3000
                 });
@@ -202,7 +202,7 @@ class BackgroundManager {
      */
     async fetchBingImage() {
         try {
-            Notification.updateLoadingProgress(40, I18n.getMessage('loadingResources'));
+            Notification.updateLoadingProgress(40, I18n.getMessage('loadingResources', '加载资源中'));
             
             // 检查缓存
             const cachedData = await chrome.storage.local.get(CACHE_KEY);
@@ -213,7 +213,7 @@ class BackgroundManager {
                 return cachedData[CACHE_KEY].url;
             }
 
-            Notification.updateLoadingProgress(50, I18n.getMessage('fetchingBingImage'));
+            Notification.updateLoadingProgress(50, I18n.getMessage('fetchingBingImage', '获取必应图片'));
             
             // 必应API地址
             const apiUrl = 'https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1';
@@ -241,8 +241,8 @@ class BackgroundManager {
             
             // 显示更友好的错误通知
             Notification.notify({
-                title: I18n.getMessage('error') || '错误',
-                message: I18n.getMessage('bingImageFetchFailed') || '获取必应每日图片失败',
+                title: I18n.getMessage('error', '错误'),
+                message: I18n.getMessage('bingImageFetchFailed', '获取必应每日图片失败'),
                 type: 'warning',
                 duration: 4000
             });
@@ -265,7 +265,7 @@ class BackgroundManager {
         try {
             // 显示加载指示器
             Notification.showLoadingIndicator();
-            Notification.updateLoadingProgress(10, I18n.getMessage('loadingBackground'));
+            Notification.updateLoadingProgress(10, I18n.getMessage('loadingBackground', '加载背景中'));
             
             // 获取背景容器元素
             const container = document.getElementById('background-container');
@@ -275,7 +275,7 @@ class BackgroundManager {
                 return;
             }
 
-            Notification.updateLoadingProgress(20, I18n.getMessage('preparingBackground'));
+            Notification.updateLoadingProgress(20, I18n.getMessage('preparingBackground', '准备背景'));
             
             // 根据背景类型选择图片URL
             let bgUrl;
@@ -284,7 +284,7 @@ class BackgroundManager {
                     // 使用自定义图片
                     if (this.settings.customImageData) {
                         bgUrl = this.settings.customImageData;
-                        Notification.updateLoadingProgress(60, I18n.getMessage('loadingCustomBackground'));
+                        Notification.updateLoadingProgress(60, I18n.getMessage('loadingCustomBackground', '加载自定义背景'));
                     } else {
                         // 如果没有自定义图片数据，则回退到必应
                         bgUrl = await this.fetchBingImage();
@@ -300,7 +300,7 @@ class BackgroundManager {
                     container.classList.add('bg-white');
                     container.style.backgroundImage = 'none';
                     
-                    Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete'));
+                    Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete', '背景加载完成'));
                     setTimeout(() => Notification.hideLoadingIndicator(), 500);
                     return;
             }
@@ -314,7 +314,7 @@ class BackgroundManager {
                 return;
             }
 
-            Notification.updateLoadingProgress(80, I18n.getMessage('applyingBackground'));
+            Notification.updateLoadingProgress(80, I18n.getMessage('applyingBackground', '应用背景'));
             
             // 移除白色背景类（如果有）
             container.classList.remove('bg-white');
@@ -325,14 +325,14 @@ class BackgroundManager {
             // 应用模糊和暗化效果
             this.applyEffects();
             
-            Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete'));
+            Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete', '背景加载完成'));
             setTimeout(() => Notification.hideLoadingIndicator(), 500);
         } catch (error) {
             console.error('Failed to set background image:', error);
             Notification.hideLoadingIndicator(true); // 强制关闭加载指示器
             Notification.notify({
-                title: I18n.getMessage('error'),
-                message: I18n.getMessage('backgroundSetFailed'),
+                title: I18n.getMessage('error', '错误'),
+                message: I18n.getMessage('backgroundSetFailed', '设置背景失败'),
                 type: 'error'
             });
         }
@@ -393,14 +393,14 @@ class BackgroundManager {
      */
     handleCustomBackground() {
         Menu.ImageSelector.show({
-            title: I18n.getMessage('selectBackground') || '选择背景图片',
+            title: I18n.getMessage('selectBackground', '选择背景图片'),
             modalId: 'background-selector-modal',
             mode: 'background',
-            urlLabel: I18n.getMessage('backgroundUrl') || '背景图片URL',
-            uploadLabel: I18n.getMessage('uploadBackground') || '上传背景图片',
+            urlLabel: I18n.getMessage('backgroundUrl', '背景图片URL'),
+            uploadLabel: I18n.getMessage('uploadBackground', '上传背景图片'),
             urlPlaceholder: 'https://example.com/background.jpg',
             showReset: this.settings.customImageData !== null,
-            resetText: I18n.getMessage('resetBackground') || '重置背景',
+            resetText: I18n.getMessage('resetBackground', '重置背景'),
             maxWidth: 1920,
             maxHeight: 1080,
             quality: 0.85,
@@ -439,16 +439,16 @@ class BackgroundManager {
                         }
                         
                         Notification.notify({
-                            title: I18n.getMessage('success'),
-                            message: I18n.getMessage('customBackgroundSuccess') || '背景图片设置成功',
+                            title: I18n.getMessage('success', '成功'),
+                            message: I18n.getMessage('customBackgroundSuccess', '背景图片设置成功'),
                             type: 'success',
                             duration: 3000
                         });
                     } catch (error) {
                         console.error(I18n.getMessage('localStorageError'), error);
                         Notification.notify({
-                            title: I18n.getMessage('error') || '错误',
-                            message: I18n.getMessage('backgroundSetFailed') || '背景图片设置失败',
+                            title: I18n.getMessage('error', '错误'),
+                            message: I18n.getMessage('backgroundSetFailed', '背景图片设置失败'),
                             type: 'error',
                             duration: 5000
                         });
@@ -487,16 +487,16 @@ class BackgroundManager {
             }
             
             Notification.notify({
-                title: I18n.getMessage('success') || '成功',
-                message: I18n.getMessage('backgroundResetSuccess') || '已重置为默认背景',
+                title: I18n.getMessage('success', '成功'),
+                message: I18n.getMessage('backgroundResetSuccess', '已重置为默认背景'),
                 type: 'success',
                 duration: 3000
             });
         } catch (error) {
             console.error('Failed to clear custom background:', error);
             Notification.notify({
-                title: I18n.getMessage('error') || '错误',
-                message: I18n.getMessage('backgroundResetFailed') || '背景重置失败',
+                title: I18n.getMessage('error', '错误'),
+                message: I18n.getMessage('backgroundResetFailed', '背景重置失败'),
                 type: 'error',
                 duration: 5000
             });
@@ -605,8 +605,8 @@ class BackgroundManager {
         loadImage.then(success => {
             if (!success) {
                 Notification.notify({
-                    title: I18n.getMessage('error') || '错误',
-                    message: I18n.getMessage('backgroundImageLoadFailed') || '背景图片加载失败',
+                    title: I18n.getMessage('error', '错误'),
+                    message: I18n.getMessage('backgroundImageLoadFailed', '背景图片加载失败'),
                     type: 'error',
                     duration: 3000
                 });

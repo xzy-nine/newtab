@@ -53,8 +53,8 @@ export const BookmarkManager = {
      */
     showError: function(error) {
         Notification.notify({
-            title: I18n.getMessage('errorTitle'),
-            message: error.message || I18n.getMessage('genericError'),
+            title: I18n.getMessage('errorTitle', '错误'),
+            message: error.message || I18n.getMessage('genericError', '发生未知错误'),
             type: 'error',
             duration: 5000
         });
@@ -146,7 +146,7 @@ export const BookmarkManager = {
             const iconElement = Utils.createElement("span", "folder-icon");
             iconElement.textContent = isPinned ? '📌' : '📁';
             const nameElement = Utils.createElement("span", "folder-name");
-            nameElement.textContent = folder.title || I18n.getMessage('untitledFolder');
+            nameElement.textContent = folder.title || I18n.getMessage('untitledFolder', '未命名文件夹');
             
             // 组装元素
             iconNameWrapper.appendChild(iconElement);
@@ -441,11 +441,11 @@ export const BookmarkManager = {
     showIconSelectorModal: function(shortcut) {
         try {
             Menu.ImageSelector.show({
-                title: I18n.getMessage('customIcon'),
+                title: I18n.getMessage('customIcon', '自定义图标'),
                 modalId: 'icon-selector-modal',
                 mode: 'icon',
-                urlLabel: I18n.getMessage('iconUrl'),
-                uploadLabel: I18n.getMessage('uploadIcon'),
+                urlLabel: I18n.getMessage('iconUrl', '图标链接'),
+                uploadLabel: I18n.getMessage('uploadIcon', '上传图标'),
                 urlPlaceholder: 'https://example.com/icon.png',
                 showReset: true,
                 onReset: () => this.resetShortcutIcon(shortcut),
@@ -502,8 +502,8 @@ export const BookmarkManager = {
             await this.reloadCurrentFolder();
             
             Notification.notify({
-                title: I18n.getMessage('success'),
-                message: I18n.getMessage('iconUpdated'),
+                title: I18n.getMessage('success', '成功'),
+                message: I18n.getMessage('iconUpdated', '图标已更新'),
                 type: 'success',
                 duration: 2000
             });
@@ -556,8 +556,8 @@ export const BookmarkManager = {
             }
             
             Notification.notify({
-                title: I18n.getMessage('iconReset'),
-                message: I18n.getMessage('fetchingDefaultIcon'),
+                title: I18n.getMessage('iconReset', '图标已重置'),
+                message: I18n.getMessage('fetchingDefaultIcon', '正在获取默认图标'),
                 type: 'info',
                 duration: 2000
             });
@@ -685,7 +685,7 @@ export const BookmarkManager = {
             const menuItems = [
                 {
                     id: isPinned ? 'unpin-folder' : 'pin-folder',
-                    text: isPinned ? I18n.getMessage('unpinFolder') || '取消固定文件夹' : I18n.getMessage('pinFolder') || '固定文件夹',
+                    text: isPinned ? I18n.getMessage('unpinFolder', '取消固定文件夹') : I18n.getMessage('pinFolder', '固定文件夹'),
                     callback: () => {
                         if (isPinned) {
                             this.unpinFolder(folder);
@@ -696,7 +696,7 @@ export const BookmarkManager = {
                 },
                 {
                     id: 'open-all-bookmarks',
-                    text: I18n.getMessage('openAllBookmarks'),
+                    text: I18n.getMessage('openAllBookmarks', '打开所有书签'),
                     callback: () => {
                         if (folder.children) {
                             const bookmarks = folder.children.filter(item => item.url);
@@ -727,8 +727,8 @@ export const BookmarkManager = {
                 this.renderFolders();
                 
                 Notification.notify({
-                    title: I18n.getMessage('success') || '成功',
-                    message: I18n.getMessage('folderPinned') || '文件夹已固定到顶层',
+                    title: I18n.getMessage('success', '成功'),
+                    message: I18n.getMessage('folderPinned', '文件夹已固定到顶层'),
                     type: 'success',
                     duration: 2000
                 });
@@ -752,8 +752,8 @@ export const BookmarkManager = {
             this.renderFolders();
             
             Notification.notify({
-                title: I18n.getMessage('success') || '成功',
-                message: I18n.getMessage('folderUnpinned') || '文件夹已取消固定',
+                title: I18n.getMessage('success', '成功'),
+                message: I18n.getMessage('folderUnpinned', '文件夹已取消固定'),
                 type: 'success',
                 duration: 2000
             });
@@ -781,7 +781,7 @@ export const BookmarkManager = {
             // 渲染固定文件夹
             if (pinnedFolders.length > 0) {
                 const pinnedSection = Utils.createElement("div", "pinned-folders-section");
-                const pinnedHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('pinnedFolders') || '固定文件夹');
+                const pinnedHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('pinnedFolders', '固定文件夹'));
                 pinnedSection.appendChild(pinnedHeader);
                 
                 for (const folderId of pinnedFolders) {
@@ -799,7 +799,7 @@ export const BookmarkManager = {
             const regularSection = Utils.createElement("div", "regular-folders-section");
             
             if (pinnedFolders.length > 0) {
-                const regularHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('allFolders') || '所有文件夹');
+                const regularHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('allFolders', '所有文件夹'));
                 regularSection.appendChild(regularHeader);
             }
             
@@ -863,16 +863,16 @@ export const BookmarkManager = {
         Menu.ContextMenu.show(e, [
             {
                 id: 'bookmark-delete',
-                text: I18n.getMessage('delete'),
+                text: I18n.getMessage('delete', '删除'),
                 callback: () => {
                     Notification.notify({
-                        title: I18n.getMessage('confirm'),
-                        message: I18n.getMessage('confirmDeleteBookmark'),
+                        title: I18n.getMessage('confirm', '确认'),
+                        message: I18n.getMessage('confirmDeleteBookmark', '确定要删除该书签吗？'),
                         type: 'confirm',
                         duration: 0,
                         buttons: [
                             {
-                                text: I18n.getMessage('confirm'),
+                                text: I18n.getMessage('confirm', '确认'),
                                 class: 'btn-primary',
                                 callback: () => {
                                     bookmarks.splice(index, 1);
@@ -881,7 +881,7 @@ export const BookmarkManager = {
                                 }
                             },
                             {
-                                text: I18n.getMessage('cancel'),
+                                text: I18n.getMessage('cancel', '取消'),
                                 callback: () => {}
                             }
                         ]
