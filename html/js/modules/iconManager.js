@@ -158,11 +158,10 @@ export const IconManager = {
             const response = await fetch(url, { 
                 mode: 'cors',
                 headers: { 'cache-control': 'no-cache' },
-                credentials: 'omit', // 避免发送认证信息，防止弹出Basic Auth对话框
+                credentials: 'omit',
                 signal: AbortSignal.timeout(FETCH_TIMEOUT)
             });
             
-            // 检查是否返回401状态码，如果是则直接返回空数组
             if (response.status === 401) {
                 console.debug(`跳过需要认证的网站: ${url}`);
                 return icons;
@@ -170,15 +169,38 @@ export const IconManager = {
             
             if (response.ok) {
                 const text = await response.text();
-                const doc = new DOMParser().parseFromString(text, 'text/html');
-                const iconLinks = doc.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]');
                 
-                iconLinks.forEach(link => {
-                    const href = link.getAttribute('href');
+                // 使用正则表达式直接提取图标链接，避免完整解析HTML
+                const iconRegex = /<link[^>]*rel=["'](icon|shortcut icon|apple-touch-icon)["'][^>]*href=["']([^"']+)["'][^>]*>/gi;
+                let match;
+                
+                while ((match = iconRegex.exec(text)) !== null) {
+                    const href = match[2];
                     if (href) {
-                        icons.push(new URL(href, url).href);
+                        try {
+                            icons.push(new URL(href, url).href);
+                        } catch (e) {
+                            console.debug(`无效的图标URL: ${href}`);
+                        }
                     }
-                });
+                }
+                
+                // 在使用DOM解析前清理text内容
+                text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+                text = text.replace(/<link[^>]*rel=["']stylesheet["'][^>]*>/gi, '');
+                
+                // 如果正则表达式没有找到，再使用DOM解析作为备选
+                if (icons.length === 0) {
+                    const doc = new DOMParser().parseFromString(text, 'text/html');
+                    const iconLinks = doc.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]');
+                    
+                    iconLinks.forEach(link => {
+                        const href = link.getAttribute('href');
+                        if (href) {
+                            icons.push(new URL(href, url).href);
+                        }
+                    });
+                }
             }
         } catch (error) {
             console.debug(I18n.getMessage('fetchIconFailed') + ':', error);
