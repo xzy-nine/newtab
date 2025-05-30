@@ -131,7 +131,7 @@ export const BookmarkManager = {
             // 创建箭头元素 - 所有有子文件夹的文件夹都应该显示箭头
             const arrowElement = Utils.createElement("span", "folder-arrow");
             if (hasNonEmptySubFolders) {
-                arrowElement.textContent = '▶';
+                arrowElement.textContent = '⏵'; // 使用Unicode字符 ⏵ (U+23F5)
                 arrowElement.setAttribute('data-expandable', 'true');
             } else {
                 arrowElement.setAttribute('data-expandable', 'false');
@@ -188,8 +188,10 @@ export const BookmarkManager = {
                 });
             }
             
-            // 添加事件监听
-            this.addFolderEventListeners(folderButton, folder);
+            // 延迟添加事件监听，确保DOM完全构建完成
+            setTimeout(() => {
+                this.addFolderEventListeners(folderButton, folder);
+            }, 0);
             
             console.log('Created folder button successfully:', {
                 id: folderButton.id,
@@ -216,6 +218,15 @@ export const BookmarkManager = {
      * @param {Object} folder - 文件夹数据
      */
     addFolderEventListeners: function(folderButton, folder) {
+        // 移除可能存在的旧事件监听器
+        const newButton = folderButton.cloneNode(true);
+        newButton.folderData = folder;
+        
+        if (folderButton.parentNode) {
+            folderButton.parentNode.replaceChild(newButton, folderButton);
+            folderButton = newButton;
+        }
+        
         const arrowElement = folderButton.querySelector('.folder-arrow');
         const folderContent = folderButton.querySelector('.folder-content');
         
@@ -228,11 +239,11 @@ export const BookmarkManager = {
             
             if (clickedArrow && arrowElement && arrowElement.textContent.trim()) {
                 // 点击箭头 - 展开/收起子文件夹
-                console.log('Arrow clicked');
+                console.log('Arrow clicked for folder:', folder.title);
                 this.toggleFolderExpansion(folderButton);
             } else {
                 // 点击其他区域 - 显示/隐藏快捷方式
-                console.log('Folder content clicked');
+                console.log('Folder content clicked for folder:', folder.title);
                 this.toggleFolderSelection(folderButton, folder);
             }
         });
@@ -241,10 +252,12 @@ export const BookmarkManager = {
         if (arrowElement && arrowElement.textContent.trim()) {
             arrowElement.addEventListener('click', (event) => {
                 event.stopPropagation();
-                console.log('Arrow direct click');
+                console.log('Arrow direct click for folder:', folder.title);
                 this.toggleFolderExpansion(folderButton);
             });
         }
+        
+        return folderButton;
     },
 
     /**
@@ -280,7 +293,7 @@ export const BookmarkManager = {
                 // 收起文件夹
                 console.log('Closing folder');
                 folderButton.classList.remove('open');
-                arrowElement.textContent = '▶';
+                arrowElement.textContent = '⏵'; // 关闭状态：向右箭头
                 children.style.maxHeight = '0px';
                 children.style.opacity = '0';
                 children.style.pointerEvents = 'none';
@@ -289,7 +302,7 @@ export const BookmarkManager = {
                 children.querySelectorAll('.folder-button.open').forEach(nestedButton => {
                     nestedButton.classList.remove('open');
                     const nestedArrow = nestedButton.querySelector('.folder-arrow');
-                    if (nestedArrow) nestedArrow.textContent = '▶';
+                    if (nestedArrow) nestedArrow.textContent = '⏵'; // 使用正确的关闭状态字符
                     const nestedChildren = nestedButton.nextElementSibling;
                     if (nestedChildren && nestedChildren.classList.contains('folder-children')) {
                         nestedChildren.style.maxHeight = '0px';
@@ -301,7 +314,7 @@ export const BookmarkManager = {
                 // 展开文件夹
                 console.log('Opening folder');
                 folderButton.classList.add('open');
-                arrowElement.textContent = '▼';
+                arrowElement.textContent = '⏷'; // 展开状态：向下箭头
                 
                 // 先设置为自动高度来计算实际高度
                 children.style.maxHeight = 'none';
@@ -481,7 +494,7 @@ export const BookmarkManager = {
             // 创建箭头元素
             const arrowElement = Utils.createElement("span", "folder-arrow");
             if (hasNonEmptySubFolders) {
-                arrowElement.textContent = '▶';
+                arrowElement.textContent = '⏵'; // 使用Unicode字符 ⏵ (U+23F5)
                 arrowElement.setAttribute('data-expandable', 'true');
             } else {
                 arrowElement.setAttribute('data-expandable', 'false');
@@ -1048,7 +1061,17 @@ export const BookmarkManager = {
             newButton.addEventListener('click', (event) => {
                 event.stopPropagation();
                 if (newButton.folderData) {
-                    this.handleFolderClick(newButton, newButton.folderData);
+                    // 修复：使用正确的方法处理文件夹点击
+                    const arrowElement = newButton.querySelector('.folder-arrow');
+                    const clickedArrow = event.target === arrowElement || (arrowElement && arrowElement.contains(event.target));
+                    
+                    if (clickedArrow && arrowElement && arrowElement.textContent.trim() && arrowElement.getAttribute('data-expandable') === 'true') {
+                        // 点击箭头 - 展开/收起子文件夹
+                        this.toggleFolderExpansion(newButton);
+                    } else {
+                        // 点击其他区域 - 显示/隐藏快捷方式
+                        this.toggleFolderSelection(newButton, newButton.folderData);
+                    }
                 }
             });
         });
@@ -1284,6 +1307,9 @@ export const BookmarkManager = {
             }
             
             container.appendChild(regularSection);
+            
+            // 等待DOM渲染完成后再应用选中状态和事件
+            await new Promise(resolve => setTimeout(resolve, 0));
             
             // 应用选中的文件夹
             this.applySelectedFolder(root);

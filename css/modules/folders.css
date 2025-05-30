@@ -84,6 +84,8 @@
   box-sizing: border-box;
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
               opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* 确保内容不会被截断 */
+  min-height: 0;
 }
 
 /* 展开状态 */
@@ -91,6 +93,9 @@
   opacity: 1;
   pointer-events: auto;
   z-index: 2;
+  /* 移除max-height限制，允许完全展开 */
+  max-height: none !important;
+  overflow: visible;
 }
 
 /* 4. 子元素样式层 */
@@ -119,8 +124,8 @@
 .folder-arrow {
   font-size: 14px;
   margin-right: 6px;
-  width: 20px;
-  height: 20px;
+  width: 24px;  /* 增加宽度 */
+  height: 24px; /* 增加高度 */
   text-align: center;
   color: var(--folder-text-color);
   font-weight: bold;
@@ -129,15 +134,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
+  border-radius: 4px; /* 增加圆角 */
   background-color: transparent;
   transition: background-color 0.2s ease, transform 0.3s ease;
   flex-shrink: 0;
   /* 确保箭头可以接收点击事件 */
   pointer-events: auto;
-  /* 增加点击区域 */
-  padding: 2px;
-  margin: -2px 6px -2px -2px;
+  /* 增加点击区域的内边距 */
+  padding: 4px; /* 增加内边距 */
+  margin: -4px 6px -4px -4px; /* 调整负边距以保持视觉位置 */
+  /* 添加最小点击区域 */
+  min-width: 32px;
+  min-height: 32px;
 }
 
 .folder-arrow:hover {
@@ -156,22 +164,17 @@
   pointer-events: none;
 }
 
-/* 展开状态的箭头旋转 */
-.folder-button.open .folder-arrow {
-  transform: rotate(90deg);
-}
-
-.folder-button.open .folder-arrow:hover {
-  transform: rotate(90deg) scale(1.1);
-}
-
 .folder-button {
   background-color: var(--folder-hover-bg);
 }
 
-.folder-button.open > .folder-content .folder-arrow {
-  transform: rotate(90deg);
-  color: var(--folder-text-dark);
+/* 展开状态的箭头旋转 - 修复角度 */
+.folder-button.open .folder-arrow {
+  transform: none; /* 移除旋转变换，完全依赖文本替换 */
+}
+
+.folder-button.open .folder-arrow:hover {
+  transform: scale(1.1); /* 只保留缩放效果 */
 }
 
 /* 5. 交互状态层 */
@@ -193,21 +196,22 @@
   background-color: var(--folder-hover-bg);
 }
 
-/* 选中状态样式 */
+/* 选中状态样式 - 降低视觉冲击 */
 .folder-button.selected {
-  background-color: var(--color-primary);
-  box-shadow: 0 0 12px rgba(66, 133, 244, 0.5);
+  background-color: rgba(66, 133, 244, 0.15); /* 降低透明度 */
+  border-color: var(--color-primary);
+  box-shadow: 0 0 8px rgba(66, 133, 244, 0.25); /* 减少发光强度 */
 }
 
 .folder-button.selected .folder-name,
-.folder-button.selected .folder-icon,
-.folder-button.selected .folder-arrow {
-  color: white;
+.folder-button.selected .folder-icon {
+  color: var(--color-primary); /* 使用主色调而不是白色 */
 }
 
 .folder-button.selected .folder-arrow {
-  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
-  opacity: 0.9;
+  color: var(--color-primary); /* 使用主色调而不是白色 */
+  text-shadow: none; /* 移除文字阴影 */
+  opacity: 1;
 }
 
 /* 6. 辅助功能层 */
@@ -229,6 +233,24 @@
   pointer-events: none;
   visibility: hidden;
 }
+
+/* 展开状态保存相关样式 */
+.folder-button[data-expand-saved="true"] .folder-arrow {
+  opacity: 0.8;
+}
+
+.folder-children[data-restored="true"] {
+  /* 为已恢复状态的子容器添加标识 */
+  transition: none; /* 恢复时不使用动画 */
+}
+
+/* 文件夹层级指示器 */
+.folder-indent-0 { padding-left: 0px; }
+.folder-indent-1 { padding-left: 15px; }
+.folder-indent-2 { padding-left: 30px; }
+.folder-indent-3 { padding-left: 45px; }
+.folder-indent-4 { padding-left: 60px; }
+.folder-indent-5 { padding-left: 75px; }
 
 /* 7. 组件变体层 - 固定文件夹 */
 .pinned-folders-section {
@@ -276,5 +298,18 @@
 
   .section-header {
     color: rgba(255, 255, 255, 0.7); /* 深色模式下用浅色字体 */
+  }
+  
+  /* 深色模式下的选中状态调整 */
+  .folder-button.selected {
+    background-color: rgba(66, 133, 244, 0.2); /* 深色模式下稍微提高透明度 */
+    border-color: var(--color-primary);
+    box-shadow: 0 0 8px rgba(66, 133, 244, 0.3);
+  }
+  
+  .folder-button.selected .folder-name,
+  .folder-button.selected .folder-icon,
+  .folder-button.selected .folder-arrow {
+    color: #6bb6ff; /* 深色模式下使用更亮的蓝色 */
   }
 }
