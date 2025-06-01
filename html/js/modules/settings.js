@@ -84,28 +84,18 @@ export const Settings = {
           description: I18n.getMessage('settingsAIEnabledDesc', '启用后可在搜索框旁显示AI按钮')
         },
         {
-          id: 'ai-api-url',
-          label: I18n.getMessage('settingsAIApiUrl', 'API地址'),
-          type: 'text',
-          value: AI.getConfig().apiUrl,
-          placeholder: 'https://api.openai.com/v1/chat/completions',
-          description: I18n.getMessage('settingsAIApiUrlDesc', '兼容OpenAI格式的API地址')
+          id: 'ai-provider-list',
+          label: I18n.getMessage('settingsAIProviders', 'AI供应商管理'),
+          type: 'custom',
+          description: I18n.getMessage('settingsAIProvidersDesc', '管理和配置AI供应商')
         },
         {
-          id: 'ai-api-key',
-          label: I18n.getMessage('settingsAIApiKey', 'API密钥'),
-          type: 'password',
-          value: AI.getConfig().apiKey,
-          placeholder: 'sk-...',
-          description: I18n.getMessage('settingsAIApiKeyDesc', '您的API密钥，本地安全存储')
-        },
-        {
-          id: 'ai-model',
-          label: I18n.getMessage('settingsAIModel', '模型'),
-          type: 'text',
-          value: AI.getConfig().model,
-          placeholder: 'gpt-3.5-turbo',
-          description: I18n.getMessage('settingsAIModelDesc', '使用的AI模型名称')
+          id: 'add-ai-provider',
+          label: I18n.getMessage('settingsAddAIProvider', '添加AI供应商'),
+          type: 'button',
+          buttonText: I18n.getMessage('addCustomAIProvider', '添加自定义AI供应商'),
+          buttonClass: 'btn-primary',
+          description: I18n.getMessage('settingsAddAIProviderDesc', '添加新的AI供应商配置')
         },
         {
           id: 'ai-system-prompt',
@@ -421,6 +411,9 @@ export const Settings = {
         if (item.id === 'search-engine-list') {
           const searchEngineList = await Settings.createSearchEngineList();
           itemControl.appendChild(searchEngineList);
+        } else if (item.id === 'ai-provider-list') {
+          const aiProviderList = await Settings.createAIProviderList();
+          itemControl.appendChild(aiProviderList);
         } else if (item.id === 'ai-quick-prompts') {
           const quickPromptsEditor = Settings.createQuickPromptsEditor();
           itemControl.appendChild(quickPromptsEditor);
@@ -433,10 +426,13 @@ export const Settings = {
           type: 'button'
         }, item.buttonText || item.label);
         
-        // 为添加搜索引擎按钮添加处理逻辑
         if (item.id === 'add-search-engine') {
           button.addEventListener('click', () => {
             Settings.showAddSearchEngineModal();
+          });
+        } else if (item.id === 'add-ai-provider') {
+          button.addEventListener('click', () => {
+            Settings.showAddAIProviderModal();
           });
         }
         
@@ -661,6 +657,299 @@ export const Settings = {
           Notification.notify({
             title: I18n.getMessage('error', '错误'),
             message: I18n.getMessage('updateEngineError', '更新搜索引擎失败'),
+            type: 'error',
+            duration: 3000
+          });
+        }
+      },
+      I18n.getMessage('save', '保存'),
+      I18n.getMessage('cancel', '取消')
+    );
+  },
+
+  /**
+   * 创建AI供应商列表
+   * @returns {HTMLElement} - AI供应商列表容器
+   */
+  createAIProviderList: async () => {
+    const listContainer = Utils.createElement('div', 'ai-provider-list-container');
+    
+    try {
+      const aiConfig = AI.getConfig();
+      const providers = aiConfig.providers || [
+        {
+          name: 'OpenAI',
+          apiUrl: 'https://api.openai.com/v1/chat/completions',
+          model: 'gpt-3.5-turbo',
+          isDefault: true
+        }
+      ];
+      const currentProvider = aiConfig.currentProvider || providers[0];
+      
+      providers.forEach((provider, index) => {
+        const providerItem = Utils.createElement('div', 'ai-provider-item-setting');
+        
+        // 供应商图标
+        const providerIcon = Utils.createElement('div', 'provider-icon', {}, '🤖');
+        
+        // 供应商名称
+        const providerName = Utils.createElement('div', 'provider-name', {}, provider.name);
+        
+        // 供应商API URL
+        const providerUrl = Utils.createElement('div', 'provider-url', {}, provider.apiUrl);
+        
+        // 模型信息
+        const providerModel = Utils.createElement('div', 'provider-model', {}, 
+          `${I18n.getMessage('model', '模型')}: ${provider.model}`);
+        
+        // 当前供应商标识
+        const isCurrentProvider = currentProvider && currentProvider.name === provider.name;
+        if (isCurrentProvider) {
+          providerItem.classList.add('current-provider');
+          const currentBadge = Utils.createElement('span', 'current-badge', {}, 
+            I18n.getMessage('currentProvider', '当前'));
+          providerItem.appendChild(currentBadge);
+        }
+        
+        // 供应商信息容器
+        const providerInfo = Utils.createElement('div', 'provider-info');
+        providerInfo.append(providerName, providerUrl, providerModel);
+        
+        // 操作按钮
+        const providerActions = Utils.createElement('div', 'provider-actions');
+        
+        // 设为当前按钮
+        if (!isCurrentProvider) {
+          const setCurrentBtn = Utils.createElement('button', 'btn btn-small btn-primary', {}, 
+            I18n.getMessage('setAsCurrent', '设为当前'));
+          setCurrentBtn.addEventListener('click', async () => {
+            const success = await AI.updateConfig({ currentProvider: provider });
+            if (success) {
+              Settings.refreshAIProviderList();
+              Notification.notify({
+                title: I18n.getMessage('success', '成功'),
+                message: I18n.getMessage('providerSwitched', 'AI供应商已切换'),
+                type: 'success',
+                duration: 2000
+              });
+            }
+          });
+          providerActions.appendChild(setCurrentBtn);
+        }
+        
+        // 编辑按钮
+        const editBtn = Utils.createElement('button', 'btn btn-small btn-secondary', {}, 
+          I18n.getMessage('edit', '编辑'));
+        editBtn.addEventListener('click', () => {
+          Settings.showEditAIProviderModal(provider, index);
+        });
+        providerActions.appendChild(editBtn);
+        
+        // 删除按钮（不能删除默认供应商)
+        if (!provider.isDefault && providers.length > 1) {
+          const deleteBtn = Utils.createElement('button', 'btn btn-small btn-danger', {}, 
+            I18n.getMessage('delete', '删除'));
+          deleteBtn.addEventListener('click', () => {
+            Notification.notify({
+              title: I18n.getMessage('confirmDelete', '确认删除'),
+              message: `${I18n.getMessage('confirmDeleteProvider', '确定要删除AI供应商')} "${provider.name}" ${I18n.getMessage('confirmDeleteProviderSuffix', '吗？')}`,
+              duration: 0,
+              type: 'confirm',
+              buttons: [
+                {
+                  text: I18n.getMessage('confirm', '确认'),
+                  class: 'btn-primary confirm-yes',
+                  callback: async () => {
+                    const newProviders = providers.filter((_, i) => i !== index);
+                    const success = await AI.updateConfig({ 
+                      providers: newProviders,
+                      currentProvider: newProviders[0]
+                    });
+                    if (success) {
+                      Settings.refreshAIProviderList();
+                      Notification.notify({
+                        title: I18n.getMessage('success', '成功'),
+                        message: I18n.getMessage('providerDeleted', 'AI供应商已删除'),
+                        type: 'success',
+                        duration: 2000
+                      });
+                    }
+                  }
+                },
+                {
+                  text: I18n.getMessage('cancel', '取消'),
+                  class: 'confirm-no',
+                  callback: () => {}
+                }
+              ]
+            });
+          });
+          providerActions.appendChild(deleteBtn);
+        }
+        
+        providerItem.append(providerIcon, providerInfo, providerActions);
+        listContainer.appendChild(providerItem);
+      });
+      
+    } catch (error) {
+      console.error('创建AI供应商列表失败:', error);
+      const errorMsg = Utils.createElement('div', 'error-message', {}, 
+        I18n.getMessage('loadProviderListError', '加载AI供应商列表失败'));
+      listContainer.appendChild(errorMsg);
+    }
+    
+    return listContainer;
+  },
+
+  /**
+   * 刷新AI供应商列表
+   */
+  refreshAIProviderList: async () => {
+    const listContainer = document.querySelector('.ai-provider-list-container');
+    if (!listContainer) return;
+    
+    const newList = await Settings.createAIProviderList();
+    listContainer.parentNode.replaceChild(newList, listContainer);
+  },
+
+  /**
+   * 显示添加AI供应商模态框
+   */
+  showAddAIProviderModal: () => {
+    const formItems = [
+      {
+        type: 'text',
+        id: 'custom-provider-name',
+        label: I18n.getMessage('providerName', 'AI供应商名称'),
+        required: true,
+        placeholder: 'ChatGPT, Claude, Gemini...'
+      },
+      {
+        type: 'url',
+        id: 'custom-provider-api-url',
+        label: I18n.getMessage('providerApiUrl', 'API地址'),
+        placeholder: 'https://api.openai.com/v1/chat/completions',
+        required: true
+      },
+      {
+        type: 'text',
+        id: 'custom-provider-api-key',
+        label: I18n.getMessage('providerApiKey', 'API密钥'),
+        placeholder: 'sk-...',
+        required: true
+      },
+      {
+        type: 'text',
+        id: 'custom-provider-model',
+        label: I18n.getMessage('providerModel', '模型名称'),
+        placeholder: 'gpt-3.5-turbo',
+        required: true
+      }
+    ];
+
+    Menu.showFormModal(
+      I18n.getMessage('addCustomAIProvider', '添加自定义AI供应商'),
+      formItems,
+      async (formData) => {
+        const name = formData['custom-provider-name'];
+        const apiUrl = formData['custom-provider-api-url'];
+        const apiKey = formData['custom-provider-api-key'];
+        const model = formData['custom-provider-model'];
+        
+        const aiConfig = AI.getConfig();
+        const providers = aiConfig.providers || [];
+        const newProvider = { name, apiUrl, apiKey, model };
+        
+        const success = await AI.updateConfig({ 
+          providers: [...providers, newProvider],
+          currentProvider: newProvider
+        });
+        
+        if (success) {
+          Settings.refreshAIProviderList();
+          Notification.notify({
+            title: I18n.getMessage('success', '成功'),
+            message: I18n.getMessage('addProviderSuccess', 'AI供应商添加成功'),
+            type: 'success',
+            duration: 2000
+          });
+        } else {
+          Notification.notify({
+            title: I18n.getMessage('error', '错误'),
+            message: I18n.getMessage('addProviderError', '添加AI供应商失败'),
+            type: 'error',
+            duration: 3000
+          });
+        }
+      },
+      I18n.getMessage('confirm', '确认'),
+      I18n.getMessage('cancel', '取消')
+    );
+  },
+
+  /**
+   * 显示编辑AI供应商模态框
+   * @param {Object} provider - AI供应商对象
+   * @param {number} index - 供应商索引
+   */
+  showEditAIProviderModal: (provider, index) => {
+    const formItems = [
+      {
+        type: 'text',
+        id: 'edit-provider-name',
+        label: I18n.getMessage('providerName', 'AI供应商名称'),
+        value: provider.name,
+        required: true
+      },
+      {
+        type: 'url',
+        id: 'edit-provider-api-url',
+        label: I18n.getMessage('providerApiUrl', 'API地址'),
+        value: provider.apiUrl,
+        required: true
+      },
+      {
+        type: 'text',
+        id: 'edit-provider-api-key',
+        label: I18n.getMessage('providerApiKey', 'API密钥'),
+        value: provider.apiKey || '',
+        required: true
+      },
+      {
+        type: 'text',
+        id: 'edit-provider-model',
+        label: I18n.getMessage('providerModel', '模型名称'),
+        value: provider.model,
+        required: true
+      }
+    ];
+
+    Menu.showFormModal(
+      `${I18n.getMessage('editProvider', '编辑AI供应商')} - ${provider.name}`,
+      formItems,
+      async (formData) => {
+        const name = formData['edit-provider-name'];
+        const apiUrl = formData['edit-provider-api-url'];
+        const apiKey = formData['edit-provider-api-key'];
+        const model = formData['edit-provider-model'];
+        
+        const aiConfig = AI.getConfig();
+        const providers = [...aiConfig.providers];
+        providers[index] = { ...provider, name, apiUrl, apiKey, model };
+        
+        const success = await AI.updateConfig({ providers });
+        if (success) {
+          Settings.refreshAIProviderList();
+          Notification.notify({
+            title: I18n.getMessage('success', '成功'),
+            message: I18n.getMessage('updateProviderSuccess', 'AI供应商更新成功'),
+            type: 'success',
+            duration: 2000
+          });
+        } else {
+          Notification.notify({
+            title: I18n.getMessage('error', '错误'),
+            message: I18n.getMessage('updateProviderError', '更新AI供应商失败'),
             type: 'error',
             duration: 3000
           });

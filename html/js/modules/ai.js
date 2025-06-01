@@ -11,9 +11,15 @@ import { Notification } from './notification.js';
 // AI配置相关变量
 let aiConfig = {
     enabled: false,
-    apiUrl: '',
-    apiKey: '',
-    model: 'gpt-3.5-turbo',
+    providers: [
+        {
+            name: 'OpenAI',
+            apiUrl: 'https://api.openai.com/v1/chat/completions',
+            model: 'gpt-3.5-turbo',
+            isDefault: true
+        }
+    ],
+    currentProvider: null,
     quickPrompts: [
         '帮我总结这段内容',
         '翻译成中文',
@@ -89,21 +95,22 @@ export const AI = {    /**
             throw new Error(I18n.getMessage('aiNotEnabled', 'AI功能未启用'));
         }
 
-        if (!aiConfig.apiUrl || !aiConfig.apiKey) {
+        const currentProvider = aiConfig.currentProvider || aiConfig.providers[0];
+        if (!currentProvider || !currentProvider.apiUrl || !currentProvider.apiKey) {
             throw new Error(I18n.getMessage('aiConfigIncomplete', 'AI配置不完整'));
         }
 
         try {
             const fullMessage = context ? `${context}\n\n${message}` : message;
             
-            const response = await fetch(aiConfig.apiUrl, {
+            const response = await fetch(currentProvider.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${aiConfig.apiKey}`
+                    'Authorization': `Bearer ${currentProvider.apiKey}`
                 },
                 body: JSON.stringify({
-                    model: aiConfig.model,
+                    model: currentProvider.model,
                     messages: [
                         {
                             role: 'system',
