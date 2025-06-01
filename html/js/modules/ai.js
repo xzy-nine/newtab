@@ -32,8 +32,7 @@ const STORAGE_KEYS = {
  * AI模块API命名空间
  * @namespace
  */
-export const AI = {
-    /**
+export const AI = {    /**
      * 初始化AI模块
      * @returns {Promise<void>}
      */
@@ -46,6 +45,9 @@ export const AI = {
         
         // 设置事件监听
         setupAIEvents();
+        
+        // 监听搜索表单变化，确保AI按钮始终有效
+        observeSearchForm();
     },
 
     /**
@@ -136,14 +138,19 @@ export const AI = {
      */
     showAIDialog(initialMessage = '') {
         showAIModal(initialMessage);
-    },
-
-    /**
+    },    /**
      * 检查AI是否启用
      * @returns {boolean} - 是否启用
      */
     isEnabled() {
         return aiConfig.enabled;
+    },
+
+    /**
+     * 重新初始化AI按钮事件（用于表单替换后重新绑定事件）
+     */
+    reinitializeButton() {
+        setupAIEvents();
     }
 };
 
@@ -170,20 +177,8 @@ function createAIUI() {
     if (!searchBox || document.getElementById('ai-button')) return;
 
     // 创建AI按钮
-    const aiButton = Utils.createElement('button', 'ai-button', {
-        id: 'ai-button',
-        title: I18n.getMessage('aiAssistant', 'AI助手'),
-        'data-i18n-title': 'aiAssistant'
-    });
-
-    // AI图标SVG
-    aiButton.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.1 3.89 23 5 23H19C20.1 23 21 22.1 21 21V9M19 21H5V3H14V9H19Z"/>
-            <circle cx="12" cy="15" r="3"/>
-            <path d="M8 15L9.5 13.5L12 16L14.5 13.5L16 15"/>
-        </svg>
-    `;
+    const aiButton = createAIButton();
+    if (!aiButton) return;
 
     // 将AI按钮添加到搜索框内
     const searchForm = searchBox.querySelector('.search-form-container');
@@ -200,30 +195,9 @@ function createAIUI() {
  */
 function setupAIEvents() {
     const aiButton = document.getElementById('ai-button');
-    const searchInput = document.getElementById('search-input');
-    
     if (!aiButton) return;
 
-    aiButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        if (!aiConfig.enabled) {
-            Notification.notify({
-                title: I18n.getMessage('aiNotEnabled', 'AI功能未启用'),
-                message: I18n.getMessage('enableAIInSettings', '请在设置中启用AI功能'),
-                type: 'warning',
-                duration: 3000
-            });
-            return;
-        }
-
-        // 获取搜索框内容
-        const searchText = searchInput ? searchInput.value.trim() : '';
-        
-        // 显示AI对话框
-        AI.showAIDialog(searchText);
-    });
+    setupAIButtonEvents(aiButton);
 }
 
 /**
@@ -410,6 +384,96 @@ function addMessageToHistory(chatHistory, message, type) {
     messageElement.append(messageHeader, messageContent);
     chatHistory.appendChild(messageElement);
     
-    // 滚动到底部
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    // 滚动到底部    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+// 将AI模块挂载到全局，便于其他模块调用
+if (typeof window !== 'undefined') {
+    window.AI = AI;
+}
+
+/**
+ * 监听搜索表单变化，确保AI按钮始终有效
+ */
+function observeSearchForm() {
+    // 使用MutationObserver监听DOM变化
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            // 检查是否有节点被添加或移除
+            if (mutation.type === 'childList') {
+                // 检查搜索表单是否被替换
+                const searchForm = document.getElementById('search-form');
+                if (searchForm && !searchForm.querySelector('#ai-button') && aiConfig.enabled) {
+                    // 如果表单存在但AI按钮不存在，且AI启用，则重新添加
+                    const aiButton = createAIButton();
+                    if (aiButton) {
+                        searchForm.appendChild(aiButton);
+                        setupAIButtonEvents(aiButton);
+                    }
+                }
+            }
+        });
+    });
+
+    // 开始观察整个文档的变化
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
+/**
+ * 创建AI按钮元素
+ * @returns {HTMLElement|null} AI按钮元素
+ */
+function createAIButton() {
+    if (document.getElementById('ai-button')) return null;
+
+    const aiButton = Utils.createElement('button', 'ai-button', {
+        id: 'ai-button',
+        type: 'button',
+        title: I18n.getMessage('aiAssistant', 'AI助手'),
+        'data-i18n-title': 'aiAssistant'
+    });
+
+    // AI图标SVG
+    aiButton.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.1 3.89 23 5 23H19C20.1 23 21 22.1 21 21V9M19 21H5V3H14V9H19Z"/>
+            <circle cx="12" cy="15" r="3"/>
+            <path d="M8 15L9.5 13.5L12 16L14.5 13.5L16 15"/>
+        </svg>
+    `;
+
+    return aiButton;
+}
+
+/**
+ * 为AI按钮设置事件监听
+ * @param {HTMLElement} aiButton - AI按钮元素
+ */
+function setupAIButtonEvents(aiButton) {
+    if (!aiButton) return;
+
+    aiButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!aiConfig.enabled) {
+            Notification.notify({
+                title: I18n.getMessage('aiNotEnabled', 'AI功能未启用'),
+                message: I18n.getMessage('enableAIInSettings', '请在设置中启用AI功能'),
+                type: 'warning',
+                duration: 3000
+            });
+            return;
+        }
+
+        // 获取搜索框内容
+        const searchInput = document.getElementById('search-input');
+        const searchText = searchInput ? searchInput.value.trim() : '';
+        
+        // 显示AI对话框
+        AI.showAIDialog(searchText);
+    });
 }
