@@ -10,5 +10,9 @@
   "newTab": {
     "message": "新标签页",
     "description": "标签页标题"
+  },
+  "backgroundButton": {
+    "message": "背景",
+    "description": "背景按钮文本"
   }
 }
