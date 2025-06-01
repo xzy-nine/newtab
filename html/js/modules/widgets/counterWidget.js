@@ -42,24 +42,22 @@ export default {
         if (!container.style.height || parseInt(container.style.height) < this.config.default.height) {
             container.style.height = `${this.config.default.height}px`;
         }
-        
-        // 创建小部件内容
+          // 创建小部件内容
         const widgetContent = document.createElement('div');
-        widgetContent.className = 'counter-widget';
+        widgetContent.className = 'counter-widget widget-base';
         
         // 初始计数值，使用保存的值或默认值0
         const count = data.count || 0;
         const title = data.title || '计数';
-        
-        // 创建小部件结构 - 注意结构顺序很重要
+          // 创建小部件结构 - 使用公共样式类
         widgetContent.innerHTML = `
-            <div class="counter-title">${title}</div>
-            <div class="counter-controls">
-                <button class="counter-button decrease">-</button>
-                <div class="counter-display">${count}</div>
-                <button class="counter-button increase">+</button>
+            <div class="counter-title widget-title">${title}</div>
+            <div class="counter-controls widget-controls widget-controls-horizontal">
+                <button class="counter-button decrease widget-btn widget-btn-round">-</button>
+                <div class="counter-display widget-display">${count}</div>
+                <button class="counter-button increase widget-btn widget-btn-round">+</button>
             </div>
-            <div class="counter-reset">重置</div>
+            <div class="counter-reset widget-btn widget-btn-small widget-btn-normal">重置</div>
         `;
         
         // 添加到容器

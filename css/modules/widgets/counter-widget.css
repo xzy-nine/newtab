@@ -1,54 +1,9 @@
 /* 计数器小部件样式 */
+/* 依赖于 widget-common.css 中的公共样式 */
 
-/* 使用主小部件CSS的通用变量，不再重复定义基础变量 */
+/* 计数器特有的样式，其他样式使用公共样式类 */
 
-/* 3. 组件基础层 */
-.counter-widget {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--widget-padding);
-    box-sizing: border-box;
-    user-select: none;
-    -webkit-user-select: none;
-    background-color: transparent; /* 移除背景色，使用父容器背景 */
-    color: var(--widget-text-color);
-    /* 移除边框 */
-    border: none;
-    transform-origin: top left !important;
-    will-change: transform;
-    backface-visibility: hidden;
-    /* 确保在小容器中也能正常显示 */
-    min-height: 0;
-    overflow: hidden;
-}
-
-/* 4. 子组件层 */
-/* 标题组件 */
-.counter-title {
-    font-weight: bold;
-    width: 100%;
-    text-align: center;
-    margin-bottom: 4px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    position: relative;
-    z-index: 2;
-    background-color: transparent;
-    color: var(--widget-text-color);
-    /* 确保标题始终可见 */
-    flex-shrink: 0;
-    min-height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1.2;
-}
-
+/* 标题编辑状态（特有功能） */
 .counter-title.editing {
     padding: 0;
 }
@@ -58,7 +13,6 @@
     padding: 2px;
     font-size: inherit;
     font-weight: bold;
-    /* 移除边框，增加低透明度边框 */
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 4px;
     outline: none;
@@ -72,132 +26,39 @@
     }
 }
 
-/* 控制区域 */
-.counter-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    flex: 1;
-}
-
-/* 按钮组件 */
-.counter-button {
-    min-width: 28px;
-    min-height: 28px;
-    /* 使用更柔和的边框 */
-    border: none;
-    border-radius: 50%;
-    background-color: var(--widget-control-bg);
-    color: var(--widget-primary-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 18px;
-    transition: all var(--widget-transition-quick);
-    min-width: 24px !important;
-    min-height: 24px !important;
-}
-
-/* 计数显示 */
+/* 计数器特有的显示样式 */
 .counter-display {
     flex: 1;
-    text-align: center;
-    font-weight: bold;
+    font-size: 24px;
     margin: 0 5px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: all 0.3s ease;
-    color: var(--widget-primary-color);
-    text-shadow: 0 1px 2px var(--widget-shadow-color);
     min-width: 30px;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
 }
 
-/* 重置按钮 */
-.counter-reset {
-    font-size: 12px;
-    color: var(--widget-text-color);
-    cursor: pointer;
-    padding: 4px 8px;
-    margin-top: 4px;
-    text-align: center;
-    border-radius: 12px;
-    transition: all var(--widget-transition-quick) ease;
-    background-color: var(--widget-control-bg);
-    /* 移除边框 */
-    border: none;
-}
-
-/* 5. 交互状态层 */
-.counter-button:hover {
-    background-color: var(--widget-control-bg-hover);
-    transform: scale(1.05);
-    box-shadow: 0 0 6px var(--widget-shadow-color-hover);
-}
-
-.counter-reset:hover {
-    background-color: var(--widget-control-bg-hover);
-}
-
-/* 重置确认状态 */
-.counter-reset.confirm {
-    color: var(--widget-text-on-accent);
-    background-color: var(--widget-danger-color);
-    font-weight: bold;
-    border: none;
-}
-
-.counter-reset.confirm:hover {
-    background-color: var(--widget-danger-red-dark);
-}
-
-/* 6. 响应式适配层 */
-/* 紧凑布局样式 - 优化最小尺寸下的显示 */
+/* 响应式适配 - 紧凑布局 */
 .counter-widget.compact-layout {
-    padding: 6px; /* 减少内边距以节省空间 */
-    gap: 2px; /* 减少组件间距 */
+    padding: 6px;
 }
 
 .counter-widget.compact-layout .counter-title {
     font-size: 11px;
     margin-bottom: 1px;
-    line-height: 1.2;
-    /* 确保标题在紧凑模式下始终可见 */
     min-height: 13px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.counter-widget.compact-layout .counter-controls {
-    margin: 1px 0;
-    gap: 2px; /* 减少按钮间距 */
-}
-
-.counter-widget.compact-layout .counter-button {
-    min-width: 22px;
-    min-height: 22px;
-    font-size: 14px;
-    flex-shrink: 0; /* 防止按钮被压缩 */
 }
 
 .counter-widget.compact-layout .counter-display {
     font-size: 16px;
     margin: 0 3px;
-    min-width: 30px;
-    line-height: 1.1;
 }
 
-.counter-widget.compact-layout .counter-reset {
+.counter-widget.compact-layout .widget-btn-round {
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+}
+
+.counter-widget.compact-layout .widget-btn-small {
     font-size: 9px;
     padding: 2px 4px;
     margin-top: 1px;
     min-height: 16px;
-    line-height: 1.2;
 }

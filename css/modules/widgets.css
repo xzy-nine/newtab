@@ -1,5 +1,8 @@
 /* 小部件系统样式 */
 
+/* 引入公共样式组件 */
+@import url('./widgets/widget-common.css');
+
 /* 1. 变量定义层 */
 :root {
   /* 颜色系统 - 基础色板 */

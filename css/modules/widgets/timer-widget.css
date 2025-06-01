@@ -1,55 +1,13 @@
-/* ===== 1. 颜色系统与主题变量 ===== */
+/* 计时器小部件样式 */
+/* 依赖于 widget-common.css 中的公共样式 */
 
-/* ===== 3. 计时器基础布局 ===== */
-/* 计时器小部件基础容器 */
-.timer-widget {
-    font-family: Arial, sans-serif;
-    padding: 8px;
-    background-color: transparent;
-    border-radius: var(--widget-border-radius);
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    box-sizing: border-box;
-    transform-origin: top left !important;
-    will-change: transform;
-    backface-visibility: hidden;
-}
+/* 计时器特有的样式，其他使用公共样式类 */
 
-/* 标题区域 */
-.timer-header {
-    justify-content: center;
-    margin-bottom: 6px;
-}
-
-.timer-title {
-    font-size: 14px;
-    text-align: center;
-    margin: 0 auto;
-    color: var(--widget-text-color);
-}
-
-/* ===== 4. 时间显示区域 ===== */
-/* 显示时间区域 - 移除背景和阴影效果，背景一致 */
+/* 时间显示区域 - 扩展公共显示样式 */
 .timer-display {
     font-size: 28px;
-    font-weight: bold;
-    text-align: center;
-    padding: 8px 0;
-    background-color: transparent;
-    border-radius: 4px;
-    margin-bottom: 6px;
-    font-family: 'Courier New', monospace;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     height: 42px;
-    color: var(--widget-primary-color);
-    transition: color var(--widget-transition-normal);
-    min-height: 30px;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
+    font-family: 'Courier New', monospace;
 }
 
 /* 数字容器 */
@@ -58,36 +16,13 @@
     position: relative;
 }
 
-/* 可编辑的数字样式 */
+/* 可编辑数字的特有样式 */
 .time-digit {
-    display: inline-block;
-    min-width: 15px;
-    cursor: pointer;
-    position: relative;
-    padding: 0;
-    margin: 0 1px;
-    transition: background-color var(--widget-transition-quick), color var(--widget-transition-quick);
-    text-align: center;
     width: 18px;
-    border-color: transparent;
-    outline: none;
-    box-shadow: none;
     min-width: 14px !important;
 }
 
-.time-digit:hover {
-    background-color: var(--widget-control-bg-hover);
-    border-radius: 3px;
-}
-
-.time-digit.editing {
-    background-color: var(--widget-primary-color);
-    color: var(--widget-text-on-accent);
-    border-radius: 3px;
-    animation: blink 1s infinite;
-}
-
-/* 毫秒样式调整 */
+/* 毫秒部分样式 */
 .timer-display .ms-part {
     font-size: 16px;
     position: relative;
@@ -97,47 +32,69 @@
     opacity: 0.9;
 }
 
-/* 分隔符样式 */
+/* 数字分隔符的特有样式 */
 .time-separator {
-    display: inline-block;
-    margin: 0 1px;
     width: 6px;
-    text-align: center;
     line-height: 28px;
     vertical-align: middle;
     transform: translateX(-1px);
-    color: var(--widget-text-secondary);
 }
 
-/* ===== 5. 动画效果 ===== */
-@keyframes blink {
-    50% {
-        opacity: 0.5;
-    }
+/* 数字控制器（计时器特有功能） */
+.digit-controls {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 10;
+    width: 18px;
+    margin: 0 1px;
+    height: 100%;
 }
 
-/* ===== 6. 控制按钮 ===== */
-/* 主按钮 - 统一圆角矩形样式 */
-.timer-main-btn {
-    padding: 6px 0;
-    font-size: 14px;
-    border: none;
-    border-radius: 8px;
+.digit-up, .digit-down {
     cursor: pointer;
-    transition: all var(--widget-transition-normal);
-    font-weight: bold;
-    flex: 1;
-    box-shadow: 0 1px 3px var(--widget-shadow-color);
+    user-select: none;
+    font-size: 10px;
+    opacity: 0.8;
+    transition: all var(--widget-transition-quick);
+    height: 16px;
+    line-height: 16px;
+    background-color: var(--widget-control-bg);
+    width: 100%;
+    text-align: center;
+    border-radius: 3px;
+    position: absolute;
+    color: var(--widget-text-color);
+    box-shadow: 0 1px 2px var(--widget-shadow-color);
 }
 
-.timer-btn-start {
+.digit-up {
+    top: -16px;
+    box-shadow: 0 -1px 2px var(--widget-shadow-color);
+}
+
+.digit-down {
+    bottom: -16px;
+}
+
+.digit-up:hover, .digit-down:hover {
+    opacity: 1;
+    background-color: var(--widget-control-bg-hover);
+    color: var(--widget-primary-color);
+}
+
+.digit-up:active, .digit-down:active {
     background-color: var(--widget-primary-color);
     color: var(--widget-text-on-accent);
 }
 
-.timer-btn-pause {
-    background-color: var(--widget-danger-color);
-    color: var(--widget-text-on-accent);
+.digit-up::before {
+    content: "▲";
+}
+
+.digit-down::before {
+    content: "▼";
 }
 
 .timer-btn-start:hover {
@@ -172,181 +129,7 @@
     box-shadow: 0 2px 4px var(--widget-shadow-color-hover);
 }
 
-/* 数字上下调节控件 - 使用字符代替箭头 */
-.digit-controls {
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 10;
-    width: 18px;
-    margin: 0 1px;
-    height: 100%;
-}
-
-.digit-up {
-    cursor: pointer;
-    user-select: none;
-    font-size: 10px;
-    opacity: 0.8;
-    transition: all var(--widget-transition-quick);
-    height: 16px;
-    line-height: 16px;
-    background-color: var(--widget-control-bg);
-    width: 100%;
-    text-align: center;
-    border-radius: 3px;
-    position: absolute;
-    top: -16px;
-    left: 0;
-    color: var(--widget-text-color);
-    box-shadow: 0 -1px 2px var(--widget-shadow-color);
-    content: "▲";
-}
-
-.digit-down {
-    cursor: pointer;
-    user-select: none;
-    font-size: 10px;
-    opacity: 0.8;
-    transition: all var(--widget-transition-quick);
-    height: 16px;
-    line-height: 16px;
-    background-color: var(--widget-control-bg);
-    width: 100%;
-    text-align: center;
-    border-radius: 3px;
-    position: absolute;
-    bottom: -16px;
-    left: 0;
-    color: var(--widget-text-color);
-    box-shadow: 0 1px 2px var(--widget-shadow-color);
-    content: "▼";
-}
-
-.digit-up:hover, .digit-down:hover {
-    opacity: 1;
-    background-color: var(--widget-control-bg-hover);
-    color: var(--widget-primary-color);
-}
-
-.digit-up:active, .digit-down:active {
-    background-color: var(--widget-primary-color);
-    color: var(--widget-text-on-accent);
-}
-
-/* ===== 8. 响应式布局 ===== */
-/* 中等屏幕 */
-@media (max-width: 180px) {
-    /* 基础组件响应式 */
-    .timer-widget {
-        padding: 6px;
-    }
-    
-    .timer-header {
-        margin-bottom: 4px;
-    }
-    
-    .timer-title {
-        font-size: 13px;
-    }
-    
-    .timer-main-btn {
-        padding: 5px 0;
-        font-size: 12px;
-    }
-    
-    .timer-reset-btn {
-        padding: 5px 6px;
-        font-size: 11px;
-        min-width: 30px;
-    }
-    
-    .timer-display {
-        font-size: 24px;
-        height: 36px;
-        padding: 6px 0;
-    }
-
-    .timer-display .ms-part {
-        font-size: 14px;
-    }
-    
-    .time-digit {
-        width: 14px;
-    }
-    
-    .digit-controls {
-        width: 14px;
-    }
-    
-    .time-separator {
-        line-height: 24px; 
-        transform: translateX(-1px);
-    }
-}
-
-/* 小屏幕 */
-@media (max-width: 140px) {
-    /* 更小屏幕的响应式 */
-    .timer-widget {
-        padding: 5px;
-    }
-    
-    .timer-header {
-        margin-bottom: 3px;
-    }
-    
-    .timer-title {
-        font-size: 12px;
-    }
-    
-    .timer-display {
-        font-size: 20px;
-        padding: 3px 0;
-        margin-bottom: 3px;
-        height: 30px;
-    }
-    
-    .timer-display .ms-part {
-        font-size: 12px;
-    }
-    
-    .timer-main-btn {
-        padding: 4px 0;
-        font-size: 11px;
-    }
-    
-    .timer-reset-btn {
-        padding: 4px;
-        font-size: 10px;
-        min-width: 24px;
-    }
-    
-    .time-digit {
-        width: 12px;
-    }
-    
-    .digit-controls {
-        width: 12px;
-    }
-    
-    .digit-up, .digit-down {
-        height: 14px;
-        line-height: 14px;
-        font-size: 9px;
-    }
-    
-    .digit-up {
-        top: -14px;
-    }
-    
-    .digit-down {
-        bottom: -14px;
-    }
-    
-    .time-separator {
-        line-height: 20px;
-        transform: translateX(-0.5px);
-    }
+.timer-widget.widget-mini .time-separator {
+    line-height: 20px;
+    transform: translateX(-0.5px);
 }

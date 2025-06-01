@@ -1,0 +1,376 @@
+/* 小部件公共样式文件 */
+/* 为所有小部件提供统一的UI组件和样式 */
+
+/* ===== 1. 小部件基础容器 ===== */
+.widget-base {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--widget-padding);
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    background-color: transparent;
+    color: var(--widget-text-color);
+    border: none;
+    transform-origin: top left !important;
+    will-change: transform;
+    backface-visibility: hidden;
+    min-height: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+}
+
+/* ===== 2. 小部件标题样式 ===== */
+.widget-title {
+    font-weight: bold;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    position: relative;
+    z-index: 2;
+    background-color: transparent;
+    color: var(--widget-text-color);
+    flex-shrink: 0;
+    min-height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+    font-size: 14px;
+}
+
+/* ===== 3. 小部件显示区域 ===== */
+.widget-display {
+    font-weight: bold;
+    text-align: center;
+    padding: 8px 0;
+    background-color: transparent;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--widget-primary-color);
+    transition: color var(--widget-transition-normal);
+    min-height: 30px;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    text-shadow: 0 1px 2px var(--widget-shadow-color);
+}
+
+/* ===== 4. 按钮公共样式 ===== */
+/* 主按钮基础样式 */
+.widget-btn {
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all var(--widget-transition-normal);
+    font-weight: bold;
+    text-align: center;
+    user-select: none;
+    -webkit-user-select: none;
+    outline: none;
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+/* 圆形按钮样式 */
+.widget-btn-round {
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--widget-control-bg);
+    color: var(--widget-text-color);
+    box-shadow: 0 2px 4px var(--widget-shadow-color);
+    transition: all var(--widget-transition-quick) ease;
+}
+
+.widget-btn-round:hover {
+    background-color: var(--widget-control-bg-hover);
+    transform: scale(1.05);
+    box-shadow: 0 0 6px var(--widget-shadow-color-hover);
+}
+
+.widget-btn-round:active {
+    transform: scale(0.95);
+    box-shadow: 0 1px 2px var(--widget-shadow-color);
+}
+
+/* 矩形按钮样式 */
+.widget-btn-rect {
+    padding: 6px 0;
+    font-size: 14px;
+    min-height: 32px;
+    flex: 1;
+    box-shadow: 0 1px 3px var(--widget-shadow-color);
+}
+
+/* 小按钮样式 */
+.widget-btn-small {
+    padding: 4px 8px;
+    font-size: 12px;
+    min-width: 36px;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px var(--widget-shadow-color);
+}
+
+/* ===== 5. 按钮颜色变体 ===== */
+/* 主要按钮 */
+.widget-btn-primary {
+    background-color: var(--widget-primary-color);
+    color: var(--widget-text-on-accent);
+}
+
+.widget-btn-primary:hover {
+    background-color: var(--widget-primary-color-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px var(--widget-shadow-color-hover);
+}
+
+/* 危险按钮 */
+.widget-btn-danger {
+    background-color: var(--widget-danger-color);
+    color: var(--widget-text-on-accent);
+}
+
+.widget-btn-danger:hover {
+    background-color: var(--widget-danger-red-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px var(--widget-shadow-color-hover);
+}
+
+/* 普通按钮 */
+.widget-btn-normal {
+    background-color: var(--widget-control-bg);
+    color: var(--widget-text-color);
+}
+
+.widget-btn-normal:hover {
+    background-color: var(--widget-control-bg-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px var(--widget-shadow-color-hover);
+}
+
+/* 确认状态按钮 */
+.widget-btn-confirm {
+    background-color: var(--widget-danger-color);
+    color: var(--widget-text-on-accent);
+    font-weight: bold;
+}
+
+/* ===== 6. 控制区域布局 ===== */
+.widget-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    flex-wrap: wrap;
+}
+
+/* 水平控制布局 */
+.widget-controls-horizontal {
+    flex-direction: row;
+    align-items: center;
+}
+
+/* 垂直控制布局 */
+.widget-controls-vertical {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+/* ===== 7. 数字输入相关样式 ===== */
+.widget-digit {
+    display: inline-block;
+    min-width: 15px;
+    cursor: pointer;
+    position: relative;
+    padding: 0;
+    margin: 0 1px;
+    transition: background-color var(--widget-transition-quick), color var(--widget-transition-quick);
+    text-align: center;
+    border-color: transparent;
+    outline: none;
+    box-shadow: none;
+    border-radius: 3px;
+}
+
+.widget-digit:hover {
+    background-color: var(--widget-control-bg-hover);
+}
+
+.widget-digit.editing {
+    background-color: var(--widget-primary-color);
+    color: var(--widget-text-on-accent);
+    animation: widget-blink 1s infinite;
+}
+
+/* 数字分隔符 */
+.widget-separator {
+    display: inline-block;
+    margin: 0 2px;
+    text-align: center;
+    color: var(--widget-text-secondary);
+}
+
+/* ===== 8. 动画效果 ===== */
+@keyframes widget-blink {
+    0%, 50% {
+        opacity: 1;
+    }
+    51%, 100% {
+        opacity: 0.3;
+    }
+}
+
+/* 点击波纹效果 */
+.widget-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.widget-btn:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+/* ===== 9. 响应式设计 ===== */
+/* 紧凑模式 */
+.widget-compact .widget-title {
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.widget-compact .widget-btn {
+    padding: 4px 6px;
+    font-size: 12px;
+}
+
+.widget-compact .widget-btn-round {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+}
+
+/* 迷你模式 */
+.widget-mini .widget-title {
+    font-size: 10px;
+    margin-bottom: 2px;
+}
+
+.widget-mini .widget-btn {
+    padding: 2px 4px;
+    font-size: 10px;
+}
+
+.widget-mini .widget-btn-round {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+}
+
+/* ===== 10. 工具类 ===== */
+.widget-flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.widget-flex-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.widget-flex-around {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.widget-text-center {
+    text-align: center;
+}
+
+.widget-text-bold {
+    font-weight: bold;
+}
+
+.widget-no-select {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.widget-hidden {
+    display: none !important;
+}
+
+.widget-visible {
+    display: block !important;
+}
+
+/* ===== 11. 状态指示器 ===== */
+.widget-status-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--widget-success-color);
+}
+
+.widget-status-indicator.running {
+    background-color: var(--widget-success-color);
+    animation: widget-pulse 2s infinite;
+}
+
+.widget-status-indicator.paused {
+    background-color: var(--widget-danger-color);
+}
+
+.widget-status-indicator.stopped {
+    background-color: var(--widget-text-secondary);
+}
+
+@keyframes widget-pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
