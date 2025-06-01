@@ -291,10 +291,10 @@ function createBasicUI() {
         
         bookmarkBox.appendChild(folderList);
         bookmarkBox.appendChild(shortcutList);
-        
-        // 创建背景按钮
-        const backgroundButton = Utils.createElement('button', '背景', { 
+          // 创建背景按钮
+        const backgroundButton = Utils.createElement('button', '', { 
             id: 'background-button',
+            title: '更换背景',
             'data-i18n': 'backgroundButton'
         });
         

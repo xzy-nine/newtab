@@ -83,8 +83,7 @@ export const I18n = {
 
     // 返回默认值（如果提供）或null
     return defaultValue || null;
-  },
-  /**
+  },  /**
    * 应用翻译到UI元素
    */
   applyTranslations: function() {
@@ -94,22 +93,35 @@ export const I18n = {
     
     document.querySelectorAll('[data-i18n]').forEach(element => {
       const key = element.getAttribute('data-i18n');
-      element.textContent = this.getMessage(key);
+      const translation = this.getMessage(key);
+      // 只有当翻译存在时才更新文本，避免清空默认文本
+      if (translation) {
+        element.textContent = translation;
+      }
     });
     
     // 更新页面标题
-    document.title = this.getMessage('newTab');
+    const newTabTitle = this.getMessage('newTab');
+    if (newTabTitle) {
+      document.title = newTabTitle;
+    }
     
     // 更新占位符文本
     document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
       const key = element.getAttribute('data-i18n-placeholder');
-      element.placeholder = this.getMessage(key);
+      const translation = this.getMessage(key);
+      if (translation) {
+        element.placeholder = translation;
+      }
     });
     
     // 更新title属性
     document.querySelectorAll('[data-i18n-title]').forEach(element => {
       const key = element.getAttribute('data-i18n-title');
-      element.title = this.getMessage(key);
+      const translation = this.getMessage(key);
+      if (translation) {
+        element.title = translation;
+      }
     });
   },
 

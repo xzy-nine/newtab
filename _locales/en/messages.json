@@ -70,10 +70,13 @@
   "loadingBackground": {
     "message": "Loading background...",
     "description": "加载背景"
-  },
-  "backgroundLoadComplete": {
+  },  "backgroundLoadComplete": {
     "message": "Background loaded",
     "description": "背景加载完成"
+  },
+  "backgroundButton": {
+    "message": "Background",
+    "description": "背景按钮文本"
   },
   "searchModule": {
     "message": "Search Engine",
