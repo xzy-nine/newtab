@@ -211,21 +211,23 @@ export const Notification = {  /**
     // 更新通知管理系统
     Notification.notificationManager.updateVisibility();
   },
-
   // 加载指示器相关方法
-  showLoadingIndicator: (containerId = null) => {
+  showLoadingIndicator: (loadingText = null, containerId = null) => {
+    // 如果没有提供loadingText，使用I18n获取
+    const displayText = loadingText || I18n.getMessage('loading', '加载中');
+    
     // 移除原有的全屏加载逻辑
     let loadingNotification = document.querySelector('.notification.loading-notification');
     
     if (!loadingNotification) {
       // 创建加载通知
       const notification = Notification.notify({
-        title: I18n.getMessage('loading', '加载中'),
+        title: displayText,
         message: '<div class="loading-content">' +
                  '<div class="mini-loader-spinner"></div>' + 
                  '<div class="mini-progress">' +
                  '<div class="notification-loading-bar"></div></div>' +
-                 '<div class="notification-loading-message">' + I18n.getMessage('loading', '加载中') + '</div>' +
+                 '<div class="notification-loading-message">' + displayText + '</div>' +
                  '</div>',
         type: 'loading',
         duration: 0 // 不自动关闭

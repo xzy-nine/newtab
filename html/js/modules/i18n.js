@@ -39,8 +39,7 @@ export const I18n = {
       console.error('国际化模块初始化失败:', error);
       throw error;
     }
-  },
-  /**
+  },  /**
    * 获取指定key的翻译文本，支持默认值
    * @param {string} key - 翻译键值
    * @param {string} defaultValue - 默认值，中文语言时直接使用此值
@@ -53,8 +52,11 @@ export const I18n = {
       //console.warn('国际化模块尚未初始化，可能导致翻译缺失');
     }
 
+    // 检查是否为中文语言（支持 zh 和 zh_CN）
+    const isChinese = currentLanguage === 'zh' || currentLanguage === 'zh_CN' || currentLanguage.startsWith('zh');
+
     // 如果是中文且提供了默认值，直接返回默认值（因为中文有默认值机制）
-    if (currentLanguage === 'zh' && defaultValue) {
+    if (isChinese && defaultValue) {
       return defaultValue;
     }
 
@@ -74,7 +76,7 @@ export const I18n = {
     }
     
     // 如果找不到翻译且不是中文，记录警告
-    if (currentLanguage !== 'zh') {
+    if (!isChinese) {
       console.warn(`【未翻译]未找到键 "${key}" 的翻译 - 查看调用堆栈↓`);
       console.trace();
     }

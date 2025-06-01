@@ -108,7 +108,7 @@ export const Utils = {
     } = options;
     
     try {
-      Notification.showLoadingIndicator(containerId);
+      Notification.showLoadingIndicator(null, containerId);
       Notification.updateLoadingProgress(10, startMessage);
       
       const result = await task();
