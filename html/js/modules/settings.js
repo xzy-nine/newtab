@@ -23,7 +23,7 @@ export const Settings = {
             { value: 'zh', label: '简体中文' },
             { value: 'en', label: 'English' }
           ],
-          value: I18n.getCurrentLanguage(),
+          getValue: () => I18n.getCurrentLanguage(),
           description: I18n.getMessage('settingsLanguageDesc', '选择界面显示语言')
         },
         {
@@ -35,7 +35,7 @@ export const Settings = {
             { value: 'light', label: I18n.getMessage('themeLight', '浅色模式') },
             { value: 'dark', label: I18n.getMessage('themeDark', '深色模式') }
           ],
-          value: 'auto',
+          getValue: () => localStorage.getItem('theme') || 'auto',
           description: I18n.getMessage('settingsThemeDesc', '选择应用的主题外观')
         }
       ]
@@ -49,14 +49,14 @@ export const Settings = {
           id: 'grid-enabled',
           label: I18n.getMessage('settingsGridEnabled', '启用网格系统'),
           type: 'checkbox',
-          value: GridSystem.gridEnabled,
+          getValue: () => GridSystem.gridEnabled,
           description: I18n.getMessage('settingsGridEnabledDesc', '启用后元素将自动吸附到网格位置')
         },
         {
           id: 'grid-debug',
           label: I18n.getMessage('settingsGridDebug', '显示网格线'),
           type: 'checkbox',
-          value: GridSystem.isDebugMode,
+          getValue: () => GridSystem.isDebugMode,
           description: I18n.getMessage('settingsGridDebugDesc', '显示网格辅助线，帮助对齐元素')
         },
         {
@@ -66,9 +66,10 @@ export const Settings = {
           min: 5,
           max: 30,
           step: 1,
-          value: GridSystem.snapThreshold,
+          getValue: () => GridSystem.snapThreshold,
           unit: 'px',
-          description: I18n.getMessage('settingsGridSnapThresholdDesc', '元素吸附到网格的距离阈值')        }
+          description: I18n.getMessage('settingsGridSnapThresholdDesc', '元素吸附到网格的距离阈值')
+        }
       ]
     },
     {
@@ -80,7 +81,7 @@ export const Settings = {
           id: 'ai-enabled',
           label: I18n.getMessage('settingsAIEnabled', '启用AI助手'),
           type: 'checkbox',
-          value: AI.getConfig().enabled,
+          getValue: () => AI.getConfig().enabled,
           description: I18n.getMessage('settingsAIEnabledDesc', '启用后可在搜索框旁显示AI按钮')
         },
         {
@@ -101,7 +102,7 @@ export const Settings = {
           id: 'ai-system-prompt',
           label: I18n.getMessage('settingsAISystemPrompt', '系统提示词'),
           type: 'textarea',
-          value: AI.getConfig().systemPrompt,
+          getValue: () => AI.getConfig().systemPrompt,
           description: I18n.getMessage('settingsAISystemPromptDesc', '定义AI的行为和回答风格')
         },
         {
@@ -193,6 +194,26 @@ export const Settings = {
     // 绑定事件
     Settings.bindEvents(modalId);
     
+    // 显示模态框后同步设置
+    setTimeout(() => {
+      Settings.syncSettingsWithSystem();
+    }, 100);
+    
+    // 监听外部设置变化
+    const syncHandler = () => Settings.syncSettingsWithSystem();
+    window.addEventListener('gridSettingsChanged', syncHandler);
+    
+    // 模态框关闭时移除监听器
+    const settingsModal = document.getElementById(modalId); // 重命名变量避免冲突
+    const originalHide = Menu.Modal.hide;
+    Menu.Modal.hide = function(id) {
+      if (id === modalId) {
+        window.removeEventListener('gridSettingsChanged', syncHandler);
+        Menu.Modal.hide = originalHide; // 恢复原方法
+      }
+      return originalHide.call(this, id);
+    };
+    
     // 显示模态框
     Menu.Modal.show(modalId);
   },
@@ -221,6 +242,8 @@ export const Settings = {
     }
     
     contentArea.appendChild(itemsContainer);
+    
+    // 移除 setTimeout，不再需要异步同步
   },
 
   createSettingItem: async (item) => {
@@ -235,27 +258,133 @@ export const Settings = {
     // 设置项控件
     const itemControl = Utils.createElement('div', 'setting-control');
     
+    // 动态获取当前值的函数
+    const getCurrentValue = () => {
+      try {
+        if (typeof item.getValue === 'function') {
+          return item.getValue();
+        }
+        
+        // 为特定设置项添加动态值获取
+        switch (item.id) {
+          case 'grid-enabled':
+            return window.GridSystem ? GridSystem.gridEnabled : false;
+          case 'grid-debug':
+            return window.GridSystem ? GridSystem.isDebugMode : false;
+          case 'grid-snap-threshold':
+            return window.GridSystem ? GridSystem.snapThreshold : 15;
+          case 'ai-enabled':
+            return window.AI ? AI.getConfig().enabled : false;
+          case 'ai-system-prompt':
+            return window.AI ? AI.getConfig().systemPrompt : '';
+          case 'theme':
+            return localStorage.getItem('theme') || 'auto';
+          case 'language':
+            return window.I18n ? I18n.getCurrentLanguage() : 'zh';
+          default:
+            return item.value || item.defaultValue || '';
+        }
+      } catch (error) {
+        console.error(`获取设置项 ${item.id} 的值时出错:`, error);
+        return item.defaultValue || '';
+      }
+    };
+    
+    // 获取初始值
+    let currentValue = getCurrentValue();
+    console.log(`设置项 ${item.id} 当前值:`, currentValue);
+    
     switch (item.type) {
       case 'checkbox':
+        const isChecked = Boolean(currentValue);
+        console.log(`复选框 ${item.id} 选中状态:`, isChecked);
+        
         const checkbox = Utils.createElement('input', 'setting-checkbox', {
           type: 'checkbox',
-          id: item.id,
-          checked: item.value
+          id: item.id
         });
+        
+        // 设置初始状态
+        checkbox.checked = isChecked;
+        
         const checkboxLabel = Utils.createElement('label', 'checkbox-switch', { for: item.id });
         
-        // 为网格系统设置添加事件监听
+        // 为特定设置项添加事件监听
         if (item.id === 'grid-enabled') {
-          checkbox.addEventListener('change', (e) => {
-            Settings.handleGridEnabledChange(e.target.checked);
+          checkbox.addEventListener('change', async (e) => {
+            const enabled = e.target.checked;
+            console.log('网格系统切换状态:', enabled);
+            
+            // 确保 GridSystem 已初始化
+            if (window.GridSystem) {
+              try {
+                await GridSystem.toggleGridSystem(enabled);
+                
+                // 立即同步显示状态
+                setTimeout(() => {
+                  const latestValue = getCurrentValue();
+                  checkbox.checked = latestValue;
+                  console.log('网格系统状态同步后:', latestValue);
+                }, 100);
+                
+                // 显示通知
+                Notification.notify({
+                  title: enabled 
+                    ? I18n.getMessage('gridSystemEnabled', '网格系统已启用')
+                    : I18n.getMessage('gridSystemDisabled', '网格系统已禁用'),
+                  type: enabled ? 'success' : 'info',
+                  duration: 2000
+                });
+              } catch (error) {
+                console.error('切换网格系统失败:', error);
+                // 恢复原状态
+                checkbox.checked = !enabled;
+              }
+            } else {
+              console.error('GridSystem 未初始化');
+              checkbox.checked = false;
+            }
           });
         } else if (item.id === 'grid-debug') {
-          checkbox.addEventListener('change', (e) => {
-            Settings.handleGridDebugChange(e.target.checked);
+          checkbox.addEventListener('change', async (e) => {
+            const enabled = e.target.checked;
+            console.log('网格调试切换状态:', enabled);
+            
+            if (window.GridSystem) {
+              try {
+                await GridSystem.toggleGridDebug(enabled);
+                
+                // 立即同步显示状态
+                setTimeout(() => {
+                  const latestValue = getCurrentValue();
+                  checkbox.checked = latestValue;
+                  console.log('网格调试状态同步后:', latestValue);
+                }, 100);
+                
+                // 显示通知
+                Notification.notify({
+                  title: enabled
+                    ? I18n.getMessage('gridDebugEnabled', '网格调试已启用')
+                    : I18n.getMessage('gridDebugDisabled', '网格调试已禁用'),
+                  type: 'info',
+                  duration: 2000
+                });
+              } catch (error) {
+                console.error('切换网格调试失败:', error);
+                checkbox.checked = !enabled;
+              }
+            } else {
+              console.error('GridSystem 未初始化');
+              checkbox.checked = false;
+            }
           });
         } else if (item.id === 'ai-enabled') {
           checkbox.addEventListener('change', (e) => {
             Settings.handleAIEnabledChange(e.target.checked);
+            // 立即更新显示状态
+            setTimeout(() => {
+              checkbox.checked = getCurrentValue();
+            }, 100);
           });
         }
         
@@ -270,31 +399,73 @@ export const Settings = {
           min: item.min,
           max: item.max,
           step: item.step,
-          value: item.value
+          value: currentValue
         });
-        const rangeValue = Utils.createElement('span', 'range-value', {}, `${item.value}${item.unit || ''}`);
+        const rangeValue = Utils.createElement('span', 'range-value', {}, `${currentValue}${item.unit || ''}`);
         rangeContainer.append(range, rangeValue);
         itemControl.appendChild(rangeContainer);
-          // 更新显示值
+        
+        // 更新显示值和实际值
         range.addEventListener('input', (e) => {
-          rangeValue.textContent = `${e.target.value}${item.unit || ''}`;
+          const value = parseInt(e.target.value);
+          rangeValue.textContent = `${value}${item.unit || ''}`;
           
           // 为网格吸附阈值添加实时更新
           if (item.id === 'grid-snap-threshold') {
-            Settings.handleGridSnapThresholdChange(parseInt(e.target.value));
+            console.log('网格吸附阈值变更:', value);
+            if (window.GridSystem) {
+              try {
+                GridSystem.setSnapThreshold(value);
+                console.log('网格吸附阈值设置成功:', value);
+              } catch (error) {
+                console.error('设置网格吸附阈值失败:', error);
+              }
+            }
           }
         });
+        
+        // 监听外部变化并同步界面
+        const syncRangeValue = () => {
+          const latestValue = getCurrentValue();
+          if (range.value !== latestValue.toString()) {
+            range.value = latestValue;
+            rangeValue.textContent = `${latestValue}${item.unit || ''}`;
+          }
+        };
+        
+        // 定期同步值（用于处理外部修改）
+        if (item.id.startsWith('grid-')) {
+          const syncInterval = setInterval(syncRangeValue, 1000);
+          
+          // 在设置模态框关闭时清除定时器
+          const modalElement = document.querySelector('.settings-modal');
+          if (modalElement) {
+            const observer = new MutationObserver((mutations) => {
+              mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                  mutation.removedNodes.forEach((node) => {
+                    if (node === modalElement) {
+                      clearInterval(syncInterval);
+                      observer.disconnect();
+                    }
+                  });
+                }
+              });
+            });
+            observer.observe(document.body, { childList: true });
+          }
+        }
         break;
         
       case 'select':
         const select = Utils.createElement('select', 'setting-select', { id: item.id });
         item.options.forEach(option => {
           const optionElement = Utils.createElement('option', '', { value: option.value }, option.label);
-          if (option.value === item.value) {
-            optionElement.selected = true;
-          }
           select.appendChild(optionElement);
         });
+        
+        // 在添加所有选项后设置选中值
+        select.value = currentValue;
         
         // 为语言选择器添加事件监听
         if (item.id === 'language') {
@@ -330,6 +501,10 @@ export const Settings = {
               select.value = I18n.getCurrentLanguage();
             }
           });
+        } else if (item.id === 'theme') {
+          select.addEventListener('change', (e) => {
+            Settings.handleThemeChange(e.target.value);
+          });
         }
         
         itemControl.appendChild(select);
@@ -339,17 +514,31 @@ export const Settings = {
         const radioGroup = Utils.createElement('div', 'radio-group');
         item.options.forEach(option => {
           const radioContainer = Utils.createElement('div', 'radio-item');
+          const isSelected = option.value === currentValue;
           const radio = Utils.createElement('input', 'setting-radio', {
             type: 'radio',
             id: `${item.id}-${option.value}`,
             name: item.id,
-            value: option.value,
-            checked: option.value === item.value
+            value: option.value
           });
+          
+          // 确保在添加到DOM后再设置checked属性
+          radio.checked = isSelected;
+          
           const radioLabel = Utils.createElement('label', '', { for: `${item.id}-${option.value}` }, option.label);
           radioContainer.append(radio, radioLabel);
           radioGroup.appendChild(radioContainer);
         });
+        
+        // 为主题选择器添加事件监听
+        if (item.id === 'theme') {
+          radioGroup.addEventListener('change', (e) => {
+            if (e.target.type === 'radio') {
+              Settings.handleThemeChange(e.target.value);
+            }
+          });
+        }
+        
         itemControl.appendChild(radioGroup);
         break;
         
@@ -357,7 +546,7 @@ export const Settings = {
         const textInput = Utils.createElement('input', 'setting-input', {
           type: 'text',
           id: item.id,
-          value: item.value || '',
+          value: currentValue || '',
           placeholder: item.placeholder || ''
         });
         
@@ -375,7 +564,7 @@ export const Settings = {
         const passwordInput = Utils.createElement('input', 'setting-input', {
           type: 'password',
           id: item.id,
-          value: item.value || '',
+          value: currentValue || '',
           placeholder: item.placeholder || ''
         });
         
@@ -395,7 +584,7 @@ export const Settings = {
           rows: item.rows || 4,
           placeholder: item.placeholder || ''
         });
-        textarea.value = item.value || '';
+        textarea.value = currentValue || '';
         
         // AI相关设置事件监听
         if (item.id.startsWith('ai-')) {
@@ -960,59 +1149,45 @@ export const Settings = {
     );
   },
 
-  bindEvents: (modalId) => {
-    const modal = document.getElementById(modalId);
-    
-    // 关闭按钮
-    modal.querySelector('.modal-close').addEventListener('click', () => {
-      Menu.Modal.hide(modalId);
-    });
-    
-    // 点击模态框外部关闭
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        Menu.Modal.hide(modalId);
-      }
-    });
-    
-    // 分类切换
-    modal.querySelectorAll('.settings-category').forEach(categoryElement => {
-      categoryElement.addEventListener('click', () => {
-        // 移除所有活动状态
-        modal.querySelectorAll('.settings-category').forEach(el => el.classList.remove('active'));
-        // 添加当前活动状态
-        categoryElement.classList.add('active');
-        
-        // 更新当前分类
-        Settings.currentCategory = categoryElement.dataset.category;
-        
-        // 渲染内容
-        Settings.renderCategoryContent(Settings.currentCategory);
-      });
-    });
-      // 添加拖动功能
-    const modalContent = modal.querySelector('.modal-content');
-    if (modalContent) {
-      Menu._makeModalDraggable(modal, modalContent);
-    }
-  },
   /**
    * 处理网格系统启用/禁用
    * @param {boolean} enabled - 是否启用网格系统
    */
   handleGridEnabledChange(enabled) {
-    GridSystem.toggleGridSystem(enabled);
-    
-    // 显示通知
-    Notification.notify({
-      title: enabled 
-        ? I18n.getMessage('gridSystemEnabled', '网格系统已启用')
-        : I18n.getMessage('gridSystemDisabled', '网格系统已禁用'),
-      message: enabled
-        ? I18n.getMessage('gridSystemEnabledMessage', '元素将吸附到网格')
-        : I18n.getMessage('gridSystemDisabledMessage', '元素将自由放置'),
-      type: enabled ? 'success' : 'info',
-      duration: 2000
+    return new Promise((resolve) => {
+      try {
+        console.log('处理网格系统启用状态变化:', enabled);
+        
+        if (window.GridSystem) {
+          GridSystem.toggleGridSystem(enabled);
+          
+          // 显示通知
+          Notification.notify({
+            title: enabled 
+              ? I18n.getMessage('gridSystemEnabled', '网格系统已启用')
+              : I18n.getMessage('gridSystemDisabled', '网格系统已禁用'),
+            message: enabled
+              ? I18n.getMessage('gridSystemEnabledMessage', '元素将吸附到网格')
+              : I18n.getMessage('gridSystemDisabledMessage', '元素将自由放置'),
+            type: enabled ? 'success' : 'info',
+            duration: 2000
+          });
+          
+          // 触发设置同步事件
+          window.dispatchEvent(new CustomEvent('gridSettingsChanged', { 
+            detail: { type: 'enabled', value: enabled } 
+          }));
+          
+          console.log('网格系统状态变化处理完成:', enabled);
+          resolve(true);
+        } else {
+          console.error('GridSystem 未初始化');
+          resolve(false);
+        }
+      } catch (error) {
+        console.error('处理网格启用状态变化失败:', error);
+        resolve(false);
+      }
     });
   },
 
@@ -1021,18 +1196,40 @@ export const Settings = {
    * @param {boolean} enabled - 是否启用调试模式
    */
   handleGridDebugChange(enabled) {
-    GridSystem.toggleGridDebug(enabled);
-    
-    // 显示通知
-    Notification.notify({
-      title: enabled
-        ? I18n.getMessage('gridDebugEnabled', '网格调试已启用')
-        : I18n.getMessage('gridDebugDisabled', '网格调试已禁用'),
-      message: enabled
-        ? I18n.getMessage('gridDebugEnabledMessage', '现在您可以看到网格线')
-        : I18n.getMessage('gridDebugDisabledMessage', '网格线已隐藏'),
-      type: 'info',
-      duration: 2000
+    return new Promise((resolve) => {
+      try {
+        console.log('处理网格调试状态变化:', enabled);
+        
+        if (window.GridSystem) {
+          GridSystem.toggleGridDebug(enabled);
+          
+          // 显示通知
+          Notification.notify({
+            title: enabled
+              ? I18n.getMessage('gridDebugEnabled', '网格调试已启用')
+              : I18n.getMessage('gridDebugDisabled', '网格调试已禁用'),
+            message: enabled
+              ? I18n.getMessage('gridDebugEnabledMessage', '现在您可以看到网格线')
+              : I18n.getMessage('gridDebugDisabledMessage', '网格线已隐藏'),
+            type: 'info',
+            duration: 2000
+          });
+          
+          // 触发设置同步事件
+          window.dispatchEvent(new CustomEvent('gridSettingsChanged', { 
+            detail: { type: 'debug', value: enabled } 
+          }));
+          
+          console.log('网格调试状态变化处理完成:', enabled);
+          resolve(true);
+        } else {
+          console.error('GridSystem 未初始化');
+          resolve(false);
+        }
+      } catch (error) {
+        console.error('处理网格调试状态变化失败:', error);
+        resolve(false);
+      }
     });
   },
 
@@ -1041,7 +1238,192 @@ export const Settings = {
    * @param {number} threshold - 新的吸附阈值
    */
   handleGridSnapThresholdChange(threshold) {
-    GridSystem.setSnapThreshold(threshold);
+    try {
+      console.log('处理网格吸附阈值变化:', threshold);
+      
+      if (window.GridSystem) {
+        GridSystem.setSnapThreshold(threshold);
+        
+        // 触发设置同步事件
+        window.dispatchEvent(new CustomEvent('gridSettingsChanged', { 
+          detail: { type: 'snapThreshold', value: threshold } 
+        }));
+        
+        console.log('网格吸附阈值变化处理完成:', threshold);
+        return true;
+      } else {
+        console.error('GridSystem 未初始化');
+        return false;
+      }
+    } catch (error) {
+      console.error('处理网格吸附阈值变化失败:', error);
+      return false;
+    }
+  },
+
+  // 改进设置同步方法
+  syncSettingsWithSystem() {
+    console.log('开始同步设置与系统状态');
+    
+    try {
+      // 同步网格系统设置
+      const gridEnabledCheckbox = document.getElementById('grid-enabled');
+      const gridDebugCheckbox = document.getElementById('grid-debug');
+      const gridSnapThresholdRange = document.getElementById('grid-snap-threshold');
+      
+      if (window.GridSystem) {
+        if (gridEnabledCheckbox) {
+          const currentEnabled = GridSystem.gridEnabled;
+          gridEnabledCheckbox.checked = currentEnabled;
+          console.log('同步网格启用状态:', currentEnabled);
+        }
+        
+        if (gridDebugCheckbox) {
+          const currentDebug = GridSystem.isDebugMode;
+          gridDebugCheckbox.checked = currentDebug;
+          console.log('同步网格调试状态:', currentDebug);
+        }
+        
+        if (gridSnapThresholdRange) {
+          const currentThreshold = GridSystem.snapThreshold;
+          gridSnapThresholdRange.value = currentThreshold;
+          const rangeValue = gridSnapThresholdRange.parentElement?.querySelector('.range-value');
+          if (rangeValue) {
+            rangeValue.textContent = `${currentThreshold}px`;
+          }
+          console.log('同步网格吸附阈值:', currentThreshold);
+        }
+      } else {
+        console.warn('GridSystem 未初始化，跳过网格设置同步');
+      }
+      
+      // 同步AI设置
+      const aiEnabledCheckbox = document.getElementById('ai-enabled');
+      if (window.AI && aiEnabledCheckbox) {
+        const currentAIEnabled = AI.getConfig().enabled;
+        aiEnabledCheckbox.checked = currentAIEnabled;
+        console.log('同步AI启用状态:', currentAIEnabled);
+      }
+      
+      console.log('设置同步完成');
+    } catch (error) {
+      console.error('同步设置失败:', error);
+    }
+  },
+
+  bindEvents: (modalId) => {
+    // 绑定关闭按钮事件
+    const closeBtn = document.querySelector(`#${modalId} .modal-close`);
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        Menu.Modal.hide(modalId);
+      });
+    }
+
+    // 绑定分类切换事件
+    const categoryItems = document.querySelectorAll(`#${modalId} .settings-category`);
+    categoryItems.forEach(item => {
+      item.addEventListener('click', () => {
+        // 移除所有分类的激活状态
+        categoryItems.forEach(cat => cat.classList.remove('active'));
+        
+        // 添加当前分类的激活状态
+        item.classList.add('active');
+        
+        // 更新当前分类
+        Settings.currentCategory = item.dataset.category;
+        
+        // 渲染分类内容
+        Settings.renderCategoryContent(Settings.currentCategory);
+      });
+    });
+
+    // 绑定模态框外部点击关闭事件
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          Menu.Modal.hide(modalId);
+        }
+      });
+    }
+
+    // 绑定ESC键关闭事件
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape') {
+        Menu.Modal.hide(modalId);
+        document.removeEventListener('keydown', handleEscKey);
+      }
+    };
+    document.addEventListener('keydown', handleEscKey);
+  },
+
+  /**
+   * 处理主题变化
+   * @param {string} theme - 主题值 ('auto', 'light', 'dark')
+   */
+  handleThemeChange(theme) {
+    try {
+      localStorage.setItem('theme', theme);
+      
+      // 应用主题
+      Settings.applyTheme(theme);
+      
+      // 显示通知
+      const themeNames = {
+        'auto': I18n.getMessage('themeAuto', '跟随系统'),
+        'light': I18n.getMessage('themeLight', '浅色模式'),
+        'dark': I18n.getMessage('themeDark', '深色模式')
+      };
+      
+      Notification.notify({
+        title: I18n.getMessage('themeChanged', '主题已更改'),
+        message: `${I18n.getMessage('currentTheme', '当前主题')}: ${themeNames[theme]}`,
+        type: 'success',
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('处理主题变化失败:', error);
+    }
+  },
+
+  /**
+   * 应用主题
+   * @param {string} theme - 主题值
+   */
+  applyTheme(theme) {
+    const root = document.documentElement;
+    
+    if (theme === 'auto') {
+      // 跟随系统主题
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    } else {
+      root.setAttribute('data-theme', theme);
+    }
+  },
+
+  /**
+   * 处理AI设置变化
+   * @param {string} settingId - 设置ID
+   * @param {any} value - 设置值
+   */
+  handleAISettingChange(settingId, value) {
+    try {
+      if (!window.AI) return;
+      
+      const config = AI.getConfig();
+      
+      switch (settingId) {
+        case 'ai-system-prompt':
+          AI.updateConfig({ systemPrompt: value });
+          break;
+        default:
+          console.warn(`未知的AI设置: ${settingId}`);
+      }
+    } catch (error) {
+      console.error('处理AI设置变化失败:', error);
+    }
   },
 
   /**
@@ -1049,92 +1431,70 @@ export const Settings = {
    * @param {boolean} enabled - 是否启用AI
    */
   handleAIEnabledChange(enabled) {
-    AI.updateConfig({ enabled });
-    
-    // 显示通知
-    Notification.notify({
-      title: enabled 
-        ? I18n.getMessage('aiEnabled', 'AI助手已启用')
-        : I18n.getMessage('aiDisabled', 'AI助手已禁用'),
-      message: enabled
-        ? I18n.getMessage('aiEnabledMessage', 'AI按钮将显示在搜索框旁')
-        : I18n.getMessage('aiDisabledMessage', 'AI按钮已隐藏'),
-      type: enabled ? 'success' : 'info',
-      duration: 2000
-    });
-  },
-
-  /**
-   * 处理AI设置变化
-   * @param {string} settingId - 设置ID
-   * @param {string} value - 设置值
-   */
-  handleAISettingChange(settingId, value) {
-    const configKey = settingId.replace('ai-', '').replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
-    AI.updateConfig({ [configKey]: value });
+    try {
+      if (window.AI) {
+        AI.updateConfig({ enabled });
+        
+        // 显示通知
+        Notification.notify({
+          title: enabled 
+            ? I18n.getMessage('aiEnabled', 'AI助手已启用')
+            : I18n.getMessage('aiDisabled', 'AI助手已禁用'),
+          message: enabled
+            ? I18n.getMessage('aiEnabledMessage', '您可以在搜索框旁看到AI按钮')
+            : I18n.getMessage('aiDisabledMessage', 'AI功能已关闭'),
+          type: enabled ? 'success' : 'info',
+          duration: 2000
+        });
+      }
+    } catch (error) {
+      console.error('处理AI启用状态变化失败:', error);
+    }
   },
 
   /**
    * 创建快速提示词编辑器
-   * @returns {HTMLElement} - 编辑器容器
+   * @returns {HTMLElement} - 快速提示词编辑器
    */
   createQuickPromptsEditor() {
     const container = Utils.createElement('div', 'quick-prompts-editor');
     
-    // 当前快速提示词列表
-    const currentPrompts = AI.getConfig().quickPrompts || [];
+    // 获取当前快速提示词
+    const aiConfig = AI.getConfig();
+    const quickPrompts = aiConfig.quickPrompts || [
+      '翻译成中文',
+      '总结要点',
+      '解释含义',
+      '写作润色'
+    ];
     
-    // 提示词列表容器
-    const promptsList = Utils.createElement('div', 'prompts-list');
+    // 创建文本区域
+    const textarea = Utils.createElement('textarea', 'quick-prompts-textarea', {
+      rows: 6,
+      placeholder: I18n.getMessage('quickPromptsPlaceholder', '输入快速提示词，用逗号分隔')
+    });
+    textarea.value = quickPrompts.join(', ');
     
-    // 渲染提示词列表
-    const renderPrompts = () => {
-      promptsList.innerHTML = '';
-      currentPrompts.forEach((prompt, index) => {
-        const promptItem = Utils.createElement('div', 'prompt-item');
-        
-        const promptText = Utils.createElement('input', 'prompt-input', {
-          type: 'text',
-          value: prompt,
-          placeholder: I18n.getMessage('enterPrompt', '输入提示词...')
-        });
-        
-        const deleteBtn = Utils.createElement('button', 'btn btn-small btn-danger', {}, '×');
-        deleteBtn.addEventListener('click', () => {
-          currentPrompts.splice(index, 1);
-          AI.updateConfig({ quickPrompts: currentPrompts });
-          renderPrompts();
-        });
-        
-        promptText.addEventListener('change', () => {
-          currentPrompts[index] = promptText.value.trim();
-          AI.updateConfig({ quickPrompts: currentPrompts.filter(p => p) });
-        });
-        
-        promptItem.append(promptText, deleteBtn);
-        promptsList.appendChild(promptItem);
+    // 添加保存按钮
+    const saveBtn = Utils.createElement('button', 'btn btn-primary save-prompts-btn', {}, 
+      I18n.getMessage('save', '保存'));
+    
+    saveBtn.addEventListener('click', () => {
+      const value = textarea.value.trim();
+      const prompts = value ? value.split(',').map(p => p.trim()).filter(p => p) : [];
+      
+      AI.updateConfig({ quickPrompts: prompts });
+      
+      Notification.notify({
+        title: I18n.getMessage('success', '成功'),
+        message: I18n.getMessage('quickPromptsSaved', '快速提示词已保存'),
+        type: 'success',
+        duration: 2000
       });
-    };
-    
-    // 添加按钮
-    const addBtn = Utils.createElement('button', 'btn btn-small btn-primary', {}, 
-      I18n.getMessage('addPrompt', '添加提示词'));
-    addBtn.addEventListener('click', () => {
-      currentPrompts.push('');
-      AI.updateConfig({ quickPrompts: currentPrompts });
-      renderPrompts();
-      // 聚焦到新添加的输入框
-      setTimeout(() => {
-        const inputs = promptsList.querySelectorAll('.prompt-input');
-        const lastInput = inputs[inputs.length - 1];
-        if (lastInput) lastInput.focus();
-      }, 100);
     });
     
-    // 初始渲染
-    renderPrompts();
-    
-    container.append(promptsList, addBtn);
+    container.append(textarea, saveBtn);
     return container;
-  }
+  },
+
 };
