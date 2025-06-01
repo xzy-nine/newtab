@@ -166,6 +166,17 @@ export const Utils = {
         }
       },
 
+      handleWindowResize: function() {
+        // 处理窗口大小变化
+        // 这里可以添加响应式布局调整逻辑
+        document.dispatchEvent(new CustomEvent('window-resized', {
+          detail: {
+            width: window.innerWidth,
+            height: window.innerHeight
+          }
+        }));
+      },
+
       initUIEvents: function() {
         window.addEventListener('load', this.handlePageLoad);
         window.addEventListener('resize', this.handleWindowResize);

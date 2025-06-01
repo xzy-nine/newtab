@@ -24,6 +24,11 @@ let currentLanguage = 'en';
 
 // 添加全局错误处理（静默处理）
 window.addEventListener('error', (event) => {
+    // 静默处理 ResizeObserver 错误，这是一个常见的浏览器行为
+    if (event.message && event.message.includes('ResizeObserver loop completed with undelivered notifications')) {
+        event.preventDefault();
+        return;
+    }
     console.error('JavaScript错误:', event.message);
 });
 

@@ -10,11 +10,54 @@ import { Notification } from './notification.js';
 import { WidgetRegistry } from './widgetRegistry.js';
 import { GridSystem } from './gridSystem.js';  // 导入网格系统
 
-// 储存小部件数据和实例
-let widgets = [];
-let widgetContainers = [];
-let dragData = null;
-let isInitialized = false;
+// 小部件系统状态管理
+class WidgetSystemState {
+    constructor() {
+        this.widgets = [];
+        this.widgetContainers = [];
+        this.dragData = null;
+        this.isInitialized = false;
+        this.observers = new Map(); // 存储 ResizeObserver 等观察器
+    }
+
+    addContainer(container) {
+        this.widgetContainers.push(container);
+    }
+
+    removeContainer(container) {
+        this.widgetContainers = this.widgetContainers.filter(c => c !== container);
+    }
+
+    cleanup() {
+        // 清理所有观察器
+        this.observers.forEach((observer, key) => {
+            if (observer && typeof observer.disconnect === 'function') {
+                observer.disconnect();
+            }
+        });
+        this.observers.clear();
+    }
+
+    /**
+     * 清空所有数据
+     */
+    clear() {
+        this.widgets.length = 0;
+        this.widgetContainers.length = 0;
+        this.dragData = null;
+        this.isInitialized = false;
+        this.clearCache();
+    }
+
+    /**
+     * 清理缓存
+     */
+    clearCache() {
+        // 清理观察器
+        this.cleanup();
+        // 可以在这里清理任何其他缓存数据
+    }
+}
 
 /**
  * 获取国际化消息或使用默认值
@@ -30,6 +73,178 @@ function getI18nMessage(key, defaultText) {
 }
 
 /**
+ * 事件处理器集合
+ */
+const EventHandlers = {
+    /**
+     * 设置拖拽事件处理
+     * @param {HTMLElement} handle - 拖拽手柄元素
+     * @param {HTMLElement} container - 小部件容器元素
+     */
+    setupDragHandlers(handle, container) {
+        let isDragging = false;
+        
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // 如果容器是固定的，不允许拖动
+            if (container.dataset.fixed === 'true') {
+                const fixedTitle = getI18nMessage('widgetFixed', '小部件已固定');
+                const fixedMessage = getI18nMessage('unfixWidgetToMove', '请先取消固定再移动');
+                
+                Notification.notify({
+                    title: fixedTitle,
+                    message: fixedMessage,
+                    type: 'info',
+                    duration: 2000
+                });
+                return;
+            }
+            
+            isDragging = true;
+            
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startLeft = parseInt(container.style.left) || 0;
+            const startTop = parseInt(container.style.top) || 0;
+            
+            container.classList.add('widget-dragging');
+            
+            function handleMouseMove(moveEvent) {
+                if (!isDragging) return;
+                
+                const dx = moveEvent.clientX - startX;
+                const dy = moveEvent.clientY - startY;
+                
+                let newLeft = Math.max(0, startLeft + dx);
+                let newTop = Math.max(0, startTop + dy);
+                
+                container.style.left = `${newLeft}px`;
+                container.style.top = `${newTop}px`;
+                
+                moveEvent.preventDefault();
+            }
+            
+            function handleMouseUp() {
+                if (isDragging) {
+                    isDragging = false;
+                    container.classList.remove('widget-dragging');
+                    
+                    if (GridSystem.gridEnabled) {
+                        GridSystem.snapElementToGrid(container, true);
+                    }
+                    
+                    document.dispatchEvent(new CustomEvent('widget-data-changed'));
+                }
+                
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            }
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        });
+    },
+
+    /**
+     * 设置调整大小事件处理
+     * @param {HTMLElement} handle - 调整大小控制点元素
+     * @param {HTMLElement} container - 小部件容器元素
+     */
+    setupResizeHandlers(handle, container) {
+        let isResizing = false;
+        
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (container.dataset.fixed === 'true') {
+                Notification.notify({
+                    title: I18n.getMessage('widgetFixed', '小部件已固定'),
+                    message: I18n.getMessage('unfixWidgetToResize', '请先取消固定再调整大小'),
+                    type: 'info',
+                    duration: 2000
+                });
+                return;
+            }
+            
+            isResizing = true;
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startWidth = parseInt(container.style.width) || 200;
+            const startHeight = parseInt(container.style.height) || 150;
+            
+            container.classList.add('widget-resizing');
+            
+            function handleMouseMove(moveEvent) {
+                if (!isResizing) return;
+                
+                const dx = moveEvent.clientX - startX;
+                const dy = moveEvent.clientY - startY;
+                
+                let newWidth = Math.max(100, startWidth + dx);
+                let newHeight = Math.max(80, startHeight + dy);
+                
+                container.style.width = `${newWidth}px`;
+                container.style.height = `${newHeight}px`;
+                
+                moveEvent.preventDefault();
+            }
+            
+            function handleMouseUp() {
+                if (isResizing) {
+                    isResizing = false;
+                    container.classList.remove('widget-resizing');
+                    
+                    if (GridSystem.gridEnabled) {
+                        GridSystem.snapElementToGrid(container, true);
+                    }
+                    
+                    document.dispatchEvent(new CustomEvent('widget-data-changed'));
+                }
+                
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            }
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        });
+    },
+
+    /**
+     * 设置滚轮事件处理
+     * @param {HTMLElement} container - 小部件容器元素
+     */
+    setupScrollHandlers(container) {
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            const contentArea = container.querySelector('.widget-content');
+            if (!contentArea) return;
+            
+            const widgetItems = contentArea.querySelectorAll('.widget-item');
+            if (widgetItems.length <= 1) return;
+            
+            const currentIndex = WidgetSystem.getActiveWidgetIndex(container);
+            let newIndex = currentIndex;
+            
+            if (e.deltaY > 0) {
+                newIndex = (currentIndex + 1) % widgetItems.length;
+            } else {
+                newIndex = (currentIndex - 1 + widgetItems.length) % widgetItems.length;
+            }
+            
+            WidgetSystem.setActiveWidgetItem(container, newIndex);
+        }, { passive: false });
+    }
+};
+
+// 创建状态管理实例
+const state = new WidgetSystemState();
+
+/**
  * 小部件系统API
  */
 export const WidgetSystem = {
@@ -40,7 +255,7 @@ export const WidgetSystem = {
     async init() {
         try {          
             // 防止重复初始化
-            if (isInitialized) {
+            if (state.isInitialized) {
                 return Promise.resolve();
             }
             
@@ -86,10 +301,10 @@ export const WidgetSystem = {
             });
             
             // 添加窗口大小变化监听器，确保小部件在视口内
-            window.addEventListener('resize', GridSystem.debounce(() => {
+            window.addEventListener('resize', Utils.debounce(() => {
                 if (!GridSystem.gridEnabled) {
                     // 如果不启用网格系统，手动确保所有小部件在视口内
-                    widgetContainers.forEach(container => {
+                    state.widgetContainers.forEach(container => {
                         this.ensureElementInViewport(container);
                     });
                     // 保存更新的位置
@@ -97,7 +312,7 @@ export const WidgetSystem = {
                 }
             }, 250));
             
-            isInitialized = true;
+            state.isInitialized = true;
             return Promise.resolve();
         } catch (error) {
             console.error('初始化小部件系统失败:', error);
@@ -117,18 +332,18 @@ export const WidgetSystem = {
         // 使用withLoading替代自行管理加载状态
         return Utils.withLoading(async () => {
             const data = await chrome.storage.local.get('widgets');
-            widgets = data.widgets || [];
+            state.widgets = data.widgets || [];
             
             // 清除现有小部件容器
-            widgetContainers.forEach(container => {
+            state.widgetContainers.forEach(container => {
                 if (document.body.contains(container)) {
                     document.body.removeChild(container);
                 }
             });
-            widgetContainers = [];
+            state.widgetContainers = [];
             
             // 为每个保存的小部件容器创建DOM元素
-            widgets.forEach(widgetData => {
+            state.widgets.forEach(widgetData => {
                 this.createWidgetContainer(widgetData);
             });
         }, {
@@ -144,7 +359,7 @@ export const WidgetSystem = {
     async saveWidgets() {
         try {
             // 只保存必要的数据
-            const widgetsToSave = widgetContainers.map(container => {
+            const widgetsToSave = state.widgetContainers.map(container => {
                 // 获取绝对位置和尺寸
                 const pixelPosition = {
                     x: parseInt(container.style.left) || 0,
@@ -619,16 +834,15 @@ export const WidgetSystem = {
         }
         
         // 创建侧边拖动条
-        const dragHandle = document.createElement('div');
-        dragHandle.className = 'widget-drag-handle';
-        dragHandle.title = '拖动'; 
+        const dragHandle = Utils.createElement('div', 'widget-drag-handle', {
+            title: '拖动'
+        });
         dragHandle.style.cursor = 'move';
         
         container.appendChild(dragHandle);
         
         // 创建固定按钮（图钉）
-        const pinButton = document.createElement('button');
-        pinButton.className = 'widget-pin-button';
+        const pinButton = Utils.createElement('button', 'widget-pin-button');
         
         // 使用安全的国际化方法
         const unfixText = getI18nMessage('unfixWidgetContainer', '取消固定');
@@ -646,30 +860,27 @@ export const WidgetSystem = {
         container.appendChild(pinButton);
         
         // 添加调整大小控制点
-        const resizeHandle = document.createElement('div');
-        resizeHandle.className = 'widget-resize-handle';
-        resizeHandle.title = '调整大小';
+        const resizeHandle = Utils.createElement('div', 'widget-resize-handle', {
+            title: '调整大小'
+        });
         container.appendChild(resizeHandle);
         
         // 添加拖动事件
-        this.setupDragHandlers(dragHandle, container);
+        EventHandlers.setupDragHandlers(dragHandle, container);
         
         // 添加调整大小事件
-        this.setupResizeHandlers(resizeHandle, container);
+        EventHandlers.setupResizeHandlers(resizeHandle, container);
         
         // 创建内容区域包装器
-        const contentWrapper = document.createElement('div');
-        contentWrapper.className = 'widget-content-wrapper';
+        const contentWrapper = Utils.createElement('div', 'widget-content-wrapper');
         container.appendChild(contentWrapper);
         
         // 创建内容区域
-        const contentArea = document.createElement('div');
-        contentArea.className = 'widget-content';
+        const contentArea = Utils.createElement('div', 'widget-content');
         contentWrapper.appendChild(contentArea);
         
         // 添加小部件指示器容器
-        const indicatorsContainer = document.createElement('div');
-        indicatorsContainer.className = 'widget-indicators';
+        const indicatorsContainer = Utils.createElement('div', 'widget-indicators');
         contentWrapper.appendChild(indicatorsContainer);
 
         // 如果有已保存的小部件，添加它们
@@ -689,46 +900,20 @@ export const WidgetSystem = {
         }
         
         // 添加滚轮事件监听器
-        this.setupScrollHandlers(container);
+        EventHandlers.setupScrollHandlers(container);
         
         // 添加到DOM
         document.body.appendChild(container);
         
         // 添加到管理列表
-        widgetContainers.push(container);
+        state.addContainer(container);
         
         // 保存状态
         this.saveWidgets();
         
         return container;
     },
-    
-    /**
-     * 设置滚轮事件处理
-     * @param {HTMLElement} container - 小部件容器元素
-     */
-    setupScrollHandlers(container) {
-        container.addEventListener('wheel', (e) => {
-            e.preventDefault(); // 防止页面滚动
-            
-            const contentArea = container.querySelector('.widget-content');
-            if (!contentArea || contentArea.children.length <= 1) return;
-            
-            const activeWidgetIndex = this.getActiveWidgetIndex(container);
-            const widgetItems = Array.from(contentArea.querySelectorAll('.widget-item'));
-            
-            // 确定滚动方向
-            const delta = e.deltaY || e.detail || e.wheelDelta;
-            const direction = delta > 0 ? 1 : -1;
-            
-            // 计算新的索引（循环滚动）
-            let newIndex = (activeWidgetIndex + direction) % widgetItems.length;
-            if (newIndex < 0) newIndex = widgetItems.length - 1;
-            
-            // 设置新的活动小部件
-            this.setActiveWidgetItem(container, newIndex);
-        }, { passive: false });
-    },
+  
     
     /**
      * 获取当前活动的小部件索引
@@ -858,10 +1043,9 @@ export const WidgetSystem = {
         const existingButton = contentArea.querySelector('.widget-add-button');
         if (existingButton) return;
         
-        const addButton = document.createElement('button');
-        addButton.className = 'widget-add-button';
-        addButton.innerHTML = '+';
-        addButton.title = I18n.getMessage('addWidget', '添加小部件');
+        const addButton = Utils.createElement('button', 'widget-add-button', {
+            title: I18n.getMessage('addWidget', '添加小部件')
+        }, '+');
         
         addButton.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -870,106 +1054,197 @@ export const WidgetSystem = {
         
         contentArea.appendChild(addButton);
     },
-    
-    /**
+      /**
      * 显示添加小部件对话框
      * @param {HTMLElement} container - 小部件容器
      */
     async showAddWidgetDialog(container) {
+        if (!container) {
+            console.error('缺少必需的容器参数');
+            return;
+        }
+
         try {
-            // 获取可用小部件列表，确保是数组
+            // 获取可用小部件列表
             const availableWidgets = await this.getAvailableWidgets();
-              // 如果不是数组或为空数组，显示提示
-            if (!Array.isArray(availableWidgets) || availableWidgets.length === 0) {
-                Notification.notify({
-                    title: getI18nMessage('notice', '提示'),
-                    message: getI18nMessage('noWidgetsAvailable', '没有可用的小部件'),
-                    type: 'info',
-                    duration: 3000
-                });
+            
+            if (!this.validateAvailableWidgets(availableWidgets)) {
                 return;
             }
             
-            // 创建对话框选项
-            const formItems = availableWidgets.map(widget => ({
-                id: widget.type,
-                label: widget.name,
-                type: 'checkbox',
-                value: false
-            }));
+            // 创建并显示对话框
+            await this.createAndShowWidgetDialog(container, availableWidgets);
             
-            // 使用安全的国际化方法
-            const titleText = getI18nMessage('addWidgetTitle', '添加小部件');
-            const addText = getI18nMessage('add', '添加');
-            const cancelText = getI18nMessage('cancel', '取消');
-            
-            // 防止重复操作
-            let isProcessing = false;
-            
-            Menu.showFormModal(
-                titleText,
-                formItems,
-                async (formData) => {
-                    if (isProcessing) return; // 防止重复操作
-                    isProcessing = true;
-                    
-                    try {
-                        // 记录需要添加的小部件类型
-                        const selectedWidgetTypes = [];
-                        
-                        // 检查每个小部件类型是否被选中
-                        Object.entries(formData).forEach(([key, value]) => {
-                            // 只有当值为 true 时才添加到选中列表
-                            if (value === true) {
-                                selectedWidgetTypes.push(key);
-                            }
-                        });
-                          // 如果没有选择任何小部件，显示提示
-                        if (selectedWidgetTypes.length === 0) {
-                            Notification.notify({
-                                title: getI18nMessage('notice', '提示'),
-                                message: getI18nMessage('noWidgetSelected', '未选择任何小部件'),
-                                type: 'info',
-                                duration: 3000
-                            });
-                            return;
-                        }
-                        
-                        // 按顺序添加选中的小部件
-                        for (const type of selectedWidgetTypes) {
-                            await this.addWidgetItem(container, type);
-                        }
-                          // 添加成功提示
-                        if (selectedWidgetTypes.length > 0) {
-                            Notification.notify({
-                                title: getI18nMessage('success', '成功'),
-                                message: getI18nMessage('widgetsAdded', '已添加所选小部件'),
-                                type: 'success',
-                                duration: 3000
-                            });
-                        }                    } catch (error) {
-                        console.error('添加小部件失败:', error);
-                        Notification.notify({
-                            title: getI18nMessage('error', '错误'),
-                            message: getI18nMessage('addWidgetFailed', '添加小部件失败'),
-                            type: 'error',
-                            duration: 5000
-                        });
-                    } finally {
-                        isProcessing = false;
-                    }
-                },
-                addText,
-                cancelText
-            );        } catch (error) {
-            console.error('获取可用小部件失败:', error);
+        } catch (error) {
+            this.handleWidgetDialogError(error);
+        }
+    },
+
+    /**
+     * 验证可用小部件列表
+     * @param {Array} availableWidgets - 可用小部件列表
+     * @returns {boolean} 是否有效
+     */
+    validateAvailableWidgets(availableWidgets) {
+        if (!Array.isArray(availableWidgets) || availableWidgets.length === 0) {
             Notification.notify({
-                title: getI18nMessage('error', '错误'),
-                message: getI18nMessage('loadingWidgetsFailed', '加载可用小部件失败'),
-                type: 'error',
-                duration: 5000
+                title: getI18nMessage('notice', '提示'),
+                message: getI18nMessage('noWidgetsAvailable', '没有可用的小部件'),
+                type: 'info',
+                duration: 3000
+            });
+            return false;
+        }
+        return true;
+    },
+
+    /**
+     * 创建并显示小部件对话框
+     * @param {HTMLElement} container - 小部件容器
+     * @param {Array} availableWidgets - 可用小部件列表
+     */
+    async createAndShowWidgetDialog(container, availableWidgets) {
+        // 创建对话框选项
+        const formItems = availableWidgets.map(widget => ({
+            id: widget.type,
+            label: widget.name,
+            type: 'checkbox',
+            value: false
+        }));
+        
+        // 获取国际化文本
+        const dialogTexts = this.getDialogTexts();
+        
+        // 防止重复操作
+        let isProcessing = false;
+        
+        Menu.showFormModal(
+            dialogTexts.title,
+            formItems,
+            async (formData) => {
+                if (isProcessing) return;
+                await this.handleWidgetSelection(container, formData, () => isProcessing = true, () => isProcessing = false);
+            },
+            dialogTexts.add,
+            dialogTexts.cancel
+        );
+    },
+
+    /**
+     * 获取对话框文本
+     * @returns {Object} 包含所有文本的对象
+     */
+    getDialogTexts() {
+        return {
+            title: getI18nMessage('addWidgetTitle', '添加小部件'),
+            add: getI18nMessage('add', '添加'),
+            cancel: getI18nMessage('cancel', '取消')
+        };
+    },
+
+    /**
+     * 处理小部件选择
+     * @param {HTMLElement} container - 小部件容器
+     * @param {Object} formData - 表单数据
+     * @param {Function} setProcessing - 设置处理状态函数
+     * @param {Function} clearProcessing - 清除处理状态函数
+     */
+    async handleWidgetSelection(container, formData, setProcessing, clearProcessing) {
+        setProcessing();
+        
+        try {
+            const selectedWidgetTypes = this.extractSelectedWidgetTypes(formData);
+            
+            if (selectedWidgetTypes.length === 0) {
+                this.showNoSelectionNotification();
+                return;
+            }
+            
+            await this.addSelectedWidgets(container, selectedWidgetTypes);
+            this.showSuccessNotification(selectedWidgetTypes.length);
+            
+        } catch (error) {
+            this.handleAddWidgetError(error);
+        } finally {
+            clearProcessing();
+        }
+    },
+
+    /**
+     * 提取选中的小部件类型
+     * @param {Object} formData - 表单数据
+     * @returns {Array} 选中的小部件类型数组
+     */
+    extractSelectedWidgetTypes(formData) {
+        return Object.entries(formData)
+            .filter(([, value]) => value === true)
+            .map(([key]) => key);
+    },
+
+    /**
+     * 显示未选择通知
+     */
+    showNoSelectionNotification() {
+        Notification.notify({
+            title: getI18nMessage('notice', '提示'),
+            message: getI18nMessage('noWidgetSelected', '未选择任何小部件'),
+            type: 'info',
+            duration: 3000
+        });
+    },
+
+    /**
+     * 添加选中的小部件
+     * @param {HTMLElement} container - 小部件容器
+     * @param {Array} selectedWidgetTypes - 选中的小部件类型
+     */
+    async addSelectedWidgets(container, selectedWidgetTypes) {
+        for (const type of selectedWidgetTypes) {
+            await this.addWidgetItem(container, type);
+        }
+    },
+
+    /**
+     * 显示成功通知
+     * @param {number} count - 添加的小部件数量
+     */
+    showSuccessNotification(count) {
+        if (count > 0) {
+            Notification.notify({
+                title: getI18nMessage('success', '成功'),
+                message: getI18nMessage('widgetsAdded', '已添加所选小部件'),
+                type: 'success',
+                duration: 3000
             });
         }
+    },
+
+    /**
+     * 处理添加小部件错误
+     * @param {Error} error - 错误对象
+     */
+    handleAddWidgetError(error) {
+        console.error('添加小部件失败:', error);
+        Notification.notify({
+            title: getI18nMessage('error', '错误'),
+            message: getI18nMessage('addWidgetFailed', '添加小部件失败'),
+            type: 'error',
+            duration: 5000
+        });
+    },
+
+    /**
+     * 处理小部件对话框错误
+     * @param {Error} error - 错误对象
+     */
+    handleWidgetDialogError(error) {
+        console.error('获取可用小部件失败:', error);
+        Notification.notify({
+            title: getI18nMessage('error', '错误'),
+            message: getI18nMessage('loadingWidgetsFailed', '加载可用小部件失败'),
+            type: 'error',
+            duration: 5000
+        });
     },
     
     /**
@@ -1000,13 +1275,12 @@ export const WidgetSystem = {
     /**
      * 删除小部件容器
      * @param {HTMLElement} container - 小部件容器元素 
-     */
-    deleteWidgetContainer(container) {
+     */    deleteWidgetContainer(container) {
         // 从DOM中移除
         document.body.removeChild(container);
         
         // 从管理列表中移除
-        widgetContainers = widgetContainers.filter(c => c !== container);
+        state.removeContainer(container);
         
         // 保存状态
         this.saveWidgets();
@@ -1043,176 +1317,9 @@ export const WidgetSystem = {
         // 保存状态
         this.saveWidgets();
     },
-    
-    /**
-     * 设置拖拽事件处理
-     * @param {HTMLElement} handle - 拖拽手柄元素
-     * @param {HTMLElement} container - 小部件容器元素
-     */
-    setupDragHandlers(handle, container) {
-        let isDragging = false;
-        
-        handle.addEventListener('mousedown', (e) => {
-            e.preventDefault(); // 阻止默认行为
-            e.stopPropagation(); // 阻止事件冒泡
-            
-            // 如果容器是固定的，不允许拖动
-            if (container.dataset.fixed === 'true') {
-                // 使用安全的国际化方法
-                const fixedTitle = getI18nMessage('widgetFixed', '小部件已固定');
-                const fixedMessage = getI18nMessage('unfixWidgetToMove', '请先取消固定再移动');
-                
-                // 显示提示信息
-                Notification.notify({
-                    title: fixedTitle,
-                    message: fixedMessage,
-                    type: 'info',
-                    duration: 2000
-                });
-                return;
-            }
-            
-            // 设置初始拖动状态
-            isDragging = true;
-            
-            // 记录初始位置
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const startLeft = parseInt(container.style.left) || 0;
-            const startTop = parseInt(container.style.top) || 0;
-            
-            container.classList.add('widget-dragging');
-            
-            // 移动处理函数
-            function handleMouseMove(moveEvent) {
-                if (!isDragging) return;
-                
-                const dx = moveEvent.clientX - startX;
-                const dy = moveEvent.clientY - startY;
-                
-                // 计算新位置
-                let newLeft = Math.max(0, startLeft + dx);
-                let newTop = Math.max(0, startTop + dy);
-                
-                // 应用新位置
-                container.style.left = `${newLeft}px`;
-                container.style.top = `${newTop}px`;
-                
-                moveEvent.preventDefault();
-            }
-            
-            // 放开处理函数
-            function handleMouseUp() {
-                if (isDragging) {
-                    isDragging = false;
-                    container.classList.remove('widget-dragging');
-                    
-                    if (GridSystem.gridEnabled) {
-                        // 使用网格系统吸附元素
-                        GridSystem.snapElementToGrid(container, true);
-                    }
-                    
-                    // 保存位置信息
-                    document.dispatchEvent(new CustomEvent('widget-data-changed'));
-                }
-                
-                // 移除临时事件处理
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-            }
-            
-            // 绑定移动和放开事件
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-        });
-    },
-    
-    /**
-     * 设置调整大小事件处理
-     * @param {HTMLElement} handle - 调整大小控制点元素
-     * @param {HTMLElement} container - 小部件容器元素
-     */
-    setupResizeHandlers(handle, container) {
-        let isResizing = false;
-        
-        handle.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // 如果容器是固定的，不允许调整大小
-            if (container.dataset.fixed === 'true') {
-                // 显示提示信息
-                Notification.notify({
-                    title: I18n.getMessage('widgetFixed', '小部件已固定'),
-                    message: I18n.getMessage('unfixWidgetToResize', '请先取消固定再调整大小'),
-                    type: 'info',
-                    duration: 2000
-                });
-                return;
-            }
-            
-            // 设置初始调整状态
-            isResizing = true;
-            
-            // 记录初始位置和尺寸
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const startWidth = parseInt(container.style.width) || 200;
-            const startHeight = parseInt(container.style.height) || 150;
-            
-            // 设置最大和最小尺寸限制
-            const maxWidth = 300;
-            const maxHeight = 300;
-            const minWidth = 150;
-            const minHeight = 100;
-            
-            container.classList.add('widget-resizing');
-            
-            // 移动处理函数
-            function handleMouseMove(moveEvent) {
-                if (!isResizing) return;
-                
-                const dx = moveEvent.clientX - startX;
-                const dy = moveEvent.clientY - startY;
-                
-                // 计算新尺寸，确保在最小和最大尺寸限制内
-                let newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + dx));
-                let newHeight = Math.min(maxHeight, Math.max(minHeight, startHeight + dy));
-                
-                // 应用新尺寸
-                container.style.width = `${newWidth}px`;
-                container.style.height = `${newHeight}px`;
-                
-                moveEvent.preventDefault();
-            }
-            
-            // 放开处理函数
-            function handleMouseUp() {
-                if (isResizing) {
-                    isResizing = false;
-                    container.classList.remove('widget-resizing');
-                    
-                    if (GridSystem.gridEnabled) {
-                        // 使用网格系统吸附元素
-                        GridSystem.snapElementToGrid(container, true);
-                    }
-                    
-                    // 触发尺寸变更事件
-                    document.dispatchEvent(new CustomEvent('widget-data-changed'));
-                }
-                
-                // 移除临时事件处理
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-            }
-            
-            // 绑定移动和放开事件
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-        });
-    },
-    
-    /**
+  
+  
+      /**
      * 处理缩放变化
      * @param {Object} zoomData - 缩放数据
      */
@@ -1220,56 +1327,166 @@ export const WidgetSystem = {
         const { previousZoom, currentZoom, zoomRatio, zoomCompensation } = zoomData;
         
         // 获取有效的网格尺寸
-        const effectiveColumnCount = parseInt(document.body.dataset.effectiveColumnCount) || GridSystem.gridColumnCount;
-        const effectiveRowCount = parseInt(document.body.dataset.effectiveRowCount) || GridSystem.gridRowCount;
+        const gridInfo = this.getEffectiveGridInfo();
         
-        // 记录当前网格尺寸信息，用于调整可能溢出的小部件
-        document.body.dataset.currentGridColumns = effectiveColumnCount;
-        document.body.dataset.currentGridRows = effectiveRowCount;
+        // 记录当前网格尺寸信息
+        this.updateGridDataAttributes(gridInfo);
         
         if (GridSystem.gridEnabled) {
-            // 网格系统启用时，通过网格位置重定位小部件，并验证有效范围
-            this.repositionWidgetsOnGridChange(zoomCompensation, effectiveColumnCount, effectiveRowCount);
+            // 网格系统启用时的处理
+            this.handleGridEnabledZoom(zoomCompensation, gridInfo);
         } else {
-            // 网格系统禁用时，根据缩放比例调整小部件位置和尺寸
-            widgetContainers.forEach(container => {
-                // 获取当前位置和尺寸
-                const left = parseInt(container.style.left) || 0;
-                const top = parseInt(container.style.top) || 0;
-                const width = parseInt(container.style.width) || 200;
-                const height = parseInt(container.style.height) || 150;
-                
-                // 应用缩放补偿 - 这里使用乘法而不是除法
-                // 乘以补偿系数可保持小部件的相对位置不变
-                const compensatedLeft = Math.round(left * zoomCompensation);
-                const compensatedTop = Math.round(top * zoomCompensation);
-                const compensatedWidth = Math.round(width * zoomCompensation);
-                const compensatedHeight = Math.round(height * zoomCompensation);
-                
-                // 应用补偿后的尺寸和位置
-                container.style.left = `${compensatedLeft}px`;
-                container.style.top = `${compensatedTop}px`;
-                container.style.width = `${compensatedWidth}px`;
-                container.style.height = `${compensatedHeight}px`;
-                
-                // 设置缩放补偿CSS变量，供小部件内部元素使用
-                container.style.setProperty('--widget-zoom-compensation', zoomCompensation);
-                container.style.setProperty('--widget-inverse-zoom', 1/zoomCompensation);
-                
-                // 应用反向变换 - 使用CSS变量增强精度
-                if (zoomCompensation !== 1) {
-                    container.style.transform = `scale(${1/zoomCompensation})`;
-                    container.style.transformOrigin = 'top left';
-                } else {
-                    container.style.transform = '';
-                }
-                
-                // 确保小部件在视口内
-                this.ensureElementInViewport(container);
+            // 网格系统禁用时的处理
+            this.handleGridDisabledZoom(zoomCompensation);
+        }
+    },
+
+    /**
+     * 获取有效的网格信息
+     * @returns {Object} 网格信息
+     */
+    getEffectiveGridInfo() {
+        return {
+            columnCount: parseInt(document.body.dataset.effectiveColumnCount) || GridSystem.gridColumnCount,
+            rowCount: parseInt(document.body.dataset.effectiveRowCount) || GridSystem.gridRowCount
+        };
+    },
+
+    /**
+     * 更新网格数据属性
+     * @param {Object} gridInfo - 网格信息
+     */
+    updateGridDataAttributes(gridInfo) {
+        document.body.dataset.currentGridColumns = gridInfo.columnCount;
+        document.body.dataset.currentGridRows = gridInfo.rowCount;
+    },
+
+    /**
+     * 处理网格启用时的缩放
+     * @param {number} zoomCompensation - 缩放补偿
+     * @param {Object} gridInfo - 网格信息
+     */
+    handleGridEnabledZoom(zoomCompensation, gridInfo) {
+        this.repositionWidgetsOnGridChange(zoomCompensation, gridInfo.columnCount, gridInfo.rowCount);
+    },
+
+    /**
+     * 处理网格禁用时的缩放
+     * @param {number} zoomCompensation - 缩放补偿
+     */
+    handleGridDisabledZoom(zoomCompensation) {
+        // 使用requestAnimationFrame优化性能
+        requestAnimationFrame(() => {
+            state.widgetContainers.forEach(container => {
+                this.applyZoomCompensationToContainer(container, zoomCompensation);
             });
             
             // 保存新的位置
             this.saveWidgets();
+        });
+    },
+
+    /**
+     * 对容器应用缩放补偿
+     * @param {HTMLElement} container - 容器元素
+     * @param {number} zoomCompensation - 缩放补偿
+     */
+    applyZoomCompensationToContainer(container, zoomCompensation) {
+        // 获取当前位置和尺寸
+        const position = this.getContainerPosition(container);
+        const size = this.getContainerSize(container);
+        
+        // 计算补偿后的值
+        const compensated = this.calculateCompensatedValues(position, size, zoomCompensation);
+        
+        // 应用新的位置和尺寸
+        this.applyContainerTransform(container, compensated, zoomCompensation);
+        
+        // 确保容器在视口内
+        this.ensureElementInViewport(container);
+    },
+
+    /**
+     * 获取容器位置
+     * @param {HTMLElement} container - 容器元素
+     * @returns {Object} 位置信息
+     */
+    getContainerPosition(container) {
+        return {
+            left: parseInt(container.style.left) || 0,
+            top: parseInt(container.style.top) || 0
+        };
+    },
+
+    /**
+     * 获取容器尺寸
+     * @param {HTMLElement} container - 容器元素
+     * @returns {Object} 尺寸信息
+     */
+    getContainerSize(container) {
+        return {
+            width: parseInt(container.style.width) || 200,
+            height: parseInt(container.style.height) || 150
+        };
+    },
+
+    /**
+     * 计算补偿后的值
+     * @param {Object} position - 位置信息
+     * @param {Object} size - 尺寸信息
+     * @param {number} zoomCompensation - 缩放补偿
+     * @returns {Object} 补偿后的值
+     */
+    calculateCompensatedValues(position, size, zoomCompensation) {
+        return {
+            left: Math.round(position.left * zoomCompensation),
+            top: Math.round(position.top * zoomCompensation),
+            width: Math.round(size.width * zoomCompensation),
+            height: Math.round(size.height * zoomCompensation)
+        };
+    },
+
+    /**
+     * 应用容器变换
+     * @param {HTMLElement} container - 容器元素
+     * @param {Object} compensated - 补偿后的值
+     * @param {number} zoomCompensation - 缩放补偿
+     */
+    applyContainerTransform(container, compensated, zoomCompensation) {
+        // 应用位置和尺寸
+        container.style.left = `${compensated.left}px`;
+        container.style.top = `${compensated.top}px`;
+        container.style.width = `${compensated.width}px`;
+        container.style.height = `${compensated.height}px`;
+        
+        // 设置CSS变量
+        this.setZoomCSSVariables(container, zoomCompensation);
+        
+        // 应用变换
+        this.applyZoomTransform(container, zoomCompensation);
+    },
+
+    /**
+     * 设置缩放CSS变量
+     * @param {HTMLElement} container - 容器元素
+     * @param {number} zoomCompensation - 缩放补偿
+     */
+    setZoomCSSVariables(container, zoomCompensation) {
+        container.style.setProperty('--widget-zoom-compensation', zoomCompensation);
+        container.style.setProperty('--widget-inverse-zoom', 1/zoomCompensation);
+    },
+
+    /**
+     * 应用缩放变换
+     * @param {HTMLElement} container - 容器元素
+     * @param {number} zoomCompensation - 缩放补偿
+     */
+    applyZoomTransform(container, zoomCompensation) {
+        if (zoomCompensation !== 1) {
+            container.style.transform = `scale(${1/zoomCompensation})`;
+            container.style.transformOrigin = 'top left';
+        } else {
+            container.style.transform = '';
         }
     },
     
@@ -1292,7 +1509,7 @@ export const WidgetSystem = {
         this.resolveWidgetConflicts(effectiveColumnCount, effectiveRowCount, zoomCompensation);
         
         // 排序处理 - 先处理固定的小部件
-        const sorted = [...widgetContainers].sort((a, b) => {
+        const sorted = [...state.widgetContainers].sort((a, b) => {
             return (a.dataset.fixed === 'true' ? 1 : 0) - (b.dataset.fixed === 'true' ? 1 : 0);
         });
 
@@ -1371,7 +1588,7 @@ export const WidgetSystem = {
         const gridState = Array(maxRows).fill().map(() => Array(maxColumns).fill(null));
         
         // 对小部件按照固定状态排序 - 固定的小部件优先占位
-        const sortedContainers = [...widgetContainers].sort((a, b) => {
+        const sortedContainers = [...state.widgetContainers].sort((a, b) => {
             const aFixed = a.dataset.fixed === 'true' ? 1 : 0;
             const bFixed = b.dataset.fixed === 'true' ? 1 : 0;
             return bFixed - aFixed; // 固定的优先
@@ -1507,38 +1724,286 @@ export const WidgetSystem = {
     },
     
     /**
-     * 确保元素在视口内
-     * @param {HTMLElement} element - 要检查的元素
+     * 清理资源和事件监听器
      */
-    ensureElementInViewport(element) {
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        
-        // 获取元素位置
-        const left = parseInt(element.style.left) || 0;
-        const top = parseInt(element.style.top) || 0;
-        const width = parseInt(element.style.width) || 200;
-        const height = parseInt(element.style.height) || 150;
-        
-        // 确保右边不会超出视口
-        if (left + width > viewportWidth) {
-            element.style.left = `${Math.max(0, viewportWidth - width)}px`;
+    cleanup() {
+        try {
+            // 清理所有小部件容器
+            state.widgetContainers.forEach(container => {
+                this.cleanupContainer(container);
+            });
+            
+            // 清空状态
+            state.clear();
+            
+            // 移除事件监听器
+            this.removeGlobalEventListeners();
+            
+        } catch (error) {
+            console.error('清理资源时发生错误:', error);
         }
+    },
+
+    /**
+     * 清理单个容器
+     * @param {HTMLElement} container - 要清理的容器
+     */
+    cleanupContainer(container) {
+        if (!container) return;
         
-        // 确保底部不会超出视口
-        if (top + height > viewportHeight) {
-            element.style.top = `${Math.max(0, viewportHeight - height)}px`;
+        try {
+            // 清理小部件项
+            const widgetItems = container.querySelectorAll('.widget-item');
+            widgetItems.forEach(item => {
+                // 如果小部件有cleanup方法，调用它
+                if (item.widgetInstance && typeof item.widgetInstance.cleanup === 'function') {
+                    item.widgetInstance.cleanup();
+                }
+            });
+            
+            // 从DOM中移除
+            if (container.parentNode) {
+                container.parentNode.removeChild(container);
+            }
+            
+        } catch (error) {
+            console.error('清理容器时发生错误:', error);
         }
+    },
+
+    /**
+     * 移除全局事件监听器
+     */
+    removeGlobalEventListeners() {
+        // 这里可以添加需要清理的全局事件监听器
+        document.removeEventListener('widget-data-changed', this.saveWidgets.bind(this));
+    },
+
+    /**
+     * 验证小部件数据的完整性
+     * @param {Object} data - 要验证的数据
+     * @returns {boolean} 是否有效
+     */
+    validateWidgetData(data) {
+        if (!data || typeof data !== 'object') {
+            return false;
+        }
+
+        // 验证必需字段
+        const requiredFields = ['containers'];
+        for (const field of requiredFields) {
+            if (!(field in data)) {
+                console.warn(`小部件数据缺少必需字段: ${field}`);
+                return false;
+            }
+        }
+
+        // 验证容器数据
+        if (!Array.isArray(data.containers)) {
+            console.warn('容器数据不是数组');
+            return false;
+        }
+
+        return true;
+    },
+
+    /**
+     * 安全的DOM操作包装器
+     * @param {Function} operation - 要执行的DOM操作
+     * @param {string} errorMessage - 错误消息
+     * @returns {*} 操作结果
+     */
+    safeDOMOperation(operation, errorMessage = 'DOM操作失败') {
+        try {
+            return operation();
+        } catch (error) {
+            Utils.handleError(error, errorMessage);
+            return null;
+        }
+    },
+
+    /**
+     * 节流函数
+     * @param {Function} func - 要节流的函数
+     * @param {number} limit - 节流间隔（毫秒）
+     * @returns {Function} 节流后的函数
+     */
+    throttle(func, limit) {
+        // 使用Utils中的debounce作为节流的替代
+        return Utils.debounce(func, limit);
+    },
+
+    /**
+     * 批量更新DOM元素
+     * @param {Array} updates - 更新操作数组
+     */
+    batchDOMUpdates(updates) {
+        // 使用requestAnimationFrame优化性能
+        requestAnimationFrame(() => {
+            updates.forEach(update => {
+                try {
+                    update();
+                } catch (error) {
+                    console.error('批量DOM更新中的操作失败:', error);
+                }
+            });
+        });
+    },
+
+    /**
+     * 检查内存使用情况
+     */
+    checkMemoryUsage() {
+        if (performance.memory) {
+            const memInfo = performance.memory;
+            const usedPercent = (memInfo.usedJSHeapSize / memInfo.totalJSHeapSize) * 100;
+            
+            if (usedPercent > 80) {
+                console.warn(`内存使用率较高: ${usedPercent.toFixed(2)}%`);
+                // 可以在这里触发垃圾回收或清理操作
+                this.performMemoryCleanup();
+            }
+        }
+    },
+
+    /**
+     * 执行内存清理
+     */
+    performMemoryCleanup() {
+        try {
+            // 清理不必要的缓存
+            state.clearCache();
+            
+            // 强制垃圾回收（如果支持）
+            if (window.gc) {
+                window.gc();
+            }
+            
+        } catch (error) {
+            console.error('内存清理失败:', error);
+        }
+    },
+
+    /**
+     * 安全初始化小部件系统
+     * @param {Object} options - 初始化选项
+     */
+    async safeInit(options = {}) {
+        try {
+            // 防止重复初始化
+            if (state.isInitialized) {
+                console.warn('小部件系统已经初始化');
+                return;
+            }
+
+            // 验证依赖项
+            if (!this.validateDependencies()) {
+                throw new Error('依赖项验证失败');
+            }
+
+            // 执行初始化
+            await this.init();
+
+            // 设置性能监控
+            this.setupPerformanceMonitoring();
+
+        } catch (error) {
+            console.error('小部件系统初始化失败:', error);
+            this.handleInitializationError(error);
+        }
+    },
+
+    /**
+     * 验证依赖项
+     * @returns {boolean} 是否所有依赖项都可用
+     */
+    validateDependencies() {
+        const dependencies = [
+            'Utils', 'I18n', 'WidgetRegistry', 'GridSystem', 'Notification', 'Menu'
+        ];
+
+        const missing = dependencies.filter(dep => typeof window[dep] === 'undefined');
         
-        // 确保左边不会超出视口
-        if (left < 0) {
-            element.style.left = "0px";
+        if (missing.length > 0) {
+            console.error('缺少依赖项:', missing);
+            return false;
         }
-        
-        // 确保顶部不会超出视口
-        if (top < 0) {
-            element.style.top = "0px";
+
+        return true;
+    },
+
+    /**
+     * 处理初始化错误
+     * @param {Error} error - 错误对象
+     */
+    handleInitializationError(error) {
+        // 使用Utils中的统一错误处理
+        Utils.handleError(error, '小部件系统无法正常启动，请刷新页面重试');
+
+        // 尝试恢复到安全状态
+        this.recoverToSafeState();
+    },
+
+    /**
+     * 恢复到安全状态
+     */
+    recoverToSafeState() {
+        try {
+            // 清理可能损坏的状态
+            state.clear();
+            
+            // 移除可能残留的DOM元素
+            const orphanedContainers = document.querySelectorAll('.widget-container');
+            orphanedContainers.forEach(container => {
+                if (container.parentNode) {
+                    container.parentNode.removeChild(container);
+                }
+            });
+
+        } catch (recoveryError) {
+            console.error('恢复到安全状态失败:', recoveryError);
         }
-    }
+    },
+
+    /**
+     * 设置性能监控
+     */
+    setupPerformanceMonitoring() {
+        // 节流的内存检查
+        const throttledMemoryCheck = this.throttle(() => {
+            this.checkMemoryUsage();
+        }, 30000); // 每30秒检查一次
+
+        // 定期检查内存使用情况
+        setInterval(throttledMemoryCheck, 30000);
+
+        // 监听页面可见性变化
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // 页面隐藏时执行清理
+                this.performMemoryCleanup();
+            }
+        });
+    },
+
+    /**
+     * 获取系统状态报告
+     * @returns {Object} 系统状态信息
+     */
+    getSystemStatus() {
+        return {
+            initialized: state.isInitialized,
+            containerCount: state.widgetContainers.length,
+            widgetCount: state.widgets.length,
+            memoryUsage: performance.memory ? {
+                used: performance.memory.usedJSHeapSize,
+                total: performance.memory.totalJSHeapSize,
+                limit: performance.memory.jsHeapSizeLimit
+            } : null,
+            gridEnabled: GridSystem?.gridEnabled || false,
+            timestamp: Date.now()
+        };
+    },
+
 };
 
