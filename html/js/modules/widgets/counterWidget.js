@@ -71,12 +71,13 @@ export default {
             count: count,
             title: title
         };
-        
-        // 添加交互事件
+          // 添加交互事件
         this.addEventListeners(container, widgetContent);
         
-        // 初始化后检查并调整大小
-        this.adjustSize(container);
+        // 立即进行一次大小调整，确保初始布局正确
+        setTimeout(() => {
+            this.adjustSize(container);
+        }, 0);
         
         // 添加调整大小的事件监听器
         const resizeObserver = new ResizeObserver(() => {
@@ -148,21 +149,26 @@ export default {
         widgetContent.style.alignItems = 'center';
         widgetContent.style.height = '100%';
         widgetContent.style.width = '100%';
-        
-        // 根据容器大小应用不同的布局类
+          // 根据容器大小应用不同的布局类
         widgetContent.classList.remove('compact-layout', 'default-layout', 'large-layout');
         
         // 更新布局类判断逻辑 - 使用实际容器尺寸
         const actualWidth = container.offsetWidth;
         const actualHeight = container.offsetHeight;
         
-        // 调整为合理的布局阈值
+        // 调整为合理的布局阈值，确保在最小尺寸下使用紧凑布局
         if (actualWidth <= this.config.min.width || actualHeight <= this.config.min.height) {
             widgetContent.classList.add('compact-layout');
+            // 在紧凑模式下，减少容器内边距以节省空间
+            container.style.setProperty('--widget-padding', '6px');
         } else if (actualWidth >= 200 || actualHeight >= 170) {
             widgetContent.classList.add('large-layout');
+            // 恢复默认内边距
+            container.style.removeProperty('--widget-padding');
         } else {
             widgetContent.classList.add('default-layout');
+            // 恢复默认内边距
+            container.style.removeProperty('--widget-padding');
         }
         
         // 调整字体大小适应容器
@@ -174,11 +180,26 @@ export default {
             const fontSize = this.calculateOptimalFontSize(value.length, actualWidth, actualHeight);
             display.style.fontSize = `${fontSize}px`;
         }
-        
-        if (title) {
-            // 标题字体大小随容器大小调整
-            const titleFontSize = Math.max(12, Math.min(16, actualWidth / 14));
+          if (title) {
+            // 标题字体大小随容器大小调整，在紧凑模式下确保可读性
+            let titleFontSize;
+            if (widgetContent.classList.contains('compact-layout')) {
+                // 紧凑模式下使用固定的较小字体
+                titleFontSize = 11;
+            } else {
+                // 其他模式下动态调整字体大小
+                titleFontSize = Math.max(12, Math.min(16, actualWidth / 14));
+            }
             title.style.fontSize = `${titleFontSize}px`;
+            
+            // 确保标题在紧凑模式下有足够的高度
+            if (widgetContent.classList.contains('compact-layout')) {
+                title.style.minHeight = '13px';
+                title.style.lineHeight = '1.2';
+            } else {
+                title.style.removeProperty('min-height');
+                title.style.removeProperty('line-height');
+            }
         }
         
         // 强制触发布局刷新

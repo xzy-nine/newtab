@@ -21,6 +21,9 @@
     transform-origin: top left !important;
     will-change: transform;
     backface-visibility: hidden;
+    /* 确保在小容器中也能正常显示 */
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* 4. 子组件层 */
@@ -37,6 +40,13 @@
     z-index: 2;
     background-color: transparent;
     color: var(--widget-text-color);
+    /* 确保标题始终可见 */
+    flex-shrink: 0;
+    min-height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
 }
 
 .counter-title.editing {
@@ -145,19 +155,49 @@
 }
 
 /* 6. 响应式适配层 */
-/* 紧凑布局样式 */
+/* 紧凑布局样式 - 优化最小尺寸下的显示 */
+.counter-widget.compact-layout {
+    padding: 6px; /* 减少内边距以节省空间 */
+    gap: 2px; /* 减少组件间距 */
+}
+
 .counter-widget.compact-layout .counter-title {
-    font-size: 12px;
-    margin-bottom: 2px;
+    font-size: 11px;
+    margin-bottom: 1px;
+    line-height: 1.2;
+    /* 确保标题在紧凑模式下始终可见 */
+    min-height: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.counter-widget.compact-layout .counter-controls {
+    margin: 1px 0;
+    gap: 2px; /* 减少按钮间距 */
 }
 
 .counter-widget.compact-layout .counter-button {
-    min-width: 24px;
-    min-height: 24px;
+    min-width: 22px;
+    min-height: 22px;
+    font-size: 14px;
+    flex-shrink: 0; /* 防止按钮被压缩 */
+}
+
+.counter-widget.compact-layout .counter-display {
     font-size: 16px;
+    margin: 0 3px;
+    min-width: 30px;
+    line-height: 1.1;
 }
 
 .counter-widget.compact-layout .counter-reset {
-    font-size: 10px;
-    padding: 2px 6px;
+    font-size: 9px;
+    padding: 2px 4px;
+    margin-top: 1px;
+    min-height: 16px;
+    line-height: 1.2;
 }
