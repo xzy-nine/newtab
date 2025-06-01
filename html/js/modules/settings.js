@@ -5,6 +5,7 @@ import { SearchEngineAPI } from './searchEngine.js';
 import { Notification } from './notification.js';
 import { IconManager } from './iconManager.js';
 import { GridSystem } from './gridSystem.js';
+import { AI } from './ai.js';
 
 export const Settings = {
   // 设置配置 - 改为函数以支持动态翻译
@@ -67,7 +68,57 @@ export const Settings = {
           step: 1,
           value: GridSystem.snapThreshold,
           unit: 'px',
-          description: I18n.getMessage('settingsGridSnapThresholdDesc', '元素吸附到网格的距离阈值')
+          description: I18n.getMessage('settingsGridSnapThresholdDesc', '元素吸附到网格的距离阈值')        }
+      ]
+    },
+    {
+      id: 'ai-assistant',
+      icon: '🤖',
+      title: I18n.getMessage('settingsAI', 'AI助手'),
+      items: [
+        {
+          id: 'ai-enabled',
+          label: I18n.getMessage('settingsAIEnabled', '启用AI助手'),
+          type: 'checkbox',
+          value: AI.getConfig().enabled,
+          description: I18n.getMessage('settingsAIEnabledDesc', '启用后可在搜索框旁显示AI按钮')
+        },
+        {
+          id: 'ai-api-url',
+          label: I18n.getMessage('settingsAIApiUrl', 'API地址'),
+          type: 'text',
+          value: AI.getConfig().apiUrl,
+          placeholder: 'https://api.openai.com/v1/chat/completions',
+          description: I18n.getMessage('settingsAIApiUrlDesc', '兼容OpenAI格式的API地址')
+        },
+        {
+          id: 'ai-api-key',
+          label: I18n.getMessage('settingsAIApiKey', 'API密钥'),
+          type: 'password',
+          value: AI.getConfig().apiKey,
+          placeholder: 'sk-...',
+          description: I18n.getMessage('settingsAIApiKeyDesc', '您的API密钥，本地安全存储')
+        },
+        {
+          id: 'ai-model',
+          label: I18n.getMessage('settingsAIModel', '模型'),
+          type: 'text',
+          value: AI.getConfig().model,
+          placeholder: 'gpt-3.5-turbo',
+          description: I18n.getMessage('settingsAIModelDesc', '使用的AI模型名称')
+        },
+        {
+          id: 'ai-system-prompt',
+          label: I18n.getMessage('settingsAISystemPrompt', '系统提示词'),
+          type: 'textarea',
+          value: AI.getConfig().systemPrompt,
+          description: I18n.getMessage('settingsAISystemPromptDesc', '定义AI的行为和回答风格')
+        },
+        {
+          id: 'ai-quick-prompts',
+          label: I18n.getMessage('settingsAIQuickPrompts', '快速提示词'),
+          type: 'custom',
+          description: I18n.getMessage('settingsAIQuickPromptsDesc', '管理快速提示词，用逗号分隔')
         }
       ]
     },
@@ -194,7 +245,8 @@ export const Settings = {
     // 设置项控件
     const itemControl = Utils.createElement('div', 'setting-control');
     
-    switch (item.type) {      case 'checkbox':
+    switch (item.type) {
+      case 'checkbox':
         const checkbox = Utils.createElement('input', 'setting-checkbox', {
           type: 'checkbox',
           id: item.id,
@@ -210,6 +262,10 @@ export const Settings = {
         } else if (item.id === 'grid-debug') {
           checkbox.addEventListener('change', (e) => {
             Settings.handleGridDebugChange(e.target.checked);
+          });
+        } else if (item.id === 'ai-enabled') {
+          checkbox.addEventListener('change', (e) => {
+            Settings.handleAIEnabledChange(e.target.checked);
           });
         }
         
@@ -306,11 +362,68 @@ export const Settings = {
         });
         itemControl.appendChild(radioGroup);
         break;
-
+        
+      case 'text':
+        const textInput = Utils.createElement('input', 'setting-input', {
+          type: 'text',
+          id: item.id,
+          value: item.value || '',
+          placeholder: item.placeholder || ''
+        });
+        
+        // AI相关设置事件监听
+        if (item.id.startsWith('ai-')) {
+          textInput.addEventListener('change', (e) => {
+            Settings.handleAISettingChange(item.id, e.target.value);
+          });
+        }
+        
+        itemControl.appendChild(textInput);
+        break;
+        
+      case 'password':
+        const passwordInput = Utils.createElement('input', 'setting-input', {
+          type: 'password',
+          id: item.id,
+          value: item.value || '',
+          placeholder: item.placeholder || ''
+        });
+        
+        // AI相关设置事件监听
+        if (item.id.startsWith('ai-')) {
+          passwordInput.addEventListener('change', (e) => {
+            Settings.handleAISettingChange(item.id, e.target.value);
+          });
+        }
+        
+        itemControl.appendChild(passwordInput);
+        break;
+        
+      case 'textarea':
+        const textarea = Utils.createElement('textarea', 'setting-textarea', {
+          id: item.id,
+          rows: item.rows || 4,
+          placeholder: item.placeholder || ''
+        });
+        textarea.value = item.value || '';
+        
+        // AI相关设置事件监听
+        if (item.id.startsWith('ai-')) {
+          textarea.addEventListener('change', (e) => {
+            Settings.handleAISettingChange(item.id, e.target.value);
+          });
+        }
+        
+        itemControl.appendChild(textarea);
+        break;
+        
       case 'custom':
         if (item.id === 'search-engine-list') {
           const searchEngineList = await Settings.createSearchEngineList();
           itemControl.appendChild(searchEngineList);
+        } else if (item.id === 'ai-quick-prompts') {
+          const quickPromptsEditor = Settings.createQuickPromptsEditor();
+          itemControl.appendChild(quickPromptsEditor);
         }
         break;
         
@@ -640,5 +753,99 @@ export const Settings = {
    */
   handleGridSnapThresholdChange(threshold) {
     GridSystem.setSnapThreshold(threshold);
+  },
+
+  /**
+   * 处理AI启用/禁用
+   * @param {boolean} enabled - 是否启用AI
+   */
+  handleAIEnabledChange(enabled) {
+    AI.updateConfig({ enabled });
+    
+    // 显示通知
+    Notification.notify({
+      title: enabled 
+        ? I18n.getMessage('aiEnabled', 'AI助手已启用')
+        : I18n.getMessage('aiDisabled', 'AI助手已禁用'),
+      message: enabled
+        ? I18n.getMessage('aiEnabledMessage', 'AI按钮将显示在搜索框旁')
+        : I18n.getMessage('aiDisabledMessage', 'AI按钮已隐藏'),
+      type: enabled ? 'success' : 'info',
+      duration: 2000
+    });
+  },
+
+  /**
+   * 处理AI设置变化
+   * @param {string} settingId - 设置ID
+   * @param {string} value - 设置值
+   */
+  handleAISettingChange(settingId, value) {
+    const configKey = settingId.replace('ai-', '').replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
+    AI.updateConfig({ [configKey]: value });
+  },
+
+  /**
+   * 创建快速提示词编辑器
+   * @returns {HTMLElement} - 编辑器容器
+   */
+  createQuickPromptsEditor() {
+    const container = Utils.createElement('div', 'quick-prompts-editor');
+    
+    // 当前快速提示词列表
+    const currentPrompts = AI.getConfig().quickPrompts || [];
+    
+    // 提示词列表容器
+    const promptsList = Utils.createElement('div', 'prompts-list');
+    
+    // 渲染提示词列表
+    const renderPrompts = () => {
+      promptsList.innerHTML = '';
+      currentPrompts.forEach((prompt, index) => {
+        const promptItem = Utils.createElement('div', 'prompt-item');
+        
+        const promptText = Utils.createElement('input', 'prompt-input', {
+          type: 'text',
+          value: prompt,
+          placeholder: I18n.getMessage('enterPrompt', '输入提示词...')
+        });
+        
+        const deleteBtn = Utils.createElement('button', 'btn btn-small btn-danger', {}, '×');
+        deleteBtn.addEventListener('click', () => {
+          currentPrompts.splice(index, 1);
+          AI.updateConfig({ quickPrompts: currentPrompts });
+          renderPrompts();
+        });
+        
+        promptText.addEventListener('change', () => {
+          currentPrompts[index] = promptText.value.trim();
+          AI.updateConfig({ quickPrompts: currentPrompts.filter(p => p) });
+        });
+        
+        promptItem.append(promptText, deleteBtn);
+        promptsList.appendChild(promptItem);
+      });
+    };
+    
+    // 添加按钮
+    const addBtn = Utils.createElement('button', 'btn btn-small btn-primary', {}, 
+      I18n.getMessage('addPrompt', '添加提示词'));
+    addBtn.addEventListener('click', () => {
+      currentPrompts.push('');
+      AI.updateConfig({ quickPrompts: currentPrompts });
+      renderPrompts();
+      // 聚焦到新添加的输入框
+      setTimeout(() => {
+        const inputs = promptsList.querySelectorAll('.prompt-input');
+        const lastInput = inputs[inputs.length - 1];
+        if (lastInput) lastInput.focus();
+      }, 100);
+    });
+    
+    // 初始渲染
+    renderPrompts();
+    
+    container.append(promptsList, addBtn);
+    return container;
   }
 };

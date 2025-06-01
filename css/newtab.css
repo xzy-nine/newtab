@@ -11,6 +11,7 @@
 @import 'modules/widgets/timer-widget.css';        /* 计时器小部件样式 */
 @import 'modules/gridSystem.css';                  /* 网格系统样式 */
 @import 'modules/settings.css';           /* 设置页面样式 */
+@import 'modules/ai.css';                 /* AI助手样式 */
 /* ===== 1. 变量定义层 ===== */
 :root {
   /* === 简化底层变量：颜色 === */

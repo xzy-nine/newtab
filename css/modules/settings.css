@@ -429,6 +429,64 @@
   font-style: italic;
 }
 
+/* 快速提示词编辑器样式 */
+.quick-prompts-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prompts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.prompt-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.prompt-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.prompt-input:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.setting-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s ease;
+}
+
+.setting-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.setting-input[type="password"] {
+  font-family: monospace;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   #settings-btn {
@@ -496,8 +554,65 @@
   .settings-items {
     gap: 16px;
   }
-  
-  .setting-item {
+    .setting-item {
     padding: 16px;
   }
+}
+
+/* 快速提示词编辑器样式 */
+.quick-prompts-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prompts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.prompt-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.prompt-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.prompt-input:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.setting-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s ease;
+}
+
+.setting-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.setting-input[type="password"] {
+  font-family: monospace;
 }

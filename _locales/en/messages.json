@@ -717,9 +717,120 @@
   "add": {
     "message": "Add",
     "description": "添加按钮文本"
-  },
-  "unfixWidgetToMove": {
+  },  "unfixWidgetToMove": {
     "message": "Please unfix before moving",
     "description": "移动前需要取消固定提示"
+  },
+  "aiAssistant": {
+    "message": "AI Assistant",
+    "description": "AI助手"
+  },
+  "send": {
+    "message": "Send",
+    "description": "发送按钮"
+  },
+  "sending": {
+    "message": "Sending...",
+    "description": "发送中状态"
+  },
+  "aiInputPlaceholder": {
+    "message": "Enter your question...",
+    "description": "AI输入框占位符"
+  },
+  "aiNotEnabled": {
+    "message": "AI function not enabled",
+    "description": "AI功能未启用"
+  },
+  "enableAIInSettings": {
+    "message": "Please enable AI function in settings",
+    "description": "请在设置中启用AI功能"
+  },
+  "aiConfigIncomplete": {
+    "message": "AI configuration incomplete",
+    "description": "AI配置不完整"
+  },
+  "aiNoResponse": {
+    "message": "No response",
+    "description": "AI无回复"
+  },
+  "aiRequestFailed": {
+    "message": "AI request failed: ",
+    "description": "AI请求失败"
+  },
+  "settingsAI": {
+    "message": "AI Assistant",
+    "description": "AI助手设置分类"
+  },
+  "settingsAIEnabled": {
+    "message": "Enable AI Assistant",
+    "description": "启用AI助手"
+  },
+  "settingsAIEnabledDesc": {
+    "message": "Show AI button next to search box when enabled",
+    "description": "启用后在搜索框旁显示AI按钮"
+  },
+  "settingsAIApiUrl": {
+    "message": "API URL",
+    "description": "API地址"
+  },
+  "settingsAIApiUrlDesc": {
+    "message": "OpenAI-compatible API endpoint",
+    "description": "兼容OpenAI格式的API地址"
+  },
+  "settingsAIApiKey": {
+    "message": "API Key",
+    "description": "API密钥"
+  },
+  "settingsAIApiKeyDesc": {
+    "message": "Your API key, stored securely locally",
+    "description": "您的API密钥，本地安全存储"
+  },
+  "settingsAIModel": {
+    "message": "Model",
+    "description": "AI模型"
+  },
+  "settingsAIModelDesc": {
+    "message": "AI model name to use",
+    "description": "使用的AI模型名称"
+  },
+  "settingsAISystemPrompt": {
+    "message": "System Prompt",
+    "description": "系统提示词"
+  },
+  "settingsAISystemPromptDesc": {
+    "message": "Define AI behavior and response style",
+    "description": "定义AI的行为和回答风格"
+  },
+  "settingsAIQuickPrompts": {
+    "message": "Quick Prompts",
+    "description": "快速提示词"
+  },
+  "settingsAIQuickPromptsDesc": {
+    "message": "Manage quick prompts, separated by commas",
+    "description": "管理快速提示词，用逗号分隔"
+  },
+  "aiEnabled": {
+    "message": "AI Assistant Enabled",
+    "description": "AI助手已启用"
+  },
+  "aiDisabled": {
+    "message": "AI Assistant Disabled",
+    "description": "AI助手已禁用"
+  },
+  "aiEnabledMessage": {
+    "message": "AI button will appear next to search box",
+    "description": "AI按钮将显示在搜索框旁"
+  },
+  "aiDisabledMessage": {
+    "message": "AI button is hidden",
+    "description": "AI按钮已隐藏"
+  },
+  "enterPrompt": {
+    "message": "Enter prompt...",
+    "description": "输入提示词"
+  },
+  "addPrompt": {
+    "message": "Add Prompt",
+    "description": "添加提示词"
   }
 }

@@ -13,6 +13,7 @@ import { Notification } from './modules/notification.js';
 import { Menu } from './modules/menu.js'; 
 import { WidgetSystem } from './modules/widgetSystem.js';
 import { Settings } from './modules/settings.js';
+import { AI } from './modules/ai.js';
 
 // 版本号
 let VERSION = '0.0.0'; 
@@ -207,8 +208,7 @@ async function init() {
         
         // 获取扩展版本
         VERSION = await getExtensionVersion();
-        
-        // 初始化基础模块
+          // 初始化基础模块
         const basicModules = [
             {
                 name: 'Background',
@@ -228,6 +228,11 @@ async function init() {
             {
                 name: 'Clock',
                 action: ClockWidget.init.bind(ClockWidget),
+                timeout: 5000
+            },
+            {
+                name: 'AI',
+                action: AI.initialize.bind(AI),
                 timeout: 5000
             },
             {
