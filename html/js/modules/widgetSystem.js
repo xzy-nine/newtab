@@ -200,10 +200,9 @@ export const WidgetSystem = {
      * 处理右键菜单事件
      * @param {MouseEvent} event - 右键事件对象 
      */
-    handleContextMenu(event) {
-        // 如果已经有特定元素处理了右键菜单，不再处理
+    handleContextMenu(event) {        // 如果已经有特定元素处理了右键菜单，不再处理
         // 增加排除背景按钮和时钟元素
-        if (event.target.closest('.folder-button, .shortcut-button, .bookmark, input, textarea, #background-button, #time')) {
+        if (event.target.closest('.folder-button, .shortcut-button, input, textarea, #background-button, #time')) {
             return;
         }
         
@@ -212,7 +211,7 @@ export const WidgetSystem = {
         
         // 检查是否有更高层级的交互元素，避免小部件菜单干扰其他元素
         const hasHigherLevelInteractive = elementsAtPoint.some(el => 
-            el.closest('#folder-list, #shortcut-list, #search-box, .bookmark, #background-button, #time') && 
+            el.closest('#folder-list, #shortcut-list, #search-box, #background-button, #time') && 
             !el.closest('.widget-container')
         );
         
@@ -231,10 +230,9 @@ export const WidgetSystem = {
         } else if (widgetContainer && !widgetItem) {
             // 小部件容器的右键菜单 - 确保不是点击在小部件项上
             event.preventDefault();
-            this.showWidgetContainerContextMenu(event, widgetContainer);
-        } else if (
+            this.showWidgetContainerContextMenu(event, widgetContainer);        } else if (
             // 在空白区域创建小部件容器，但排除特定区域
-            !event.target.closest('#folder-list, #shortcut-list, #search-box, .bookmark, #background-button, #time')
+            !event.target.closest('#folder-list, #shortcut-list, #search-box, #background-button, #time')
         ) {
             // 空白区域的右键菜单
             event.preventDefault();

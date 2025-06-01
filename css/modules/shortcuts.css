@@ -19,8 +19,7 @@
 /*------------------------------------*\
   #COMMON-STYLES
 \*------------------------------------*/
-.shortcut-title, 
-.bookmark-title {
+.shortcut-title {
   font-size: var(--font-size-small);
   color: var(--color-text);  /* 统一使用全局变量 */
   max-width: 100%;
@@ -107,53 +106,6 @@
   color: white;  /* 确保文字在主题色上可见 */
 }
 
-/*------------------------------------*\
-  #BOOKMARKS
-\*------------------------------------*/
-.bookmark {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: var(--shortcut-width);
-  height: var(--shortcut-width);
-  padding: 10px;
-  background: var(--container-bg);  /* 使用统一的背景颜色变量 */
-  border-radius: var(--shortcut-border-radius);
-  box-shadow: 0 2px 8px var(--container-shadow);  /* 使用统一的阴影变量 */
-  border: none;
-  cursor: pointer;
-  transition: 
-    transform var(--transition-normal), 
-    box-shadow var(--transition-normal);
-}
-
-.bookmark:hover {
-  transform: scale(var(--scale-hover));
-  box-shadow: 0 4px 12px var(--container-shadow);
-  background-color: rgba(200, 200, 200, 0.9);  /* 加深背景色 */
-}
-
-.bookmark:active {
-  transform: scale(var(--scale-active));
-  background-color: var(--color-primary);  /* 按下时使用主题色 */
-  color: white;  /* 确保文字在主题色上可见 */
-}
-
-/* 特殊书签 */
-.add-bookmark {
-  background: var(--container-bg);
-  border: 1px dashed var(--color-primary);
-}
-
-.add-bookmark:hover {
-  border: 1px dashed var(--color-primary-light);
-}
-
-.bookmark-placeholder {
-  border: 1px dashed var(--color-gray-300);
-}
-
 /* 深色模式调整 */
 @media (prefers-color-scheme: dark) {
   body {
@@ -165,9 +117,7 @@
   
   /* 仅调整图标亮度，不改变定位方式 */
   .shortcut-button img,
-  .bookmark img,
-  .shortcut-icon,
-  .bookmark-icon {
+  .shortcut-icon {
     filter: brightness(1.9);  /* 略微提高图标亮度以增强可见度 */
   }
 }

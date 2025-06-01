@@ -1,6 +1,6 @@
 /**
  * 书签管理模块
- * 负责处理Chrome书签和自定义书签的显示和交互
+ * 负责处理Chrome书签的显示和交互
  */
 
 import { Utils } from './utils.js';
@@ -9,8 +9,7 @@ import { IconManager } from './iconManager.js';
 import { Notification } from './notification.js';
 import { Menu } from './menu.js';
 
-// 书签数据
-let bookmarks = [];
+// 当前文件夹
 let currentFolder = "";
 
 // 文件夹展开状态
@@ -84,22 +83,7 @@ export const BookmarkManager = {
         } catch (error) {
             console.error('保存文件夹展开状态失败:', error);
         }
-    },
-
-    /**
-     * 从存储中加载书签数据
-     */
-    loadBookmarks: async function() {
-        try {
-            const result = await chrome.storage.sync.get('bookmarks');
-            bookmarks = result.bookmarks || [];
-        } catch (error) {
-            this.showError(error);
-            bookmarks = [];
-        }
-    },
-
-    /**
+    },    /**
      * 创建文件夹按钮
      * @param {Object} folder - 文件夹数据
      * @param {HTMLElement} container - 容器元素
@@ -747,12 +731,9 @@ export const BookmarkManager = {
     handleContextMenu: function(event) {
         if (event.target.matches('input, textarea, [contenteditable="true"]')) {
             return;
-        }
-
-        const shortcutButton = event.target.closest('.shortcut-button');
-        const bookmarkElement = event.target.closest('.bookmark');
+        }        const shortcutButton = event.target.closest('.shortcut-button');
         
-        if (shortcutButton || bookmarkElement) {
+        if (shortcutButton) {
             return;
         }
         
@@ -905,107 +886,9 @@ export const BookmarkManager = {
             if (hasRegularFolders) {
                 container.appendChild(regularSection);
             }
-            
-            await new Promise(resolve => setTimeout(resolve, 0));
+              await new Promise(resolve => setTimeout(resolve, 0));
             this.applySelectedFolder(root);
             
-        } catch (error) {
-            this.showError(error);
-        }
-    },
-
-    // 简化的自定义书签管理方法
-    renderBookmarks: function() {
-        const bookmarkContainer = document.getElementById('custom-bookmark-container');
-        if (!bookmarkContainer) return;
-        
-        bookmarkContainer.innerHTML = '';
-        bookmarks.forEach((bookmark, index) => {
-            const bookmarkElement = this.createBookmarkElement(bookmark, index);
-            bookmarkContainer.appendChild(bookmarkElement);
-        });
-    },
-
-    createBookmarkElement: function(bookmark, index) {
-        const bookmarkElement = Utils.createElement('div', 'bookmark', {'data-index': index});
-        
-        const icon = Utils.createElement('div', 'bookmark-icon');
-        const iconImg = Utils.createElement('img');
-        iconImg.src = bookmark.customIcon || `${Utils.getDomain(bookmark.url)}/favicon.ico`;
-        iconImg.onerror = () => { iconImg.src = 'Icon.png'; };
-        
-        icon.appendChild(iconImg);
-        bookmarkElement.appendChild(icon);
-        bookmarkElement.appendChild(Utils.createElement('div', 'bookmark-title', {}, bookmark.title));
-        
-        bookmarkElement.addEventListener('click', e => {
-            if (!e.target.closest('.bookmark-menu')) window.open(bookmark.url, '_blank');
-        });
-        
-        bookmarkElement.addEventListener('contextmenu', e => {
-            e.preventDefault();
-            this.showBookmarkContextMenu(e, index);
-        });
-        
-        return bookmarkElement;
-    },
-
-    showBookmarkContextMenu: function(e, index) {
-        Menu.ContextMenu.show(e, [
-            {
-                id: 'bookmark-delete',
-                text: I18n.getMessage('delete', '删除'),
-                callback: () => {
-                    Notification.notify({
-                        title: I18n.getMessage('confirm', '确认'),
-                        message: I18n.getMessage('confirmDeleteBookmark', '确定要删除该书签吗？'),
-                        type: 'confirm',
-                        duration: 0,
-                        buttons: [
-                            {
-                                text: I18n.getMessage('confirm', '确认'),
-                                class: 'btn-primary',
-                                callback: () => {
-                                    bookmarks.splice(index, 1);
-                                    this.saveBookmarks();
-                                    this.renderBookmarks();
-                                }
-                            },
-                            {
-                                text: I18n.getMessage('cancel', '取消'),
-                                callback: () => {}
-                            }
-                        ]
-                    });
-                }
-            }
-        ], {menuId: 'bookmark-context-menu'});
-    },
-
-    saveBookmarks: async function() {
-        try {
-            await chrome.storage.sync.set({ bookmarks });
-        } catch (error) {
-            this.showError(error);
-        }
-    },
-
-    getAllBookmarks: function() {
-        return [...bookmarks];
-    },
-
-    importBookmarks: async function(importedBookmarks) {
-        try {
-            if (!Array.isArray(importedBookmarks)) return;
-            
-            importedBookmarks.forEach(bookmark => {
-                if (!bookmarks.some(b => b.url === bookmark.url)) {
-                    bookmarks.push(bookmark);
-                }
-            });
-            
-            await this.saveBookmarks();
-            this.renderBookmarks();
         } catch (error) {
             this.showError(error);
         }

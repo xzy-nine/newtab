@@ -343,7 +343,7 @@
 
 
 /* 10. z-index 管理层 */
-#folder-list, #shortcut-list, #search-box, .bookmark {
+#folder-list, #shortcut-list, #search-box {
   position: relative;
 }
 
