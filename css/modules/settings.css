@@ -487,132 +487,338 @@
   font-family: monospace;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
+/* 深色模式优化 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #1e88e5;
+    --color-primary-dark: #1565c0;
+    --bg-primary: #121212;
+    --bg-secondary: #1e1e1e;
+    --bg-tertiary: #262626;
+    --bg-card: #1e1e1e;
+    --bg-hover: #333333;
+    --bg-muted: #404040;
+    --text-primary: #ffffff;
+    --text-secondary: #b3b3b3;
+    --border-color: #404040;
+    --border-light: #333333;
+  }
+
   #settings-btn {
-    left: 10px;
-    bottom: 10px;
-    height: 38px;
-    padding: 0 12px 0 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
   }
-  
-  .settings-label {
-    font-size: 14px;
+
+  #settings-btn:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   }
-  
+
   .settings-modal .modal-content {
-    width: 95vw;
-    height: 90vh;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
   }
-  
-  .settings-body {
-    flex-direction: column;
+
+  .modal-header {
+    background: var(--bg-secondary);
+    border-bottom-color: var(--border-color);
   }
-  
+
   .settings-sidebar {
-    width: 100%;
-    height: 120px;
-    display: flex;
-    overflow-x: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--border-color, #e0e0e0);
+    background: var(--bg-tertiary);
+    border-right-color: var(--border-color);
   }
-  
+
   .settings-category {
-    flex-shrink: 0;
-    min-width: 120px;
-    justify-content: center;
-    border-bottom: none;
-    border-right: 1px solid var(--border-light, #f0f0f0);
+    color: var(--text-primary);
+    border-bottom-color: var(--border-light);
   }
-  
+
+  .settings-category:hover {
+    background: var(--bg-hover);
+  }
+
+  .settings-category.active {
+    background: var(--color-primary);
+    color: white;
+  }
+
   .setting-item {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
+    background: var(--bg-card);
+    border-color: var(--border-color);
   }
-  
-  .setting-item-header {
-    margin-right: 0;
+
+  .setting-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   }
-  
-  .setting-control {
-    justify-content: flex-start;
-    min-width: auto;
+
+  .setting-label {
+    color: var(--text-primary);
   }
-  
-  .range-container {
-    min-width: auto;
+
+  .setting-description {
+    color: var(--text-secondary);
+  }
+
+  .checkbox-switch {
+    background: var(--bg-muted);
+  }
+
+  .setting-checkbox:checked + .checkbox-switch {
+    background: var(--color-primary);
+  }
+
+  .setting-range {
+    background: var(--bg-muted);
+  }
+
+  .setting-range::-webkit-slider-thumb {
+    background: var(--color-primary);
+  }
+
+  .setting-range::-moz-range-thumb {
+    background: var(--color-primary);
+  }
+
+  .range-value {
+    color: var(--text-primary);
+  }
+
+  .setting-select {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+  }
+
+  .setting-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+  }
+
+  .radio-item label {
+    color: var(--text-primary);
+  }
+
+  .btn-primary {
+    background: var(--color-primary);
+  }
+
+  .btn-primary:hover {
+    background: var(--color-primary-dark);
+  }
+
+  .search-engine-list-container {
+    border-color: var(--border-color);
+    background: var(--bg-card);
+  }
+
+  .search-engine-item-setting {
+    background: var(--bg-tertiary);
+    border-color: var(--border-light);
+  }
+
+  .search-engine-item-setting:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-color);
+  }
+
+  .search-engine-item-setting.current-engine {
+    background: rgba(76, 175, 80, 0.2);
+    border-color: #4caf50;
+  }
+
+  .engine-name {
+    color: var(--text-primary);
+  }
+
+  .engine-url {
+    color: var(--text-secondary);
+  }
+
+  .error-message {
+    color: #ff6b6b;
+  }
+
+  .prompt-input, .setting-textarea {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+  }
+
+  .prompt-input:focus, .setting-textarea:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+  }
+
+  .setting-input[type="password"] {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-color: var(--border-color);
   }
 }
 
-@media (max-width: 600px) {
-  .settings-content-area {
-    padding: 16px;
-  }
-  
-  .settings-items {
-    gap: 16px;
-  }
-    .setting-item {
-    padding: 16px;
-  }
+/* 手动深色模式切换 - 如果您有深色模式切换功能 */
+[data-theme="dark"] {
+  --color-primary: #1e88e5;
+  --color-primary-dark: #1565c0;
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #262626;
+  --bg-card: #1e1e1e;
+  --bg-hover: #333333;
+  --bg-muted: #404040;
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --border-color: #404040;
+  --border-light: #333333;
 }
 
-/* 快速提示词编辑器样式 */
-.quick-prompts-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+[data-theme="dark"] #settings-btn {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
 }
 
-.prompts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 200px;
-  overflow-y: auto;
+[data-theme="dark"] #settings-btn:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
 }
 
-.prompt-item {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+[data-theme="dark"] .settings-modal .modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
 }
 
-.prompt-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 6px;
-  font-size: 14px;
-  transition: border-color 0.2s ease;
+[data-theme="dark"] .modal-header {
+  background: var(--bg-secondary);
+  border-bottom-color: var(--border-color);
 }
 
-.prompt-input:focus {
-  outline: none;
-  border-color: var(--primary-color, #007bff);
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+[data-theme="dark"] .settings-sidebar {
+  background: var(--bg-tertiary);
+  border-right-color: var(--border-color);
 }
 
-.setting-textarea {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 6px;
-  font-size: 14px;
-  font-family: inherit;
-  resize: vertical;
-  min-height: 80px;
-  transition: border-color 0.2s ease;
+[data-theme="dark"] .settings-category {
+  color: var(--text-primary);
+  border-bottom-color: var(--border-light);
 }
 
-.setting-textarea:focus {
-  outline: none;
-  border-color: var(--primary-color, #007bff);
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+[data-theme="dark"] .settings-category:hover {
+  background: var(--bg-hover);
 }
 
-.setting-input[type="password"] {
-  font-family: monospace;
+[data-theme="dark"] .settings-category.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+[data-theme="dark"] .setting-item {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .setting-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+[data-theme="dark"] .setting-label {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-description {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .checkbox-switch {
+  background: var(--bg-muted);
+}
+
+[data-theme="dark"] .setting-checkbox:checked + .checkbox-switch {
+  background: var(--color-primary);
+}
+
+[data-theme="dark"] .setting-range {
+  background: var(--bg-muted);
+}
+
+[data-theme="dark"] .setting-range::-webkit-slider-thumb {
+  background: var(--color-primary);
+}
+
+[data-theme="dark"] .setting-range::-moz-range-thumb {
+  background: var(--color-primary);
+}
+
+[data-theme="dark"] .range-value {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-select {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+}
+
+[data-theme="dark"] .radio-item label {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .btn-primary {
+  background: var(--color-primary);
+}
+
+[data-theme="dark"] .btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+[data-theme="dark"] .search-engine-list-container {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+}
+
+[data-theme="dark"] .search-engine-item-setting {
+  background: var(--bg-tertiary);
+  border-color: var(--border-light);
+}
+
+[data-theme="dark"] .search-engine-item-setting:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .search-engine-item-setting.current-engine {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4caf50;
+}
+
+[data-theme="dark"] .engine-name {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .engine-url {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .error-message {
+  color: #ff6b6b;
+}
+
+[data-theme="dark"] .prompt-input,
+[data-theme="dark"] .setting-textarea {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .prompt-input:focus,
+[data-theme="dark"] .setting-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+}
+
+[data-theme="dark"] .setting-input[type="password"] {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-color);
 }
