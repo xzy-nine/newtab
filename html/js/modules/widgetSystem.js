@@ -879,13 +879,13 @@ export const WidgetSystem = {
         try {
             // 获取可用小部件列表，确保是数组
             const availableWidgets = await this.getAvailableWidgets();
-            
-            // 如果不是数组或为空数组，显示提示
+              // 如果不是数组或为空数组，显示提示
             if (!Array.isArray(availableWidgets) || availableWidgets.length === 0) {
                 Notification.notify({
                     title: getI18nMessage('notice', '提示'),
                     message: getI18nMessage('noWidgetsAvailable', '没有可用的小部件'),
-                    type: 'info'
+                    type: 'info',
+                    duration: 3000
                 });
                 return;
             }
@@ -924,13 +924,13 @@ export const WidgetSystem = {
                                 selectedWidgetTypes.push(key);
                             }
                         });
-                        
-                        // 如果没有选择任何小部件，显示提示
+                          // 如果没有选择任何小部件，显示提示
                         if (selectedWidgetTypes.length === 0) {
                             Notification.notify({
                                 title: getI18nMessage('notice', '提示'),
                                 message: getI18nMessage('noWidgetSelected', '未选择任何小部件'),
-                                type: 'info'
+                                type: 'info',
+                                duration: 3000
                             });
                             return;
                         }
@@ -939,21 +939,21 @@ export const WidgetSystem = {
                         for (const type of selectedWidgetTypes) {
                             await this.addWidgetItem(container, type);
                         }
-                        
-                        // 添加成功提示
+                          // 添加成功提示
                         if (selectedWidgetTypes.length > 0) {
                             Notification.notify({
                                 title: getI18nMessage('success', '成功'),
                                 message: getI18nMessage('widgetsAdded', '已添加所选小部件'),
-                                type: 'success'
+                                type: 'success',
+                                duration: 3000
                             });
-                        }
-                    } catch (error) {
+                        }                    } catch (error) {
                         console.error('添加小部件失败:', error);
                         Notification.notify({
                             title: getI18nMessage('error', '错误'),
                             message: getI18nMessage('addWidgetFailed', '添加小部件失败'),
-                            type: 'error'
+                            type: 'error',
+                            duration: 5000
                         });
                     } finally {
                         isProcessing = false;
@@ -961,13 +961,13 @@ export const WidgetSystem = {
                 },
                 addText,
                 cancelText
-            );
-        } catch (error) {
+            );        } catch (error) {
             console.error('获取可用小部件失败:', error);
             Notification.notify({
                 title: getI18nMessage('error', '错误'),
                 message: getI18nMessage('loadingWidgetsFailed', '加载可用小部件失败'),
-                type: 'error'
+                type: 'error',
+                duration: 5000
             });
         }
     },

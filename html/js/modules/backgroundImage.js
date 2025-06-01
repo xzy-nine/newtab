@@ -326,14 +326,14 @@ class BackgroundManager {
             this.applyEffects();
             
             Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete', '背景加载完成'));
-            setTimeout(() => Notification.hideLoadingIndicator(), 500);
-        } catch (error) {
+            setTimeout(() => Notification.hideLoadingIndicator(), 500);        } catch (error) {
             console.error('Failed to set background image:', error);
             Notification.hideLoadingIndicator(true); // 强制关闭加载指示器
             Notification.notify({
                 title: I18n.getMessage('error', '错误'),
                 message: I18n.getMessage('backgroundSetFailed', '设置背景失败'),
-                type: 'error'
+                type: 'error',
+                duration: 5000
             });
         }
     }
