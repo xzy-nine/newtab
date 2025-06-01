@@ -59,9 +59,7 @@ export const IconManager = {
         });
 
         return fallbackIcon;
-    },
-
-    /**
+    },    /**
      * 获取图标URL（异步方法，返回URL而不是设置DOM元素）
      * @param {string} url - 网站URL
      * @returns {Promise<string>} - 图标URL
@@ -73,12 +71,11 @@ export const IconManager = {
             const cachedIconObj = await chrome.storage.local.get([domain, url]);
             
             // 优先使用URL对应的图标，其次是域名图标
-            if (cachedIconObj[url]) return cachedIconObj[url];
-            if (cachedIconObj[domain]) return cachedIconObj[domain];
+            if (cachedIconObj[url]) return this.stripFallbackPrefix(cachedIconObj[url]);
+            if (cachedIconObj[domain]) return this.stripFallbackPrefix(cachedIconObj[domain]);
             
-            // 尝试获取favicon
-            const iconUrl = `${domain}/favicon.ico`;
-            return iconUrl;
+            // 如果没有缓存，生成基于域名前缀的替代图标
+            return this.generateInitialBasedIcon(domain);
         } catch (error) {
             console.error('获取图标URL失败:', error);
             return null;

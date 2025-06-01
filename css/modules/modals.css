@@ -233,8 +233,8 @@
 }
 
 .preview-icon-img {
-  max-width: 160px;
-  max-height: 160px;
+  width: 96px;
+  height: 96px;
   object-fit: contain;
   border-radius: var(--border-radius-md);
   box-shadow: var(--box-shadow-sm);
