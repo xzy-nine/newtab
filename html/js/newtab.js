@@ -186,9 +186,25 @@ async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
  * 初始化应用
  */
 async function init() {
-    try {
-        // 首先加载直接翻译数据
+    try {        // 首先加载直接翻译数据
         await loadDirectTranslations();
+          // 尽早应用主题设置以避免主题闪烁
+        const savedTheme = localStorage.getItem('theme') || 'auto';
+        const root = document.documentElement;
+        if (savedTheme === 'auto') {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+            
+            // 监听系统主题变化
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                const currentTheme = localStorage.getItem('theme') || 'auto';
+                if (currentTheme === 'auto') {
+                    root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+                }
+            });
+        } else {
+            root.setAttribute('data-theme', savedTheme);
+        }
         
         // 创建基本 UI 结构
         createBasicUI();
@@ -229,10 +245,21 @@ async function init() {
                 name: 'Clock',
                 action: ClockWidget.init.bind(ClockWidget),
                 timeout: 5000
-            },
-            {
+            },            {
                 name: 'AI',
                 action: AI.initialize.bind(AI),
+                timeout: 5000
+            },
+            {
+                name: 'Settings',
+                action: () => {
+                    // 初始化设置模块并确保主题设置正确应用
+                    if (typeof Settings !== 'undefined' && Settings.applyTheme) {
+                        const currentTheme = localStorage.getItem('theme') || 'auto';
+                        Settings.applyTheme(currentTheme);
+                    }
+                    return Promise.resolve();
+                },
                 timeout: 5000
             },
             {

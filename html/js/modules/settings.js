@@ -1436,7 +1436,6 @@ export const Settings = {
       console.error('处理主题变化失败:', error);
     }
   },
-
   /**
    * 应用主题
    * @param {string} theme - 主题值
@@ -1448,8 +1447,29 @@ export const Settings = {
       // 跟随系统主题
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+      
+      // 移除之前的监听器以避免重复监听
+      if (Settings._themeMediaQuery) {
+        Settings._themeMediaQuery.removeEventListener('change', Settings._handleSystemThemeChange);
+      }
+      
+      // 添加系统主题变化监听器
+      Settings._themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      Settings._handleSystemThemeChange = (e) => {
+        const currentTheme = localStorage.getItem('theme') || 'auto';
+        if (currentTheme === 'auto') {
+          root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+        }
+      };
+      Settings._themeMediaQuery.addEventListener('change', Settings._handleSystemThemeChange);
     } else {
       root.setAttribute('data-theme', theme);
+      
+      // 如果不是auto模式，移除系统主题监听器
+      if (Settings._themeMediaQuery) {
+        Settings._themeMediaQuery.removeEventListener('change', Settings._handleSystemThemeChange);
+        Settings._themeMediaQuery = null;
+      }
     }
   },
 
