@@ -440,7 +440,8 @@ function renderSearchEngineSelector(firstRender = false) {
         const menuItem = Utils.createElement('div', 'search-engine-item' + (index === currentEngineIndex ? ' active' : ''));
         
         const icon = Utils.createElement('img', '', { alt: engine.name });
-        IconManager.setIconForElement(icon, engine.url);
+        const siteUrl = Utils.getDomain(engine.url);
+        IconManager.setIconForElement(icon, siteUrl);
         icon.onerror = () => IconManager.handleIconError(icon, '../favicon.png');
         
         const name = Utils.createElement('span', '', {}, engine.name);
@@ -501,8 +502,12 @@ function renderSearchEngineSelector(firstRender = false) {
         const newIcon = iconElement.cloneNode(false);
         iconElement.parentNode.replaceChild(newIcon, iconElement);
         
+        // 从搜索URL提取主域名URL
+        const currentEngine = searchEngines[currentEngineIndex];
+        const siteUrl = Utils.getDomain(currentEngine.url);
+        
         // 设置图标
-        IconManager.setIconForElement(newIcon, searchEngines[currentEngineIndex].url);
+        IconManager.setIconForElement(newIcon, siteUrl);
         newIcon.onerror = () => IconManager.handleIconError(newIcon, '../favicon.png');
         
         // 添加点击事件
