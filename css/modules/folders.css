@@ -208,31 +208,29 @@
 }
 
 /* 深色模式 */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --folder-bg: var(--color-gray-900);
-    --folder-border-color: var(--color-gray-700);
-    --folder-text-color: var(--color-gray-100);
-    --folder-hover-bg: var(--color-gray-700);
-  }
+[data-theme="dark"] {
+  --folder-bg: var(--color-gray-900);
+  --folder-border-color: var(--color-gray-700);
+  --folder-text-color: var(--color-gray-100);
+  --folder-hover-bg: var(--color-gray-700);
+}
 
-  #folder-list {
-    background: rgba(40, 40, 40, 0.7);
-  }
-  
-  .folder-button {
-    background: rgba(40, 40, 40, 0.9);
-    color: rgba(255, 255, 255, 0.9);
-  }
-  
-  .section-header {
-    color: rgba(255, 255, 255, 0.7);
-  }
-  
-  .folder-button.selected .folder-name,
-  .folder-button.selected .folder-icon,
-  .folder-button.selected .folder-arrow {
-    color: #6bb6ff;
-  }
+[data-theme="dark"] #folder-list {
+  background: rgba(40, 40, 40, 0.7);
+}
+
+[data-theme="dark"] .folder-button {
+  background: rgba(40, 40, 40, 0.9);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .section-header {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="dark"] .folder-button.selected .folder-name,
+[data-theme="dark"] .folder-button.selected .folder-icon,
+[data-theme="dark"] .folder-button.selected .folder-arrow {
+  color: #6bb6ff;
 }
 

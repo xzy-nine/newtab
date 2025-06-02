@@ -287,54 +287,52 @@
 }
 
 /* 深色模式适配 */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ai-bg-color: rgba(30, 30, 30, 0.95);
-    --ai-text-color: #e5e7eb;
-    --ai-text-secondary: #9ca3af;
-    --ai-user-bg: #1e3a8a;
-    --ai-user-border: #3b82f6;
-    --ai-ai-bg: #064e3b;
-    --ai-ai-border: #10b981;
-    --ai-error-bg: #7f1d1d;
-    --ai-error-border: #ef4444;
-    --ai-input-bg: #1f2937;
-    --ai-border-color: rgba(79, 70, 229, 0.3);
-  }
+[data-theme="dark"] {
+  --ai-bg-color: rgba(30, 30, 30, 0.95);
+  --ai-text-color: #e5e7eb;
+  --ai-text-secondary: #9ca3af;
+  --ai-user-bg: #1e3a8a;
+  --ai-user-border: #3b82f6;
+  --ai-ai-bg: #064e3b;
+  --ai-ai-border: #10b981;
+  --ai-error-bg: #7f1d1d;
+  --ai-error-border: #ef4444;
+  --ai-input-bg: #1f2937;
+  --ai-border-color: rgba(79, 70, 229, 0.3);
+}
 
-  .ai-chat-history {
-    background: #111827;
-    border-color: #374151;
-  }
+[data-theme="dark"] .ai-chat-history {
+  background: #111827;
+  border-color: #374151;
+}
 
-  .ai-input {
-    background: #1f2937;
-    border-color: #374151;
-    color: var(--ai-text-color);
-  }
+[data-theme="dark"] .ai-input {
+  background: #1f2937;
+  border-color: #374151;
+  color: var(--ai-text-color);
+}
 
-  .ai-input::placeholder {
-    color: var(--ai-text-secondary);
-  }
+[data-theme="dark"] .ai-input::placeholder {
+  color: var(--ai-text-secondary);
+}
 
-  .ai-quick-prompt-btn {
-    background: #1f2937;
-    border-color: #374151;
-    color: var(--ai-primary-color);
-  }
+[data-theme="dark"] .ai-quick-prompt-btn {
+  background: #1f2937;
+  border-color: #374151;
+  color: var(--ai-primary-color);
+}
 
-  .ai-quick-prompt-btn:hover {
-    background: var(--ai-primary-color);
-    color: white;
-  }
+[data-theme="dark"] .ai-quick-prompt-btn:hover {
+  background: var(--ai-primary-color);
+  color: white;
+}
 
-  .ai-message-user .ai-message-content {
-    color: white;
-  }
+[data-theme="dark"] .ai-message-user .ai-message-content {
+  color: white;
+}
 
-  .ai-message-ai .ai-message-content {
-    color: white;
-  }
+[data-theme="dark"] .ai-message-ai .ai-message-content {
+  color: white;
 }
 
 /* 响应式适配 */

@@ -351,42 +351,40 @@
 }
 
 /* 深色模式小部件样式 */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* 语义化颜色变量 - 深色模式 */
-    --widget-bg-color: rgba(33, 33, 33, 0.75);
-    --widget-bg-solid: #1e1e1e;
-    --widget-text-color: rgba(255, 255, 255, 0.9);
-    --widget-text-secondary: rgba(255, 255, 255, 0.7);
-    --widget-shadow-color: rgba(0, 0, 0, 0.25);
-    --widget-shadow-color-hover: rgba(0, 0, 0, 0.4);
-    --widget-shadow-color-active: rgba(0, 0, 0, 0.5);
-    --widget-primary-color: #3a9fff;
-    --widget-primary-color-hover: #4dabff;
-    
-    /* 控制元素颜色 */
-    --widget-control-bg: rgba(255, 255, 255, 0.08);
-    --widget-control-bg-hover: rgba(58, 159, 255, 0.25);
-    --widget-indicator-color: rgba(255, 255, 255, 0.2);
-    --widget-indicator-color-hover: rgba(255, 255, 255, 0.4);
-    
-    /* 特殊元素颜色 */
-    --widget-drag-handle-bg: linear-gradient(to right, rgba(255, 255, 255, 0.1), transparent);
-    --widget-drag-handle-bg-hover: linear-gradient(to right, rgba(58, 159, 255, 0.25), rgba(58, 159, 255, 0.05));
-    --widget-drag-handle-bg-fixed: linear-gradient(to right, rgba(58, 159, 255, 0.2), rgba(58, 159, 255, 0.05));
-    --widget-resize-handle-color: rgba(58, 159, 255, 0.3);
-    --widget-resize-handle-color-hover: rgba(58, 159, 255, 0.6);
-  }
+[data-theme="dark"] {
+  /* 语义化颜色变量 - 深色模式 */
+  --widget-bg-color: rgba(33, 33, 33, 0.75);
+  --widget-bg-solid: #1e1e1e;
+  --widget-text-color: rgba(255, 255, 255, 0.9);
+  --widget-text-secondary: rgba(255, 255, 255, 0.7);
+  --widget-shadow-color: rgba(0, 0, 0, 0.25);
+  --widget-shadow-color-hover: rgba(0, 0, 0, 0.4);
+  --widget-shadow-color-active: rgba(0, 0, 0, 0.5);
+  --widget-primary-color: #3a9fff;
+  --widget-primary-color-hover: #4dabff;
   
-  /* 移除深色模式下的边框，改用阴影来突出效果 */
-  .widget-container {
-    border: none;
-    box-shadow: 0 2px 10px var(--widget-shadow-color), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  }
+  /* 控制元素颜色 */
+  --widget-control-bg: rgba(255, 255, 255, 0.08);
+  --widget-control-bg-hover: rgba(58, 159, 255, 0.25);
+  --widget-indicator-color: rgba(255, 255, 255, 0.2);
+  --widget-indicator-color-hover: rgba(255, 255, 255, 0.4);
   
-  .widget-container.widget-fixed {
-    box-shadow: 0 2px 8px var(--widget-shadow-color), 0 0 0 1px rgba(58, 159, 255, 0.15);
-  }
+  /* 特殊元素颜色 */
+  --widget-drag-handle-bg: linear-gradient(to right, rgba(255, 255, 255, 0.1), transparent);
+  --widget-drag-handle-bg-hover: linear-gradient(to right, rgba(58, 159, 255, 0.25), rgba(58, 159, 255, 0.05));
+  --widget-drag-handle-bg-fixed: linear-gradient(to right, rgba(58, 159, 255, 0.2), rgba(58, 159, 255, 0.05));
+  --widget-resize-handle-color: rgba(58, 159, 255, 0.3);
+  --widget-resize-handle-color-hover: rgba(58, 159, 255, 0.6);
+}
+
+/* 移除深色模式下的边框，改用阴影来突出效果 */
+[data-theme="dark"] .widget-container {
+  border: none;
+  box-shadow: 0 2px 10px var(--widget-shadow-color), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .widget-container.widget-fixed {
+  box-shadow: 0 2px 8px var(--widget-shadow-color), 0 0 0 1px rgba(58, 159, 255, 0.15);
 }
 
 /* 当页面缩放时的网格调整 */

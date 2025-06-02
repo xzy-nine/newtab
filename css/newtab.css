@@ -43,15 +43,13 @@
 }
 
 /* 深色模式全局变量 */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* === 统一容器颜色变量 - 深色模式 === */
-    --container-bg: rgba(40, 40, 40, var(--opacity-high));
-    --container-border: rgba(255, 255, 255, var(--opacity-light));
-    --container-shadow: rgba(0, 0, 0, var(--opacity-medium));
-    
-    /* 其余深色模式变量保持不变... */
-  }
+[data-theme="dark"] {
+  /* === 统一容器颜色变量 - 深色模式 === */
+  --container-bg: rgba(40, 40, 40, var(--opacity-high));
+  --container-border: rgba(255, 255, 255, var(--opacity-light));
+  --container-shadow: rgba(0, 0, 0, var(--opacity-medium));
+  
+  /* 其余深色模式变量保持不变... */
 }
 
 /* ===== 2. 全局重置与基础样式 ===== */
@@ -290,38 +288,36 @@ input:-webkit-autofill:active {
 }
 
 /* ===== 深色模式全局变量 ===== */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* === 深色模式功能变量覆盖 === */
-    --color-background: #1a1a1a;
-    --color-text: rgba(255, 255, 255, 0.9);
-    --color-border-light: #444;
-    --color-surface-light: #333;
-    --color-overlay: rgba(0, 0, 0, 0.4);
-    
-    /* 深色模式调整主色 */
-    --color-primary-500: #3aa0ff;
-    
-    /* 深色模式特有功能变量 */
-    --shadow-normal: 0 2px 10px rgba(0, 0, 0, 0.4);
-    --shadow-soft: 0 0 10px rgba(0, 0, 0, 0.5);
-    --shadow-focus: 0 0 8px var(--color-primary-500);
-  }
+[data-theme="dark"] {
+  /* === 深色模式功能变量覆盖 === */
+  --color-background: #1a1a1a;
+  --color-text: rgba(255, 255, 255, 0.9);
+  --color-border-light: #444;
+  --color-surface-light: #333;
+  --color-overlay: rgba(0, 0, 0, 0.4);
   
-  /* 背景容器深色模式 */
-  #background-container {
-    filter: brightness(0.85);
-  }
+  /* 深色模式调整主色 */
+  --color-primary-500: #3aa0ff;
+  
+  /* 深色模式特有功能变量 */
+  --shadow-normal: 0 2px 10px rgba(0, 0, 0, 0.4);
+  --shadow-soft: 0 0 10px rgba(0, 0, 0, 0.5);
+  --shadow-focus: 0 0 8px var(--color-primary-500);
+}
+  
+[data-theme="dark"] #background-container {
+  filter: brightness(0.85);
+}
 
-  #background-overlay {
-    display: block !important;
-    background-color: rgba(0, 0, 0, var(--opacity-40)) !important;
-  }
-  
-  /* 背景按钮深色模式 */
-  #background-button {
-    background: var(--color-primary);
-    color: var(--color-white);
+[data-theme="dark"] #background-overlay {
+  display: block !important;
+  background-color: rgba(0, 0, 0, var(--opacity-40)) !important;
+}
+
+/* 背景按钮深色模式 */
+[data-theme="dark"] #background-button {
+  background: var(--color-primary);
+  color: var(--color-white);
     box-shadow: 0 0 10px rgba(0, 0, 0, var(--opacity-medium));
   }
   
@@ -362,7 +358,6 @@ input:-webkit-autofill:active {
     background: rgba(80, 80, 80, 0.3);
   }
   
-  * {
-    scrollbar-color: var(--color-primary) rgba(80, 80, 80, 0.3);
-  }
+* {
+  scrollbar-color: var(--color-primary) rgba(80, 80, 80, 0.3);
 }

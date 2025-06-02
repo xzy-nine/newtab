@@ -107,17 +107,14 @@
 }
 
 /* 深色模式调整 */
-@media (prefers-color-scheme: dark) {
-  body {
-    /* 深色模式下的主体色调整 */
-    --container-bg: rgba(40, 40, 40, 0.7);
-    --container-shadow: rgba(146, 146, 146, 0.3);
-  }
+[data-theme="dark"] body {
+  /* 深色模式下的主体色调整 */
+  --container-bg: rgba(40, 40, 40, 0.7);
+  --container-shadow: rgba(146, 146, 146, 0.3);
+}
 
-  
-  /* 仅调整图标亮度，不改变定位方式 */
-  .shortcut-button img,
-  .shortcut-icon {
-    filter: brightness(1.9);  /* 略微提高图标亮度以增强可见度 */
-  }
+/* 仅调整图标亮度，不改变定位方式 */
+[data-theme="dark"] .shortcut-button img,
+[data-theme="dark"] .shortcut-icon {
+  filter: brightness(1.9);  /* 略微提高图标亮度以增强可见度 */
 }
