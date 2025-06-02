@@ -234,15 +234,13 @@ function showAIModal(initialMessage = '') {
         oldModal.remove();
     }
 
-    // 创建模态框
+    // 使用Menu模块创建模态框
     const modal = Utils.createElement('div', 'modal ai-modal', { id: modalId });
     const modalContent = Utils.createElement('div', 'modal-content ai-modal-content');
 
     // 模态框头部
-    const modalHeader = Utils.createElement('div', 'modal-header');
+    const modalHeader = Utils.createElement('h2', 'modal-header', {}, I18n.getMessage('aiAssistant', 'AI助手'));
     const closeBtn = Utils.createElement('span', 'modal-close', {}, '&times;');
-    const title = Utils.createElement('h2', '', {}, I18n.getMessage('aiAssistant', 'AI助手'));
-    modalHeader.append(title, closeBtn);
 
     // 对话区域
     const chatContainer = Utils.createElement('div', 'ai-chat-container');
@@ -279,12 +277,16 @@ function showAIModal(initialMessage = '') {
     // 组装UI
     inputContainer.append(inputTextarea, quickPromptsContainer, sendButton);
     chatContainer.append(chatHistory, inputContainer);
-    modalContent.append(modalHeader, chatContainer);
+    modalContent.append(closeBtn, modalHeader, chatContainer);
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
 
+    // 使用Menu模块的拖拽和居中功能
+    Menu._makeModalDraggable(modal, modalContent);
+    Menu._centerModal(modal, modalContent);
+
     // 显示模态框
-    modal.style.display = 'block';
+    Menu.Modal.show(modalId);
     
     // 聚焦输入框
     setTimeout(() => {
@@ -303,20 +305,15 @@ function showAIModal(initialMessage = '') {
  * @param {HTMLElement} sendButton - 发送按钮
  */
 function setupAIModalEvents(modal, inputTextarea, chatHistory, sendButton) {
-    // 关闭按钮
+    // 使用Menu模块的关闭事件处理
     modal.querySelector('.modal-close').addEventListener('click', () => {
-        modal.style.display = 'none';
-        setTimeout(() => {
-            if (document.body.contains(modal)) {
-                document.body.removeChild(modal);
-            }
-        }, 300);
+        Menu.Modal.hide(modal.id);
     });
 
     // 点击外部关闭
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-            modal.querySelector('.modal-close').click();
+            Menu.Modal.hide(modal.id);
         }
     });
 
@@ -484,3 +481,90 @@ function setupAIButtonEvents(aiButton) {
         AI.showAIDialog(searchText);
     });
 }
+
+/**
+ * 显示AI配置模态框
+ * @returns {Object} 模态框控制对象
+ */
+function showAIConfigModal() {
+    const formItems = [
+        {
+            id: 'ai-enabled',
+            label: I18n.getMessage('enableAI', '启用AI功能'),
+            type: 'checkbox',
+            value: aiConfig.enabled
+        },
+        {
+            id: 'api-url',
+            label: I18n.getMessage('apiUrl', 'API地址'),
+            type: 'url',
+            placeholder: 'https://api.openai.com/v1/chat/completions',
+            value: aiConfig.currentProvider?.apiUrl || '',
+            required: true
+        },
+        {
+            id: 'api-key',
+            label: I18n.getMessage('apiKey', 'API密钥'),
+            type: 'password',
+            placeholder: 'sk-...',
+            value: aiConfig.currentProvider?.apiKey || '',
+            required: true
+        },
+        {
+            id: 'model',
+            label: I18n.getMessage('model', '模型'),
+            type: 'text',
+            placeholder: 'gpt-3.5-turbo',
+            value: aiConfig.currentProvider?.model || 'gpt-3.5-turbo',
+            required: true
+        },
+        {
+            id: 'system-prompt',
+            label: I18n.getMessage('systemPrompt', '系统提示'),
+            type: 'textarea',
+            placeholder: I18n.getMessage('systemPromptPlaceholder', '设置AI的行为和角色...'),
+            value: aiConfig.systemPrompt
+        }
+    ];
+
+    return Menu.showFormModal(
+        I18n.getMessage('aiSettings', 'AI设置'),
+        formItems,
+        (formData) => {
+            // 更新AI配置
+            const newConfig = {
+                enabled: formData['ai-enabled'],
+                systemPrompt: formData['system-prompt'] || aiConfig.systemPrompt,
+                currentProvider: {
+                    name: 'Custom',
+                    apiUrl: formData['api-url'],
+                    apiKey: formData['api-key'],
+                    model: formData['model']
+                }
+            };
+
+            AI.updateConfig(newConfig).then(success => {
+                if (success) {
+                    Notification.notify({
+                        title: I18n.getMessage('success', '成功'),
+                        message: I18n.getMessage('aiConfigSaved', 'AI配置已保存'),
+                        type: 'success',
+                        duration: 3000
+                    });
+                } else {
+                    Notification.notify({
+                        title: I18n.getMessage('error', '错误'),
+                        message: I18n.getMessage('aiConfigSaveFailed', 'AI配置保存失败'),
+                        type: 'error',
+                        duration: 3000
+                    });
+                }
+            });
+        },
+        I18n.getMessage('save', '保存'),
+        I18n.getMessage('cancel', '取消')
+    );
+}
+
+// 导出配置模态框函数供其他模块使用
+AI.showConfigModal = showAIConfigModal;
