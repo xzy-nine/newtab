@@ -51,6 +51,86 @@
     "message": "Copied",
     "description": "已复制提示"
   },
+  "aiAssistant": {
+    "message": "AI Assistant",
+    "description": "AI助手标题"
+  },
+  "aiSettings": {
+    "message": "AI Settings",
+    "description": "AI设置标题"
+  },
+  "enableAI": {
+    "message": "Enable AI Features",
+    "description": "启用AI功能选项"
+  },
+  "apiUrl": {
+    "message": "API URL",
+    "description": "API地址字段"
+  },
+  "apiKey": {
+    "message": "API Key",
+    "description": "API密钥字段"
+  },
+  "model": {
+    "message": "Model",
+    "description": "模型字段"
+  },
+  "systemPrompt": {
+    "message": "System Prompt",
+    "description": "系统提示字段"
+  },
+  "systemPromptPlaceholder": {
+    "message": "Set AI behavior and role...",
+    "description": "系统提示占位符"
+  },
+  "fetchModels": {
+    "message": "Fetch Available Models",
+    "description": "获取模型按钮文本"
+  },
+  "fetchingModels": {
+    "message": "Fetching model list...",
+    "description": "获取模型过程提示"
+  },
+  "modelsLoaded": {
+    "message": "Loaded $1 models",
+    "description": "模型加载成功提示"
+  },
+  "modelListNotSupported": {
+    "message": "Model list not supported for current API",
+    "description": "不支持当前API的模型列表获取"
+  },
+  "modelListFetchFailed": {
+    "message": "Failed to fetch model list: $1",
+    "description": "获取模型列表失败"
+  },
+  "modelSelectDescription": {
+    "message": "Click the \"Fetch Available Models\" button above to load options",
+    "description": "模型选择描述"
+  },
+  "pleaseProvideApiInfo": {
+    "message": "Please provide API URL and key first",
+    "description": "请求填写API信息"
+  },
+  "aiNotEnabled": {
+    "message": "AI feature is not enabled",
+    "description": "AI未启用提示"
+  },
+  "enableAIInSettings": {
+    "message": "Please enable AI feature in settings",
+    "description": "建议在设置中启用AI"
+  },
+  "aiConfigSaved": {
+    "message": "AI configuration saved",
+    "description": "AI配置保存成功"
+  },
+  "aiConfigSaveFailed": {
+    "message": "Failed to save AI configuration",
+    "description": "AI配置保存失败"
+  },
+  "aiConfigIncomplete": {
+    "message": "API configuration incomplete",
+    "description": "API配置不完整"
+  },
   "untitledFolder": {
     "message": "(Untitled Folder)",
     "description": "无标题文件夹显示文本"
@@ -70,7 +150,8 @@
   "loadingBackground": {
     "message": "Loading background...",
     "description": "加载背景"
-  },  "backgroundLoadComplete": {
+  },
+  "backgroundLoadComplete": {
     "message": "Background loaded",
     "description": "背景加载完成"
   },
@@ -717,13 +798,10 @@
   "add": {
     "message": "Add",
     "description": "添加按钮文本"
-  },  "unfixWidgetToMove": {
+  },
+  "unfixWidgetToMove": {
     "message": "Please unfix before moving",
     "description": "移动前需要取消固定提示"
-  },
-  "aiAssistant": {
-    "message": "AI Assistant",
-    "description": "AI助手"
   },
   "send": {
     "message": "Send",
@@ -736,18 +814,6 @@
   "aiInputPlaceholder": {
     "message": "Enter your question...",
     "description": "AI输入框占位符"
-  },
-  "aiNotEnabled": {
-    "message": "AI function not enabled",
-    "description": "AI功能未启用"
-  },
-  "enableAIInSettings": {
-    "message": "Please enable AI function in settings",
-    "description": "请在设置中启用AI功能"
-  },
-  "aiConfigIncomplete": {
-    "message": "AI configuration incomplete",
-    "description": "AI配置不完整"
   },
   "aiNoResponse": {
     "message": "No response",

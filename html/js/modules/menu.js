@@ -26,14 +26,30 @@ export const Menu = {
       `<span class="modal-close">&times;</span><h2 class="modal-header">${title}</h2>`);
     
     const formContainer = Utils.createElement('div', 'modal-form');
-    
-    formItems.forEach(item => {
+      formItems.forEach(item => {
       // 判断是否为checkbox
       const groupClass = item.type === 'checkbox' ? 'form-group checkbox-group' : 'form-group';
       const formGroup = Utils.createElement('div', groupClass);
 
-      const label = Utils.createElement('label', '', { for: item.id }, item.label);
+      // 如果是自定义类型，使用自定义的渲染函数
+      if (item.type === 'custom' && typeof item.render === 'function') {
+        const customLabel = Utils.createElement('label', '', {}, item.label);
+        formGroup.appendChild(customLabel);
+        
+        // 使用渲染函数创建自定义内容
+        item.render(formGroup);
+        
+        if (item.description) {
+          const desc = Utils.createElement('div', 'setting-description', {}, item.description);
+          formGroup.appendChild(desc);
+        }
+        
+        formContainer.appendChild(formGroup);
+        return; // 跳过后续处理
+      }
 
+      const label = Utils.createElement('label', '', { for: item.id }, item.label);
+      
       let input;
       if (item.type === 'textarea') {
         input = Utils.createElement('textarea', '', { id: item.id });
@@ -42,6 +58,24 @@ export const Menu = {
           id: item.id,
           type: 'checkbox'
         });
+      } else if (item.type === 'select') {
+        // 处理下拉选择框
+        input = Utils.createElement('select', '', { id: item.id });
+        
+        // 添加选项
+        if (Array.isArray(item.options)) {
+          item.options.forEach(option => {
+            const optionElement = Utils.createElement('option', '', 
+              { value: option.value }, 
+              option.label || option.value);
+            input.appendChild(optionElement);
+          });
+          
+          // 设置默认值
+          if (item.value !== undefined) {
+            input.value = item.value;
+          }
+        }
       } else {
         input = Utils.createElement('input', '', {
           id: item.id,
@@ -54,9 +88,22 @@ export const Menu = {
       if (item.value !== undefined) {
         if (item.type === 'checkbox') {
           input.checked = !!item.value;
-        } else {
+        } else if (item.type !== 'select') { // 选择框已在上面处理
           input.value = item.value;
         }
+      }
+      if (item.disabled) input.disabled = true;
+
+      // 添加onchange事件处理器
+      if (typeof item.onchange === 'function') {
+        input.addEventListener('change', item.onchange);
+        input.addEventListener('input', item.onchange);
+      }
+
+      // 如果有描述，添加描述
+      if (item.description) {
+        const desc = Utils.createElement('div', 'setting-description', {}, item.description);
+        formGroup.appendChild(desc);
       }
 
       // 复选框放在label前面
@@ -108,19 +155,43 @@ export const Menu = {
     confirmButton.addEventListener('click', () => {
       const formData = {};
       let allFilled = true;
-      
-      formItems.forEach(item => {
+        formItems.forEach(item => {
+        // 跳过自定义渲染的表单项，因为它们应该已经有自己的处理逻辑
+        if (item.type === 'custom') {
+          // 自定义组件可能有自己的数据收集方法
+          if (typeof item.getValue === 'function') {
+            formData[item.id] = item.getValue();
+          }
+          return;
+        }
+        
         const input = document.getElementById(item.id);
         if (input) {
-          // 针对复选框特殊处理
+          // 根据不同类型处理表单值
           if (item.type === 'checkbox') {
             formData[item.id] = input.checked;  // 使用checked属性而不是value
+          } else if (item.type === 'select') {
+            formData[item.id] = input.value; // 选择框不需要trim
           } else {
             formData[item.id] = input.value.trim();
           }
-          if (item.required && !formData[item.id]) {
-            allFilled = false;
-            input.classList.add('error');
+          
+          // 验证必填项
+          if (item.required) {
+            if (item.type === 'checkbox') {
+              // 复选框特殊处理，因为false也是有效值
+              if (item.requiredValue !== undefined && input.checked !== item.requiredValue) {
+                allFilled = false;
+                input.classList.add('error');
+              }
+            } else {
+              // 文本、选择框等其他类型
+              if ((typeof formData[item.id] === 'string' && !formData[item.id]) || 
+                  formData[item.id] === undefined) {
+                allFilled = false;
+                input.classList.add('error');
+              }
+            }
           }
         }
       });

@@ -286,6 +286,78 @@
   box-shadow: none;
 }
 
+/* 获取模型按钮和状态样式 */
+.fetch-models-container {
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fetch-models-btn {
+  padding: 8px 16px;
+  background-color: var(--ai-primary-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.fetch-models-btn:hover {
+  background-color: var(--ai-primary-hover);
+}
+
+.fetch-models-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.fetch-models-status {
+  font-size: 13px;
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 6px;
+}
+
+.fetch-models-status.loading {
+  color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.fetch-models-status.success {
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.fetch-models-status.error {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fetch-models-retry-btn {
+  margin-left: 8px;
+  padding: 4px 8px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.fetch-models-retry-btn:hover {
+  background: #dc2626;
+}
+
 /* 深色模式适配 */
 [data-theme="dark"] {
   --ai-bg-color: rgba(30, 30, 30, 0.95);
@@ -333,6 +405,21 @@
 
 [data-theme="dark"] .ai-message-ai .ai-message-content {
   color: white;
+}
+
+[data-theme="dark"] .fetch-models-status.loading {
+  background-color: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+[data-theme="dark"] .fetch-models-status.success {
+  background-color: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+[data-theme="dark"] .fetch-models-status.error {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 /* 响应式适配 */

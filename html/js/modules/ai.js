@@ -85,6 +85,99 @@ export const AI = {    /**
     },
 
     /**
+     * 获取可用的AI模型列表
+     * @param {string} apiUrl - API地址
+     * @param {string} apiKey - API密钥
+     * @returns {Promise<Array<string>>} - 模型列表
+     */
+    async getModels(apiUrl, apiKey) {
+        if (!apiUrl || !apiKey) {
+            throw new Error(I18n.getMessage('aiConfigIncomplete', 'API配置不完整'));
+        }
+
+        try {
+            // 从API URL推断模型列表端点
+            let modelsUrl = '';
+            if (apiUrl.includes('openai.com')) {
+                // OpenAI API
+                modelsUrl = 'https://api.openai.com/v1/models';
+            } else if (apiUrl.includes('/chat/completions')) {
+                // 通用API，尝试获取同级的models端点
+                modelsUrl = apiUrl.replace('/chat/completions', '/models');
+            } else {
+                throw new Error(I18n.getMessage('modelListNotSupported', '不支持当前API的模型列表获取'));
+            }
+
+            const response = await fetch(modelsUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            // 处理不同API的返回格式
+            let models = [];
+              if (data.data) {
+                // OpenAI格式
+                models = data.data
+                    .filter(model => model.id && typeof model.id === 'string')
+                    .map(model => model.id);
+            } else if (data.models) {
+                // 常见自定义格式
+                models = data.models.map(model => 
+                    typeof model === 'string' ? model : model.id || model.name
+                ).filter(id => id && typeof id === 'string');
+            } else {
+                // 其他未知格式，尝试解析
+                models = Object.keys(data).filter(key => typeof data[key] !== 'function' && typeof key === 'string');
+            }
+            
+            // 过滤、排序并优先推荐常用模型
+            models = models.filter(id => id && typeof id === 'string');
+            
+            // 常用模型优先（GPT-4、GPT-3.5等）
+            const commonModels = ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo', 'gpt-4-vision', 'gpt-3.5-turbo-16k'];
+            
+            // 按照常用性和字母顺序排序
+            models.sort((a, b) => {
+                // 检查是否为常用模型
+                const aCommon = commonModels.findIndex(m => a.toLowerCase().includes(m));
+                const bCommon = commonModels.findIndex(m => b.toLowerCase().includes(m));
+                
+                // 如果都是常用模型，按照commonModels中的顺序排序
+                if (aCommon !== -1 && bCommon !== -1) {
+                    return aCommon - bCommon;
+                }
+                
+                // 常用模型优先
+                if (aCommon !== -1) return -1;
+                if (bCommon !== -1) return 1;
+                
+                // 含有gpt的模型优先
+                const aHasGPT = a.toLowerCase().includes('gpt');
+                const bHasGPT = b.toLowerCase().includes('gpt');
+                if (aHasGPT && !bHasGPT) return -1;
+                if (!aHasGPT && bHasGPT) return 1;
+                
+                // 其他按照字母顺序
+                return a.localeCompare(b);
+            });
+            
+            return models;
+        } catch (error) {
+            console.error('获取模型列表失败:', error);
+            throw new Error(I18n.getMessage('modelListFetchFailed', '获取模型列表失败: ') + error.message);
+        }
+    },
+
+    /**
      * 发送消息到AI
      * @param {string} message - 用户消息
      * @param {string} context - 上下文（可选）
@@ -487,35 +580,171 @@ function setupAIButtonEvents(aiButton) {
  * @returns {Object} 模态框控制对象
  */
 function showAIConfigModal() {
+    // 保存当前表单值的状态对象
+    let currentFormState = {
+        url: aiConfig.currentProvider?.apiUrl || '',
+        key: aiConfig.currentProvider?.apiKey || '',
+        model: aiConfig.currentProvider?.model || 'gpt-3.5-turbo',
+        models: [],
+        fetching: false,
+        error: null
+    };
+    
+    // 初始表单项
     const formItems = [
         {
             id: 'ai-enabled',
             label: I18n.getMessage('enableAI', '启用AI功能'),
             type: 'checkbox',
             value: aiConfig.enabled
-        },
-        {
+        },        {
             id: 'api-url',
             label: I18n.getMessage('apiUrl', 'API地址'),
             type: 'url',
             placeholder: 'https://api.openai.com/v1/chat/completions',
-            value: aiConfig.currentProvider?.apiUrl || '',
-            required: true
-        },
-        {
+            value: currentFormState.url,
+            required: true,
+            onchange: (e) => {
+                // 当API地址输入后，如果密钥也有值，自动尝试获取模型列表
+                const apiUrl = e.target.value.trim();
+                const apiKey = document.getElementById('api-key').value.trim();
+                if (apiUrl && apiKey) {
+                    // 触发自动获取模型列表，但需要短暂延迟以避免频繁请求
+                    setTimeout(() => {
+                        document.querySelector('.fetch-models-btn')?.click();
+                    }, 500);
+                }
+            }
+        },{
             id: 'api-key',
             label: I18n.getMessage('apiKey', 'API密钥'),
             type: 'password',
             placeholder: 'sk-...',
-            value: aiConfig.currentProvider?.apiKey || '',
-            required: true
+            value: currentFormState.key,
+            required: true,
+            onchange: (e) => {
+                // 当API密钥输入后，如果URL也有值，自动尝试获取模型列表
+                const apiUrl = document.getElementById('api-url').value.trim();
+                const apiKey = e.target.value.trim();
+                if (apiUrl && apiKey) {
+                    // 触发自动获取模型列表，但需要短暂延迟以避免频繁请求
+                    setTimeout(() => {
+                        document.querySelector('.fetch-models-btn')?.click();
+                    }, 500);
+                }
+            }
+        },
+        {
+            id: 'fetch-models-btn',
+            type: 'custom',
+            render: (container) => {
+                const btnContainer = Utils.createElement('div', 'fetch-models-container');
+                
+                // 创建获取模型按钮
+                const fetchBtn = Utils.createElement('button', 'fetch-models-btn btn btn-secondary', {
+                    type: 'button'
+                }, I18n.getMessage('fetchModels', '获取可用模型'));
+                
+                // 状态显示
+                const statusContainer = Utils.createElement('div', 'fetch-models-status');
+                
+                btnContainer.appendChild(fetchBtn);
+                btnContainer.appendChild(statusContainer);
+                container.appendChild(btnContainer);
+                
+                // 绑定获取模型事件
+                fetchBtn.addEventListener('click', async () => {
+                    const urlInput = document.getElementById('api-url');
+                    const keyInput = document.getElementById('api-key');
+                    const modelSelect = document.getElementById('model');
+                    
+                    const apiUrl = urlInput.value.trim();
+                    const apiKey = keyInput.value.trim();
+                    
+                    if (!apiUrl || !apiKey) {
+                        statusContainer.textContent = I18n.getMessage('pleaseProvideApiInfo', '请先填写API地址和密钥');
+                        statusContainer.className = 'fetch-models-status error';
+                        return;
+                    }
+                    
+                    // 更新状态
+                    statusContainer.textContent = I18n.getMessage('fetchingModels', '正在获取模型列表...');
+                    statusContainer.className = 'fetch-models-status loading';
+                    fetchBtn.disabled = true;
+                    currentFormState.fetching = true;
+                    currentFormState.error = null;
+                    
+                    try {
+                        // 调用获取模型API
+                        const models = await AI.getModels(apiUrl, apiKey);
+                        
+                        // 更新状态
+                        currentFormState.models = models;
+                        currentFormState.fetching = false;
+                        
+                        // 更新下拉框
+                        modelSelect.innerHTML = '';
+                        models.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model;
+                            option.textContent = model;
+                            modelSelect.appendChild(option);
+                        });
+                        
+                        // 如果有当前模型，选中它
+                        if (currentFormState.model && models.includes(currentFormState.model)) {
+                            modelSelect.value = currentFormState.model;
+                        } else if (models.length > 0) {
+                            // 选择第一个可用模型
+                            modelSelect.value = models[0];
+                            currentFormState.model = models[0];
+                        }
+                        
+                        // 启用选择框
+                        modelSelect.disabled = false;
+                        
+                        // 更新状态提示
+                        statusContainer.textContent = I18n.getMessage('modelsLoaded', '已加载 ' + models.length + ' 个模型');
+                        statusContainer.className = 'fetch-models-status success';
+                    } catch (error) {
+                        // 处理错误
+                        currentFormState.error = error.message;
+                        currentFormState.fetching = false;
+                          // 更新状态提示并添加重试按钮
+                        statusContainer.innerHTML = '';
+                        
+                        // 错误信息
+                        const errorText = Utils.createElement('span', '', {}, error.message);
+                        statusContainer.appendChild(errorText);
+                        
+                        // 添加重试按钮
+                        const retryBtn = Utils.createElement('button', 'fetch-models-retry-btn', {}, I18n.getMessage('retry', '重试'));
+                        retryBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // 重新触发获取模型
+                            fetchBtn.click();
+                        });
+                        statusContainer.appendChild(retryBtn);
+                        
+                        statusContainer.className = 'fetch-models-status error';
+                        
+                        console.error('获取模型失败:', error);
+                    } finally {
+                        // 恢复按钮状态
+                        fetchBtn.disabled = false;
+                    }
+                });
+            }
         },
         {
             id: 'model',
             label: I18n.getMessage('model', '模型'),
-            type: 'text',
-            placeholder: 'gpt-3.5-turbo',
-            value: aiConfig.currentProvider?.model || 'gpt-3.5-turbo',
+            type: 'select',
+            options: [{ value: currentFormState.model, label: currentFormState.model }],
+            value: currentFormState.model,
+            disabled: true, // 初始禁用，直到获取模型列表
+            description: I18n.getMessage('modelSelectDescription', '点击上方的"获取可用模型"按钮加载可选项'),
             required: true
         },
         {

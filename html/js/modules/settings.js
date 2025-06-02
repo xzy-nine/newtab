@@ -1030,8 +1030,7 @@ export const Settings = {
 
   /**
    * 显示添加AI供应商模态框
-   */
-  showAddAIProviderModal: () => {
+   */  showAddAIProviderModal: () => {
     const formItems = [
       {
         type: 'text',
@@ -1055,11 +1054,113 @@ export const Settings = {
         required: true
       },
       {
+        // 添加获取模型按钮
+        id: 'fetch-models-btn',
+        type: 'custom',
+        render: (container) => {
+          const btnContainer = Utils.createElement('div', 'fetch-models-container');
+          
+          // 创建获取模型按钮
+          const fetchBtn = Utils.createElement('button', 'fetch-models-btn btn btn-secondary', {
+            type: 'button'
+          }, I18n.getMessage('fetchModels', '获取可用模型'));
+          
+          // 状态显示
+          const statusContainer = Utils.createElement('div', 'fetch-models-status');
+          
+          btnContainer.appendChild(fetchBtn);
+          btnContainer.appendChild(statusContainer);
+          container.appendChild(btnContainer);          // 绑定获取模型事件
+          fetchBtn.addEventListener('click', async () => {
+            const urlInput = document.getElementById('custom-provider-api-url');
+            const keyInput = document.getElementById('custom-provider-api-key');
+            const modelInput = document.getElementById('custom-provider-model');
+            const modelInputContainer = modelInput ? modelInput.parentElement : null;
+            
+            const apiUrl = urlInput.value.trim();
+            const apiKey = keyInput.value.trim();
+            
+            if (!apiUrl || !apiKey) {
+              statusContainer.textContent = I18n.getMessage('pleaseProvideApiInfo', '请先填写API地址和密钥');
+              statusContainer.className = 'fetch-models-status error';
+              return;
+            }
+            
+            // 更新状态
+            statusContainer.textContent = I18n.getMessage('fetchingModels', '正在获取模型列表...');
+            statusContainer.className = 'fetch-models-status loading';
+            fetchBtn.disabled = true;
+            
+            try {
+              // 调用获取模型API
+              const models = await AI.getModels(apiUrl, apiKey);
+              
+              // 检查输入元素是否存在
+              const oldInput = document.getElementById('custom-provider-model');
+              if (oldInput && modelInputContainer) {
+                // 创建新的下拉框                // 判断元素类型，如果已经是select，就更新它，否则创建新的下拉框
+                let select;
+                if (oldInput.tagName.toLowerCase() === 'select') {
+                  // 如果已经是select元素，清空并重用
+                  select = oldInput;
+                  select.innerHTML = ''; // 清空现有选项
+                } else {
+                  // 创建新的select元素替换文本输入
+                  select = document.createElement('select');
+                  select.id = 'custom-provider-model';
+                  select.className = 'setting-select';
+                  select.required = true;
+                  
+                  // 替换输入框
+                  modelInputContainer.replaceChild(select, oldInput);
+                }
+                
+                // 添加模型选项
+                models.forEach(model => {
+                  const option = document.createElement('option');
+                  option.value = model;
+                  option.textContent = model;
+                  select.appendChild(option);
+                });
+              }
+              
+              // 更新状态提示
+              statusContainer.textContent = I18n.getMessage('modelsLoaded', '已加载 ' + models.length + ' 个模型');
+              statusContainer.className = 'fetch-models-status success';
+            } catch (error) {
+              // 处理错误
+              statusContainer.innerHTML = '';
+              
+              // 错误信息
+              const errorText = Utils.createElement('span', '', {}, error.message);
+              statusContainer.appendChild(errorText);
+              
+              // 添加重试按钮
+              const retryBtn = Utils.createElement('button', 'fetch-models-retry-btn', {}, I18n.getMessage('retry', '重试'));
+              retryBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                fetchBtn.click();
+              });
+              statusContainer.appendChild(retryBtn);
+              
+              statusContainer.className = 'fetch-models-status error';
+              
+              console.error('获取模型失败:', error);
+            } finally {
+              // 恢复按钮状态
+              fetchBtn.disabled = false;
+            }
+          });
+        }
+      },
+      {
         type: 'text',
         id: 'custom-provider-model',
         label: I18n.getMessage('providerModel', '模型名称'),
         placeholder: 'gpt-3.5-turbo',
-        required: true
+        required: true,
+        description: I18n.getMessage('modelSelectDescription', '点击上方的"获取可用模型"按钮加载可选项')
       },
       {
         type: 'url',
@@ -1115,9 +1216,7 @@ export const Settings = {
    * 显示编辑AI供应商模态框
    * @param {Object} provider - AI供应商对象
    * @param {number} index - 供应商索引
-   */
-  showEditAIProviderModal: (provider, index) => {
-    const formItems = [
+   */  showEditAIProviderModal: (provider, index) => {    const formItems = [
       {
         type: 'text',
         id: 'edit-provider-name',
@@ -1130,21 +1229,159 @@ export const Settings = {
         id: 'edit-provider-api-url',
         label: I18n.getMessage('providerApiUrl', 'API地址'),
         value: provider.apiUrl,
-        required: true
+        required: true,
+        onchange: (e) => {
+          // 当API地址变更时，如果有API密钥，尝试获取模型列表
+          const apiUrl = e.target.value.trim();
+          const apiKeyInput = document.getElementById('edit-provider-api-key');
+          if (apiKeyInput && apiUrl && apiKeyInput.value.trim()) {
+            // 延迟触发获取模型按钮点击
+            setTimeout(() => {
+              document.querySelector('.fetch-models-btn')?.click();
+            }, 500);
+          }
+        }
       },
       {
         type: 'password-toggle',
         id: 'edit-provider-api-key',
         label: I18n.getMessage('providerApiKey', 'API密钥'),
         value: provider.apiKey || '',
-        required: true
+        required: true,
+        onchange: (e) => {
+          // 当API密钥变更时，如果有API URL，尝试获取模型列表
+          const apiKey = e.target.value.trim();
+          const apiUrlInput = document.getElementById('edit-provider-api-url');
+          if (apiUrlInput && apiKey && apiUrlInput.value.trim()) {
+            // 延迟触发获取模型按钮点击
+            setTimeout(() => {
+              document.querySelector('.fetch-models-btn')?.click();
+            }, 500);
+          }
+        }
       },
       {
-        type: 'text',
+        // 添加获取模型按钮（自定义元素）
+        id: 'fetch-models-btn',
+        type: 'custom',
+        render: (container) => {
+          const btnContainer = Utils.createElement('div', 'fetch-models-container');
+          
+          // 创建获取模型按钮
+          const fetchBtn = Utils.createElement('button', 'fetch-models-btn btn btn-secondary', {
+            type: 'button'
+          }, I18n.getMessage('fetchModels', '获取可用模型'));
+          
+          // 状态显示
+          const statusContainer = Utils.createElement('div', 'fetch-models-status');
+          
+          btnContainer.appendChild(fetchBtn);
+          btnContainer.appendChild(statusContainer);
+          container.appendChild(btnContainer);            // 绑定获取模型事件
+          fetchBtn.addEventListener('click', async () => {
+            const urlInput = document.getElementById('edit-provider-api-url');
+            const keyInput = document.getElementById('edit-provider-api-key');
+            const modelElement = document.getElementById('edit-provider-model');
+            const modelContainer = modelElement ? modelElement.parentElement : null;
+            
+            const apiUrl = urlInput.value.trim();
+            const apiKey = keyInput.value.trim();
+            
+            if (!apiUrl || !apiKey) {
+              statusContainer.textContent = I18n.getMessage('pleaseProvideApiInfo', '请先填写API地址和密钥');
+              statusContainer.className = 'fetch-models-status error';
+              return;
+            }
+            
+            // 更新状态
+            statusContainer.textContent = I18n.getMessage('fetchingModels', '正在获取模型列表...');
+            statusContainer.className = 'fetch-models-status loading';
+            fetchBtn.disabled = true;
+            
+            try {
+              // 调用获取模型API
+              const models = await AI.getModels(apiUrl, apiKey);
+              
+              // 检查是否找到模型元素和容器
+              if (!modelElement || !modelContainer) {
+                throw new Error('找不到模型输入元素');
+              }
+              
+              let modelSelect;
+              // 如果当前已经是select元素，直接使用它
+              if (modelElement.tagName.toLowerCase() === 'select') {
+                modelSelect = modelElement;
+                // 清除现有选项
+                modelSelect.innerHTML = '';
+              } else {
+                // 否则创建新的select元素替换文本输入
+                modelSelect = document.createElement('select');
+                modelSelect.id = 'edit-provider-model';
+                modelSelect.className = 'setting-select';
+                modelSelect.required = true;
+                
+                // 替换输入框
+                modelContainer.replaceChild(modelSelect, modelElement);
+              }
+              
+              // 添加获取到的模型列表
+              models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                modelSelect.appendChild(option);
+              });
+              
+              // 如果有当前模型，选中它
+              if (provider.model && models.includes(provider.model)) {
+                modelSelect.value = provider.model;
+              } else if (models.length > 0) {
+                // 选择第一个可用模型
+                modelSelect.value = models[0];
+              }
+                // 确保选择框是启用状态
+              modelSelect.disabled = false;
+              
+              // 更新状态提示
+              statusContainer.textContent = I18n.getMessage('modelsLoaded', '已加载 ' + models.length + ' 个模型');
+              statusContainer.className = 'fetch-models-status success';
+            } catch (error) {
+              // 处理错误
+              // 更新状态提示并添加重试按钮
+              statusContainer.innerHTML = '';
+              
+              // 错误信息
+              const errorText = Utils.createElement('span', '', {}, error.message);
+              statusContainer.appendChild(errorText);
+              
+              // 添加重试按钮
+              const retryBtn = Utils.createElement('button', 'fetch-models-retry-btn', {}, I18n.getMessage('retry', '重试'));
+              retryBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // 重新触发获取模型
+                fetchBtn.click();
+              });
+              statusContainer.appendChild(retryBtn);
+              
+              statusContainer.className = 'fetch-models-status error';
+              
+              console.error('获取模型失败:', error);
+            } finally {
+              // 恢复按钮状态
+              fetchBtn.disabled = false;
+            }
+          });
+        }
+      },
+      {
+        type: 'select',
         id: 'edit-provider-model',
         label: I18n.getMessage('providerModel', '模型名称'),
         value: provider.model,
-        required: true
+        options: [{ value: provider.model, label: provider.model }],
+        required: true,
+        description: I18n.getMessage('modelSelectDescription', '点击上方的"获取可用模型"按钮加载可选项')
       },
       {
         type: 'url',
