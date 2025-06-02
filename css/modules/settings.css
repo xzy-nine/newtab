@@ -1,3 +1,4 @@
+/* 设置按钮样式 */
 #settings-btn {
   position: fixed;
   left: 24px;
@@ -539,209 +540,7 @@
   --text-secondary: #b3b3b3;
   --border-color: #404040;
   --border-light: #333333;
-}
-
-[data-theme="dark"] #settings-btn {
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-}
-
-[data-theme="dark"] #settings-btn:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-}
-
-  .settings-modal .modal-content {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-  }
-
-  .modal-header {
-    background: var(--bg-secondary);
-    border-bottom-color: var(--border-color);
-  }
-
-  .settings-sidebar {
-    background: var(--bg-tertiary);
-    border-right-color: var(--border-color);
-  }
-
-  .settings-category {
-    color: var(--text-primary);
-    border-bottom-color: var(--border-light);
-  }
-
-  .settings-category:hover {
-    background: var(--bg-hover);
-  }
-
-  .settings-category.active {
-    background: var(--color-primary);
-    color: white;
-  }
-
-  .setting-item {
-    background: var(--bg-card);
-    border-color: var(--border-color);
-  }
-
-  .setting-item:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  }
-
-  .setting-label {
-    color: var(--text-primary);
-  }
-
-  .setting-description {
-    color: var(--text-secondary);
-  }
-
-  .checkbox-switch {
-    background: var(--bg-muted);
-  }
-
-  .setting-checkbox:checked + .checkbox-switch {
-    background: var(--color-primary);
-  }
-
-  .setting-range {
-    background: var(--bg-muted);
-  }
-
-  .setting-range::-webkit-slider-thumb {
-    background: var(--color-primary);
-  }
-
-  .setting-range::-moz-range-thumb {
-    background: var(--color-primary);
-  }
-
-  .range-value {
-    color: var(--text-primary);
-  }
-
-  .setting-select {
-    background: var(--bg-card);
-    border-color: var(--border-color);
-    color: var(--text-primary);
-  }
-
-  .setting-select:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
-  }
-
-  .radio-item label {
-    color: var(--text-primary);
-  }
-
-  .btn-primary {
-    background: var(--color-primary);
-  }
-
-  .btn-primary:hover {
-    background: var(--color-primary-dark);
-  }
-
-  .search-engine-list-container {
-    border-color: var(--border-color);
-    background: var(--bg-card);
-  }
-
-  .search-engine-item-setting {
-    background: var(--bg-tertiary);
-    border-color: var(--border-light);
-  }
-
-  .search-engine-item-setting:hover {
-    background: var(--bg-hover);
-    border-color: var(--border-color);
-  }
-
-  .search-engine-item-setting.current-engine {
-    background: rgba(76, 175, 80, 0.2);
-    border-color: #4caf50;
-  }
-
-  .engine-name {
-    color: var(--text-primary);
-  }
-
-  .engine-url {
-    color: var(--text-secondary);
-  }
-
-  .error-message {
-    color: #ff6b6b;
-  }
-
-  .prompt-input, .setting-textarea {
-    background: var(--bg-card);
-    border-color: var(--border-color);
-    color: var(--text-primary);
-  }
-
-  .prompt-input:focus, .setting-textarea:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
-  }
-
-  .setting-input[type="password"] {
-    background: var(--bg-card);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-  }
-
-  /* 密码切换容器样式 */
-  .password-toggle-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-
-  .password-input {
-    flex: 1;
-    padding-right: 40px; /* 为切换按钮留出空间 */
-  }
-
-  .password-toggle-btn {
-    position: absolute;
-    right: 8px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
-  }
-
-  .password-toggle-btn:hover {
-    opacity: 1;
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
-  }
-
-  .eye-icon {
-    font-size: 16px;
-    line-height: 1;
-  }
-
-/* 手动深色模式切换 - 如果您有深色模式切换功能 */
-[data-theme="dark"] {
-  --color-primary: #1e88e5;
-  --color-primary-dark: #1565c0;
-  --bg-primary: #121212;
-  --bg-secondary: #1e1e1e;
-  --bg-tertiary: #262626;
-  --bg-card: #1e1e1e;
-  --bg-hover: #333333;
-  --bg-muted: #404040;
-  --text-primary: #ffffff;
-  --text-secondary: #b3b3b3;
-  --border-color: #404040;
-  --border-light: #333333;
+  --hover-bg: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="dark"] #settings-btn {
@@ -890,45 +689,100 @@
   box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
 }
 
+/* 在深色主题适配部分添加缺少的样式 */
+[data-theme="dark"] {
+  --color-primary: #1e88e5;
+  --color-primary-dark: #1565c0;
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #262626;
+  --bg-card: #1e1e1e;
+  --bg-hover: #333333;
+  --bg-muted: #404040;
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --border-color: #404040;
+  --border-light: #333333;
+  --hover-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* 添加缺少的深色模式样式 */
+[data-theme="dark"] .settings-content-area {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .category-title {
+  color: var(--text-primary);
+}
+
+/* 修复输入框样式 */
+[data-theme="dark"] .setting-input {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+}
+
+/* 修复密码输入框样式 */
 [data-theme="dark"] .setting-input[type="password"] {
   background: var(--bg-card);
   color: var(--text-primary);
   border-color: var(--border-color);
 }
 
-/* 密码切换容器样式 */
-[data-theme="dark"] .password-toggle-container {
-  position: relative;
-  display: flex;
-  align-items: center;
+[data-theme="dark"] .setting-input[type="password"]:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
 }
 
-[data-theme="dark"] .password-input {
-  flex: 1;
-  padding-right: 40px; /* 为切换按钮留出空间 */
-}
-
+/* 修复密码切换按钮 */
 [data-theme="dark"] .password-toggle-btn {
-  position: absolute;
-  right: 8px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
+  color: var(--text-secondary);
 }
 
 [data-theme="dark"] .password-toggle-btn:hover {
-  opacity: 1;
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary);
+  background-color: var(--hover-bg);
 }
 
-[data-theme="dark"] .eye-icon {
-  font-size: 16px;
-  line-height: 1;
+/* 添加其他可能缺少的元素样式 */
+[data-theme="dark"] .setting-number {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-number:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+}
+
+/* 确保所有文本输入元素都有深色样式 */
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="url"],
+[data-theme="dark"] input[type="email"] {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] input[type="text"]:focus,
+[data-theme="dark"] input[type="password"]:focus,
+[data-theme="dark"] input[type="number"]:focus,
+[data-theme="dark"] input[type="url"]:focus,
+[data-theme="dark"] input[type="email"]:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25) !important;
+}
+
+/* 确保模态框背景也应用深色主题 */
+[data-theme="dark"] .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
 }
