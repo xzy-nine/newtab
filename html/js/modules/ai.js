@@ -557,8 +557,20 @@ function showAIModal(initialMessage = '', conversationId = null) {
     aiConfig.quickPrompts.forEach(prompt => {
         const promptBtn = Utils.createElement('button', 'ai-quick-prompt-btn', {}, prompt);
         promptBtn.addEventListener('click', () => {
-            inputTextarea.value = prompt;
+            // 获取当前输入框内容
+            const currentValue = inputTextarea.value.trim();
+            
+            // 如果有现有内容，在快速提示词后添加冒号和现有内容
+            if (currentValue) {
+                inputTextarea.value = prompt + ':' + currentValue;
+            } else {
+                // 如果没有现有内容，只设置快速提示词
+                inputTextarea.value = prompt;
+            }
+            
             inputTextarea.focus();
+            // 将光标移到末尾
+            inputTextarea.setSelectionRange(inputTextarea.value.length, inputTextarea.value.length);
         });
         quickPromptsContainer.appendChild(promptBtn);
     });
