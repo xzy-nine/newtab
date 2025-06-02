@@ -73,18 +73,22 @@ export const Notification = {  /**
         ${buttonsHtml}
         ${copyButtonHtml}
       </div>
-    `;
+    `;    document.body.appendChild(notification);
     
-    document.body.appendChild(notification);
-    
-    // 设置位置偏移
-    setTimeout(() => {
-      notification.classList.add('visible');
-      Notification.adjustNotificationPositions();
-    }, 10);
+    let timeoutId;
     
     const closeNotification = () => {
+      // 清除定时器
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      
       notification.classList.remove('visible');
+      notification.dataset.visible = 'false';
+      
+      // 从通知管理系统中移除
+      Notification.notificationManager.remove(notification);
       
       setTimeout(() => {
         if (document.body.contains(notification)) {
@@ -94,6 +98,18 @@ export const Notification = {  /**
         }
       }, 300);
     };
+    
+    // 设置位置偏移
+    setTimeout(() => {
+      notification.classList.add('visible');
+      notification.dataset.visible = 'true';
+      Notification.adjustNotificationPositions();
+      
+      // 在通知变为可见后，启动自动关闭定时器（如果需要的话）
+      if (finalDuration > 0) {
+        timeoutId = setTimeout(closeNotification, finalDuration);
+      }
+    }, 10);
     
     notification.querySelector('.notification-close')
       .addEventListener('click', closeNotification);
@@ -121,8 +137,7 @@ export const Notification = {  /**
         });
       }
     }
-    
-    if (buttons?.length) {
+      if (buttons?.length) {
       buttons.forEach((btn, index) => {
         const btnElement = notification.querySelector(`[data-button-index="${index}"]`);
         if (btnElement && typeof btn.callback === 'function') {
@@ -133,11 +148,12 @@ export const Notification = {  /**
         }
       });
     }
-      let timeoutId;
     
     // 添加可见性检查函数
     const checkVisibilityAndSetTimeout = () => {
-      if (notification.dataset.visible === 'true' && finalDuration > 0) {
+      // 这个函数主要用于通知管理系统调用
+      // 如果通知变为可见且还没有设置定时器，则设置定时器
+      if (notification.dataset.visible === 'true' && finalDuration > 0 && !timeoutId) {
         timeoutId = setTimeout(closeNotification, finalDuration);
       }
     };
@@ -167,15 +183,19 @@ export const Notification = {  /**
       Notification.notificationManager.notifications.push(notificationItem);
       Notification.notificationManager.updateVisibility();
     },
-    
-    updateVisibility: () => {
+      updateVisibility: () => {
       const notifications = Notification.notificationManager.notifications;
       
       // 更新所有通知的可见状态
       notifications.forEach((item, index) => {
+        const wasVisible = item.element.dataset.visible === 'true';
+        
         if (index < Notification.notificationManager.visibleLimit) {
           item.element.dataset.visible = 'true';
-          item.checkVisibility(); // 对可见通知检查是否需要启动定时器
+          // 如果通知从不可见变为可见，检查是否需要启动定时器
+          if (!wasVisible) {
+            item.checkVisibility();
+          }
         } else {
           item.element.dataset.visible = 'false';
           // 隐藏的通知不触发消失
@@ -194,7 +214,6 @@ export const Notification = {  /**
       }
     }
   },
-
   adjustNotificationPositions: () => {
     const notifications = document.querySelectorAll('.notification');
     notifications.forEach((notification, index) => {
