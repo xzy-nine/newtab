@@ -358,6 +358,123 @@
   background: #dc2626;
 }
 
+/* AI对话历史样式 */
+.ai-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.ai-history-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 10px;
+    transition: all 0.2s ease;
+}
+
+.ai-history-btn:hover {
+    background-color: var(--hover-bg);
+}
+
+.ai-buttons-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.ai-new-conversation-btn {
+    flex: 0 0 auto;
+}
+
+.ai-send-btn {
+    flex: 1;
+}
+
+/* 对话历史面板样式 */
+.ai-history-panel-content {
+    max-width: 600px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.ai-history-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.ai-conversation-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.ai-conversation-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background-color: var(--bg-color);
+    transition: all 0.2s ease;
+}
+
+.ai-conversation-item:hover {
+    background-color: var(--hover-bg);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ai-conversation-info {
+    flex: 1;
+    margin-right: 15px;
+}
+
+.ai-conversation-title {
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: var(--text-color);
+}
+
+.ai-conversation-meta {
+    font-size: 12px;
+    color: var(--text-color-secondary);
+}
+
+.ai-conversation-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.ai-continue-btn, .ai-delete-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+.ai-empty-history {
+    text-align: center;
+    color: var(--text-color-secondary);
+    padding: 40px 20px;
+    font-style: italic;
+}
+
+.ai-clear-all-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
 /* 深色模式适配 */
 [data-theme="dark"] {
   --ai-bg-color: rgba(30, 30, 30, 0.95);
