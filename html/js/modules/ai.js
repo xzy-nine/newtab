@@ -6,7 +6,6 @@ import { I18n } from './i18n.js';
 import { Utils } from './utils.js';
 import { Menu } from './menu.js';
 import { Notification } from './notification.js';
-
 // AI配置相关变量
 let aiConfig = {
     enabled: false,
@@ -28,11 +27,11 @@ let aiConfig = {
     systemPrompt: '你是一个智能助手，请用简洁友好的语言回答用户的问题。'
 };
 
-// 对话历史记录
+// 对话历史记录,
 let conversationHistory = [];
 let currentConversationId = null;
 
-// 存储键名常量
+// 存储键名常量,
 const STORAGE_KEYS = {
     AI_CONFIG: 'aiConfig',
     AI_CONVERSATIONS: 'aiConversations'
@@ -505,96 +504,108 @@ function showAIModal(initialMessage = '', conversationId = null) {
     const modal = Utils.createElement('div', 'modal ai-modal', { id: modalId });
     const modalContent = Utils.createElement('div', 'modal-content ai-modal-content');
 
-    // 模态框头部
-    const modalHeader = Utils.createElement('div', 'ai-modal-header');
-    const headerTitle = Utils.createElement('h2', 'modal-title', {}, I18n.getMessage('aiAssistant', 'AI助手'));
+    // 创建主布局容器
+    const mainLayout = Utils.createElement('div', 'ai-main-layout');
     
-    // 历史按钮
-    const historyBtn = Utils.createElement('button', 'ai-history-btn', { 
+    // 左侧边栏 - 历史记录
+    const sidebar = Utils.createElement('div', 'ai-sidebar');
+    const sidebarHeader = Utils.createElement('div', 'ai-sidebar-header');
+    const sidebarTitle = Utils.createElement('h3', 'ai-sidebar-title', {}, I18n.getMessage('conversationHistory', '对话历史'));
+    const newChatBtn = Utils.createElement('button', 'ai-new-chat-btn', { 
         type: 'button',
-        title: I18n.getMessage('conversationHistory', '对话历史')
-    }, '📋');
+        title: I18n.getMessage('newConversation', '新对话')
+    }, '+');
+    sidebarHeader.append(sidebarTitle, newChatBtn);
     
-    const closeBtn = Utils.createElement('span', 'modal-close', {}, '&times;');
-    modalHeader.append(headerTitle, historyBtn, closeBtn);
+    const conversationsList = Utils.createElement('div', 'ai-conversations-list');
+    const sidebarFooter = Utils.createElement('div', 'ai-sidebar-footer');
+    const clearAllBtn = Utils.createElement('button', 'ai-clear-all-btn btn btn-sm btn-danger', {}, 
+        I18n.getMessage('clearAll', '清空全部'));
+    sidebarFooter.appendChild(clearAllBtn);
+    
+    sidebar.append(sidebarHeader, conversationsList, sidebarFooter);
 
-    // 主要内容区域
-    const mainContent = Utils.createElement('div', 'ai-main-content');
+    // 右侧对话区域
+    const chatArea = Utils.createElement('div', 'ai-chat-area');
     
-    // 对话区域
+    // 对话头部
+    const chatHeader = Utils.createElement('div', 'ai-chat-header');
+    const chatTitle = Utils.createElement('h2', 'ai-chat-title', {}, I18n.getMessage('aiAssistant', 'AI助手'));
+    const closeBtn = Utils.createElement('span', 'modal-close', {}, '&times;');
+    chatHeader.append(chatTitle, closeBtn);
+    
+    // 对话内容区域
     const chatContainer = Utils.createElement('div', 'ai-chat-container');
     const chatHistory = Utils.createElement('div', 'ai-chat-history', { id: 'ai-chat-history' });
     
-    // 当前对话ID
-    let currentConversationId = conversationId;
+    // 底部输入区域
+    const inputArea = Utils.createElement('div', 'ai-input-area');
     
-    // 如果有指定的对话ID，加载对话历史
-    if (conversationId) {
-        const conversation = AI.getConversation(conversationId);
-        if (conversation) {
-            conversation.messages.forEach(msg => {
-                addMessageToHistory(chatHistory, msg.content, msg.role === 'user' ? 'user' : 'ai');
-            });
-            headerTitle.textContent = conversation.title + ' - ' + I18n.getMessage('aiAssistant', 'AI助手');
-        }
-    }
+    // 快速提示词
+    const quickPromptsContainer = Utils.createElement('div', 'ai-quick-prompts');
+    aiConfig.quickPrompts.forEach(prompt => {
+        const promptBtn = Utils.createElement('button', 'ai-quick-prompt-btn', {}, prompt);
+        promptBtn.addEventListener('click', () => {
+            const inputTextarea = document.getElementById('ai-input');
+            const currentValue = inputTextarea.value.trim();
+            
+            if (currentValue) {
+                inputTextarea.value = prompt + ': ' + currentValue;
+            } else {
+                inputTextarea.value = prompt;
+            }
+            
+            inputTextarea.focus();
+            inputTextarea.setSelectionRange(inputTextarea.value.length, inputTextarea.value.length);
+        });
+        quickPromptsContainer.appendChild(promptBtn);
+    });
     
-    // 输入区域
+    // 输入框容器
     const inputContainer = Utils.createElement('div', 'ai-input-container');
     const inputTextarea = Utils.createElement('textarea', 'ai-input', {
         id: 'ai-input',
         placeholder: I18n.getMessage('aiInputPlaceholder', '输入您的问题...'),
-        rows: 3
+        rows: 1
     });
+    
+    const sendButton = Utils.createElement('button', 'ai-send-btn', {
+        type: 'button',
+        title: I18n.getMessage('send', '发送')
+    }, '⬆️');
+    
+    inputContainer.append(inputTextarea, sendButton);
+    inputArea.append(quickPromptsContainer, inputContainer);
+    
+    // 组装对话区域
+    chatContainer.appendChild(chatHistory);
+    chatArea.append(chatHeader, chatContainer, inputArea);
+    
+    // 组装主布局
+    mainLayout.append(sidebar, chatArea);
+    modalContent.appendChild(mainLayout);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // 当前对话ID
+    let currentConversationId = conversationId;
     
     // 如果有初始消息，设置到输入框
     if (initialMessage) {
         inputTextarea.value = initialMessage;
     }
-
-    // 快速提示词按钮
-    const quickPromptsContainer = Utils.createElement('div', 'ai-quick-prompts');
-    aiConfig.quickPrompts.forEach(prompt => {
-        const promptBtn = Utils.createElement('button', 'ai-quick-prompt-btn', {}, prompt);
-        promptBtn.addEventListener('click', () => {
-            // 获取当前输入框内容
-            const currentValue = inputTextarea.value.trim();
-            
-            // 如果有现有内容，在快速提示词后添加冒号和现有内容
-            if (currentValue) {
-                inputTextarea.value = prompt + ':' + currentValue;
-            } else {
-                // 如果没有现有内容，只设置快速提示词
-                inputTextarea.value = prompt;
-            }
-            
-            inputTextarea.focus();
-            // 将光标移到末尾
-            inputTextarea.setSelectionRange(inputTextarea.value.length, inputTextarea.value.length);
-        });
-        quickPromptsContainer.appendChild(promptBtn);
-    });
-
-    // 按钮容器
-    const buttonsContainer = Utils.createElement('div', 'ai-buttons-container');
     
-    // 新对话按钮
-    const newConversationBtn = Utils.createElement('button', 'ai-new-conversation-btn btn btn-secondary', {}, 
-        I18n.getMessage('newConversation', '新对话'));
+    // 加载对话历史列表
+    loadConversationsList(conversationsList, chatHistory, chatTitle, () => currentConversationId, (id) => { currentConversationId = id; });
     
-    // 发送按钮
-    const sendButton = Utils.createElement('button', 'ai-send-btn btn btn-primary', {}, 
-        I18n.getMessage('send', '发送'));
-
-    buttonsContainer.append(newConversationBtn, sendButton);
-
-    // 组装UI
-    inputContainer.append(inputTextarea, quickPromptsContainer, buttonsContainer);
-    chatContainer.append(chatHistory, inputContainer);
-    mainContent.appendChild(chatContainer);
-    modalContent.append(modalHeader, mainContent);
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
+    // 如果有指定的对话ID，加载对话历史
+    if (conversationId) {
+        const conversation = AI.getConversation(conversationId);
+        if (conversation) {
+            loadConversationMessages(chatHistory, conversation);
+            chatTitle.textContent = conversation.title;
+        }
+    }
 
     // 使用Menu模块的拖拽和居中功能
     Menu._makeModalDraggable(modal, modalContent);
@@ -606,25 +617,119 @@ function showAIModal(initialMessage = '', conversationId = null) {
     // 聚焦输入框
     setTimeout(() => {
         inputTextarea.focus();
+        autoResizeTextarea(inputTextarea);
     }, 100);
 
     // 设置事件监听
-    setupAIModalEvents(modal, inputTextarea, chatHistory, sendButton, newConversationBtn, historyBtn, () => currentConversationId, (id) => { currentConversationId = id; });
+    setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendButton, newChatBtn, clearAllBtn, conversationsList, () => currentConversationId, (id) => { currentConversationId = id; });
+}
+
+/**
+ * 加载对话列表到侧边栏
+ */
+function loadConversationsList(conversationsList, chatHistory, chatTitle, getCurrentConversationId, setCurrentConversationId) {
+    conversationsList.innerHTML = '';
+    
+    const conversations = AI.getConversationHistory();
+    
+    if (conversations.length === 0) {
+        const emptyMsg = Utils.createElement('div', 'ai-empty-conversations', {}, 
+            I18n.getMessage('noConversationHistory', '暂无对话历史'));
+        conversationsList.appendChild(emptyMsg);
+        return;
+    }
+    
+    conversations.forEach(conv => {
+        const convItem = Utils.createElement('div', 'ai-conversation-item');
+        if (conv.id === getCurrentConversationId()) {
+            convItem.classList.add('active');
+        }
+        
+        const convTitle = Utils.createElement('div', 'ai-conversation-title', {}, conv.title);
+        const convMeta = Utils.createElement('div', 'ai-conversation-meta');
+        const lastUpdated = new Date(conv.lastUpdated).toLocaleDateString();
+        convMeta.textContent = `${lastUpdated} · ${Math.max(0, Math.floor(conv.messageCount/2))}条`;
+        
+        const deleteBtn = Utils.createElement('button', 'ai-conversation-delete', { 
+            title: I18n.getMessage('delete', '删除')
+        }, '🗑️');
+        
+        convItem.append(convTitle, convMeta, deleteBtn);
+        
+        // 点击切换对话
+        convItem.addEventListener('click', (e) => {
+            if (e.target === deleteBtn) return;
+            
+            // 移除其他active状态
+            conversationsList.querySelectorAll('.ai-conversation-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            convItem.classList.add('active');
+            
+            // 加载对话内容
+            const fullConversation = AI.getConversation(conv.id);
+            if (fullConversation) {
+                loadConversationMessages(chatHistory, fullConversation);
+                chatTitle.textContent = fullConversation.title;
+                setCurrentConversationId(conv.id);
+            }
+        });
+        
+        // 删除对话
+        deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            
+            if (confirm(I18n.getMessage('confirmDeleteConversation', '确定要删除这个对话吗？'))) {
+                const success = await AI.deleteConversation(conv.id);
+                if (success) {
+                    // 如果删除的是当前对话，清空聊天区域
+                    if (conv.id === getCurrentConversationId()) {
+                        chatHistory.innerHTML = '';
+                        chatTitle.textContent = I18n.getMessage('aiAssistant', 'AI助手');
+                        setCurrentConversationId(null);
+                    }
+                    
+                    // 重新加载对话列表
+                    loadConversationsList(conversationsList, chatHistory, chatTitle, getCurrentConversationId, setCurrentConversationId);
+                    
+                    Notification.notify({
+                        title: I18n.getMessage('success', '成功'),
+                        message: I18n.getMessage('conversationDeleted', '对话已删除'),
+                        type: 'success',
+                        duration: 2000
+                    });
+                }
+            }
+        });
+        
+        conversationsList.appendChild(convItem);
+    });
+}
+
+/**
+ * 加载对话消息到聊天区域
+ */
+function loadConversationMessages(chatHistory, conversation) {
+    chatHistory.innerHTML = '';
+    
+    conversation.messages.forEach(msg => {
+        addMessageToHistory(chatHistory, msg.content, msg.role === 'user' ? 'user' : 'ai');
+    });
+}
+
+/**
+ * 自动调整文本框高度
+ */
+function autoResizeTextarea(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
 }
 
 /**
  * 设置AI模态框事件
- * @param {HTMLElement} modal - 模态框元素
- * @param {HTMLElement} inputTextarea - 输入框
- * @param {HTMLElement} chatHistory - 聊天历史
- * @param {HTMLElement} sendButton - 发送按钮
- * @param {HTMLElement} newConversationBtn - 新对话按钮
- * @param {HTMLElement} historyBtn - 历史按钮
- * @param {Function} getCurrentConversationId - 获取当前对话ID
- * @param {Function} setCurrentConversationId - 设置当前对话ID
  */
-function setupAIModalEvents(modal, inputTextarea, chatHistory, sendButton, newConversationBtn, historyBtn, getCurrentConversationId, setCurrentConversationId) {
-    // 使用Menu模块的关闭事件处理
+function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendButton, newChatBtn, clearAllBtn, conversationsList, getCurrentConversationId, setCurrentConversationId) {
+    // 关闭按钮
     modal.querySelector('.modal-close').addEventListener('click', () => {
         Menu.Modal.hide(modal.id);
     });
@@ -637,170 +742,19 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, sendButton, newCo
     });
 
     // 新对话按钮
-    newConversationBtn.addEventListener('click', () => {
+    newChatBtn.addEventListener('click', () => {
         // 清空聊天历史显示
         chatHistory.innerHTML = '';
         // 重置对话ID
         setCurrentConversationId(null);
         // 更新标题
-        modal.querySelector('.modal-title').textContent = I18n.getMessage('aiAssistant', 'AI助手');
+        chatTitle.textContent = I18n.getMessage('aiAssistant', 'AI助手');
+        // 移除active状态
+        conversationsList.querySelectorAll('.ai-conversation-item').forEach(item => {
+            item.classList.remove('active');
+        });
         // 聚焦输入框
         inputTextarea.focus();
-    });
-
-    // 历史按钮
-    historyBtn.addEventListener('click', () => {
-        showConversationHistoryPanel(modal, chatHistory, setCurrentConversationId);
-    });
-
-    // 发送消息函数
-    const sendMessage = async () => {
-        const message = inputTextarea.value.trim();
-        if (!message) {
-            console.log('消息为空，不发送');
-            return;
-        }
-
-        console.log('准备发送消息:', message);
-
-        // 添加用户消息到聊天历史显示
-        addMessageToHistory(chatHistory, message, 'user');
-        
-        // 清空输入框
-        inputTextarea.value = '';
-        
-        // 禁用发送按钮并显示加载状态
-        sendButton.disabled = true;
-        sendButton.textContent = I18n.getMessage('sending', '发送中...');
-
-        try {
-            // 检查AI配置
-            if (!AI.isEnabled()) {
-                throw new Error('AI功能未启用，请在设置中启用AI功能');
-            }
-
-            console.log('开始发送AI请求...');
-            
-            // 发送到AI（传递当前对话ID）
-            const result = await AI.sendMessage(message, getCurrentConversationId());
-            
-            console.log('AI响应成功:', result);
-            
-            // 更新当前对话ID
-            setCurrentConversationId(result.conversationId);
-            
-            // 添加AI回复到聊天历史显示
-            addMessageToHistory(chatHistory, result.reply, 'ai');
-            
-            // 更新标题（如果是新对话）
-            if (result.conversation && result.conversation.title !== I18n.getMessage('newConversation', '新对话')) {
-                modal.querySelector('.modal-title').textContent = result.conversation.title + ' - ' + I18n.getMessage('aiAssistant', 'AI助手');
-            }
-            
-        } catch (error) {
-            console.error('发送消息失败:', error);
-            
-            // 添加错误消息到聊天历史
-            const errorMessage = error.message || 'Unknown error occurred';
-            addMessageToHistory(chatHistory, errorMessage, 'error');
-            
-            // 显示详细错误信息
-            Notification.notify({
-                title: '发送失败',
-                message: errorMessage,
-                type: 'error',
-                duration: 5000
-            });
-            
-        } finally {
-            // 恢复发送按钮
-            sendButton.disabled = false;
-            sendButton.textContent = I18n.getMessage('send', '发送');
-            inputTextarea.focus();
-        }
-    };
-
-    // 发送按钮点击
-    sendButton.addEventListener('click', sendMessage);
-
-    // 输入框回车发送（Ctrl+Enter或Shift+Enter换行）
-    inputTextarea.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-}
-
-/**
- * 显示对话历史面板
- * @param {HTMLElement} modal - 主模态框
- * @param {HTMLElement} chatHistory - 聊天历史容器
- * @param {Function} setCurrentConversationId - 设置当前对话ID的函数
- */
-function showConversationHistoryPanel(modal, chatHistory, setCurrentConversationId) {
-    const historyPanelId = 'ai-history-panel';
-    
-    // 删除旧的历史面板
-    const oldPanel = document.getElementById(historyPanelId);
-    if (oldPanel) {
-        oldPanel.remove();
-    }
-
-    // 创建历史面板
-    const historyPanel = Utils.createElement('div', 'modal ai-history-panel', { id: historyPanelId });
-    const panelContent = Utils.createElement('div', 'modal-content ai-history-panel-content');
-
-    // 面板头部
-    const panelHeader = Utils.createElement('div', 'ai-history-panel-header');
-    const panelTitle = Utils.createElement('h3', '', {}, I18n.getMessage('conversationHistory', '对话历史'));
-    const clearAllBtn = Utils.createElement('button', 'ai-clear-all-btn btn btn-danger', {}, 
-        I18n.getMessage('clearAll', '清空全部'));
-    const closePanelBtn = Utils.createElement('span', 'modal-close', {}, '&times;');
-    panelHeader.append(panelTitle, clearAllBtn, closePanelBtn);
-
-    // 对话列表
-    const conversationList = Utils.createElement('div', 'ai-conversation-list');
-    
-    // 加载对话历史
-    const conversations = AI.getConversationHistory();
-    if (conversations.length === 0) {
-        const emptyMsg = Utils.createElement('div', 'ai-empty-history', {}, 
-            I18n.getMessage('noConversationHistory', '暂无对话历史'));
-        conversationList.appendChild(emptyMsg);
-    } else {
-        conversations.forEach(conv => {
-            const convItem = createConversationItem(conv, chatHistory, setCurrentConversationId, () => {
-                // 关闭历史面板
-                Menu.Modal.hide(historyPanelId);
-                // 更新主模态框标题
-                modal.querySelector('.modal-title').textContent = conv.title + ' - ' + I18n.getMessage('aiAssistant', 'AI助手');
-            });
-            conversationList.appendChild(convItem);
-        });
-    }
-
-    // 组装面板
-    panelContent.append(panelHeader, conversationList);
-    historyPanel.appendChild(panelContent);
-    document.body.appendChild(historyPanel);
-
-    // 使用Menu模块的功能
-    Menu._makeModalDraggable(historyPanel, panelContent);
-    Menu._centerModal(historyPanel, panelContent);
-
-    // 显示面板
-    Menu.Modal.show(historyPanelId);
-
-    // 设置事件监听
-    closePanelBtn.addEventListener('click', () => {
-        Menu.Modal.hide(historyPanelId);
-    });
-
-    historyPanel.addEventListener('click', (e) => {
-        if (e.target === historyPanel) {
-            Menu.Modal.hide(historyPanelId);
-        }
     });
 
     // 清空全部按钮
@@ -808,11 +762,13 @@ function showConversationHistoryPanel(modal, chatHistory, setCurrentConversation
         if (confirm(I18n.getMessage('confirmClearAllConversations', '确定要清空所有对话历史吗？此操作不可撤销。'))) {
             const success = await AI.clearAllConversations();
             if (success) {
-                // 刷新历史面板
-                conversationList.innerHTML = '';
-                const emptyMsg = Utils.createElement('div', 'ai-empty-history', {}, 
-                    I18n.getMessage('noConversationHistory', '暂无对话历史'));
-                conversationList.appendChild(emptyMsg);
+                // 清空聊天区域
+                chatHistory.innerHTML = '';
+                chatTitle.textContent = I18n.getMessage('aiAssistant', 'AI助手');
+                setCurrentConversationId(null);
+                
+                // 重新加载对话列表
+                loadConversationsList(conversationsList, chatHistory, chatTitle, getCurrentConversationId, setCurrentConversationId);
                 
                 Notification.notify({
                     title: I18n.getMessage('success', '成功'),
@@ -823,83 +779,210 @@ function showConversationHistoryPanel(modal, chatHistory, setCurrentConversation
             }
         }
     });
+
+    // 输入框自动调整高度
+    inputTextarea.addEventListener('input', () => {
+        autoResizeTextarea(inputTextarea);
+    });
+
+    // 发送消息函数
+    const sendMessage = async () => {
+        const message = inputTextarea.value.trim();
+        if (!message) return;
+
+        // 添加用户消息到聊天历史显示
+        addMessageToHistory(chatHistory, message, 'user');
+        
+        // 清空输入框并重置高度
+        inputTextarea.value = '';
+        autoResizeTextarea(inputTextarea);
+        
+        // 禁用发送按钮并显示加载状态
+        sendButton.disabled = true;
+        sendButton.innerHTML = '⏳';
+
+        try {
+            if (!AI.isEnabled()) {
+                throw new Error('AI功能未启用，请在设置中启用AI功能');
+            }
+            
+            // 发送到AI
+            const result = await AI.sendMessage(message, getCurrentConversationId());
+            
+            // 更新当前对话ID
+            setCurrentConversationId(result.conversationId);
+            
+            // 添加AI回复到聊天历史显示
+            addMessageToHistory(chatHistory, result.reply, 'ai');
+            
+            // 更新标题
+            if (result.conversation && result.conversation.title !== I18n.getMessage('newConversation', '新对话')) {
+                chatTitle.textContent = result.conversation.title;
+            }
+            
+            // 重新加载对话列表以更新侧边栏
+            loadConversationsList(conversationsList, chatHistory, chatTitle, getCurrentConversationId, setCurrentConversationId);
+            
+        } catch (error) {
+            console.error('发送消息失败:', error);
+            
+            // 添加错误消息到聊天历史
+            addMessageToHistory(chatHistory, error.message || 'Unknown error occurred', 'error');
+            
+            Notification.notify({
+                title: '发送失败',
+                message: error.message,
+                type: 'error',
+                duration: 5000
+            });
+            
+        } finally {
+            // 恢复发送按钮
+            sendButton.disabled = false;
+            sendButton.innerHTML = '⬆️';
+            inputTextarea.focus();
+        }
+    };
+
+    // 发送按钮点击
+    sendButton.addEventListener('click', sendMessage);
+
+    // 输入框回车发送
+    inputTextarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
 }
 
 /**
- * 创建对话项元素
- * @param {Object} conversation - 对话对象
+ * 添加消息到聊天历史（支持Markdown渲染）
  * @param {HTMLElement} chatHistory - 聊天历史容器
- * @param {Function} setCurrentConversationId - 设置当前对话ID的函数
- * @param {Function} onSelect - 选择对话时的回调
- * @returns {HTMLElement} 对话项元素
+ * @param {string} message - 消息内容
+ * @param {string} type - 消息类型（user、ai、error）
  */
-function createConversationItem(conversation, chatHistory, setCurrentConversationId, onSelect) {
-    const convItem = Utils.createElement('div', 'ai-conversation-item');
+function addMessageToHistory(chatHistory, message, type) {
+    const messageElement = Utils.createElement('div', `ai-message ai-message-${type}`);
     
-    // 对话信息
-    const convInfo = Utils.createElement('div', 'ai-conversation-info');
-    const convTitle = Utils.createElement('div', 'ai-conversation-title', {}, conversation.title);
-    const convMeta = Utils.createElement('div', 'ai-conversation-meta');
+    // 消息内容容器
+    const messageContent = Utils.createElement('div', 'ai-message-content');
     
-    const lastUpdated = new Date(conversation.lastUpdated).toLocaleString();
-    const messageCount = conversation.messageCount;
-    convMeta.textContent = `${lastUpdated} · ${messageCount} ${I18n.getMessage('messages', '条消息')}`;
+    if (type === 'ai') {
+        // AI消息支持Markdown渲染
+        messageContent.innerHTML = renderMarkdown(message);
+    } else {
+        // 用户消息和错误消息直接显示文本
+        messageContent.textContent = message;
+    }
     
-    convInfo.append(convTitle, convMeta);
+    messageElement.appendChild(messageContent);
+    chatHistory.appendChild(messageElement);
     
-    // 操作按钮
-    const convActions = Utils.createElement('div', 'ai-conversation-actions');
-    const continueBtn = Utils.createElement('button', 'ai-continue-btn btn btn-sm btn-primary', {}, 
-        I18n.getMessage('continue', '继续'));
-    const deleteBtn = Utils.createElement('button', 'ai-delete-btn btn btn-sm btn-danger', {}, 
-        I18n.getMessage('delete', '删除'));
-    
-    convActions.append(continueBtn, deleteBtn);
-    convItem.append(convInfo, convActions);
-    
-    // 继续对话按钮
-    continueBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+    // 滚动到底部
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+/**
+ * 简单的Markdown渲染器 - 使用marked库
+ * @param {string} text - 要渲染的文本
+ * @returns {string} 渲染后的HTML
+ */
+function renderMarkdown(text) {
+    // 检查marked库是否可用
+    if (typeof marked === 'undefined') {
+        console.warn('marked库未加载，使用简单渲染器');
+        return renderSimpleMarkdown(text);
+    }
+
+    try {
+        // 配置marked选项 - 使用新版本的API
+        const renderer = new marked.Renderer();
         
-        // 加载对话历史到聊天界面
-        const fullConversation = AI.getConversation(conversation.id);
-        if (fullConversation) {
-            // 清空当前聊天历史显示
-            chatHistory.innerHTML = '';
+        // 自定义代码块渲染
+        renderer.code = function(code, language) {
+            const validLanguage = language && typeof hljs !== 'undefined' && hljs.getLanguage(language);
             
-            // 重新显示对话历史
-            fullConversation.messages.forEach(msg => {
-                addMessageToHistory(chatHistory, msg.content, msg.role === 'user' ? 'user' : 'ai');
-            });
-            
-            // 设置当前对话ID
-            setCurrentConversationId(conversation.id);
-            
-            // 执行选择回调
-            onSelect();
-        }
-    });
-    
-    // 删除对话按钮
-    deleteBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        
-        if (confirm(I18n.getMessage('confirmDeleteConversation', '确定要删除这个对话吗？'))) {
-            const success = await AI.deleteConversation(conversation.id);
-            if (success) {
-                convItem.remove();
-                
-                Notification.notify({
-                    title: I18n.getMessage('success', '成功'),
-                    message: I18n.getMessage('conversationDeleted', '对话已删除'),
-                    type: 'success',
-                    duration: 2000
-                });
+            if (validLanguage) {
+                try {
+                    const highlighted = hljs.highlight(code, {language: language}).value;
+                    return `<pre class="ai-code-block"><code class="language-${language}">${highlighted}</code></pre>`;
+                } catch (err) {
+                    console.warn('代码高亮失败:', err);
+                }
             }
-        }
+            
+            return `<pre class="ai-code-block"><code>${code}</code></pre>`;
+        };
+
+        // 自定义行内代码渲染
+        renderer.codespan = function(code) {
+            return `<code class="ai-inline-code">${code}</code>`;
+        };
+
+        // 配置marked选项
+        marked.setOptions({
+            renderer: renderer,
+            gfm: true,           // 启用GitHub风格Markdown
+            tables: true,        // 启用表格支持
+            breaks: true,        // 将换行符转换为<br>
+            pedantic: false,     // 不使用原始markdown.pl的怪异部分
+            sanitize: false,     // 不清理HTML（我们信任AI的输出）
+            smartLists: true,    // 使用比原始markdown更智能的列表行为
+            smartypants: false   // 不使用智能标点
+        });
+
+        // 使用marked渲染
+        return marked.parse(text);
+    } catch (error) {
+        console.error('marked渲染失败，使用简单渲染器:', error);
+        return renderSimpleMarkdown(text);
+    }
+}
+
+/**
+ * 简单的Markdown渲染器（备用方案）
+ * @param {string} text - 要渲染的文本
+ * @returns {string} 渲染后的HTML
+ */
+function renderSimpleMarkdown(text) {
+    // 转义HTML特殊字符
+    let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    
+    // 代码块
+    html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+        const language = lang || '';
+        return `<pre class="ai-code-block"><code class="language-${language}">${code.trim()}</code></pre>`;
     });
     
-    return convItem;
+    // 行内代码
+    html = html.replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
+    
+    // 粗体
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // 斜体
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // 链接
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    
+    // 换行
+    html = html.replace(/\n/g, '<br>');
+    
+    // 列表
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    
+    // 标题
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    
+    return html;
 }
 
 // 将AI模块挂载到全局，便于其他模块调用
@@ -1219,27 +1302,3 @@ function showAIConfigModal() {
 // 导出配置模态框函数供其他模块使用
 AI.showConfigModal = showAIConfigModal;
 
-/**
- * 添加消息到聊天历史
- * @param {HTMLElement} chatHistory - 聊天历史容器
- * @param {string} message - 消息内容
- * @param {string} type - 消息类型（user、ai、error）
- */
-function addMessageToHistory(chatHistory, message, type) {
-    const messageElement = Utils.createElement('div', `ai-message ai-message-${type}`);
-    
-    // 消息头部
-    const messageHeader = Utils.createElement('div', 'ai-message-header');
-    const headerText = type === 'user' ? '您' : type === 'ai' ? 'AI助手' : '错误';
-    messageHeader.textContent = headerText;
-    
-    // 消息内容
-    const messageContent = Utils.createElement('div', 'ai-message-content');
-    messageContent.textContent = message;
-    
-    messageElement.append(messageHeader, messageContent);
-    chatHistory.appendChild(messageElement);
-    
-    // 滚动到底部
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-}
