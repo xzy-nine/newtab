@@ -487,7 +487,44 @@
   font-family: monospace;
 }
 
-/* 深色模式优化 */
+/* 密码切换容器样式 */
+.password-toggle-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input {
+  flex: 1;
+  padding-right: 40px; /* 为切换按钮留出空间 */
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+  opacity: 1;
+  background-color: var(--hover-bg, rgba(0, 0, 0, 0.1));
+}
+
+.eye-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* 深色主题适配 */
 @media (prefers-color-scheme: dark) {
   :root {
     --color-primary: #1e88e5;
@@ -652,6 +689,43 @@
     background: var(--bg-card);
     color: var(--text-primary);
     border-color: var(--border-color);
+  }
+
+  /* 密码切换容器样式 */
+  .password-toggle-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .password-input {
+    flex: 1;
+    padding-right: 40px; /* 为切换按钮留出空间 */
+  }
+
+  .password-toggle-btn {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+  }
+
+  .password-toggle-btn:hover {
+    opacity: 1;
+    background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
+  }
+
+  .eye-icon {
+    font-size: 16px;
+    line-height: 1;
   }
 }
 
@@ -821,4 +895,41 @@
   background: var(--bg-card);
   color: var(--text-primary);
   border-color: var(--border-color);
+}
+
+/* 密码切换容器样式 */
+[data-theme="dark"] .password-toggle-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+[data-theme="dark"] .password-input {
+  flex: 1;
+  padding-right: 40px; /* 为切换按钮留出空间 */
+}
+
+[data-theme="dark"] .password-toggle-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+[data-theme="dark"] .password-toggle-btn:hover {
+  opacity: 1;
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
+}
+
+[data-theme="dark"] .eye-icon {
+  font-size: 16px;
+  line-height: 1;
 }

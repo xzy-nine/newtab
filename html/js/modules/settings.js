@@ -876,36 +876,62 @@ export const Settings = {
       const currentProvider = aiConfig.currentProvider || providers[0];
       
       providers.forEach((provider, index) => {
-        const providerItem = Utils.createElement('div', 'ai-provider-item-setting');
+        const providerItem = Utils.createElement('div', 'search-engine-item-setting');
         
-        // 供应商图标
-        const providerIcon = Utils.createElement('div', 'provider-icon', {}, '🤖');
+        // 供应商图标 - 改进图标获取逻辑
+        const providerIcon = Utils.createElement('img', 'engine-icon', {
+          alt: provider.name,
+          style: 'width: 24px; height: 24px; object-fit: contain;'
+        });
+        
+        // 改进图标URL获取逻辑
+        let iconUrl;
+        if (provider.iconUrl) {
+          // 如果有自定义图标URL，直接使用
+          iconUrl = provider.iconUrl;
+        } else {
+          // 如果没有自定义图标，从API URL提取主域名
+          try {
+            const apiDomain = new URL(provider.apiUrl);
+            // 将API域名转换为主站域名
+            let mainDomain = apiDomain.origin;
+            
+            // 处理常见的API子域名模式
+            if (apiDomain.hostname.startsWith('api.')) {
+              mainDomain = `${apiDomain.protocol}//${apiDomain.hostname.replace('api.', '')}`;
+            }
+            
+            iconUrl = mainDomain;
+          } catch (error) {
+            console.warn('解析API URL失败:', provider.apiUrl, error);
+            iconUrl = provider.apiUrl;
+          }
+        }
+        
+        // 使用 IconManager 设置图标
+        IconManager.setIconForElement(providerIcon, iconUrl);
+        providerIcon.onerror = () => IconManager.handleIconError(providerIcon, '../favicon.png');
         
         // 供应商名称
-        const providerName = Utils.createElement('div', 'provider-name', {}, provider.name);
+        const providerName = Utils.createElement('div', 'engine-name', {}, provider.name);
         
-        // 供应商API URL
-        const providerUrl = Utils.createElement('div', 'provider-url', {}, provider.apiUrl);
-        
-        // 模型信息
-        const providerModel = Utils.createElement('div', 'provider-model', {}, 
-          `${I18n.getMessage('model', '模型')}: ${provider.model}`);
+        // 供应商API URL（对应搜索引擎的URL）
+        const providerUrl = Utils.createElement('div', 'engine-url', {}, provider.apiUrl);
         
         // 当前供应商标识
         const isCurrentProvider = currentProvider && currentProvider.name === provider.name;
         if (isCurrentProvider) {
-          providerItem.classList.add('current-provider');
-          const currentBadge = Utils.createElement('span', 'current-badge', {}, 
-            I18n.getMessage('currentProvider', '当前'));
+          providerItem.classList.add('current-engine');
+          const currentBadge = Utils.createElement('span', 'current-badge', {}, I18n.getMessage('currentEngine', '当前'));
           providerItem.appendChild(currentBadge);
         }
         
         // 供应商信息容器
-        const providerInfo = Utils.createElement('div', 'provider-info');
-        providerInfo.append(providerName, providerUrl, providerModel);
+        const providerInfo = Utils.createElement('div', 'engine-info');
+        providerInfo.append(providerName, providerUrl);
         
         // 操作按钮
-        const providerActions = Utils.createElement('div', 'provider-actions');
+        const providerActions = Utils.createElement('div', 'engine-actions');
         
         // 设为当前按钮
         if (!isCurrentProvider) {
@@ -934,7 +960,7 @@ export const Settings = {
         });
         providerActions.appendChild(editBtn);
         
-        // 删除按钮（不能删除默认供应商)
+        // 删除按钮（不能删除默认供应商或最后一个供应商）
         if (!provider.isDefault && providers.length > 1) {
           const deleteBtn = Utils.createElement('button', 'btn btn-small btn-danger', {}, 
             I18n.getMessage('delete', '删除'));
@@ -950,9 +976,11 @@ export const Settings = {
                   class: 'btn-primary confirm-yes',
                   callback: async () => {
                     const newProviders = providers.filter((_, i) => i !== index);
+                    // 如果删除的是当前供应商，设置第一个为当前供应商
+                    const newCurrentProvider = isCurrentProvider ? newProviders[0] : currentProvider;
                     const success = await AI.updateConfig({ 
                       providers: newProviders,
-                      currentProvider: newProviders[0]
+                      currentProvider: newCurrentProvider
                     });
                     if (success) {
                       Settings.refreshAIProviderList();
@@ -982,8 +1010,7 @@ export const Settings = {
       
     } catch (error) {
       console.error('创建AI供应商列表失败:', error);
-      const errorMsg = Utils.createElement('div', 'error-message', {}, 
-        I18n.getMessage('loadProviderListError', '加载AI供应商列表失败'));
+      const errorMsg = Utils.createElement('div', 'error-message', {}, I18n.getMessage('loadProviderListError', '加载AI供应商列表失败'));
       listContainer.appendChild(errorMsg);
     }
     
@@ -1021,7 +1048,7 @@ export const Settings = {
         required: true
       },
       {
-        type: 'text',
+        type: 'password-toggle',
         id: 'custom-provider-api-key',
         label: I18n.getMessage('providerApiKey', 'API密钥'),
         placeholder: 'sk-...',
@@ -1033,6 +1060,13 @@ export const Settings = {
         label: I18n.getMessage('providerModel', '模型名称'),
         placeholder: 'gpt-3.5-turbo',
         required: true
+      },
+      {
+        type: 'url',
+        id: 'custom-provider-icon',
+        label: I18n.getMessage('providerIconUrl', '图标URL（可选）'),
+        placeholder: 'https://example.com/icon.png',
+        required: false
       }
     ];
 
@@ -1044,10 +1078,11 @@ export const Settings = {
         const apiUrl = formData['custom-provider-api-url'];
         const apiKey = formData['custom-provider-api-key'];
         const model = formData['custom-provider-model'];
+        const iconUrl = formData['custom-provider-icon'];
         
         const aiConfig = AI.getConfig();
         const providers = aiConfig.providers || [];
-        const newProvider = { name, apiUrl, apiKey, model };
+        const newProvider = { name, apiUrl, apiKey, model, iconUrl };
         
         const success = await AI.updateConfig({ 
           providers: [...providers, newProvider],
@@ -1098,7 +1133,7 @@ export const Settings = {
         required: true
       },
       {
-        type: 'text',
+        type: 'password-toggle',
         id: 'edit-provider-api-key',
         label: I18n.getMessage('providerApiKey', 'API密钥'),
         value: provider.apiKey || '',
@@ -1110,6 +1145,13 @@ export const Settings = {
         label: I18n.getMessage('providerModel', '模型名称'),
         value: provider.model,
         required: true
+      },
+      {
+        type: 'url',
+        id: 'edit-provider-icon',
+        label: I18n.getMessage('providerIconUrl', '图标URL（可选）'),
+        value: provider.iconUrl || '',
+        required: false
       }
     ];
 
@@ -1121,12 +1163,20 @@ export const Settings = {
         const apiUrl = formData['edit-provider-api-url'];
         const apiKey = formData['edit-provider-api-key'];
         const model = formData['edit-provider-model'];
+        const iconUrl = formData['edit-provider-icon'];
         
         const aiConfig = AI.getConfig();
         const providers = [...aiConfig.providers];
-        providers[index] = { ...provider, name, apiUrl, apiKey, model };
+        const updatedProvider = { ...provider, name, apiUrl, apiKey, model, iconUrl };
+        providers[index] = updatedProvider;
         
-        const success = await AI.updateConfig({ providers });
+        // 如果编辑的是当前供应商，更新当前供应商配置
+        let updateConfig = { providers };
+        if (aiConfig.currentProvider && aiConfig.currentProvider.name === provider.name) {
+          updateConfig.currentProvider = updatedProvider;
+        }
+        
+        const success = await AI.updateConfig(updateConfig);
         if (success) {
           Settings.refreshAIProviderList();
           Notification.notify({
