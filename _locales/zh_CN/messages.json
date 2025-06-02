@@ -1,6 +1,4 @@
 {
-  "_comment": "中文翻译文件 - 大部分翻译使用代码中的默认中文键值，此文件仅包含必要的特殊翻译项",
-  "_note": "Chinese translation file - Most translations use default Chinese values in code, this file only contains necessary special translation items",
   "appName": {
     "message": "收藏夹新标签页拓展",
     "description": "应用程序的名称"
