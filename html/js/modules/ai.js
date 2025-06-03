@@ -90,61 +90,16 @@ export const AI = {
     },
 
     /**
-     * 获取可用的AI模型列表
-     * @param {string} apiUrl - API地址
-     * @param {string} apiKey - API密钥
-     * @returns {Promise<Array<string>>} - 模型列表
-     */
-    async getModels(apiUrl, apiKey) {
-        if (!apiUrl || !apiKey) {
-            throw new Error(I18n.getMessage('aiConfigIncomplete', 'API配置不完整'));
-        }
-
-        try {
-            // 构建模型列表API URL
-            const baseUrl = new URL(apiUrl);
-            const modelsUrl = new URL('/v1/models', baseUrl.origin);
-
-            // 发送请求获取模型列表
-            const response = await fetch(modelsUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            // 处理返回的模型数据
-            if (Array.isArray(data.data)) {
-                return data.data
-                    .map(model => model.id)
-                    .filter(id => id.includes('gpt') || id.includes('claude') || id.includes('deepseek')); // 只返回主要的聊天模型
-            }
-
-            return [];
-            
-        } catch (error) {
-            console.error('获取模型列表失败:', error);
-            throw new Error(I18n.getMessage('modelListFetchFailed', '获取模型列表失败: ') + error.message);
-        }
-    },
-
-    /**
      * 发送消息到AI（支持多轮对话）
      * @param {string} message - 用户消息
      * @param {string} conversationId - 对话ID（可选，不传则创建新对话）
      * @returns {Promise<Object>} - 包含AI回复和对话ID的对象
      */
-    async sendMessage(message, conversationId = null) {
+    async sendMessage(message, conversationId = null, onChunk = null) {
         // 检查网络连接
-        if (!navigator.onLine) {
-            throw new Error('网络连接异常，请检查网络设置');
+        const isOnline = await checkNetworkConnection();
+        if (!isOnline) {
+            throw new Error(I18n.getMessage('networkError', '网络连接异常，请检查网络设置'));
         }
         
         console.log('AI配置状态:', aiConfig); // 调试日志
@@ -159,7 +114,7 @@ export const AI = {
         
         if (!currentProvider || !currentProvider.apiUrl || !currentProvider.apiKey) {
             console.error('AI配置不完整:', currentProvider);
-            throw new Error(I18n.getMessage('aiConfigIncomplete', 'AI配置不完整'));
+            throw new Error(I18n.getMessage('aiConfigIncomplete', 'AI配置不完整，请检查API地址和密钥'));
         }
 
         try {
@@ -189,18 +144,18 @@ export const AI = {
                     role: 'system',
                     content: aiConfig.systemPrompt
                 },
+                // 过滤掉reasoning_content，只保留content
                 ...conversation.messages.map(msg => ({
                     role: msg.role,
                     content: msg.content
                 }))
             ];
             
-            // 修改构建聊天完成端点URL的逻辑
+            // 构建聊天完成端点URL
+            let chatUrl;
+            const apiUrl = currentProvider.apiUrl.trim();
+            
             try {
-                // 构建聊天完成端点URL
-                let chatUrl;
-                const apiUrl = currentProvider.apiUrl.trim();
-                
                 // 如果URL已经是完整的chat/completions端点，直接使用
                 if (apiUrl.includes('/chat/completions')) {
                     chatUrl = apiUrl;
@@ -215,47 +170,79 @@ export const AI = {
                 
                 console.log('使用的API URL:', chatUrl); // 调试日志
                 
+                // 创建请求控制器用于超时处理
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    controller.abort();
+                }, 60000); // 60秒超时
+                
+                // 检查是否为DeepSeek推理模型
+                const isDeepSeekReasoner = currentProvider.model === 'deepseek-reasoner';
+                
+                // 构建请求体，添加stream参数
+                const requestBody = {
+                    model: currentProvider.model,
+                    messages: apiMessages,
+                    max_tokens: isDeepSeekReasoner ? 32000 : 1000,
+                    stream: !!onChunk, // 如果有onChunk回调，启用流式
+                    temperature: isDeepSeekReasoner ? undefined : 0.7
+                };
+                
+                // 如果启用流式回复
+                if (onChunk) {
+                    return await sendStreamMessage(chatUrl, requestBody, currentProvider.apiKey, conversation, onChunk);
+                }
+                
                 const response = await fetch(chatUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${currentProvider.apiKey}`
                     },
-                    body: JSON.stringify({
-                        model: currentProvider.model,
-                        messages: apiMessages,
-                        max_tokens: 1000,
-                        temperature: 0.7
-                    })
+                    body: JSON.stringify(requestBody),
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
                 console.log('API响应状态:', response.status); // 调试日志
                 
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('API错误响应:', errorText);
                     
-                    if (response.status === 404) {
-                        throw new Error(`API地址未找到（404）。使用的URL: ${chatUrl}。请检查API地址配置。`);
-                    } else if (response.status === 401) {
-                        throw new Error('API密钥无效（401）。请检查您的API密钥。');
-                    } else if (response.status === 429) {
-                        throw new Error('请求过于频繁（429）。请稍后再试。');
-                    } else {
-                        throw new Error(`API请求失败: ${response.status} - ${response.statusText}. 响应: ${errorText}`);
-                    }
+                    // 使用新的错误处理函数
+                    const errorMessage = handleAPIError(response, errorText);
+                    throw new Error(errorMessage);
                 }
 
                 const data = await response.json();
                 console.log('API响应数据:', data); // 调试日志
-                const aiReply = data.choices?.[0]?.message?.content || I18n.getMessage('aiNoResponse', '暂无回复');
                 
-                // 添加AI回复到对话历史
+                // 检查响应数据完整性
+                if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+                    throw new Error(I18n.getMessage('apiResponseInvalid', 'API响应数据格式错误'));
+                }
+                
+                const choice = data.choices[0];
+                const aiReply = choice?.message?.content;
+                const reasoning = choice?.message?.reasoning_content; // DeepSeek推理模型的思维链
+                
+                if (!aiReply) {
+                    throw new Error(I18n.getMessage('aiNoResponse', 'AI未返回有效回复'));
+                }
+                
+                // 添加AI回复到对话历史（不包含reasoning_content，避免上下文问题）
                 const aiMessage = {
                     role: 'assistant',
                     content: aiReply,
                     timestamp: Date.now()
                 };
+                
+                // 如果有推理内容，单独存储（但不加入对话历史，避免API报错）
+                if (reasoning && isDeepSeekReasoner) {
+                    aiMessage.reasoning_content = reasoning;
+                }
+                
                 conversation.messages.push(aiMessage);
                 
                 // 更新对话的最后更新时间和标题
@@ -270,17 +257,135 @@ export const AI = {
                 
                 return {
                     reply: aiReply,
+                    reasoning: reasoning, // 返回推理内容供UI展示
                     conversationId: conversation.id,
                     conversation: conversation
                 };
                 
             } catch (error) {
+                // 处理网络超时错误
+                if (error.name === 'AbortError') {
+                    throw new Error(I18n.getMessage('requestTimeout', '请求超时，请检查网络连接或稍后重试'));
+                }
+                
+                // 处理网络连接错误
+                if (error instanceof TypeError && error.message.includes('fetch')) {
+                    const networkAvailable = await checkNetworkConnection();
+                    if (!networkAvailable) {
+                        throw new Error(I18n.getMessage('networkUnavailable', '网络连接不可用，请检查网络设置'));
+                    } else {
+                        throw new Error(I18n.getMessage('apiConnectionFailed', 'API连接失败，请检查API地址配置'));
+                    }
+                }
+                
                 console.error('AI请求详细错误:', error);
-                throw new Error(I18n.getMessage('aiRequestFailed', 'AI请求失败: ') + error.message);
+                throw error; // 重新抛出已处理的错误
             }
         } catch (error) {
             console.error('AI请求失败:', error);
+            
+            // 如果错误已经被处理过，直接抛出
+            if (error.message.includes('API') || error.message.includes('网络') || error.message.includes('请求')) {
+                throw error;
+            }
+            
+            // 其他未处理的错误
             throw new Error(I18n.getMessage('aiRequestFailed', 'AI请求失败: ') + error.message);
+        }
+    },
+
+    /**
+     * 获取可用的AI模型列表
+     * @param {string} apiUrl - API地址
+     * @param {string} apiKey - API密钥
+     * @returns {Promise<Array<string>>} - 模型列表
+     */
+    async getModels(apiUrl, apiKey) {
+        if (!apiUrl || !apiKey) {
+            throw new Error(I18n.getMessage('aiConfigIncomplete', 'API配置不完整'));
+        }
+
+        // 检查网络连接
+        const isOnline = await checkNetworkConnection();
+        if (!isOnline) {
+            throw new Error(I18n.getMessage('networkError', '网络连接异常，请检查网络设置'));
+        }
+
+        try {
+            // 构建模型列表API URL
+            const baseUrl = new URL(apiUrl);
+            const modelsUrl = new URL('/v1/models', baseUrl.origin);
+
+            // 创建请求控制器用于超时处理
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                controller.abort();
+            }, 30000); // 30秒超时
+
+            // 发送请求获取模型列表
+            const response = await fetch(modelsUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('获取模型列表API错误:', errorText);
+                
+                // 使用错误处理函数
+                const errorMessage = handleAPIError(response, errorText);
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            
+            // 处理返回的模型数据
+            if (Array.isArray(data.data)) {
+                const models = data.data
+                    .map(model => model.id)
+                    .filter(id => id && (id.includes('gpt') || id.includes('claude') || id.includes('deepseek') || id.includes('llama')));
+                
+                if (models.length === 0) {
+                    console.warn('未找到支持的聊天模型');
+                    // 返回原始数据的前几个作为备选
+                    return data.data.slice(0, 10).map(model => model.id).filter(Boolean);
+                }
+                
+                return models;
+            }
+
+            // 如果返回格式不符合预期，尝试其他格式
+            if (Array.isArray(data)) {
+                return data.filter(item => typeof item === 'string');
+            }
+
+            throw new Error(I18n.getMessage('modelListFormatError', '模型列表数据格式不正确'));
+            
+        } catch (error) {
+            // 处理网络超时错误
+            if (error.name === 'AbortError') {
+                throw new Error(I18n.getMessage('requestTimeout', '请求超时，请检查网络连接或稍后重试'));
+            }
+            
+            // 处理网络连接错误
+            if (error instanceof TypeError && error.message.includes('fetch')) {
+                throw new Error(I18n.getMessage('apiConnectionFailed', 'API连接失败，请检查API地址配置'));
+            }
+            
+            console.error('获取模型列表失败:', error);
+            
+            // 如果错误已经被处理过，直接抛出
+            if (error.message.includes('API') || error.message.includes('网络') || error.message.includes('请求')) {
+                throw error;
+            }
+            
+            throw new Error(I18n.getMessage('modelListFetchFailed', '获取模型列表失败: ') + error.message);
         }
     },
 
@@ -713,7 +818,8 @@ function loadConversationMessages(chatHistory, conversation) {
     chatHistory.innerHTML = '';
     
     conversation.messages.forEach(msg => {
-        addMessageToHistory(chatHistory, msg.content, msg.role === 'user' ? 'user' : 'ai');
+        const reasoning = msg.reasoning_content; // 获取推理内容
+        addMessageToHistory(chatHistory, msg.content, msg.role === 'user' ? 'user' : 'ai', reasoning);
     });
 }
 
@@ -723,6 +829,110 @@ function loadConversationMessages(chatHistory, conversation) {
 function autoResizeTextarea(textarea) {
     textarea.style.height = 'auto';
     textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+}
+
+/**
+ * 处理API错误响应
+ * @param {Response} response - API响应对象
+ * @param {string} responseText - 响应文本
+ * @returns {string} 用户友好的错误信息
+ */
+function handleAPIError(response, responseText) {
+    const status = response.status;
+    let errorMessage = '';
+    
+    // 尝试解析JSON错误信息
+    let errorData = null;
+    try {
+        errorData = JSON.parse(responseText);
+    } catch (e) {
+        // 忽略JSON解析错误
+    }
+    
+    // 获取详细错误信息
+    const apiErrorMessage = errorData?.error?.message || errorData?.message || '';
+    
+    switch (status) {
+        case 400:
+            errorMessage = I18n.getMessage('apiError400', '请求格式错误') + 
+                          (apiErrorMessage ? `：${apiErrorMessage}` : '。请检查请求参数格式。');
+            break;
+            
+        case 401:
+            errorMessage = I18n.getMessage('apiError401', 'API密钥认证失败') + 
+                          '。请检查您的API密钥是否正确。' +
+                          (apiErrorMessage ? `\n详细信息：${apiErrorMessage}` : '');
+            break;
+            
+        case 402:
+            errorMessage = I18n.getMessage('apiError402', '账户余额不足') + 
+                          '。请确认账户余额并进行充值。' +
+                          (apiErrorMessage ? `\n详细信息：${apiErrorMessage}` : '');
+            break;
+            
+        case 404:
+            errorMessage = I18n.getMessage('apiError404', 'API地址未找到') + 
+                          '。请检查API地址配置是否正确。' +
+                          (apiErrorMessage ? `\n详细信息：${apiErrorMessage}` : '');
+            break;
+            
+        case 422:
+            errorMessage = I18n.getMessage('apiError422', '请求参数错误') + 
+                          (apiErrorMessage ? `：${apiErrorMessage}` : '。请检查请求参数。');
+            break;
+            
+        case 429:
+            errorMessage = I18n.getMessage('apiError429', '请求速率达到上限') + 
+                          '。请稍后再试，或考虑升级您的API计划。' +
+                          (apiErrorMessage ? `\n详细信息：${apiErrorMessage}` : '');
+            break;
+            
+        case 500:
+            errorMessage = I18n.getMessage('apiError500', '服务器内部故障') + 
+                          '。请稍后重试，如问题持续请联系API服务商。' +
+                          (apiErrorMessage ? `\n详细信息：${apiErrorMessage}` : '');
+            break;
+            
+        case 503:
+            errorMessage = I18n.getMessage('apiError503', '服务器繁忙') + 
+                          '。服务器负载过高，请稍后重试。' +
+                          (apiErrorMessage ? `\n详细信息：${apiErrorMessage}` : '');
+            break;
+            
+        default:
+            errorMessage = I18n.getMessage('apiErrorGeneric', `API请求失败 (${status})`) + 
+                          (apiErrorMessage ? `：${apiErrorMessage}` : `。HTTP状态码：${status}`);
+    }
+    
+    return errorMessage;
+}
+
+/**
+ * 检查网络连接状态
+ * @returns {Promise<boolean>} 网络是否可用
+ */
+async function checkNetworkConnection() {
+    if (!navigator.onLine) {
+        return false;
+    }
+    
+    // 尝试发送一个简单的请求来测试网络连接
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+        
+        await fetch('https://www.baidu.com/favicon.ico', {
+            method: 'HEAD',
+            mode: 'no-cors',
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        return true;
+    } catch (error) {
+        console.warn('网络连接检测失败:', error);
+        return false;
+    }
 }
 
 /**
@@ -785,7 +995,7 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
         autoResizeTextarea(inputTextarea);
     });
 
-    // 发送消息函数
+    // 更新发送消息函数
     const sendMessage = async () => {
         const message = inputTextarea.value.trim();
         if (!message) return;
@@ -801,19 +1011,131 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
         sendButton.disabled = true;
         sendButton.innerHTML = '⏳';
 
+        // 创建AI消息容器用于流式显示
+        let aiMessageElement = null;
+        let aiContentElement = null;
+        let reasoningContainer = null;
+        let reasoningContentElement = null;
+        
         try {
             if (!AI.isEnabled()) {
-                throw new Error('AI功能未启用，请在设置中启用AI功能');
+                throw new Error(I18n.getMessage('aiNotEnabled', 'AI功能未启用，请在设置中启用AI功能'));
             }
             
-            // 发送到AI
-            const result = await AI.sendMessage(message, getCurrentConversationId());
+            // 预创建AI消息元素
+            aiMessageElement = Utils.createElement('div', 'ai-message ai-message-ai');
+            aiContentElement = Utils.createElement('div', 'ai-message-content');
+            aiMessageElement.appendChild(aiContentElement);
+            chatHistory.appendChild(aiMessageElement);
+            
+            // 添加打字指示器
+            const typingIndicator = Utils.createElement('span', 'typing-indicator', {}, '|');
+            aiContentElement.appendChild(typingIndicator);
+            
+            // 滚动到底部
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            
+            // 发送到AI（启用流式回复）
+            const result = await AI.sendMessage(message, getCurrentConversationId(), (chunk, isFinished, reasoning, type) => {
+                if (isFinished) {
+                    // 移除打字指示器
+                    const indicator = aiContentElement.querySelector('.typing-indicator');
+                    if (indicator) {
+                        indicator.remove();
+                    }
+                    
+                    // 如果推理容器中有内容，移除其打字指示器
+                    if (reasoningContentElement) {
+                        const reasoningIndicator = reasoningContentElement.querySelector('.typing-indicator');
+                        if (reasoningIndicator) {
+                            reasoningIndicator.remove();
+                        }
+                    }
+                    
+                    return;
+                }
+                
+                if (type === 'content' && chunk) {
+                    // 处理正文内容
+                    const indicator = aiContentElement.querySelector('.typing-indicator');
+                    if (indicator) {
+                        indicator.remove();
+                    }
+                    
+                    const currentText = aiContentElement.textContent || '';
+                    aiContentElement.textContent = currentText + chunk;
+                    
+                    // 重新添加打字指示器
+                    const newIndicator = Utils.createElement('span', 'typing-indicator', {}, '▋');
+                    aiContentElement.appendChild(newIndicator);
+                    
+                    // 滚动到底部
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                    
+                } else if (type === 'reasoning' && chunk) {
+                    // 处理推理内容 - 流式显示
+                    if (!reasoningContainer) {
+                        // 创建推理容器
+                        reasoningContainer = Utils.createElement('div', 'ai-reasoning-container');
+                        const reasoningHeader = Utils.createElement('div', 'ai-reasoning-header');
+                        const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
+                            type: 'button'
+                        }, '🧠 思维过程（实时）');
+                        
+                        reasoningContentElement = Utils.createElement('div', 'ai-reasoning-content');
+                        reasoningContentElement.style.display = 'block'; // 默认展开显示流式思维过程
+                        
+                        // 切换显示/隐藏推理内容
+                        reasoningToggle.addEventListener('click', () => {
+                            const isVisible = reasoningContentElement.style.display !== 'none';
+                            reasoningContentElement.style.display = isVisible ? 'none' : 'block';
+                            const isStreaming = reasoningContentElement.querySelector('.typing-indicator');
+                            reasoningToggle.textContent = `🧠 ${isVisible ? '查看思维过程' : (isStreaming ? '思维过程（实时）' : '隐藏思维过程')}`;
+                        });
+                        
+                        reasoningHeader.appendChild(reasoningToggle);
+                        reasoningContainer.appendChild(reasoningHeader);
+                        reasoningContainer.appendChild(reasoningContentElement);
+                        
+                        // 将推理容器插入到正文内容之前
+                        aiMessageElement.insertBefore(reasoningContainer, aiContentElement);
+                    }
+                    
+                    // 移除旧的打字指示器
+                    const reasoningIndicator = reasoningContentElement.querySelector('.typing-indicator');
+                    if (reasoningIndicator) {
+                        reasoningIndicator.remove();
+                    }
+                    
+                    // 更新推理内容（使用纯文本避免部分Markdown渲染问题）
+                    const currentReasoning = reasoningContentElement.textContent || '';
+                    reasoningContentElement.textContent = currentReasoning + chunk;
+                    
+                    // 添加新的打字指示器
+                    const newReasoningIndicator = Utils.createElement('span', 'typing-indicator', {}, '▋');
+                    reasoningContentElement.appendChild(newReasoningIndicator);
+                    
+                    // 滚动到底部
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                }
+            });
+            
+            // 流式完成后，用Markdown渲染最终内容
+            const finalContent = result.reply;
+            aiContentElement.innerHTML = renderMarkdown(finalContent);
+            
+            // 如果有推理内容，渲染最终的推理内容
+            if (result.reasoning && reasoningContentElement) {
+                reasoningContentElement.innerHTML = renderMarkdown(result.reasoning);
+                // 更新按钮文本
+                const reasoningToggle = reasoningContainer.querySelector('.ai-reasoning-toggle');
+                if (reasoningToggle) {
+                    reasoningToggle.textContent = '🧠 隐藏思维过程';
+                }
+            }
             
             // 更新当前对话ID
             setCurrentConversationId(result.conversationId);
-            
-            // 添加AI回复到聊天历史显示
-            addMessageToHistory(chatHistory, result.reply, 'ai');
             
             // 更新标题
             if (result.conversation && result.conversation.title !== I18n.getMessage('newConversation', '新对话')) {
@@ -826,14 +1148,34 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
         } catch (error) {
             console.error('发送消息失败:', error);
             
+            // 如果已创建AI消息元素，移除它
+            if (aiMessageElement) {
+                aiMessageElement.remove();
+            }
+            
             // 添加错误消息到聊天历史
             addMessageToHistory(chatHistory, error.message || 'Unknown error occurred', 'error');
             
+            // 根据错误类型显示不同的通知
+            let notificationType = 'error';
+            let notificationDuration = 5000;
+            
+            if (error.message.includes('网络') || error.message.includes('连接')) {
+                notificationType = 'warning';
+                notificationDuration = 8000;
+            } else if (error.message.includes('余额') || error.message.includes('402')) {
+                notificationType = 'warning';
+                notificationDuration = 10000;
+            } else if (error.message.includes('速率') || error.message.includes('429')) {
+                notificationType = 'warning';
+                notificationDuration = 8000;
+            }
+            
             Notification.notify({
-                title: '发送失败',
+                title: I18n.getMessage('sendMessageFailed', '发送失败'),
                 message: error.message,
-                type: 'error',
-                duration: 5000
+                type: notificationType,
+                duration: notificationDuration
             });
             
         } finally {
@@ -857,13 +1199,40 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
 }
 
 /**
- * 添加消息到聊天历史（支持Markdown渲染）
+ * 添加消息到聊天历史（支持Markdown渲染和推理内容展示）
  * @param {HTMLElement} chatHistory - 聊天历史容器
  * @param {string} message - 消息内容
  * @param {string} type - 消息类型（user、ai、error）
+ * @param {string} reasoning - 推理内容（仅AI消息使用）
  */
-function addMessageToHistory(chatHistory, message, type) {
+function addMessageToHistory(chatHistory, message, type, reasoning = null) {
     const messageElement = Utils.createElement('div', `ai-message ai-message-${type}`);
+    
+    // 如果是AI消息且有推理内容，创建可折叠的推理区域
+    if (type === 'ai' && reasoning) {
+        // 推理内容区域
+        const reasoningContainer = Utils.createElement('div', 'ai-reasoning-container');
+        const reasoningHeader = Utils.createElement('div', 'ai-reasoning-header');
+        const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
+            type: 'button'
+        }, '🧠 查看思维过程');
+        
+        const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
+        reasoningContent.style.display = 'none'; // 默认隐藏
+        reasoningContent.innerHTML = renderMarkdown(reasoning);
+        
+        // 切换显示/隐藏推理内容
+        reasoningToggle.addEventListener('click', () => {
+            const isVisible = reasoningContent.style.display !== 'none';
+            reasoningContent.style.display = isVisible ? 'none' : 'block';
+            reasoningToggle.textContent = `🧠 ${isVisible ? '查看思维过程' : '隐藏思维过程'}`;
+        });
+        
+        reasoningHeader.appendChild(reasoningToggle);
+        reasoningContainer.appendChild(reasoningHeader);
+        reasoningContainer.appendChild(reasoningContent);
+        messageElement.appendChild(reasoningContainer);
+    }
     
     // 消息内容容器
     const messageContent = Utils.createElement('div', 'ai-message-content');
@@ -1301,4 +1670,137 @@ function showAIConfigModal() {
 
 // 导出配置模态框函数供其他模块使用
 AI.showConfigModal = showAIConfigModal;
+
+/**
+ * 发送流式消息
+ * @param {string} url - API地址
+ * @param {Object} requestBody - 请求体
+ * @param {string} apiKey - API密钥
+ * @param {Object} conversation - 对话对象
+ * @param {Function} onChunk - 数据块回调
+ * @returns {Promise<Object>} - 完整回复对象
+ */
+async function sendStreamMessage(url, requestBody, apiKey, conversation, onChunk) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(handleAPIError(response, errorText));
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    
+    let fullContent = '';
+    let reasoning = '';
+    
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    
+                    if (data === '[DONE]') {
+                        break;
+                    }
+                    
+                    try {
+                        const parsed = JSON.parse(data);
+                        const delta = parsed.choices?.[0]?.delta;
+                        
+                        if (delta?.content) {
+                            fullContent += delta.content;
+                            // 调用回调函数，传递增量内容
+                            onChunk(delta.content, false, null, 'content');
+                        }
+                        
+                        if (delta?.reasoning_content) {
+                            reasoning += delta.reasoning_content;
+                            // 调用回调函数，传递推理增量内容
+                            onChunk(delta.reasoning_content, false, null, 'reasoning');
+                        }
+                    } catch (e) {
+                        // 忽略JSON解析错误
+                        console.warn('解析流数据失败:', e);
+                    }
+                }
+            }
+        }
+        
+        // 流式回复完成
+        onChunk('', true, reasoning, 'finished');
+        
+        // 添加AI回复到对话历史
+        const aiMessage = {
+            role: 'assistant',
+            content: fullContent,
+            timestamp: Date.now()
+        };
+        
+        if (reasoning) {
+            aiMessage.reasoning_content = reasoning;
+        }
+        
+        conversation.messages.push(aiMessage);
+        conversation.lastUpdated = Date.now();
+        
+        // 保存对话历史
+        await saveConversationHistory();
+        
+        return {
+            reply: fullContent,
+            reasoning: reasoning,
+            conversationId: conversation.id,
+            conversation: conversation
+        };
+        
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+/**
+ * 创建推理内容容器
+ * @param {string} reasoning - 推理内容
+ * @returns {HTMLElement} 推理容器元素
+ */
+function createReasoningContainer(reasoning) {
+    const reasoningContainer = Utils.createElement('div', 'ai-reasoning-container');
+    const reasoningHeader = Utils.createElement('div', 'ai-reasoning-header');
+    const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
+        type: 'button'
+    }, '🧠 查看思维过程');
+    
+    const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
+    reasoningContent.style.display = 'none';
+    reasoningContent.innerHTML = renderMarkdown(reasoning);
+    
+    // 切换显示/隐藏推理内容
+    reasoningToggle.addEventListener('click', () => {
+        const isVisible = reasoningContent.style.display !== 'none';
+        reasoningContent.style.display = isVisible ? 'none' : 'block';
+        reasoningToggle.textContent = `🧠 ${isVisible ? '查看思维过程' : '隐藏思维过程'}`;
+    });
+    
+    reasoningHeader.appendChild(reasoningToggle);
+    reasoningContainer.appendChild(reasoningHeader);
+    reasoningContainer.appendChild(reasoningContent);
+    
+    return reasoningContainer;
+}
 

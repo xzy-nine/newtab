@@ -324,6 +324,8 @@
   color: var(--ai-text-color);
   word-wrap: break-word;
   box-shadow: var(--ai-shadow);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .ai-message-user .ai-message-content {
@@ -505,6 +507,111 @@
   background: #9ca3af;
   cursor: not-allowed;
   transform: none;
+}
+
+/* 推理内容样式 */
+.ai-reasoning-container {
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 8px;
+    background-color: var(--secondary-bg, #f8f9fa);
+    overflow: hidden;
+}
+
+.ai-reasoning-header {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color, #e0e0e0);
+    background-color: var(--tertiary-bg, #f0f1f2);
+}
+
+.ai-reasoning-toggle {
+    background: none;
+    border: none;
+    color: var(--primary-color, #007bff);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ai-reasoning-toggle:hover {
+    background-color: var(--hover-bg, rgba(0, 123, 255, 0.1));
+}
+
+.ai-reasoning-content {
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-secondary, #666);
+    background-color: var(--bg-light, #fafbfc);
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.ai-reasoning-content pre {
+    background-color: var(--code-bg, #f6f8fa);
+    border: 1px solid var(--border-color, #e1e4e8);
+    border-radius: 4px;
+    padding: 8px;
+    margin: 8px 0;
+    font-size: 12px;
+}
+
+.ai-reasoning-content code {
+    background-color: var(--inline-code-bg, rgba(175, 184, 193, 0.2));
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 12px;
+}
+
+/* 流式思维过程特殊样式 */
+.ai-reasoning-content .typing-indicator {
+    animation: blink 1s infinite;
+    color: var(--ai-primary-color);
+    font-weight: bold;
+    margin-left: 2px;
+}
+
+/* 确保推理内容区域的滚动条样式 */
+.ai-reasoning-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ai-reasoning-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ai-reasoning-content::-webkit-scrollbar-thumb {
+    background: var(--ai-primary-color);
+    border-radius: 2px;
+}
+
+/* 打字指示器动画 */
+.typing-indicator {
+  animation: blink 1s infinite;
+  color: var(--ai-primary-color);
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* 流式消息样式优化 */
+.ai-message-ai .ai-message-content {
+  position: relative;
+}
+
+/* 确保流式内容正确换行 */
+.ai-message-content {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 深色模式适配 */
