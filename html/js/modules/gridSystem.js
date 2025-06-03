@@ -563,7 +563,35 @@ export const GridSystem = {
                 func.apply(context, args);
             }, wait);
         };
-    }
+    },
+
+    /**
+     * 从localStorage初始化网格设置
+     */
+    initializeFromStorage() {
+        // 从localStorage恢复网格设置
+        const storedEnabled = localStorage.getItem('grid-enabled');
+        const storedDebug = localStorage.getItem('grid-debug');
+        const storedThreshold = localStorage.getItem('grid-snap-threshold');
+        
+        if (storedEnabled !== null) {
+          this.gridEnabled = storedEnabled === 'true';
+        }
+        
+        if (storedDebug !== null) {
+          this.isDebugMode = storedDebug === 'true';
+        }
+        
+        if (storedThreshold !== null) {
+          this.snapThreshold = parseInt(storedThreshold) || 15;
+        }
+        
+        console.log('GridSystem从localStorage恢复设置:', {
+          enabled: this.gridEnabled,
+          debug: this.isDebugMode,
+          threshold: this.snapThreshold
+        });
+      }
 };
 
 // 确保在模块加载时就暴露到全局

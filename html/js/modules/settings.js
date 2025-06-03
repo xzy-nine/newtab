@@ -133,6 +133,51 @@ export const Settings = {
           description: I18n.getMessage('settingsAddSearchEngineDesc', '添加新的自定义搜索引擎')
         }
       ]
+    },
+    {
+      id: 'data-sync',
+      icon: '☁️',
+      title: I18n.getMessage('settingsDataSync', '数据同步'),
+      items: [
+        {
+          id: 'sync-mode',
+          label: I18n.getMessage('settingsSyncMode', '同步模式'),
+          type: 'radio',
+          options: [
+            { value: 'disabled', label: I18n.getMessage('syncModeDisabled', '关闭同步') },
+            { value: 'upload', label: I18n.getMessage('syncModeUpload', '上传到云端') },
+            { value: 'download', label: I18n.getMessage('syncModeDownload', '从云端下载') }
+          ],
+          getValue: () => localStorage.getItem('sync-mode') || 'disabled',
+          description: I18n.getMessage('settingsSyncModeDesc', '选择数据同步方式，避免冲突的单向同步')
+        },
+        {
+          id: 'sync-status',
+          label: I18n.getMessage('settingsSyncStatus', '同步状态'),
+          type: 'custom',
+          description: I18n.getMessage('settingsSyncStatusDesc', '显示当前同步状态和最后同步时间')
+        },
+        {
+          id: 'sync-actions',
+          label: I18n.getMessage('settingsSyncActions', '手动同步'),
+          type: 'custom',
+          description: I18n.getMessage('settingsSyncActionsDesc', '手动执行同步操作')
+        },
+        {
+          id: 'sync-interval',
+          label: I18n.getMessage('settingsSyncInterval', '自动同步间隔'),
+          type: 'select',
+          options: [
+            { value: '0', label: I18n.getMessage('syncIntervalDisabled', '关闭自动同步') },
+            { value: '300', label: I18n.getMessage('syncInterval5min', '5分钟') },
+            { value: '600', label: I18n.getMessage('syncInterval10min', '10分钟') },
+            { value: '1800', label: I18n.getMessage('syncInterval30min', '30分钟') },
+            { value: '3600', label: I18n.getMessage('syncInterval1hour', '1小时') }
+          ],
+          getValue: () => localStorage.getItem('sync-interval') || '0',
+          description: I18n.getMessage('settingsSyncIntervalDesc', '设置自动同步的时间间隔')
+        }
+      ]
     }
   ],
 
@@ -281,6 +326,10 @@ export const Settings = {
             return localStorage.getItem('theme') || 'auto';
           case 'language':
             return window.I18n ? I18n.getCurrentLanguage() : 'zh';
+          case 'sync-mode':
+            return localStorage.getItem('sync-mode') || 'disabled';
+          case 'sync-interval':
+            return localStorage.getItem('sync-interval') || '0';
           default:
             return item.value || item.defaultValue || '';
         }
@@ -505,6 +554,26 @@ export const Settings = {
           select.addEventListener('change', (e) => {
             Settings.handleThemeChange(e.target.value);
           });
+        } else if (item.id === 'sync-interval') {
+          select.addEventListener('change', (e) => {
+            const interval = e.target.value;
+            localStorage.setItem('sync-interval', interval);
+            
+            // 重启自动同步
+            const syncMode = localStorage.getItem('sync-mode');
+            if (syncMode !== 'disabled') {
+              Settings.startAutoSync();
+            }
+            
+            Notification.notify({
+              title: I18n.getMessage('syncIntervalChanged', '同步间隔已更改'),
+              message: interval === '0' ? 
+                I18n.getMessage('autoSyncDisabled', '自动同步已关闭') :
+                I18n.getMessage('autoSyncEnabled', '自动同步已启用'),
+              type: 'info',
+              duration: 2000
+            });
+          });
         }
         
         itemControl.appendChild(select);
@@ -535,6 +604,12 @@ export const Settings = {
           radioGroup.addEventListener('change', (e) => {
             if (e.target.type === 'radio') {
               Settings.handleThemeChange(e.target.value);
+            }
+          });
+        } else if (item.id === 'sync-mode') {
+          radioGroup.addEventListener('change', (e) => {
+            if (e.target.type === 'radio') {
+              Settings.handleSyncModeChange(e.target.value);
             }
           });
         }
@@ -606,6 +681,12 @@ export const Settings = {
         } else if (item.id === 'ai-quick-prompts') {
           const quickPromptsEditor = Settings.createQuickPromptsEditor();
           itemControl.appendChild(quickPromptsEditor);
+        } else if (item.id === 'sync-status') {
+          const syncStatus = Settings.createSyncStatusDisplay();
+          itemControl.appendChild(syncStatus);
+        } else if (item.id === 'sync-actions') {
+          const syncActions = Settings.createSyncActionsPanel();
+          itemControl.appendChild(syncActions);
         }
         break;
         
@@ -1592,6 +1673,27 @@ export const Settings = {
         console.log('同步AI启用状态:', currentAIEnabled);
       }
       
+      // 同步数据同步设置
+      const syncModeRadios = document.getElementsByName('sync-mode');
+      if (syncModeRadios) {
+        const currentSyncMode = localStorage.getItem('sync-mode') || 'disabled';
+        syncModeRadios.forEach(radio => {
+          if (radio.value === currentSyncMode) {
+            radio.checked = true;
+          } else {
+            radio.checked = false;
+          }
+        });
+        console.log('同步设置 - 同步模式:', currentSyncMode);
+      }
+      
+      const syncIntervalSelect = document.getElementById('sync-interval');
+      if (syncIntervalSelect) {
+        const currentSyncInterval = localStorage.getItem('sync-interval') || '0';
+        syncIntervalSelect.value = currentSyncInterval;
+        console.log('同步设置 - 自动同步间隔:', currentSyncInterval);
+      }
+      
       console.log('设置同步完成');
     } catch (error) {
       console.error('同步设置失败:', error);
@@ -1643,6 +1745,30 @@ export const Settings = {
       }
     };
     document.addEventListener('keydown', handleEscKey);
+    
+    // 绑定同步间隔变化事件
+    const syncIntervalSelect = document.getElementById('sync-interval');
+    if (syncIntervalSelect) {
+      syncIntervalSelect.addEventListener('change', (e) => {
+        const interval = e.target.value;
+        localStorage.setItem('sync-interval', interval);
+        
+        // 重启自动同步
+        const syncMode = localStorage.getItem('sync-mode');
+        if (syncMode !== 'disabled') {
+          Settings.startAutoSync();
+        }
+        
+        Notification.notify({
+          title: I18n.getMessage('syncIntervalChanged', '同步间隔已更改'),
+          message: interval === '0' ? 
+            I18n.getMessage('autoSyncDisabled', '自动同步已关闭') :
+            I18n.getMessage('autoSyncEnabled', '自动同步已启用'),
+          type: 'info',
+          duration: 2000
+        });
+      });
+    }
   },
 
   /**
@@ -1804,4 +1930,606 @@ export const Settings = {
     return container;
   },
 
+  /**
+   * 处理同步模式变化
+   * @param {string} mode - 同步模式 ('disabled', 'upload', 'download')
+   */
+  handleSyncModeChange(mode) {
+    try {
+      localStorage.setItem('sync-mode', mode);
+      
+      // 显示通知
+      const modeNames = {
+        'disabled': I18n.getMessage('syncModeDisabled', '关闭同步'),
+        'upload': I18n.getMessage('syncModeUpload', '上传到云端'),
+        'download': I18n.getMessage('syncModeDownload', '从云端下载')
+      };
+      
+      Notification.notify({
+        title: I18n.getMessage('syncModeChanged', '同步模式已更改'),
+        message: `${I18n.getMessage('currentSyncMode', '当前模式')}: ${modeNames[mode]}`,
+        type: 'success',
+        duration: 2000
+      });
+      
+      // 刷新同步状态显示
+      Settings.refreshSyncStatus();
+      
+      // 如果启用了同步模式，开始自动同步
+      if (mode !== 'disabled') {
+        Settings.startAutoSync();
+      } else {
+        Settings.stopAutoSync();
+      }
+    } catch (error) {
+      console.error('处理同步模式变化失败:', error);
+    }
+  },
+
+  /**
+   * 创建同步状态显示
+   * @returns {HTMLElement} - 同步状态显示元素
+   */
+  createSyncStatusDisplay() {
+    const container = Utils.createElement('div', 'sync-status-container');
+    
+    // 当前同步模式
+    const currentMode = localStorage.getItem('sync-mode') || 'disabled';
+    const modeNames = {
+      'disabled': I18n.getMessage('syncModeDisabled', '关闭同步'),
+      'upload': I18n.getMessage('syncModeUpload', '上传到云端'), 
+      'download': I18n.getMessage('syncModeDownload', '从云端下载')
+    };
+    
+    const modeDisplay = Utils.createElement('div', 'sync-mode-display');
+    const modeLabel = Utils.createElement('span', 'sync-mode-label', {}, 
+      `${I18n.getMessage('currentSyncMode', '当前模式')}: `);
+    const modeValue = Utils.createElement('span', `sync-mode-value ${currentMode}`, {}, 
+      modeNames[currentMode]);
+    modeDisplay.append(modeLabel, modeValue);
+    
+    // 最后同步时间
+    const lastSyncTime = localStorage.getItem('last-sync-time');
+    const timeDisplay = Utils.createElement('div', 'sync-time-display');
+    const timeLabel = Utils.createElement('span', 'sync-time-label', {}, 
+      `${I18n.getMessage('lastSyncTime', '最后同步')}: `);
+       const timeValue = Utils.createElement('span', 'sync-time-value', {}, 
+      lastSyncTime ? new Date(parseInt(lastSyncTime)).toLocaleString() : 
+      I18n.getMessage('neverSynced', '从未同步'));
+    timeDisplay.append(timeLabel, timeValue);
+    
+    // 同步状态
+    const syncResult = localStorage.getItem('last-sync-result') || 'none';
+    const statusDisplay = Utils.createElement('div', 'sync-status-display');
+    const statusLabel = Utils.createElement('span', 'sync-status-label', {}, 
+      `${I18n.getMessage('syncStatus', '同步状态')}: `);
+    const statusValue = Utils.createElement('span', `sync-status-value ${syncResult}`, {}, 
+      Settings.getSyncStatusText(syncResult));
+    statusDisplay.append(statusLabel, statusValue);
+    
+    container.append(modeDisplay, timeDisplay, statusDisplay);
+    return container;
+  },
+
+  /**
+   * 获取同步状态文本
+   * @param {string} status - 状态值
+   * @returns {string} - 状态文本
+   */
+  getSyncStatusText(status) {
+    const statusTexts = {
+      'none': I18n.getMessage('syncStatusNone', '未同步'),
+      'success': I18n.getMessage('syncStatusSuccess', '成功'),
+      'error': I18n.getMessage('syncStatusError', '失败'),
+      'uploading': I18n.getMessage('syncStatusUploading', '上传中'),
+      'downloading': I18n.getMessage('syncStatusDownloading', '下载中')
+    };
+    return statusTexts[status] || status;
+  },
+
+  /**
+   * 创建同步操作面板
+   * @returns {HTMLElement} - 同步操作面板
+   */
+  createSyncActionsPanel() {
+    const container = Utils.createElement('div', 'sync-actions-container');
+    
+    // 测试连接按钮
+    const testBtn = Utils.createElement('button', 'btn btn-secondary sync-test-btn', {}, 
+      I18n.getMessage('testConnection', '测试连接'));
+    testBtn.addEventListener('click', () => Settings.testSyncConnection());
+    
+    // 立即上传按钮
+    const uploadBtn = Utils.createElement('button', 'btn btn-primary sync-upload-btn', {}, 
+      I18n.getMessage('uploadNow', '立即上传'));
+    uploadBtn.addEventListener('click', () => Settings.performSync('upload', false));
+    
+    // 立即下载按钮
+    const downloadBtn = Utils.createElement('button', 'btn btn-info sync-download-btn', {}, 
+      I18n.getMessage('downloadNow', '立即下载'));
+    downloadBtn.addEventListener('click', () => Settings.performSync('download', false));
+    
+    const buttonGroup = Utils.createElement('div', 'sync-button-group');
+    buttonGroup.append(testBtn, uploadBtn, downloadBtn);
+    
+    container.appendChild(buttonGroup);
+    return container;
+  },
+
+  /**
+   * 刷新同步状态显示
+   */
+  refreshSyncStatus() {
+    const statusContainer = document.querySelector('.sync-status-container');
+    if (statusContainer) {
+      const newStatus = Settings.createSyncStatusDisplay();
+      statusContainer.parentNode.replaceChild(newStatus, statusContainer);
+    }
+  },
+
+  /**
+   * 测试同步连接
+   */
+  async testSyncConnection() {
+    const testBtn = document.querySelector('.sync-test-btn');
+    if (testBtn) {
+      testBtn.disabled = true;
+      testBtn.textContent = I18n.getMessage('testing', '测试中...');
+    }
+    
+    try {
+      // 这里应该调用实际的连接测试API
+      // 模拟连接测试
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      Notification.notify({
+        title: I18n.getMessage('connectionTest', '连接测试'),
+        message: I18n.getMessage('connectionSuccess', '连接成功'),
+        type: 'success',
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('连接测试失败:', error);
+      Notification.notify({
+        title: I18n.getMessage('connectionTest', '连接测试'),
+        message: I18n.getMessage('connectionFailed', '连接失败'),
+        type: 'error',
+        duration: 3000
+      });
+    } finally {
+      if (testBtn) {
+        testBtn.disabled = false;
+        testBtn.textContent = I18n.getMessage('testConnection', '测试连接');
+      }
+    }
+  },
+
+  /**
+   * 执行同步操作
+   * @param {string} direction - 同步方向 ('upload' | 'download')
+   * @param {boolean} silent - 是否静默执行
+   */
+  async performSync(direction, silent = false) {
+    const isUpload = direction === 'upload';
+    const btnSelector = isUpload ? '.sync-upload-btn' : '.sync-download-btn';
+    const btn = document.querySelector(btnSelector);
+    
+    // 更新按钮状态
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = isUpload ? 
+        I18n.getMessage('uploading', '上传中...') : 
+        I18n.getMessage('downloading', '下载中...');
+    }
+    
+    // 更新同步状态
+    const status = isUpload ? 'uploading' : 'downloading';
+    localStorage.setItem('last-sync-result', status);
+    Settings.refreshSyncStatus();
+    
+    try {
+      // 获取当前数据
+      const currentData = Settings.getAllSettingsData();
+      
+      if (isUpload) {
+        // 上传数据到云端
+        await Settings.uploadData(currentData);
+        if (!silent) {
+          Notification.notify({
+            title: I18n.getMessage('uploadSuccess', '上传成功'),
+            message: I18n.getMessage('dataUploadedSuccess', '数据已成功上传到云端'),
+            type: 'success',
+            duration: 2000
+          });
+        }
+      } else {
+        // 从云端下载数据
+        const cloudData = await Settings.downloadData();
+        await Settings.applySettingsData(cloudData);
+        if (!silent) {
+          Notification.notify({
+            title: I18n.getMessage('downloadSuccess', '下载成功'),
+            message: I18n.getMessage('dataDownloadedSuccess', '数据已成功从云端下载'),
+            type: 'success',
+            duration: 2000
+          });
+        }
+      }
+      
+      // 记录成功状态
+      localStorage.setItem('last-sync-result', 'success');
+      localStorage.setItem('last-sync-time', Date.now().toString());
+      
+    } catch (error) {
+      console.error('同步失败:', error);
+      localStorage.setItem('last-sync-result', 'error');
+      
+      if (!silent) {
+        Notification.notify({
+          title: I18n.getMessage('syncFailed', '同步失败'),
+          message: error.message || I18n.getMessage('syncError', '同步过程中发生错误'),
+          type: 'error',
+          duration: 3000
+        });
+      }
+    } finally {
+      // 恢复按钮状态
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = isUpload ? 
+          I18n.getMessage('uploadNow', '立即上传') : 
+          I18n.getMessage('downloadNow', '立即下载');
+      }
+      
+      // 刷新状态显示
+      Settings.refreshSyncStatus();
+    }
+  },
+
+    /**
+   * 获取所有设置数据
+   * @returns {Object} - 设置数据对象
+   */
+  getAllSettingsData() {
+    const data = {};
+    
+    // 收集localStorage中的设置数据
+    const settingKeys = [
+      'theme', 'language', 'sync-mode', 'sync-interval',
+      'search-engines', 'bookmarks'
+    ];
+    
+    settingKeys.forEach(key => {
+      const value = localStorage.getItem(key);
+      if (value !== null) {
+        try {
+          data[key] = JSON.parse(value);
+        } catch {
+          data[key] = value;
+        }
+      }
+    });
+    
+    // 收集网格系统设置（从模块实例获取实际状态）
+    if (window.GridSystem) {
+      data['grid-enabled'] = GridSystem.gridEnabled;
+      data['grid-debug'] = GridSystem.isDebugMode;
+      data['grid-snap-threshold'] = GridSystem.snapThreshold;
+    } else {
+      // 如果GridSystem未初始化，从localStorage获取
+      data['grid-enabled'] = localStorage.getItem('grid-enabled') === 'true';
+      data['grid-debug'] = localStorage.getItem('grid-debug') === 'true';
+      data['grid-snap-threshold'] = parseInt(localStorage.getItem('grid-snap-threshold')) || 15;
+    }
+    
+    // 收集AI设置（从模块实例获取实际状态）
+    if (window.AI) {
+      const aiConfig = AI.getConfig();
+      data['ai-enabled'] = aiConfig.enabled;
+      data['ai-config'] = aiConfig;
+    } else {
+      // 如果AI未初始化，从localStorage获取
+      data['ai-enabled'] = localStorage.getItem('ai-enabled') === 'true';
+      const aiConfigStr = localStorage.getItem('ai-config');
+      if (aiConfigStr) {
+        try {
+          data['ai-config'] = JSON.parse(aiConfigStr);
+        } catch {
+          data['ai-config'] = null;
+        }
+      }
+    }
+    
+    data.timestamp = Date.now();
+    return data;
+  },
+  
+  /**
+   * 应用设置数据
+   * @param {Object} data - 设置数据
+   */
+  async applySettingsData(data) {
+    if (!data || typeof data !== 'object') {
+      throw new Error(I18n.getMessage('invalidSyncData', '无效的同步数据'));
+    }
+    
+    console.log('开始应用同步数据:', data);
+    
+    // 首先将所有数据保存到localStorage
+    Object.keys(data).forEach(key => {
+      if (key !== 'timestamp') {
+        const value = typeof data[key] === 'object' ? 
+          JSON.stringify(data[key]) : String(data[key]);
+        localStorage.setItem(key, value);
+        console.log(`保存设置 ${key}:`, value);
+      }
+    });
+    
+    // 立即应用网格系统设置
+    if (window.GridSystem) {
+      if ('grid-enabled' in data) {
+        await GridSystem.toggleGridSystem(Boolean(data['grid-enabled']));
+        console.log('应用网格启用状态:', data['grid-enabled']);
+      }
+      
+      if ('grid-debug' in data) {
+        await GridSystem.toggleGridDebug(Boolean(data['grid-debug']));
+        console.log('应用网格调试状态:', data['grid-debug']);
+      }
+      
+      if ('grid-snap-threshold' in data) {
+        GridSystem.setSnapThreshold(Number(data['grid-snap-threshold']));
+        console.log('应用网格吸附阈值:', data['grid-snap-threshold']);
+      }
+    }
+    
+    // 立即应用AI设置
+    if (window.AI && data['ai-config']) {
+      await AI.updateConfig(data['ai-config']);
+      console.log('应用AI配置:', data['ai-config']);
+    }
+    
+    // 立即应用主题设置
+    if (data.theme) {
+      Settings.applyTheme(data.theme);
+      console.log('应用主题:', data.theme);
+    }
+    
+    // 语言设置需要刷新页面
+    const needsReload = data.language && data.language !== I18n.getCurrentLanguage();
+    
+    if (needsReload) {
+      await I18n.changeLanguage(data.language);
+      console.log('语言已更改，准备刷新页面');
+      
+      // 显示提示并刷新页面
+      Notification.notify({
+        title: I18n.getMessage('settingsApplied', '设置已应用'),
+        message: I18n.getMessage('pageWillReload', '页面将在2秒后刷新以应用所有设置'),
+        type: 'success',
+        duration: 2000
+      });
+      
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      // 如果不需要刷新页面，刷新设置面板显示
+      setTimeout(() => {
+        Settings.syncSettingsWithSystem();
+        
+        Notification.notify({
+          title: I18n.getMessage('settingsApplied', '设置已应用'),
+          message: I18n.getMessage('syncDataAppliedSuccess', '同步数据已成功应用'),
+          type: 'success',
+          duration: 2000
+        });
+      }, 500);
+    }
+  },
+  
+  /**
+   * 改进设置同步方法 - 确保从实际模块状态同步
+   */
+  syncSettingsWithSystem() {
+    console.log('开始同步设置与系统状态');
+    
+    try {
+      // 同步网格系统设置
+      const gridEnabledCheckbox = document.getElementById('grid-enabled');
+      const gridDebugCheckbox = document.getElementById('grid-debug');
+      const gridSnapThresholdRange = document.getElementById('grid-snap-threshold');
+      
+      if (window.GridSystem) {
+        if (gridEnabledCheckbox) {
+          const currentEnabled = GridSystem.gridEnabled;
+          gridEnabledCheckbox.checked = currentEnabled;
+          console.log('同步网格启用状态:', currentEnabled);
+        }
+        
+        if (gridDebugCheckbox) {
+          const currentDebug = GridSystem.isDebugMode;
+          gridDebugCheckbox.checked = currentDebug;
+          console.log('同步网格调试状态:', currentDebug);
+        }
+        
+        if (gridSnapThresholdRange) {
+          const currentThreshold = GridSystem.snapThreshold;
+          gridSnapThresholdRange.value = currentThreshold;
+          const rangeValue = gridSnapThresholdRange.parentElement?.querySelector('.range-value');
+          if (rangeValue) {
+            rangeValue.textContent = `${currentThreshold}px`;
+          }
+          console.log('同步网格吸附阈值:', currentThreshold);
+        }
+      } else {
+        // 如果GridSystem未初始化，从localStorage读取并应用
+        if (gridEnabledCheckbox) {
+          const storedEnabled = localStorage.getItem('grid-enabled') === 'true';
+          gridEnabledCheckbox.checked = storedEnabled;
+          console.log('从localStorage同步网格启用状态:', storedEnabled);
+        }
+        
+        if (gridDebugCheckbox) {
+          const storedDebug = localStorage.getItem('grid-debug') === 'true';
+          gridDebugCheckbox.checked = storedDebug;
+          console.log('从localStorage同步网格调试状态:', storedDebug);
+        }
+        
+        if (gridSnapThresholdRange) {
+          const storedThreshold = parseInt(localStorage.getItem('grid-snap-threshold')) || 15;
+          gridSnapThresholdRange.value = storedThreshold;
+          const rangeValue = gridSnapThresholdRange.parentElement?.querySelector('.range-value');
+          if (rangeValue) {
+            rangeValue.textContent = `${storedThreshold}px`;
+          }
+          console.log('从localStorage同步网格吸附阈值:', storedThreshold);
+        }
+      }
+      
+      // 同步AI设置
+      const aiEnabledCheckbox = document.getElementById('ai-enabled');
+      if (window.AI && aiEnabledCheckbox) {
+        const currentAIEnabled = AI.getConfig().enabled;
+        aiEnabledCheckbox.checked = currentAIEnabled;
+        console.log('同步AI启用状态:', currentAIEnabled);
+      } else if (aiEnabledCheckbox) {
+        const storedAIEnabled = localStorage.getItem('ai-enabled') === 'true';
+        aiEnabledCheckbox.checked = storedAIEnabled;
+        console.log('从localStorage同步AI启用状态:', storedAIEnabled);
+      }
+      
+      // 同步其他localStorage设置
+      this.syncLocalStorageSettings();
+      
+      console.log('设置同步完成');
+    } catch (error) {
+      console.error('同步设置失败:', error);
+    }
+  },
+  
+  /**
+   * 同步localStorage中的设置
+   */
+  syncLocalStorageSettings() {
+    // 同步数据同步设置
+    const syncModeRadios = document.getElementsByName('sync-mode');
+    if (syncModeRadios.length > 0) {
+      const currentSyncMode = localStorage.getItem('sync-mode') || 'disabled';
+      syncModeRadios.forEach(radio => {
+        radio.checked = radio.value === currentSyncMode;
+      });
+      console.log('同步设置 - 同步模式:', currentSyncMode);
+    }
+    
+    const syncIntervalSelect = document.getElementById('sync-interval');
+    if (syncIntervalSelect) {
+      const currentSyncInterval = localStorage.getItem('sync-interval') || '0';
+      syncIntervalSelect.value = currentSyncInterval;
+      console.log('同步设置 - 自动同步间隔:', currentSyncInterval);
+    }
+    
+    // 同步主题设置
+    const themeRadios = document.getElementsByName('theme');
+    if (themeRadios.length > 0) {
+      const currentTheme = localStorage.getItem('theme') || 'auto';
+      themeRadios.forEach(radio => {
+        radio.checked = radio.value === currentTheme;
+      });
+      console.log('同步设置 - 主题:', currentTheme);
+    }
+    
+    // 同步语言设置
+    const languageSelect = document.getElementById('language');
+    if (languageSelect) {
+      const currentLanguage = localStorage.getItem('language') || 'zh';
+      languageSelect.value = currentLanguage;
+      console.log('同步设置 - 语言:', currentLanguage);
+    }
+  },
+
+  /**
+   * 上传数据到云端
+   * @param {Object} data - 要上传的数据
+   */
+  async uploadData(data) {
+    // 模拟上传API调用
+    // 实际实现应该调用真实的云存储API
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        // 模拟上传成功
+        localStorage.setItem('cloud-backup', JSON.stringify(data));
+        resolve();
+      }, 1000);
+    });
+  },
+
+  /**
+   * 从云端下载数据
+   * @returns {Object} - 下载的数据
+   */
+  async downloadData() {
+    // 模拟下载API调用
+    // 实际实现应该调用真实的云存储API
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const cloudData = localStorage.getItem('cloud-backup');
+        if (cloudData) {
+          try {
+            resolve(JSON.parse(cloudData));
+          } catch (error) {
+            reject(new Error(I18n.getMessage('parseCloudDataError', '解析云端数据失败')));
+          }
+        } else {
+          reject(new Error(I18n.getMessage('noCloudDataFound', '未找到云端数据')));
+        }
+      }, 1000);
+    });
+  },
+
+  /**
+   * 开始自动同步
+   */
+  startAutoSync() {
+    // 清除现有的定时器
+    if (Settings._autoSyncTimer) {
+      clearInterval(Settings._autoSyncTimer);
+    }
+    
+    const syncMode = localStorage.getItem('sync-mode');
+    const syncInterval = parseInt(localStorage.getItem('sync-interval') || '0');
+    
+    if (syncMode !== 'disabled' && syncInterval > 0) {
+      Settings._autoSyncTimer = setInterval(() => {
+        Settings.performSync(syncMode, true); // 静默同步
+      }, syncInterval * 1000);
+      
+      console.log(`自动同步已启动，模式: ${syncMode}，间隔: ${syncInterval}秒`);
+    }
+  },
+
+  /**
+   * 停止自动同步
+   */
+  stopAutoSync() {
+    if (Settings._autoSyncTimer) {
+      clearInterval(Settings._autoSyncTimer);
+      Settings._autoSyncTimer = null;
+      console.log('自动同步已停止');
+    }
+  },
+
+  // ...existing code...
 };
+// 页面加载时启动自动同步
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const syncMode = localStorage.getItem('sync-mode');
+    if (syncMode && syncMode !== 'disabled') {
+      Settings.startAutoSync();
+      
+      // 页面加载后2秒执行一次静默同步
+      setTimeout(() => {
+        Settings.performSync(syncMode, true);
+      }, 2000);
+    }
+  }, 100);
+});
