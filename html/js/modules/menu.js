@@ -26,14 +26,30 @@ export const Menu = {
       `<span class="modal-close">&times;</span><h2 class="modal-header">${title}</h2>`);
     
     const formContainer = Utils.createElement('div', 'modal-form');
-    
-    formItems.forEach(item => {
+      formItems.forEach(item => {
       // 判断是否为checkbox
       const groupClass = item.type === 'checkbox' ? 'form-group checkbox-group' : 'form-group';
       const formGroup = Utils.createElement('div', groupClass);
 
-      const label = Utils.createElement('label', '', { for: item.id }, item.label);
+      // 如果是自定义类型，使用自定义的渲染函数
+      if (item.type === 'custom' && typeof item.render === 'function') {
+        const customLabel = Utils.createElement('label', '', {}, item.label);
+        formGroup.appendChild(customLabel);
+        
+        // 使用渲染函数创建自定义内容
+        item.render(formGroup);
+        
+        if (item.description) {
+          const desc = Utils.createElement('div', 'setting-description', {}, item.description);
+          formGroup.appendChild(desc);
+        }
+        
+        formContainer.appendChild(formGroup);
+        return; // 跳过后续处理
+      }
 
+      const label = Utils.createElement('label', '', { for: item.id }, item.label);
+      
       let input;
       if (item.type === 'textarea') {
         input = Utils.createElement('textarea', '', { id: item.id });
@@ -42,6 +58,24 @@ export const Menu = {
           id: item.id,
           type: 'checkbox'
         });
+      } else if (item.type === 'select') {
+        // 处理下拉选择框
+        input = Utils.createElement('select', '', { id: item.id });
+        
+        // 添加选项
+        if (Array.isArray(item.options)) {
+          item.options.forEach(option => {
+            const optionElement = Utils.createElement('option', '', 
+              { value: option.value }, 
+              option.label || option.value);
+            input.appendChild(optionElement);
+          });
+          
+          // 设置默认值
+          if (item.value !== undefined) {
+            input.value = item.value;
+          }
+        }
       } else {
         input = Utils.createElement('input', '', {
           id: item.id,
@@ -54,9 +88,22 @@ export const Menu = {
       if (item.value !== undefined) {
         if (item.type === 'checkbox') {
           input.checked = !!item.value;
-        } else {
+        } else if (item.type !== 'select') { // 选择框已在上面处理
           input.value = item.value;
         }
+      }
+      if (item.disabled) input.disabled = true;
+
+      // 添加onchange事件处理器
+      if (typeof item.onchange === 'function') {
+        input.addEventListener('change', item.onchange);
+        input.addEventListener('input', item.onchange);
+      }
+
+      // 如果有描述，添加描述
+      if (item.description) {
+        const desc = Utils.createElement('div', 'setting-description', {}, item.description);
+        formGroup.appendChild(desc);
       }
 
       // 复选框放在label前面
@@ -74,14 +121,14 @@ export const Menu = {
       'button', 
       'btn', 
       { id: `${modalId}-cancel` },
-      cancelText || I18n.getMessage('cancel') || '取消'
+      cancelText || I18n.getMessage('cancel', '取消')
     );
 
     const confirmButton = Utils.createElement(
       'button', 
       'btn btn-primary', 
       { id: `${modalId}-confirm` },
-      confirmText || I18n.getMessage('confirm') || '确认'
+      confirmText || I18n.getMessage('confirm', '确认')
     );
     
     actionDiv.append(cancelButton, confirmButton);
@@ -108,19 +155,43 @@ export const Menu = {
     confirmButton.addEventListener('click', () => {
       const formData = {};
       let allFilled = true;
-      
-      formItems.forEach(item => {
+        formItems.forEach(item => {
+        // 跳过自定义渲染的表单项，因为它们应该已经有自己的处理逻辑
+        if (item.type === 'custom') {
+          // 自定义组件可能有自己的数据收集方法
+          if (typeof item.getValue === 'function') {
+            formData[item.id] = item.getValue();
+          }
+          return;
+        }
+        
         const input = document.getElementById(item.id);
         if (input) {
-          // 针对复选框特殊处理
+          // 根据不同类型处理表单值
           if (item.type === 'checkbox') {
             formData[item.id] = input.checked;  // 使用checked属性而不是value
+          } else if (item.type === 'select') {
+            formData[item.id] = input.value; // 选择框不需要trim
           } else {
             formData[item.id] = input.value.trim();
           }
-          if (item.required && !formData[item.id]) {
-            allFilled = false;
-            input.classList.add('error');
+          
+          // 验证必填项
+          if (item.required) {
+            if (item.type === 'checkbox') {
+              // 复选框特殊处理，因为false也是有效值
+              if (item.requiredValue !== undefined && input.checked !== item.requiredValue) {
+                allFilled = false;
+                input.classList.add('error');
+              }
+            } else {
+              // 文本、选择框等其他类型
+              if ((typeof formData[item.id] === 'string' && !formData[item.id]) || 
+                  formData[item.id] === undefined) {
+                allFilled = false;
+                input.classList.add('error');
+              }
+            }
           }
         }
       });
@@ -129,7 +200,7 @@ export const Menu = {
         let errorMessage = document.getElementById(`${modalId}-error`);
         if (!errorMessage) {
           errorMessage = Utils.createElement('div', 'form-error', { id: `${modalId}-error` }, 
-            I18n.getMessage('fillRequiredFields') || '请填写所有必填字段');
+            I18n.getMessage('fillRequiredFields', '请填写所有必填字段'));
           formContainer.insertBefore(errorMessage, actionDiv);
         }
         return;
@@ -321,7 +392,7 @@ export const Menu = {
      */
     show: function(options = {}) {
       const {
-        title = I18n.getMessage('selectImage') || '选择图片',
+        title = I18n.getMessage('selectImage', '选择图片'),
         modalId = 'image-selector-modal',
         onConfirm = () => {},
         onReset = null,
@@ -330,15 +401,15 @@ export const Menu = {
         allowUpload = true,
         showReset = false,
         mode = 'icon', // 默认为图标模式
-        confirmText = I18n.getMessage('confirm') || '确认',
-        cancelText = I18n.getMessage('cancel') || '取消',
-        resetText = I18n.getMessage('resetIcon') || '重置',
+        confirmText = I18n.getMessage('confirm', '确认'),
+        cancelText = I18n.getMessage('cancel', '取消'),
+        resetText = I18n.getMessage('resetIcon', '重置'),
         urlPlaceholder = 'https://example.com/image.png',
         maxWidth = mode === 'icon' ? 256 : 1920,
         maxHeight = mode === 'icon' ? 256 : 1080,
         quality = 1,
-        urlLabel = I18n.getMessage('imageUrl') || '图片URL',
-        uploadLabel = I18n.getMessage('uploadImage') || '上传图片'
+        urlLabel = I18n.getMessage('imageUrl', '图片URL'),
+        uploadLabel = I18n.getMessage('uploadImage', '上传图片')
       } = options;
 
       // 删除旧的模态框（如果存在）以避免事件绑定问题
@@ -453,7 +524,7 @@ export const Menu = {
             console.error('FileReader error:', error); // 调试日志
             const preview = document.getElementById(`${modalId}-preview`);
             if (preview) {
-              preview.innerHTML = `<div class="error-message">${I18n.getMessage('imageLoadError') || '图片加载失败'}</div>`;
+              preview.innerHTML = `<div class="error-message">${I18n.getMessage('imageLoadError', '图片加载失败')}</div>`;
             }
           };
           
@@ -485,7 +556,7 @@ export const Menu = {
           
           img.onerror = function(error) {
             console.error('Image URL error:', error); // 调试日志
-            preview.innerHTML = `<div class="error-message">${I18n.getMessage('imageLoadError') || '图片加载失败'}</div>`;
+            preview.innerHTML = `<div class="error-message">${I18n.getMessage('imageLoadError', '图片加载失败')}</div>`;
           };
           
           img.src = url;
@@ -511,8 +582,8 @@ export const Menu = {
           } catch (error) {
             console.error('Failed to process image:', error);
             Notification.notify({
-              title: I18n.getMessage('error') || '错误',
-              message: error.message || I18n.getMessage('imageProcessingError') || '图片处理失败',
+              title: I18n.getMessage('error', '错误'),
+              message: error.message || I18n.getMessage('imageProcessingError', '图片处理失败'),
               type: 'error',
               duration: 5000
             });

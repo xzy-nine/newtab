@@ -9,27 +9,40 @@ import { Utils } from './utils.js';
 /**
  * 通知系统命名空间
  */
-export const Notification = {
-  /**
+export const Notification = {  /**
    * 显示通知
    * @param {Object} options 通知选项
    * @param {string} options.title 通知标题
    * @param {string} options.message 通知消息
    * @param {string} options.type 通知类型: 'info', 'success', 'warning', 'error', 'loading'
-   * @param {number} options.duration 显示持续时间(毫秒)，0表示不自动关闭
+   * @param {number} options.duration 显示持续时间(毫秒)，null表示使用默认时间(普通通知3秒，错误通知8秒)，0表示不自动关闭
    * @param {Array} options.buttons 按钮配置: [{text, class, callback}]
    * @param {Function} options.onClose 关闭回调函数
    * @returns {Object} 通知控制对象: {close, getElement}
-   */
-  notify: (options) => {
+   */notify: (options) => {
     const { 
       title = '', 
       message = '', 
       type = 'info', 
-      duration = 5000, 
+      duration = null, 
       buttons = null, 
       onClose = null 
     } = options;
+
+    // 智能设置持续时间
+    let finalDuration = duration;
+    if (finalDuration === null) {
+      if (type === 'error') {
+        // 错误通知显示更长时间（8秒）
+        finalDuration = 8000;
+      } else if (type === 'loading') {
+        // 加载通知不自动关闭
+        finalDuration = 0;
+      } else {
+        // 普通通知最多3秒
+        finalDuration = 3000;
+      }
+    }
 
     const notification = Utils.createElement('div', `notification notification-${type}`);
     notification.dataset.visible = 'false';
@@ -44,7 +57,7 @@ export const Notification = {
     
     // 添加复制按钮，但不为加载类型通知添加
     const copyButtonHtml = type !== 'loading' ? 
-      '<button class="notification-copy" title="' + (I18n.getMessage('copyToClipboard') || '复制内容') + '">' +
+      '<button class="notification-copy" title="' + I18n.getMessage('copyToClipboard', '复制内容') + '">' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>' +
       '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>' +
@@ -60,18 +73,22 @@ export const Notification = {
         ${buttonsHtml}
         ${copyButtonHtml}
       </div>
-    `;
+    `;    document.body.appendChild(notification);
     
-    document.body.appendChild(notification);
-    
-    // 设置位置偏移
-    setTimeout(() => {
-      notification.classList.add('visible');
-      Notification.adjustNotificationPositions();
-    }, 10);
+    let timeoutId;
     
     const closeNotification = () => {
+      // 清除定时器
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      
       notification.classList.remove('visible');
+      notification.dataset.visible = 'false';
+      
+      // 从通知管理系统中移除
+      Notification.notificationManager.remove(notification);
       
       setTimeout(() => {
         if (document.body.contains(notification)) {
@@ -81,6 +98,18 @@ export const Notification = {
         }
       }, 300);
     };
+    
+    // 设置位置偏移
+    setTimeout(() => {
+      notification.classList.add('visible');
+      notification.dataset.visible = 'true';
+      Notification.adjustNotificationPositions();
+      
+      // 在通知变为可见后，启动自动关闭定时器（如果需要的话）
+      if (finalDuration > 0) {
+        timeoutId = setTimeout(closeNotification, finalDuration);
+      }
+    }, 10);
     
     notification.querySelector('.notification-close')
       .addEventListener('click', closeNotification);
@@ -94,7 +123,7 @@ export const Notification = {
           navigator.clipboard.writeText(contentToCopy).then(() => {
             // 显示复制成功的反馈
             const originalTitle = copyButton.getAttribute('title');
-            copyButton.setAttribute('title', I18n.getMessage('copied') || '已复制');
+            copyButton.setAttribute('title', I18n.getMessage('copied', '已复制'));
             copyButton.classList.add('copied');
             
             // 1.5秒后恢复原始状态
@@ -108,8 +137,7 @@ export const Notification = {
         });
       }
     }
-    
-    if (buttons?.length) {
+      if (buttons?.length) {
       buttons.forEach((btn, index) => {
         const btnElement = notification.querySelector(`[data-button-index="${index}"]`);
         if (btnElement && typeof btn.callback === 'function') {
@@ -121,17 +149,17 @@ export const Notification = {
       });
     }
     
-    let timeoutId;
-    
     // 添加可见性检查函数
     const checkVisibilityAndSetTimeout = () => {
-      if (notification.dataset.visible === 'true' && duration > 0) {
-        timeoutId = setTimeout(closeNotification, duration);
+      // 这个函数主要用于通知管理系统调用
+      // 如果通知变为可见且还没有设置定时器，则设置定时器
+      if (notification.dataset.visible === 'true' && finalDuration > 0 && !timeoutId) {
+        timeoutId = setTimeout(closeNotification, finalDuration);
       }
     };
     
     // 添加到通知管理系统
-    Notification.notificationManager.add(notification, duration, closeNotification, checkVisibilityAndSetTimeout);
+    Notification.notificationManager.add(notification, finalDuration, closeNotification, checkVisibilityAndSetTimeout);
     
     return { 
       close: closeNotification,
@@ -155,15 +183,19 @@ export const Notification = {
       Notification.notificationManager.notifications.push(notificationItem);
       Notification.notificationManager.updateVisibility();
     },
-    
-    updateVisibility: () => {
+      updateVisibility: () => {
       const notifications = Notification.notificationManager.notifications;
       
       // 更新所有通知的可见状态
       notifications.forEach((item, index) => {
+        const wasVisible = item.element.dataset.visible === 'true';
+        
         if (index < Notification.notificationManager.visibleLimit) {
           item.element.dataset.visible = 'true';
-          item.checkVisibility(); // 对可见通知检查是否需要启动定时器
+          // 如果通知从不可见变为可见，检查是否需要启动定时器
+          if (!wasVisible) {
+            item.checkVisibility();
+          }
         } else {
           item.element.dataset.visible = 'false';
           // 隐藏的通知不触发消失
@@ -182,7 +214,6 @@ export const Notification = {
       }
     }
   },
-
   adjustNotificationPositions: () => {
     const notifications = document.querySelectorAll('.notification');
     notifications.forEach((notification, index) => {
@@ -199,21 +230,23 @@ export const Notification = {
     // 更新通知管理系统
     Notification.notificationManager.updateVisibility();
   },
-
   // 加载指示器相关方法
-  showLoadingIndicator: (containerId = null) => {
+  showLoadingIndicator: (loadingText = null, containerId = null) => {
+    // 如果没有提供loadingText，使用I18n获取
+    const displayText = loadingText || I18n.getMessage('loading', '加载中');
+    
     // 移除原有的全屏加载逻辑
     let loadingNotification = document.querySelector('.notification.loading-notification');
     
     if (!loadingNotification) {
       // 创建加载通知
       const notification = Notification.notify({
-        title: I18n.getMessage('loading') || '加载中',
+        title: displayText,
         message: '<div class="loading-content">' +
                  '<div class="mini-loader-spinner"></div>' + 
                  '<div class="mini-progress">' +
                  '<div class="notification-loading-bar"></div></div>' +
-                 '<div class="notification-loading-message">' + I18n.getMessage('loading') + '</div>' +
+                 '<div class="notification-loading-message">' + displayText + '</div>' +
                  '</div>',
         type: 'loading',
         duration: 0 // 不自动关闭

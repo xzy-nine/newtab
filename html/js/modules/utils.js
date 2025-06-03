@@ -79,9 +79,9 @@ export const Utils = {
    */
   handleError: function(error, customMessage = '', throwError = false) {
     console.error(error);
-    const message = customMessage || error.message || I18n.getMessage('genericError');
+    const message = customMessage || error.message || I18n.getMessage('genericError', '发生错误');
     Notification.notify({
-      title: I18n.getMessage('errorTitle') || '错误',
+      title: I18n.getMessage('errorTitle', '错误') ,
       message: message,
       type: 'error',
       duration: 5000
@@ -101,14 +101,14 @@ export const Utils = {
   withLoading: async function(task, options = {}) {
     const {
       containerId = null,
-      startMessage = I18n.getMessage('loading') || '加载中',
-      successMessage = I18n.getMessage('ready') || '准备就绪',
+      startMessage = I18n.getMessage('loading', '加载中') ,
+      successMessage = I18n.getMessage('ready', '准备就绪'),
       errorMessage = null,
       autoHide = true
     } = options;
     
     try {
-      Notification.showLoadingIndicator(containerId);
+      Notification.showLoadingIndicator(null, containerId);
       Notification.updateLoadingProgress(10, startMessage);
       
       const result = await task();
@@ -123,7 +123,7 @@ export const Utils = {
       if (errorMessage) {
         Notification.showErrorMessage(errorMessage);
       } else {
-        Notification.showErrorMessage(error.message || I18n.getMessage('genericError') || '发生错误');
+        Notification.showErrorMessage(error.message || I18n.getMessage('genericError', '发生错误'));
       }
       throw error;
     }
@@ -164,6 +164,17 @@ export const Utils = {
             modal.style.display = 'none';
           });
         }
+      },
+
+      handleWindowResize: function() {
+        // 处理窗口大小变化
+        // 这里可以添加响应式布局调整逻辑
+        document.dispatchEvent(new CustomEvent('window-resized', {
+          detail: {
+            width: window.innerWidth,
+            height: window.innerHeight
+          }
+        }));
       },
 
       initUIEvents: function() {

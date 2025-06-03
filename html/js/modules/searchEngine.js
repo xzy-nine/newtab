@@ -294,7 +294,7 @@ function createSearchUI() {
     const searchInput = Utils.createElement('input', '', { 
         id: 'search-input',
         type: 'text',
-        placeholder: I18n.getMessage('searchPlaceholder') || '搜索...',
+        placeholder: I18n.getMessage('searchPlaceholder', '搜索...'),
         autocomplete: 'off',
         autocorrect: 'off',
         autocapitalize: 'off',
@@ -440,7 +440,8 @@ function renderSearchEngineSelector(firstRender = false) {
         const menuItem = Utils.createElement('div', 'search-engine-item' + (index === currentEngineIndex ? ' active' : ''));
         
         const icon = Utils.createElement('img', '', { alt: engine.name });
-        IconManager.setIconForElement(icon, engine.url);
+        const siteUrl = Utils.getDomain(engine.url);
+        IconManager.setIconForElement(icon, siteUrl);
         icon.onerror = () => IconManager.handleIconError(icon, '../favicon.png');
         
         const name = Utils.createElement('span', '', {}, engine.name);
@@ -455,13 +456,13 @@ function renderSearchEngineSelector(firstRender = false) {
             deleteButton.addEventListener('click', (e) => {
                 e.stopPropagation();
                 Notification.notify({
-                    title: I18n.getMessage('confirm') || '确认',
-                    message: I18n.getMessage('confirmDeleteSearchEngine').replace('{name}', engine.name),
+                    title: I18n.getMessage('confirm', '确认'),
+                    message: I18n.getMessage('confirmDeleteSearchEngine', '确定要删除搜索引擎 {name} 吗？').replace('{name}', engine.name),
                     duration: 0,
                     type: 'confirm',
                     buttons: [
                         {
-                            text: I18n.getMessage('confirm') || '确认',
+                            text: I18n.getMessage('confirm', '确认'),
                             class: 'btn-primary confirm-yes',
                             callback: () => {
                                 SearchEngineAPI.deleteEngine(index);
@@ -469,7 +470,7 @@ function renderSearchEngineSelector(firstRender = false) {
                             }
                         },
                         {
-                            text: I18n.getMessage('cancel') || '取消',
+                            text: I18n.getMessage('cancel', '取消'),
                             class: 'confirm-no',
                             callback: () => {}
                         }
@@ -489,7 +490,7 @@ function renderSearchEngineSelector(firstRender = false) {
     
     // 添加自定义搜索引擎选项
     const addCustomEngine = Utils.createElement('div', 'search-engine-add', {}, 
-        I18n.getMessage('addCustomSearchEngine') || '添加自定义搜索引擎');
+        I18n.getMessage('addCustomSearchEngine', '添加自定义搜索引擎'));
     
     addCustomEngine.addEventListener('click', showAddSearchEngineModal);
     menuElement.appendChild(addCustomEngine);
@@ -501,8 +502,12 @@ function renderSearchEngineSelector(firstRender = false) {
         const newIcon = iconElement.cloneNode(false);
         iconElement.parentNode.replaceChild(newIcon, iconElement);
         
+        // 从搜索URL提取主域名URL
+        const currentEngine = searchEngines[currentEngineIndex];
+        const siteUrl = Utils.getDomain(currentEngine.url);
+        
         // 设置图标
-        IconManager.setIconForElement(newIcon, searchEngines[currentEngineIndex].url);
+        IconManager.setIconForElement(newIcon, siteUrl);
         newIcon.onerror = () => IconManager.handleIconError(newIcon, '../favicon.png');
         
         // 添加点击事件
@@ -518,20 +523,20 @@ function renderSearchEngineSelector(firstRender = false) {
             e.stopPropagation();
             
             Notification.notify({
-                title: I18n.getMessage('confirm') || '确认',
-                message: I18n.getMessage('clearStorageConfirm') || '确定要清除所有存储数据吗？此操作不可恢复。',
+                title: I18n.getMessage('confirm', '确认'),
+                message: I18n.getMessage('clearStorageConfirm', '确定要清除所有存储数据吗？此操作不可恢复。'),
                 duration: 0,
                 type: 'confirm',
                 buttons: [
                     {
-                        text: I18n.getMessage('confirm') || '确认',
+                        text: I18n.getMessage('confirm', '确认'),
                         class: 'btn-primary confirm-yes',
                         callback: async () => {
                             const success = await SearchEngineAPI.clearStorage();
                             if (success) {
                                 Notification.notify({
-                                    title: I18n.getMessage('success') || '成功',
-                                    message: I18n.getMessage('clearStorageSuccess') || '存储已成功清除，页面将刷新。',
+                                    title: I18n.getMessage('success', '成功'),
+                                    message: I18n.getMessage('clearStorageSuccess', '存储已成功清除，页面将刷新。'),
                                     type: 'success',
                                     duration: 1500,
                                     onClose: () => {
@@ -540,8 +545,8 @@ function renderSearchEngineSelector(firstRender = false) {
                                 });
                             } else {
                                 Notification.notify({
-                                    title: I18n.getMessage('error') || '错误',
-                                    message: I18n.getMessage('clearStorageError') || '清除存储失败',
+                                    title: I18n.getMessage('error', '错误'),
+                                    message: I18n.getMessage('clearStorageError', '清除存储失败'),
                                     type: 'error',
                                     duration: 3000
                                 });
@@ -549,7 +554,7 @@ function renderSearchEngineSelector(firstRender = false) {
                         }
                     },
                     {
-                        text: I18n.getMessage('cancel') || '取消',
+                        text: I18n.getMessage('cancel', '取消'),
                         class: 'confirm-no',
                         callback: () => {}
                     }
@@ -607,26 +612,26 @@ function showAddSearchEngineModal() {
         {
             type: 'text',
             id: 'custom-engine-name',
-            label: I18n.getMessage('engineName') || '搜索引擎名称',
+            label: I18n.getMessage('engineName', '搜索引擎名称'),
             required: true
         },
         {
             type: 'url',
             id: 'custom-engine-url',
-            label: I18n.getMessage('engineSearchUrl') || '搜索URL',
+            label: I18n.getMessage('engineSearchUrl', '搜索URL'),
             placeholder: 'https://www.example.com/search?q=%s',
             required: true
         },
         {
             type: 'url',
             id: 'custom-engine-icon',
-            label: I18n.getMessage('engineIconUrl') || '图标URL（可选）',
+            label: I18n.getMessage('engineIconUrl', '图标URL（可选）'),
             required: false
         }
     ];
 
     Menu.showFormModal(
-        I18n.getMessage('addCustomSearchEngine') || '添加自定义搜索引擎',
+        I18n.getMessage('addCustomSearchEngine', '添加自定义搜索引擎'),
         formItems,
         (formData) => {
             const name = formData['custom-engine-name'];
@@ -637,16 +642,16 @@ function showAddSearchEngineModal() {
                 .then(success => {
                     if (!success) {
                         Notification.notify({
-                            title: I18n.getMessage('error') || '错误',
-                            message: I18n.getMessage('saveFailed') || '保存失败',
+                            title: I18n.getMessage('error', '错误'),
+                            message: I18n.getMessage('saveFailed', '保存失败'),
                             type: 'error',
                             duration: 3000
                         });
                     }
                 });
         },
-        I18n.getMessage('confirm') || '确认',
-        I18n.getMessage('cancel') || '取消'
+        I18n.getMessage('confirm', '确认'),
+        I18n.getMessage('cancel', '取消')
     );
 }
 

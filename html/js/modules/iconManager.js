@@ -59,9 +59,7 @@ export const IconManager = {
         });
 
         return fallbackIcon;
-    },
-
-    /**
+    },    /**
      * 获取图标URL（异步方法，返回URL而不是设置DOM元素）
      * @param {string} url - 网站URL
      * @returns {Promise<string>} - 图标URL
@@ -73,12 +71,11 @@ export const IconManager = {
             const cachedIconObj = await chrome.storage.local.get([domain, url]);
             
             // 优先使用URL对应的图标，其次是域名图标
-            if (cachedIconObj[url]) return cachedIconObj[url];
-            if (cachedIconObj[domain]) return cachedIconObj[domain];
+            if (cachedIconObj[url]) return this.stripFallbackPrefix(cachedIconObj[url]);
+            if (cachedIconObj[domain]) return this.stripFallbackPrefix(cachedIconObj[domain]);
             
-            // 尝试获取favicon
-            const iconUrl = `${domain}/favicon.ico`;
-            return iconUrl;
+            // 如果没有缓存，生成基于域名前缀的替代图标
+            return this.generateInitialBasedIcon(domain);
         } catch (error) {
             console.error('获取图标URL失败:', error);
             return null;
@@ -442,19 +439,126 @@ export const IconManager = {
      */
     generateInitialBasedIcon(domain) {
         console.debug("生成图标，域名:", domain);
-        // 使用正则表达式去除所有协议头
-        let cleanDomain = domain.replace(/^.*?:\/\//, '');
+        // 使用正则表达式去除所有协议头和参数
+        let cleanDomain = domain.replace(/^.*?:\/\//, '').split('?')[0].split('#')[0];
         console.debug("清理后域名:", cleanDomain);
         
-        const domainParts = cleanDomain.split('.');
-        console.debug("域名部分:", domainParts);
-        const siteName = domainParts[0] === 'www' && domainParts.length > 1 ? 
-            domainParts[1] : domainParts[0];
-        console.debug("站点名称:", siteName);
+        // 提取域名关键词的智能算法
+        const extractKeyword = (domain) => {
+            const parts = domain.split('.');
+            
+            // 检测是否为IP地址
+            const isIPAddress = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain);
+            if (isIPAddress) {
+                // 对于IP地址，返回一个特殊标记，后续特殊处理
+                return `IP:${domain}`;
+            }
+            
+            // 检测是否包含端口号
+            const domainWithoutPort = domain.split(':')[0];
+            
+            // 重新检测去掉端口号后是否为IP地址
+            if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domainWithoutPort)) {
+                return `IP:${domainWithoutPort}`;
+            }
+            
+            const cleanParts = domainWithoutPort.split('.');
+            
+            // 使用正则表达式移除顶级域名和国家代码域名
+            // 匹配常见的TLD模式：2-4位字母的顶级域名
+            const tldPattern = /^[a-z]{2,4}$/i;
+            // 匹配二级域名模式：如 co.uk, com.cn 等
+            const secondLevelPattern = /^(co|com|net|org|gov|edu|ac|www)$/i;
+            
+            // 从后往前移除顶级域名
+            let workingParts = [...cleanParts];
+            
+            // 移除最后一个部分如果它是TLD
+            if (workingParts.length > 1 && tldPattern.test(workingParts[workingParts.length - 1])) {
+                workingParts.pop();
+                
+                // 检查是否还有二级域名需要移除（如 co.uk 中的 co）
+                if (workingParts.length > 1 && secondLevelPattern.test(workingParts[workingParts.length - 1])) {
+                    workingParts.pop();
+                }
+            }
+            
+            // 如果移除后没有剩余部分，使用原始parts（去掉最后一个TLD）
+            if (workingParts.length === 0) {
+                workingParts = cleanParts.slice(0, -1);
+            }
+            
+            // 移除常见的子域名前缀，使用正则表达式模式匹配
+            const commonSubdomainPatterns = [
+                /^www\d*$/i,        // www, www1, www2 等
+                /^m(obile)?$/i,     // m, mobile
+                /^(api|app)$/i,     // api, app
+                /^(mail|ftp|blog|news|shop)$/i,  // 功能性子域名
+                /^(wap|touch)$/i,   // 移动端子域名
+                /^(admin|secure)$/i, // 管理相关子域名
+                /^(static|cdn|img|images?)$/i,   // 静态资源子域名
+                /^(test|dev|staging)$/i,         // 开发测试环境
+                /^(old|new|beta)$/i              // 版本相关子域名
+            ];
+            
+            let keyword = '';
+            
+            // 优先选择非纯数字的域名部分
+            for (let i = workingParts.length - 1; i >= 0; i--) {
+                const part = workingParts[i];
+                // 检查是否匹配常见子域名模式
+                const isCommonSubdomain = commonSubdomainPatterns.some(pattern => pattern.test(part));
+                // 检查是否为纯数字
+                const isPureNumber = /^\d+$/.test(part);
+                
+                // 跳过常见子域名和纯数字域名，但如果只有一个部分则保留
+                if (workingParts.length === 1 || (!isCommonSubdomain && !isPureNumber)) {
+                    keyword = part;
+                    break;
+                }
+            }
+            
+            // 如果没找到合适的关键词，使用最后一个非通用子域名（包括数字域名）
+            if (!keyword && workingParts.length > 0) {
+                // 从后往前找第一个不匹配常见子域名模式的
+                for (let i = workingParts.length - 1; i >= 0; i--) {
+                    const part = workingParts[i];
+                    const isCommonSubdomain = commonSubdomainPatterns.some(pattern => pattern.test(part));
+                    if (!isCommonSubdomain) {
+                        keyword = part;
+                        break;
+                    }
+                }
+                // 如果还是没找到，就用第一个
+                if (!keyword) keyword = workingParts[0];
+            }
+            
+            return keyword || 'site';
+        };
         
-        // 使用整个域名前缀而不是首字母
-        let prefix = siteName.substring(0, Math.min(4, siteName.length));
-        prefix = prefix.charAt(0).toUpperCase() + prefix.substring(1).toLowerCase();
+        const siteName = extractKeyword(cleanDomain);
+        console.debug("提取的关键词:", siteName);
+        
+        // 优化关键词显示：处理数字和特殊情况
+        let prefix = '';
+        let isIPDisplay = false;
+        
+        // 检查是否为IP地址标记
+        if (siteName.startsWith('IP:')) {
+            isIPDisplay = true;
+            const ipAddress = siteName.substring(3); // 去掉 "IP:" 前缀
+            prefix = ipAddress;
+        } else if (/^\d+$/.test(siteName)) {
+            // 纯数字的情况，取前3位数字
+            prefix = siteName.substring(0, Math.min(3, siteName.length));
+        } else if (/^\d/.test(siteName)) {
+            // 以数字开头的情况，取前4个字符
+            prefix = siteName.substring(0, Math.min(4, siteName.length));
+        } else {
+            // 正常情况，取前4个字符并首字母大写
+            prefix = siteName.substring(0, Math.min(4, siteName.length));
+            prefix = prefix.charAt(0).toUpperCase() + prefix.substring(1).toLowerCase();
+        }
         console.debug("使用前缀:", prefix);
         
         // 基于域名生成颜色
@@ -477,12 +581,30 @@ export const IconManager = {
         
         ctx.fillStyle = '#FFFFFF';
         
-        // 根据文本长度调整字体大小
-        const fontSize = prefix.length <= 2 ? 36 : (prefix.length === 3 ? 26 : 20);
-        ctx.font = `bold ${fontSize}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(prefix, 32, 32);
+        // 根据文本内容和长度调整字体大小和绘制方式
+        if (isIPDisplay) {
+            // IP地址特殊处理：上下分行显示
+            const ipParts = prefix.split('.');
+            const topLine = `${ipParts[0]}.${ipParts[1]}`;
+            const bottomLine = `${ipParts[2]}.${ipParts[3]}`;
+            
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // 上半部分（前两段）
+            ctx.fillText(topLine, 32, 22);
+            // 下半部分（后两段）- 稍微加粗显示
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(bottomLine, 32, 42);
+        } else {
+            // 普通文本显示
+            let fontSize = prefix.length <= 2 ? 36 : (prefix.length === 3 ? 26 : 20);
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(prefix, 32, 32);
+        }
         
         return canvas.toDataURL('image/png');
     },

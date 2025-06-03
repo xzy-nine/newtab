@@ -7,41 +7,25 @@
     "message": "A clean and brutify new tab extension with search engine switching, bookmark shortcuts, and background switching.",
     "description": "应用程序的描述"
   },
-  "newTab": {
-    "message": "New Tab",
-    "description": "标签页标题"
-  },
   "loading": {
     "message": "Loading...",
     "description": "加载中提示"
+  },
+  "ready": {
+    "message": "Ready",
+    "description": "初始化完成提示"
   },
   "searchPlaceholder": {
     "message": "Search here",
     "description": "搜索框占位文本"
   },
-  "ok": {
-    "message": "OK",
-    "description": "确定按钮文本"
-  },
   "cancel": {
     "message": "Cancel",
     "description": "取消按钮文本"
   },
-  "close": {
-    "message": "Close",
-    "description": "关闭按钮文本"
-  },
   "confirm": {
     "message": "Confirm",
     "description": "确认按钮文本"
-  },
-  "continue": {
-    "message": "Continue",
-    "description": "继续按钮文本"
-  },
-  "add": {
-    "message": "Add",
-    "description": "添加按钮文本"
   },
   "error": {
     "message": "Error",
@@ -55,28 +39,864 @@
     "message": "Success",
     "description": "成功提示"
   },
-  "warning": {
-    "message": "Warning",
-    "description": "警告标题"
+  "genericError": {
+    "message": "An unknown error occurred",
+    "description": "通用错误提示"
   },
   "copyToClipboard": {
     "message": "Copy to clipboard",
     "description": "复制到剪贴板按钮文本"
   },
-  "ready": {
-    "message": "Ready",
-    "description": "初始化完成提示"
+  "copied": {
+    "message": "Copied",
+    "description": "已复制提示"
+  },
+  "aiAssistant": {
+    "message": "AI Assistant",
+    "description": "AI助手标题"
+  },
+  "aiSettings": {
+    "message": "AI Settings",
+    "description": "AI设置标题"
+  },
+  "enableAI": {
+    "message": "Enable AI Features",
+    "description": "启用AI功能选项"
+  },
+  "apiUrl": {
+    "message": "API URL",
+    "description": "API地址字段"
+  },
+  "apiKey": {
+    "message": "API Key",
+    "description": "API密钥字段"
+  },
+  "model": {
+    "message": "Model",
+    "description": "模型字段"
+  },
+  "systemPrompt": {
+    "message": "System Prompt",
+    "description": "系统提示字段"
+  },
+  "systemPromptPlaceholder": {
+    "message": "Set AI behavior and role...",
+    "description": "系统提示占位符"
+  },
+  "fetchModels": {
+    "message": "Fetch Available Models",
+    "description": "获取模型按钮文本"
+  },
+  "fetchingModels": {
+    "message": "Fetching model list...",
+    "description": "获取模型过程提示"
+  },
+  "modelsLoaded": {
+    "message": "Loaded $1 models",
+    "description": "模型加载成功提示"
+  },
+  "modelListNotSupported": {
+    "message": "Model list not supported for current API",
+    "description": "不支持当前API的模型列表获取"
+  },
+  "modelListFetchFailed": {
+    "message": "Failed to fetch model list: $1",
+    "description": "获取模型列表失败"
+  },
+  "modelSelectDescription": {
+    "message": "Click the \"Fetch Available Models\" button above to load options",
+    "description": "模型选择描述"
+  },
+  "pleaseProvideApiInfo": {
+    "message": "Please provide API URL and key first",
+    "description": "请求填写API信息"
+  },
+  "aiNotEnabled": {
+    "message": "AI feature is not enabled",
+    "description": "AI未启用提示"
+  },
+  "enableAIInSettings": {
+    "message": "Please enable AI feature in settings",
+    "description": "建议在设置中启用AI"
+  },
+  "aiConfigSaved": {
+    "message": "AI configuration saved",
+    "description": "AI配置保存成功"
+  },
+  "aiConfigSaveFailed": {
+    "message": "Failed to save AI configuration",
+    "description": "AI配置保存失败"
+  },
+  "aiConfigIncomplete": {
+    "message": "API configuration incomplete",
+    "description": "API配置不完整"
   },
   "untitledFolder": {
     "message": "(Untitled Folder)",
     "description": "无标题文件夹显示文本"
   },
+  "delete": {
+    "message": "Delete",
+    "description": "删除按钮文本"
+  },
+  "moduleInitTimeout": {
+    "message": "Module {0} initialization timeout",
+    "description": "模块初始化超时"
+  },
+  "backgroundModule": {
+    "message": "Background Module",
+    "description": "背景模块"
+  },
+  "loadingBackground": {
+    "message": "Loading background...",
+    "description": "加载背景"
+  },
+  "backgroundLoadComplete": {
+    "message": "Background loaded",
+    "description": "背景加载完成"
+  },
+  "backgroundButton": {
+    "message": "Background",
+    "description": "背景按钮文本"
+  },
+  "searchModule": {
+    "message": "Search Engine",
+    "description": "搜索引擎模块"
+  },
+  "loadingSearch": {
+    "message": "Loading search engine...",
+    "description": "加载搜索引擎"
+  },
+  "searchLoadComplete": {
+    "message": "Search engine loaded",
+    "description": "搜索引擎加载完成"
+  },
+  "bookmarkModule": {
+    "message": "Bookmarks",
+    "description": "书签模块"
+  },
+  "loadingBookmarks": {
+    "message": "Loading bookmarks...",
+    "description": "加载书签"
+  },
+  "bookmarkLoadComplete": {
+    "message": "Bookmarks loaded",
+    "description": "书签加载完成"
+  },
+  "clockModule": {
+    "message": "Clock Widget",
+    "description": "时钟组件"
+  },
+  "loadingClock": {
+    "message": "Loading clock widget...",
+    "description": "加载时钟组件"
+  },
+  "clockLoadComplete": {
+    "message": "Clock widget loaded",
+    "description": "时钟组件加载完成"
+  },
+  "eventsModule": {
+    "message": "Event Initialization",
+    "description": "事件初始化模块"
+  },
+  "loadingEvents": {
+    "message": "Initializing events...",
+    "description": "初始化事件"
+  },
+  "loadingComplete": {
+    "message": "Loading complete",
+    "description": "加载完成"
+  },
+  "moduleLoadingFailed": {
+    "message": "Module loading failed",
+    "description": "模块加载失败"
+  },
+  "widgetSystem": {
+    "message": "Widget System",
+    "description": "小部件系统"
+  },
+  "loadingWidgets": {
+    "message": "Loading widget system...",
+    "description": "加载小部件系统"
+  },
+  "widgetsLoadComplete": {
+    "message": "Widget system loaded",
+    "description": "小部件系统加载完成"
+  },
+  "createWidgetContainer": {
+    "message": "Create Widget Container",
+    "description": "创建小部件容器"
+  },
+  "deleteWidgetContainer": {
+    "message": "Delete Widget Container",
+    "description": "删除小部件容器"
+  },
+  "fixWidgetContainer": {
+    "message": "Fix Position",
+    "description": "固定位置"
+  },
+  "unfixWidgetContainer": {
+    "message": "Unfix",
+    "description": "取消固定"
+  },
+  "addWidget": {
+    "message": "Add Widget",
+    "description": "添加小部件"
+  },
+  "addWidgetFailed": {
+    "message": "Failed to add widget",
+    "description": "添加小部件失败"
+  },
+  "widgetFixed": {
+    "message": "Widget Fixed",
+    "description": "小部件已固定"
+  },
+  "unfixWidgetToResize": {
+    "message": "Please unfix widget before resizing",
+    "description": "请先取消固定再调整大小"
+  },
+  "settingsGeneral": {
+    "message": "General Settings",
+    "description": "常规设置"
+  },
+  "settingsLanguage": {
+    "message": "Interface Language",
+    "description": "界面语言"
+  },
+  "settingsLanguageDesc": {
+    "message": "Select the interface display language",
+    "description": "选择界面显示语言"
+  },
+  "settingsTheme": {
+    "message": "Theme Mode",
+    "description": "主题模式"
+  },
+  "settingsThemeDesc": {
+    "message": "Select the application theme appearance",
+    "description": "选择应用的主题外观"
+  },
+  "themeAuto": {
+    "message": "Follow System",
+    "description": "跟随系统"
+  },
+  "themeLight": {
+    "message": "Light Mode",
+    "description": "浅色模式"
+  },
+  "themeDark": {
+    "message": "Dark Mode",
+    "description": "深色模式"
+  },
+  "settingsGridSystem": {
+    "message": "Grid System",
+    "description": "网格系统设置分类标题"
+  },
+  "settingsGridEnabled": {
+    "message": "Enable Grid System",
+    "description": "启用网格系统设置项标签"
+  },
+  "settingsGridEnabledDesc": {
+    "message": "When enabled, elements will automatically snap to grid positions",
+    "description": "启用网格系统设置项描述"
+  },
+  "settingsGridDebug": {
+    "message": "Show Grid Lines",
+    "description": "显示网格线设置项标签"
+  },
+  "settingsGridDebugDesc": {
+    "message": "Display grid guidelines to help align elements",
+    "description": "显示网格线设置项描述"
+  },
+  "settingsGridSnapThreshold": {
+    "message": "Snap Threshold",
+    "description": "网格吸附阈值设置项标签"
+  },
+  "settingsGridSnapThresholdDesc": {
+    "message": "Distance threshold for elements to snap to grid",
+    "description": "网格吸附阈值设置项描述"
+  },
+  "settingsSearchEngines": {
+    "message": "Search Engines",
+    "description": "搜索引擎设置"
+  },
+  "settingsSearchEngineList": {
+    "message": "Search Engine Management",
+    "description": "搜索引擎管理"
+  },
+  "settingsSearchEngineListDesc": {
+    "message": "Manage and configure search engines",
+    "description": "管理和配置搜索引擎"
+  },
+  "settingsAddSearchEngine": {
+    "message": "Add Search Engine",
+    "description": "添加搜索引擎"
+  },
+  "settingsAddSearchEngineDesc": {
+    "message": "Add new custom search engine",
+    "description": "添加新的自定义搜索引擎"
+  },
+  "addCustomSearchEngine": {
+    "message": "Add Custom Search Engine",
+    "description": "添加自定义搜索引擎"
+  },
+  "customIcon": {
+    "message": "Custom Icon",
+    "description": "自定义图标"
+  },
+  "iconUrl": {
+    "message": "Icon URL",
+    "description": "图标链接"
+  },
+  "uploadIcon": {
+    "message": "Upload Icon",
+    "description": "上传图标"
+  },
+  "iconUpdated": {
+    "message": "Icon updated",
+    "description": "图标已更新"
+  },
+  "iconReset": {
+    "message": "Icon reset",
+    "description": "图标已重置"
+  },
+  "fetchingDefaultIcon": {
+    "message": "Fetching default icon",
+    "description": "正在获取默认图标"
+  },
+  "pinFolder": {
+    "message": "Pin Folder",
+    "description": "固定文件夹"
+  },
+  "unpinFolder": {
+    "message": "Unpin Folder",
+    "description": "取消固定文件夹"
+  },
+  "openAllBookmarks": {
+    "message": "Open All Bookmarks",
+    "description": "打开所有书签"
+  },
+  "folderPinned": {
+    "message": "Folder pinned to top",
+    "description": "文件夹已固定到顶层"
+  },
+  "folderUnpinned": {
+    "message": "Folder unpinned",
+    "description": "文件夹已取消固定"
+  },
+  "pinnedFolders": {
+    "message": "Pinned Folders",
+    "description": "固定文件夹"
+  },
+  "allFolders": {
+    "message": "All Folders",
+    "description": "所有文件夹"
+  },
+  "confirmDeleteSearchEngine": {
+    "message": "Are you sure you want to delete search engine {name}?",
+    "description": "确认删除搜索引擎"
+  },
+  "clearStorageConfirm": {
+    "message": "Are you sure you want to clear all storage data? This action cannot be undone.",
+    "description": "确认清除存储"
+  },
+  "clearStorageSuccess": {
+    "message": "Storage has been cleared successfully, the page will refresh.",
+    "description": "存储清除成功"
+  },
+  "clearStorageError": {
+    "message": "Failed to clear storage",
+    "description": "清除存储失败"
+  },
   "engineName": {
-    "message": "Name",
-    "description": "引擎名称"
+    "message": "Search Engine Name",
+    "description": "搜索引擎名称"
+  },
+  "engineSearchUrl": {
+    "message": "Search URL",
+    "description": "搜索URL"
+  },
+  "engineIconUrl": {
+    "message": "Icon URL (Optional)",
+    "description": "图标URL（可选）"
+  },
+  "saveFailed": {
+    "message": "Save failed",
+    "description": "保存失败"
+  },
+  "fillRequiredFields": {
+    "message": "Please fill in all required fields",
+    "description": "请填写所有必填字段"
+  },
+  "selectImage": {
+    "message": "Select Image",
+    "description": "选择图片"
+  },
+  "resetIcon": {
+    "message": "Reset",
+    "description": "重置"
+  },
+  "imageUrl": {
+    "message": "Image URL",
+    "description": "图片URL"
+  },
+  "uploadImage": {
+    "message": "Upload Image",
+    "description": "上传图片"
+  },
+  "imageLoadError": {
+    "message": "Failed to load image",
+    "description": "图片加载失败"
+  },
+  "imageProcessingError": {
+    "message": "Image processing failed",
+    "description": "图片处理失败"
+  },
+  "addEngineError": {
+    "message": "Failed to add search engine",
+    "description": "添加搜索引擎失败"
+  },
+  "addEngineSuccess": {
+    "message": "Search engine added successfully",
+    "description": "搜索引擎添加成功"
+  },
+  "applyingBackground": {
+    "message": "Applying background",
+    "description": "应用背景"
+  },
+  "backgroundImageLoadFailed": {
+    "message": "Background image failed to load",
+    "description": "背景图片加载失败"
+  },
+  "backgroundResetFailed": {
+    "message": "Failed to reset background",
+    "description": "背景重置失败"
+  },
+  "backgroundResetSuccess": {
+    "message": "Reset to default background",
+    "description": "已重置为默认背景"
+  },
+  "backgroundSetFailed": {
+    "message": "Failed to set background",
+    "description": "设置背景失败"
+  },
+  "backgroundSwitchFailed": {
+    "message": "Background switch failed",
+    "description": "背景切换失败"
+  },
+  "backgroundUrl": {
+    "message": "Background image URL",
+    "description": "背景图片URL"
+  },
+  "bingImageFetchFailed": {
+    "message": "Failed to fetch Bing daily image",
+    "description": "获取必应每日图片失败"
+  },
+  "close": {
+    "message": "Close",
+    "description": "关闭"
+  },
+  "confirmDelete": {
+    "message": "Confirm deletion",
+    "description": "确认删除"
+  },
+  "confirmDeleteBookmark": {
+    "message": "Are you sure you want to delete this bookmark?",
+    "description": "确定要删除该书签吗？"
+  },
+  "confirmDeleteEngine": {
+    "message": "Are you sure you want to delete this search engine",
+    "description": "确定要删除搜索引擎"
+  },
+  "copyError": {
+    "message": "Copy failed:",
+    "description": "复制失败:"
+  },
+  "copyLink": {
+    "message": "Copy link",
+    "description": "复制链接"
+  },
+  "copyLinkFailed": {
+    "message": "Failed to copy link",
+    "description": "复制链接失败"
+  },
+  "currentEngine": {
+    "message": "Current",
+    "description": "当前"
+  },
+  "customBackgroundSuccess": {
+    "message": "Background image set successfully",
+    "description": "背景图片设置成功"
+  },
+  "desktopInstructionMessage": {
+    "message": "Please set this extension as your new tab page in your desktop browser settings",
+    "description": "请在桌面浏览器设置中将本扩展设为新标签页"
+  },
+  "edit": {
+    "message": "Edit",
+    "description": "编辑"
+  },
+  "editEngine": {
+    "message": "Edit search engine",
+    "description": "编辑搜索引擎"
+  },
+  "fetchIconFailed": {
+    "message": "Failed to fetch icon",
+    "description": "获取图标失败"
+  },
+  "fetchingBingImage": {
+    "message": "Fetching Bing image",
+    "description": "获取必应图片"
+  },
+  "gridDebugDisabled": {
+    "message": "Grid debug disabled",
+    "description": "网格调试已禁用"
+  },
+  "gridDebugDisabledMessage": {
+    "message": "Grid lines are now hidden",
+    "description": "网格线已隐藏"
+  },
+  "gridDebugEnabled": {
+    "message": "Grid debug enabled",
+    "description": "网格调试已启用"
+  },
+  "gridDebugEnabledMessage": {
+    "message": "You can now see the grid lines",
+    "description": "现在您可以看到网格线"
+  },
+  "gridSystemDisabled": {
+    "message": "Grid system disabled",
+    "description": "网格系统已禁用"
+  },
+  "gridSystemDisabledMessage": {
+    "message": "Elements will be placed freely",
+    "description": "元素将自由放置"
+  },
+  "gridSystemEnabled": {
+    "message": "Grid system enabled",
+    "description": "网格系统已启用"
+  },
+  "gridSystemEnabledMessage": {
+    "message": "Elements will snap to grid",
+    "description": "元素将吸附到网格"
+  },
+  "initializationFailed": {
+    "message": "Initialization failed",
+    "description": "初始化失败"
+  },
+  "languageChanged": {
+    "message": "Language setting changed, refreshing page...",
+    "description": "语言设置已更改，正在刷新页面..."
+  },
+  "languageChangeError": {
+    "message": "Language setting change failed",
+    "description": "语言设置更改失败"
+  },
+  "linkCopied": {
+    "message": "Link copied",
+    "description": "链接已复制"
+  },
+  "loadEngineListError": {
+    "message": "Failed to load search engine list",
+    "description": "加载搜索引擎列表失败"
+  },
+  "loadingCustomBackground": {
+    "message": "Loading custom background",
+    "description": "加载自定义背景"
+  },
+  "loadingResources": {
+    "message": "Loading resources",
+    "description": "加载资源中"
+  },
+  "localStorageError": {
+    "message": "Local storage error",
+    "description": "本地存储错误"
+  },
+  "mobileInstructionMessage": {
+    "message": "Please set your new tab page to: {0} in your browser settings",
+    "description": "请在浏览器设置中将新标签页设置为：{0}"
+  },
+  "newTab": {
+    "message": "New Tab",
+    "description": "新标签页"
+  },
+  "ok": {
+    "message": "OK",
+    "description": "确定"
+  },
+  "postInitTasksError": {
+    "message": "Error in post-initialization tasks",
+    "description": "初始化后任务中的错误"
+  },
+  "preparingBackground": {
+    "message": "Preparing background",
+    "description": "准备背景"
+  },
+  "reloadFailed": {
+    "message": "Reload failed",
+    "description": "重新加载失败"
+  },
+  "resetBackground": {
+    "message": "Reset background",
+    "description": "重置背景"
+  },
+  "save": {
+    "message": "Save",
+    "description": "保存"
+  },
+  "saveIconFailed": {
+    "message": "Failed to save icon",
+    "description": "保存图标失败"
+  },
+  "selectBackground": {
+    "message": "Select background image",
+    "description": "选择背景图片"
+  },
+  "setAsCurrent": {
+    "message": "Set as current",
+    "description": "设为当前"
+  },
+  "setNewTab": {
+    "message": "Set new tab page",
+    "description": "设置新标签页"
+  },
+  "settingsTitle": {
+    "message": "Settings",
+    "description": "设置"
+  },
+  "updateEngineError": {
+    "message": "Failed to update search engine",
+    "description": "更新搜索引擎失败"
+  },
+  "updateEngineSuccess": {
+    "message": "Search engine updated successfully",
+    "description": "搜索引擎更新成功"
+  },
+  "updateMessage": {
+    "message": "Extension upgraded from {0} to {1}",
+    "description": "扩展已从 {0} 升级到 {1}"
+  },
+  "updateTitle": {
+    "message": "Extension updated",
+    "description": "扩展已更新"
+  },
+  "uploadBackground": {
+    "message": "Upload background image",
+    "description": "上传背景图片"
+  },
+  "welcomeMessage": {
+    "message": "Welcome to this extension!",
+    "description": "欢迎使用本扩展！"
+  },
+  "welcomeTitle": {
+    "message": "Welcome",
+    "description": "欢迎使用"
+  },
+  "widgetSystemError": {
+    "message": "Widget system failed to load",
+    "description": "小部件系统加载失败"
+  },
+  "bingDailyImage": {
+    "message": "Bing Daily Image",
+    "description": "必应每日图片名称"
   },
   "defaultBackground": {
-    "message": "Default",
+    "message": "Default Background",
     "description": "默认背景名称"
+  },
+  "settingBackgroundType": {
+    "message": "Setting background type:",
+    "description": "设置背景类型提示"
+  },
+  "customBackgroundExists": {
+    "message": "Custom background image status:",
+    "description": "自定义背景图片状态提示"
+  },
+  "currentBackgroundType": {
+    "message": "Current background type:",
+    "description": "当前背景类型提示"
+  },
+  "usingCachedImage": {
+    "message": "Using cached image, remaining time: %s hours %s minutes",
+    "description": "使用缓存图片提示"
+  },
+  "bingApiError": {
+    "message": "Bing API error: %s",
+    "description": "必应API错误提示"
+  },
+  "invalidBingResponse": {
+    "message": "Invalid Bing API response",
+    "description": "无效的必应API响应提示"
+  },
+  "bingImageUrl": {
+    "message": "Bing image URL:",
+    "description": "必应图片地址提示"
+  },
+  "imageDownloadError": {
+    "message": "Image download failed",
+    "description": "图片下载失败提示"
+  },
+  "base64Generated": {
+    "message": "Base64 data generated:",
+    "description": "base64数据生成状态提示"
+  },
+  "bingImageError": {
+    "message": "Error fetching Bing image:",
+    "description": "获取必应图片时错误提示"
+  },
+  "enterEngineUrl": {
+    "message": "Please enter the search engine URL, e.g., https://www.google.com",
+    "description": "搜索引擎URL输入提示"
+  },
+  "savingSettings": {
+    "message": "Saving settings...",
+    "description": "正在保存设置提示"
+  },
+  "loadingI18n": {
+    "message": "Loading internationalization resources...",
+    "description": "加载国际化资源提示"
+  },
+  "loadingIcons": {
+    "message": "Loading icon resources...",
+    "description": "加载图标资源提示"
+  },
+  "initializingTitle": {
+    "message": "New Tab Page initializing...",
+    "description": "新标签页初始化中提示"
+  },
+  "initTimeout": {
+    "message": "Initialization timeout",
+    "description": "初始化超时提示"
+  },
+  "i18nModule": {
+    "message": "Internationalization",
+    "description": "国际化模块名称"
+  },
+  "renderingBookmarks": {
+    "message": "Rendering bookmarks...",
+    "description": "渲染书签进度提示"
+  },
+  "widgetsLoaded": {
+    "message": "Widgets loaded",
+    "description": "小部件加载完成提示"
+  },
+  "removeWidget": {
+    "message": "Remove widget",
+    "description": "删除小部件按钮文本"
+  },
+  "addWidgetTitle": {
+    "message": "Add Widget",
+    "description": "添加小部件对话框标题"
+  },
+  "counterWidget": {
+    "message": "Counter",
+    "description": "计数器小部件名称"
+  },
+  "widgetsAdded": {
+    "message": "Selected widgets added",
+    "description": "已添加所选小部件提示"
+  },
+  "add": {
+    "message": "Add",
+    "description": "添加按钮文本"
+  },
+  "unfixWidgetToMove": {
+    "message": "Please unfix before moving",
+    "description": "移动前需要取消固定提示"
+  },
+  "send": {
+    "message": "Send",
+    "description": "发送按钮"
+  },
+  "sending": {
+    "message": "Sending...",
+    "description": "发送中状态"
+  },
+  "aiInputPlaceholder": {
+    "message": "Enter your question...",
+    "description": "AI输入框占位符"
+  },
+  "aiNoResponse": {
+    "message": "No response",
+    "description": "AI无回复"
+  },
+  "aiRequestFailed": {
+    "message": "AI request failed: ",
+    "description": "AI请求失败"
+  },
+  "settingsAI": {
+    "message": "AI Assistant",
+    "description": "AI助手设置分类"
+  },
+  "settingsAIEnabled": {
+    "message": "Enable AI Assistant",
+    "description": "启用AI助手"
+  },
+  "settingsAIEnabledDesc": {
+    "message": "Show AI button next to search box when enabled",
+    "description": "启用后在搜索框旁显示AI按钮"
+  },
+  "settingsAIApiUrl": {
+    "message": "API URL",
+    "description": "API地址"
+  },
+  "settingsAIApiUrlDesc": {
+    "message": "OpenAI-compatible API endpoint",
+    "description": "兼容OpenAI格式的API地址"
+  },
+  "settingsAIApiKey": {
+    "message": "API Key",
+    "description": "API密钥"
+  },
+  "settingsAIApiKeyDesc": {
+    "message": "Your API key, stored securely locally",
+    "description": "您的API密钥，本地安全存储"
+  },
+  "settingsAIModel": {
+    "message": "Model",
+    "description": "AI模型"
+  },
+  "settingsAIModelDesc": {
+    "message": "AI model name to use",
+    "description": "使用的AI模型名称"
+  },
+  "settingsAISystemPrompt": {
+    "message": "System Prompt",
+    "description": "系统提示词"
+  },
+  "settingsAISystemPromptDesc": {
+    "message": "Define AI behavior and response style",
+    "description": "定义AI的行为和回答风格"
+  },
+  "settingsAIQuickPrompts": {
+    "message": "Quick Prompts",
+    "description": "快速提示词"
+  },
+  "settingsAIQuickPromptsDesc": {
+    "message": "Manage quick prompts, separated by commas",
+    "description": "管理快速提示词，用逗号分隔"
+  },
+  "aiEnabled": {
+    "message": "AI Assistant Enabled",
+    "description": "AI助手已启用"
+  },
+  "aiDisabled": {
+    "message": "AI Assistant Disabled",
+    "description": "AI助手已禁用"
+  },
+  "aiEnabledMessage": {
+    "message": "AI button will appear next to search box",
+    "description": "AI按钮将显示在搜索框旁"
+  },
+  "aiDisabledMessage": {
+    "message": "AI button is hidden",
+    "description": "AI按钮已隐藏"
+  },
+  "enterPrompt": {
+    "message": "Enter prompt...",
+    "description": "输入提示词"
+  },
+  "addPrompt": {
+    "message": "Add Prompt",
+    "description": "添加提示词"
   }
 }

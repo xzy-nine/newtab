@@ -37,13 +37,21 @@ export const GridSystem = {
     /**
      * 初始化网格系统
      * @returns {Promise<void>}
-     */
+     */    
     async init() {
         try {
+            // 将GridSystem暴露到全局作用域
+            window.GridSystem = this;
+            
             // 加载网格系统设置
-            const gridSettings = await chrome.storage.local.get(['widgetGridEnabled', 'widgetGridDebug']);
+            const gridSettings = await chrome.storage.local.get([
+                'widgetGridEnabled', 
+                'widgetGridDebug', 
+                'widgetGridSnapThreshold'
+            ]);
             this.gridEnabled = gridSettings.widgetGridEnabled !== undefined ? gridSettings.widgetGridEnabled : true;
             this.isDebugMode = gridSettings.widgetGridDebug || false;
+            this.snapThreshold = gridSettings.widgetGridSnapThreshold || 15;
             
             // 计算当前视口的网格尺寸
             this.calculateGridDimensions();
@@ -72,6 +80,7 @@ export const GridSystem = {
                 this.updateDebugGrid();
             }
             
+            console.log('GridSystem 初始化完成并暴露到全局作用域');
             return Promise.resolve();
         } catch (error) {
             console.error('初始化网格系统失败:', error);
@@ -278,93 +287,103 @@ export const GridSystem = {
             line.style.width = '100%';
             debugGrid.appendChild(line);
         }
-    },
-
-    /**
+    },    /**
      * 切换网格调试模式
      * @param {boolean} enable - 是否启用网格调试
+     * @returns {Promise<void>}
      */
     toggleGridDebug(enable) {
-        this.isDebugMode = enable;
-        
-        if (enable) {
-            // 添加网格调试类
-            document.body.classList.add('show-grid');
-            
-            // 更新网格线
-            this.updateDebugGrid();
-            
-            // 显示成功消息
-            Notification.notify({
-                title: getI18nMessage('gridDebugEnabled', '网格调试已启用'),
-                message: getI18nMessage('gridDebugEnabledMessage', '现在您可以看到网格线'),
-                type: 'info',
-                duration: 2000
-            });
-        } else {
-            // 移除网格调试类
-            document.body.classList.remove('show-grid');
-            
-            // 移除调试网格元素
-            const debugGrid = document.getElementById('debug-grid');
-            if (debugGrid) {
-                debugGrid.remove();
+        return new Promise((resolve) => {
+            try {
+                this.isDebugMode = enable;
+                
+                if (enable) {
+                    // 添加网格调试类
+                    document.body.classList.add('show-grid');
+                    
+                    // 更新网格线
+                    this.updateDebugGrid();
+                } else {
+                    // 移除网格调试类
+                    document.body.classList.remove('show-grid');
+                    
+                    // 移除调试网格元素
+                    const debugGrid = document.getElementById('debug-grid');
+                    if (debugGrid) {
+                        debugGrid.remove();
+                    }
+                }
+                
+                // 保存设置
+                chrome.storage.local.set({ 'widgetGridDebug': enable }, () => {
+                    console.log('网格调试设置已保存:', enable);
+                    resolve();
+                });
+            } catch (error) {
+                console.error('切换网格调试模式失败:', error);
+                resolve();
             }
-            
-            // 显示消息
-            Notification.notify({
-                title: getI18nMessage('gridDebugDisabled', '网格调试已禁用'),
-                message: getI18nMessage('gridDebugDisabledMessage', '网格线已隐藏'),
-                type: 'info',
-                duration: 2000
-            });
-        }
-        
-        // 保存设置
-        chrome.storage.local.set({ 'widgetGridDebug': enable });
+        });
     },
 
     /**
      * 切换网格系统
      * @param {boolean} enable - 是否启用网格系统
+     * @returns {Promise<void>}
      */
     toggleGridSystem(enable) {
-        this.gridEnabled = enable;
-        
-        if (enable) {
-            // 计算并应用网格
-            this.calculateGridDimensions();
-            this.applyGridStyles();
-            
-            // 触发网格启用事件
-            document.dispatchEvent(new CustomEvent('grid-system-toggled', {
-                detail: { enabled: true }
-            }));
-            
-            // 显示成功消息
-            Notification.notify({
-                title: getI18nMessage('gridSystemEnabled', '网格系统已启用'),
-                message: getI18nMessage('gridSystemEnabledMessage', '元素将吸附到网格'),
-                type: 'success',
-                duration: 2000
-            });
-        } else {
-            // 触发网格禁用事件
-            document.dispatchEvent(new CustomEvent('grid-system-toggled', {
-                detail: { enabled: false }
-            }));
-            
-            // 显示消息
-            Notification.notify({
-                title: getI18nMessage('gridSystemDisabled', '网格系统已禁用'),
-                message: getI18nMessage('gridSystemDisabledMessage', '元素将自由放置'),
-                type: 'info',
-                duration: 2000
-            });
-        }
-        
-        // 保存设置
-        chrome.storage.local.set({ 'widgetGridEnabled': enable });
+        return new Promise((resolve) => {
+            try {
+                this.gridEnabled = enable;
+                
+                if (enable) {
+                    // 计算并应用网格
+                    this.calculateGridDimensions();
+                    this.applyGridStyles();
+                    
+                    // 触发网格启用事件
+                    document.dispatchEvent(new CustomEvent('grid-system-toggled', {
+                        detail: { enabled: true }
+                    }));
+                } else {
+                    // 触发网格禁用事件
+                    document.dispatchEvent(new CustomEvent('grid-system-toggled', {
+                        detail: { enabled: false }
+                    }));
+                }
+                
+                // 保存设置
+                chrome.storage.local.set({ 'widgetGridEnabled': enable }, () => {
+                    console.log('网格系统设置已保存:', enable);
+                    resolve();
+                });
+            } catch (error) {
+                console.error('切换网格系统失败:', error);
+                resolve();
+            }
+        });
+    },
+
+    /**
+     * 设置网格吸附阈值
+     * @param {number} threshold - 吸附阈值（像素）
+     * @returns {Promise<void>}
+     */
+    setSnapThreshold(threshold) {
+        return new Promise((resolve) => {
+            try {
+                this.snapThreshold = threshold;
+                
+                // 保存设置
+                chrome.storage.local.set({ 'widgetGridSnapThreshold': threshold }, () => {
+                    console.log('网格吸附阈值设置已保存:', threshold);
+                    resolve();
+                });
+            } catch (error) {
+                console.error('设置网格吸附阈值失败:', error);
+                resolve();
+            }
+        });
     },
 
     /**
@@ -544,5 +563,38 @@ export const GridSystem = {
                 func.apply(context, args);
             }, wait);
         };
-    }
+    },
+
+    /**
+     * 从localStorage初始化网格设置
+     */
+    initializeFromStorage() {
+        // 从localStorage恢复网格设置
+        const storedEnabled = localStorage.getItem('grid-enabled');
+        const storedDebug = localStorage.getItem('grid-debug');
+        const storedThreshold = localStorage.getItem('grid-snap-threshold');
+        
+        if (storedEnabled !== null) {
+          this.gridEnabled = storedEnabled === 'true';
+        }
+        
+        if (storedDebug !== null) {
+          this.isDebugMode = storedDebug === 'true';
+        }
+        
+        if (storedThreshold !== null) {
+          this.snapThreshold = parseInt(storedThreshold) || 15;
+        }
+        
+        console.log('GridSystem从localStorage恢复设置:', {
+          enabled: this.gridEnabled,
+          debug: this.isDebugMode,
+          threshold: this.snapThreshold
+        });
+      }
 };
+
+// 确保在模块加载时就暴露到全局
+if (typeof window !== 'undefined') {
+    window.GridSystem = GridSystem;
+}

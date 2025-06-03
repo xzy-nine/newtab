@@ -42,24 +42,22 @@ export default {
         if (!container.style.height || parseInt(container.style.height) < this.config.default.height) {
             container.style.height = `${this.config.default.height}px`;
         }
-        
-        // 创建小部件内容
+          // 创建小部件内容
         const widgetContent = document.createElement('div');
-        widgetContent.className = 'counter-widget';
+        widgetContent.className = 'counter-widget widget-base';
         
         // 初始计数值，使用保存的值或默认值0
         const count = data.count || 0;
         const title = data.title || '计数';
-        
-        // 创建小部件结构 - 注意结构顺序很重要
+          // 创建小部件结构 - 使用公共样式类
         widgetContent.innerHTML = `
-            <div class="counter-title">${title}</div>
-            <div class="counter-controls">
-                <button class="counter-button decrease">-</button>
-                <div class="counter-display">${count}</div>
-                <button class="counter-button increase">+</button>
+            <div class="counter-title widget-title">${title}</div>
+            <div class="counter-controls widget-controls widget-controls-horizontal">
+                <button class="counter-button decrease widget-btn widget-btn-round">-</button>
+                <div class="counter-display widget-display">${count}</div>
+                <button class="counter-button increase widget-btn widget-btn-round">+</button>
             </div>
-            <div class="counter-reset">重置</div>
+            <div class="counter-reset widget-btn widget-btn-small widget-btn-normal">重置</div>
         `;
         
         // 添加到容器
@@ -71,16 +69,27 @@ export default {
             count: count,
             title: title
         };
-        
-        // 添加交互事件
+          // 添加交互事件
         this.addEventListeners(container, widgetContent);
         
-        // 初始化后检查并调整大小
-        this.adjustSize(container);
-        
-        // 添加调整大小的事件监听器
-        const resizeObserver = new ResizeObserver(() => {
+        // 立即进行一次大小调整，确保初始布局正确
+        setTimeout(() => {
             this.adjustSize(container);
+        }, 0);
+          // 添加调整大小的事件监听器，使用防抖处理避免ResizeObserver循环
+        const resizeObserver = new ResizeObserver((entries) => {
+            // 使用 requestAnimationFrame 来避免同步循环
+            if (container._resizeTimeout) {
+                clearTimeout(container._resizeTimeout);
+            }
+            
+            container._resizeTimeout = setTimeout(() => {
+                // 检查元素是否仍然存在且连接到DOM
+                if (container.isConnected) {
+                    this.adjustSize(container);
+                }
+                container._resizeTimeout = null;
+            }, 0);
         });
         resizeObserver.observe(container);
         
@@ -91,12 +100,17 @@ export default {
     /**
      * 小部件被销毁时调用
      * @param {HTMLElement} container - 小部件容器
-     */
-    destroy: function(container) {
+     */    destroy: function(container) {
         // 清除任何可能的resize observer
         if (container._resizeObserver) {
             container._resizeObserver.disconnect();
             container._resizeObserver = null;
+        }
+        
+        // 清除resize timeout
+        if (container._resizeTimeout) {
+            clearTimeout(container._resizeTimeout);
+            container._resizeTimeout = null;
         }
         
         // 清除可能存在的长按定时器
@@ -117,74 +131,108 @@ export default {
     /**
      * 调整小部件大小和布局
      * @param {HTMLElement} container - 小部件容器
-     */
-    adjustSize: function(container) {
-        const width = container.offsetWidth;
-        const height = container.offsetHeight;
-        const widgetContent = container.querySelector('.counter-widget');
-        
-        if (!widgetContent) return;
-        
-        // 强制保持最小尺寸
-        if (width < this.config.min.width) {
-            container.style.width = `${this.config.min.width}px`;
-        }
-        if (height < this.config.min.height) {
-            container.style.height = `${this.config.min.height}px`;
+     */    adjustSize: function(container) {
+        // 避免在ResizeObserver回调期间进行可能导致循环的操作
+        if (container._isAdjusting) {
+            return;
         }
         
-        // 添加最大尺寸限制
-        if (width > this.config.max.width) {
-            container.style.width = `${this.config.max.width}px`;
+        container._isAdjusting = true;
+        
+        try {
+            const width = container.offsetWidth;
+            const height = container.offsetHeight;
+            const widgetContent = container.querySelector('.counter-widget');
+            
+            if (!widgetContent) return;
+            
+            // 只检查但不强制修改尺寸，避免触发新的resize事件
+            const needsWidthAdjustment = width < this.config.min.width || width > this.config.max.width;
+            const needsHeightAdjustment = height < this.config.min.height || height > this.config.max.height;
+            
+            if (needsWidthAdjustment || needsHeightAdjustment) {
+                // 延迟执行尺寸调整，避免在ResizeObserver回调中直接修改
+                requestAnimationFrame(() => {
+                    if (needsWidthAdjustment) {
+                        const newWidth = Math.max(this.config.min.width, Math.min(this.config.max.width, width));
+                        container.style.width = `${newWidth}px`;
+                    }
+                    if (needsHeightAdjustment) {
+                        const newHeight = Math.max(this.config.min.height, Math.min(this.config.max.height, height));
+                        container.style.height = `${newHeight}px`;
+                    }
+                });
+            }
+            
+            // 确保小部件内容居中显示
+            widgetContent.style.display = 'flex';
+            widgetContent.style.flexDirection = 'column';
+            widgetContent.style.justifyContent = 'center';
+            widgetContent.style.alignItems = 'center';
+            widgetContent.style.height = '100%';
+            widgetContent.style.width = '100%';
+            
+            // 根据容器大小应用不同的布局类
+            widgetContent.classList.remove('compact-layout', 'default-layout', 'large-layout');
+            
+            // 更新布局类判断逻辑 - 使用实际容器尺寸
+            const actualWidth = container.offsetWidth;
+            const actualHeight = container.offsetHeight;
+            
+            // 调整为合理的布局阈值，确保在最小尺寸下使用紧凑布局
+            if (actualWidth <= this.config.min.width || actualHeight <= this.config.min.height) {
+                widgetContent.classList.add('compact-layout');
+                // 在紧凑模式下，减少容器内边距以节省空间
+                container.style.setProperty('--widget-padding', '6px');
+            } else if (actualWidth >= 200 || actualHeight >= 170) {
+                widgetContent.classList.add('large-layout');
+                // 恢复默认内边距
+                container.style.removeProperty('--widget-padding');
+            } else {
+                widgetContent.classList.add('default-layout');
+                // 恢复默认内边距
+                container.style.removeProperty('--widget-padding');
+            }
+            
+            // 调整字体大小适应容器
+            const display = container.querySelector('.counter-display');
+            const title = container.querySelector('.counter-title');
+            
+            if (display) {
+                const value = display.textContent || '0';
+                const fontSize = this.calculateOptimalFontSize(value.length, actualWidth, actualHeight);
+                display.style.fontSize = `${fontSize}px`;
+            }
+            
+            if (title) {
+                // 标题字体大小随容器大小调整，在紧凑模式下确保可读性
+                let titleFontSize;
+                if (widgetContent.classList.contains('compact-layout')) {
+                    // 紧凑模式下使用固定的较小字体
+                    titleFontSize = 11;
+                } else {
+                    // 其他模式下动态调整字体大小
+                    titleFontSize = Math.max(12, Math.min(16, actualWidth / 14));
+                }
+                title.style.fontSize = `${titleFontSize}px`;
+                
+                // 确保标题在紧凑模式下有足够的高度
+                if (widgetContent.classList.contains('compact-layout')) {
+                    title.style.minHeight = '13px';
+                    title.style.lineHeight = '1.2';
+                } else {
+                    title.style.removeProperty('min-height');
+                    title.style.removeProperty('line-height');
+                }
+            }
+            
+            // 避免强制布局刷新，这可能导致ResizeObserver循环
+            // container.style.display = 'none';
+            // container.offsetHeight; // 强制回流
+            // container.style.display = '';
+        } finally {
+            container._isAdjusting = false;
         }
-        if (height > this.config.max.height) {
-            container.style.height = `${this.config.max.height}px`;
-        }
-        
-        // 确保小部件内容居中显示
-        widgetContent.style.display = 'flex';
-        widgetContent.style.flexDirection = 'column';
-        widgetContent.style.justifyContent = 'center';
-        widgetContent.style.alignItems = 'center';
-        widgetContent.style.height = '100%';
-        widgetContent.style.width = '100%';
-        
-        // 根据容器大小应用不同的布局类
-        widgetContent.classList.remove('compact-layout', 'default-layout', 'large-layout');
-        
-        // 更新布局类判断逻辑 - 使用实际容器尺寸
-        const actualWidth = container.offsetWidth;
-        const actualHeight = container.offsetHeight;
-        
-        // 调整为合理的布局阈值
-        if (actualWidth <= this.config.min.width || actualHeight <= this.config.min.height) {
-            widgetContent.classList.add('compact-layout');
-        } else if (actualWidth >= 200 || actualHeight >= 170) {
-            widgetContent.classList.add('large-layout');
-        } else {
-            widgetContent.classList.add('default-layout');
-        }
-        
-        // 调整字体大小适应容器
-        const display = container.querySelector('.counter-display');
-        const title = container.querySelector('.counter-title');
-        
-        if (display) {
-            const value = display.textContent || '0';
-            const fontSize = this.calculateOptimalFontSize(value.length, actualWidth, actualHeight);
-            display.style.fontSize = `${fontSize}px`;
-        }
-        
-        if (title) {
-            // 标题字体大小随容器大小调整
-            const titleFontSize = Math.max(12, Math.min(16, actualWidth / 14));
-            title.style.fontSize = `${titleFontSize}px`;
-        }
-        
-        // 强制触发布局刷新
-        container.style.display = 'none';
-        container.offsetHeight; // 强制回流
-        container.style.display = '';
     },
     
     /**

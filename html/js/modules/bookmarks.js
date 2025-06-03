@@ -1,6 +1,6 @@
 /**
  * 书签管理模块
- * 负责处理Chrome书签和自定义书签的显示和交互
+ * 负责处理Chrome书签的显示和交互
  */
 
 import { Utils } from './utils.js';
@@ -9,8 +9,7 @@ import { IconManager } from './iconManager.js';
 import { Notification } from './notification.js';
 import { Menu } from './menu.js';
 
-// 书签数据
-let bookmarks = [];
+// 当前文件夹
 let currentFolder = "";
 
 // 文件夹展开状态
@@ -53,8 +52,8 @@ export const BookmarkManager = {
      */
     showError: function(error) {
         Notification.notify({
-            title: I18n.getMessage('errorTitle'),
-            message: error.message || I18n.getMessage('genericError'),
+            title: I18n.getMessage('errorTitle', '错误'),
+            message: error.message || I18n.getMessage('genericError', '发生未知错误'),
             type: 'error',
             duration: 5000
         });
@@ -84,22 +83,7 @@ export const BookmarkManager = {
         } catch (error) {
             console.error('保存文件夹展开状态失败:', error);
         }
-    },
-
-    /**
-     * 从存储中加载书签数据
-     */
-    loadBookmarks: async function() {
-        try {
-            const result = await chrome.storage.sync.get('bookmarks');
-            bookmarks = result.bookmarks || [];
-        } catch (error) {
-            this.showError(error);
-            bookmarks = [];
-        }
-    },
-
-    /**
+    },    /**
      * 创建文件夹按钮
      * @param {Object} folder - 文件夹数据
      * @param {HTMLElement} container - 容器元素
@@ -146,7 +130,7 @@ export const BookmarkManager = {
             const iconElement = Utils.createElement("span", "folder-icon");
             iconElement.textContent = isPinned ? '📌' : '📁';
             const nameElement = Utils.createElement("span", "folder-name");
-            nameElement.textContent = folder.title || I18n.getMessage('untitledFolder');
+            nameElement.textContent = folder.title || I18n.getMessage('untitledFolder', '未命名文件夹');
             
             // 组装元素
             iconNameWrapper.appendChild(iconElement);
@@ -275,6 +259,53 @@ export const BookmarkManager = {
     },
 
     /**
+     * 应用选中的文件夹
+     */
+    applySelectedFolder: function(root) {
+        chrome.storage.local.get("folder").then(data => {
+            let folder = data.folder || root.id;
+            currentFolder = folder;
+            
+            const selectedFolder = this.findFolderById(root, folder);
+            if (selectedFolder) {
+                this.showShortcuts(selectedFolder);
+                
+                // 清除所有选中状态
+                document.querySelectorAll('.folder-button.selected').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                
+                // 获取固定文件夹列表
+                chrome.storage.local.get("pinnedFolders").then(pinnedData => {
+                    const pinnedFolders = pinnedData.pinnedFolders || [];
+                    const isPinnedFolder = pinnedFolders.includes(folder);
+                    
+                    // 如果是固定文件夹，优先选中固定版本，否则选中原始版本
+                    if (isPinnedFolder) {
+                        // 选中固定版本
+                        const pinnedButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
+                        if (pinnedButton) {
+                            pinnedButton.classList.add('selected');
+                        }
+                    } else {
+                        // 选中原始版本
+                        const regularButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
+                        if (regularButton) {
+                            regularButton.classList.add('selected');
+                        }
+                    }
+                }).catch(err => {
+                    // 如果获取固定文件夹列表失败，则选中所有匹配的按钮
+                    const selectedButtons = document.querySelectorAll(`[data-folder-id="${folder}"]`);
+                    selectedButtons.forEach(button => {
+                        button.classList.add('selected');
+                    });
+                });
+            }
+        }).catch(err => this.showError(err));
+    },
+
+    /**
      * 切换文件夹选择状态
      */
     toggleFolderSelection: function(folderButton, folder) {
@@ -294,11 +325,31 @@ export const BookmarkManager = {
             currentFolder = folder.id;
             chrome.storage.local.set({ folder: folder.id });
             
-            // 更新选中状态
+            // 清除所有选中状态
             document.querySelectorAll('.folder-button.selected').forEach(btn => {
                 btn.classList.remove('selected');
             });
+            
+            // 只选中当前点击的按钮
             folderButton.classList.add('selected');
+            
+            // 如果点击的是固定文件夹，确保原始文件夹不被选中
+            const isPinned = folderButton.getAttribute('data-pinned') === 'true';
+            const folderId = folderButton.getAttribute('data-folder-id');
+            
+            if (isPinned) {
+                // 确保原始版本不被选中
+                const regularButton = document.querySelector(`[data-folder-id="${folderId}"][data-pinned="false"]`);
+                if (regularButton) {
+                    regularButton.classList.remove('selected');
+                }
+            } else {
+                // 确保固定版本不被选中
+                const pinnedButton = document.querySelector(`[data-folder-id="${folderId}"][data-pinned="true"]`);
+                if (pinnedButton) {
+                    pinnedButton.classList.remove('selected');
+                }
+            }
         }
     },
 
@@ -424,12 +475,36 @@ export const BookmarkManager = {
             if (selectedFolder) {
                 this.showShortcuts(selectedFolder);
                 
-                const selectedButtons = document.querySelectorAll(`[data-folder-id="${folder}"]`);
+                // 清除所有选中状态
                 document.querySelectorAll('.folder-button.selected').forEach(btn => {
                     btn.classList.remove('selected');
                 });
-                selectedButtons.forEach(button => {
-                    button.classList.add('selected');
+                
+                // 获取固定文件夹列表
+                chrome.storage.local.get("pinnedFolders").then(pinnedData => {
+                    const pinnedFolders = pinnedData.pinnedFolders || [];
+                    const isPinnedFolder = pinnedFolders.includes(folder);
+                    
+                    // 如果是固定文件夹，优先选中固定版本，否则选中原始版本
+                    if (isPinnedFolder) {
+                        // 选中固定版本
+                        const pinnedButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
+                        if (pinnedButton) {
+                            pinnedButton.classList.add('selected');
+                        }
+                    } else {
+                        // 选中原始版本
+                        const regularButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
+                        if (regularButton) {
+                            regularButton.classList.add('selected');
+                        }
+                    }
+                }).catch(err => {
+                    // 如果获取固定文件夹列表失败，则选中所有匹配的按钮
+                    const selectedButtons = document.querySelectorAll(`[data-folder-id="${folder}"]`);
+                    selectedButtons.forEach(button => {
+                        button.classList.add('selected');
+                    });
                 });
             }
         }).catch(err => this.showError(err));
@@ -441,11 +516,11 @@ export const BookmarkManager = {
     showIconSelectorModal: function(shortcut) {
         try {
             Menu.ImageSelector.show({
-                title: I18n.getMessage('customIcon'),
+                title: I18n.getMessage('customIcon', '自定义图标'),
                 modalId: 'icon-selector-modal',
                 mode: 'icon',
-                urlLabel: I18n.getMessage('iconUrl'),
-                uploadLabel: I18n.getMessage('uploadIcon'),
+                urlLabel: I18n.getMessage('iconUrl', '图标链接'),
+                uploadLabel: I18n.getMessage('uploadIcon', '上传图标'),
                 urlPlaceholder: 'https://example.com/icon.png',
                 showReset: true,
                 onReset: () => this.resetShortcutIcon(shortcut),
@@ -502,8 +577,8 @@ export const BookmarkManager = {
             await this.reloadCurrentFolder();
             
             Notification.notify({
-                title: I18n.getMessage('success'),
-                message: I18n.getMessage('iconUpdated'),
+                title: I18n.getMessage('success', '成功'),
+                message: I18n.getMessage('iconUpdated', '图标已更新'),
                 type: 'success',
                 duration: 2000
             });
@@ -556,8 +631,8 @@ export const BookmarkManager = {
             }
             
             Notification.notify({
-                title: I18n.getMessage('iconReset'),
-                message: I18n.getMessage('fetchingDefaultIcon'),
+                title: I18n.getMessage('iconReset', '图标已重置'),
+                message: I18n.getMessage('fetchingDefaultIcon', '正在获取默认图标'),
                 type: 'info',
                 duration: 2000
             });
@@ -656,12 +731,9 @@ export const BookmarkManager = {
     handleContextMenu: function(event) {
         if (event.target.matches('input, textarea, [contenteditable="true"]')) {
             return;
-        }
-
-        const shortcutButton = event.target.closest('.shortcut-button');
-        const bookmarkElement = event.target.closest('.bookmark');
+        }        const shortcutButton = event.target.closest('.shortcut-button');
         
-        if (shortcutButton || bookmarkElement) {
+        if (shortcutButton) {
             return;
         }
         
@@ -685,7 +757,7 @@ export const BookmarkManager = {
             const menuItems = [
                 {
                     id: isPinned ? 'unpin-folder' : 'pin-folder',
-                    text: isPinned ? I18n.getMessage('unpinFolder') || '取消固定文件夹' : I18n.getMessage('pinFolder') || '固定文件夹',
+                    text: isPinned ? I18n.getMessage('unpinFolder', '取消固定文件夹') : I18n.getMessage('pinFolder', '固定文件夹'),
                     callback: () => {
                         if (isPinned) {
                             this.unpinFolder(folder);
@@ -696,7 +768,7 @@ export const BookmarkManager = {
                 },
                 {
                     id: 'open-all-bookmarks',
-                    text: I18n.getMessage('openAllBookmarks'),
+                    text: I18n.getMessage('openAllBookmarks', '打开所有书签'),
                     callback: () => {
                         if (folder.children) {
                             const bookmarks = folder.children.filter(item => item.url);
@@ -727,8 +799,8 @@ export const BookmarkManager = {
                 this.renderFolders();
                 
                 Notification.notify({
-                    title: I18n.getMessage('success') || '成功',
-                    message: I18n.getMessage('folderPinned') || '文件夹已固定到顶层',
+                    title: I18n.getMessage('success', '成功'),
+                    message: I18n.getMessage('folderPinned', '文件夹已固定到顶层'),
                     type: 'success',
                     duration: 2000
                 });
@@ -752,8 +824,8 @@ export const BookmarkManager = {
             this.renderFolders();
             
             Notification.notify({
-                title: I18n.getMessage('success') || '成功',
-                message: I18n.getMessage('folderUnpinned') || '文件夹已取消固定',
+                title: I18n.getMessage('success', '成功'),
+                message: I18n.getMessage('folderUnpinned', '文件夹已取消固定'),
                 type: 'success',
                 duration: 2000
             });
@@ -781,7 +853,7 @@ export const BookmarkManager = {
             // 渲染固定文件夹
             if (pinnedFolders.length > 0) {
                 const pinnedSection = Utils.createElement("div", "pinned-folders-section");
-                const pinnedHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('pinnedFolders') || '固定文件夹');
+                const pinnedHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('pinnedFolders', '固定文件夹'));
                 pinnedSection.appendChild(pinnedHeader);
                 
                 for (const folderId of pinnedFolders) {
@@ -799,7 +871,7 @@ export const BookmarkManager = {
             const regularSection = Utils.createElement("div", "regular-folders-section");
             
             if (pinnedFolders.length > 0) {
-                const regularHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('allFolders') || '所有文件夹');
+                const regularHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('allFolders', '所有文件夹'));
                 regularSection.appendChild(regularHeader);
             }
             
@@ -814,107 +886,9 @@ export const BookmarkManager = {
             if (hasRegularFolders) {
                 container.appendChild(regularSection);
             }
-            
-            await new Promise(resolve => setTimeout(resolve, 0));
+              await new Promise(resolve => setTimeout(resolve, 0));
             this.applySelectedFolder(root);
             
-        } catch (error) {
-            this.showError(error);
-        }
-    },
-
-    // 简化的自定义书签管理方法
-    renderBookmarks: function() {
-        const bookmarkContainer = document.getElementById('custom-bookmark-container');
-        if (!bookmarkContainer) return;
-        
-        bookmarkContainer.innerHTML = '';
-        bookmarks.forEach((bookmark, index) => {
-            const bookmarkElement = this.createBookmarkElement(bookmark, index);
-            bookmarkContainer.appendChild(bookmarkElement);
-        });
-    },
-
-    createBookmarkElement: function(bookmark, index) {
-        const bookmarkElement = Utils.createElement('div', 'bookmark', {'data-index': index});
-        
-        const icon = Utils.createElement('div', 'bookmark-icon');
-        const iconImg = Utils.createElement('img');
-        iconImg.src = bookmark.customIcon || `${Utils.getDomain(bookmark.url)}/favicon.ico`;
-        iconImg.onerror = () => { iconImg.src = 'Icon.png'; };
-        
-        icon.appendChild(iconImg);
-        bookmarkElement.appendChild(icon);
-        bookmarkElement.appendChild(Utils.createElement('div', 'bookmark-title', {}, bookmark.title));
-        
-        bookmarkElement.addEventListener('click', e => {
-            if (!e.target.closest('.bookmark-menu')) window.open(bookmark.url, '_blank');
-        });
-        
-        bookmarkElement.addEventListener('contextmenu', e => {
-            e.preventDefault();
-            this.showBookmarkContextMenu(e, index);
-        });
-        
-        return bookmarkElement;
-    },
-
-    showBookmarkContextMenu: function(e, index) {
-        Menu.ContextMenu.show(e, [
-            {
-                id: 'bookmark-delete',
-                text: I18n.getMessage('delete'),
-                callback: () => {
-                    Notification.notify({
-                        title: I18n.getMessage('confirm'),
-                        message: I18n.getMessage('confirmDeleteBookmark'),
-                        type: 'confirm',
-                        duration: 0,
-                        buttons: [
-                            {
-                                text: I18n.getMessage('confirm'),
-                                class: 'btn-primary',
-                                callback: () => {
-                                    bookmarks.splice(index, 1);
-                                    this.saveBookmarks();
-                                    this.renderBookmarks();
-                                }
-                            },
-                            {
-                                text: I18n.getMessage('cancel'),
-                                callback: () => {}
-                            }
-                        ]
-                    });
-                }
-            }
-        ], {menuId: 'bookmark-context-menu'});
-    },
-
-    saveBookmarks: async function() {
-        try {
-            await chrome.storage.sync.set({ bookmarks });
-        } catch (error) {
-            this.showError(error);
-        }
-    },
-
-    getAllBookmarks: function() {
-        return [...bookmarks];
-    },
-
-    importBookmarks: async function(importedBookmarks) {
-        try {
-            if (!Array.isArray(importedBookmarks)) return;
-            
-            importedBookmarks.forEach(bookmark => {
-                if (!bookmarks.some(b => b.url === bookmark.url)) {
-                    bookmarks.push(bookmark);
-                }
-            });
-            
-            await this.saveBookmarks();
-            this.renderBookmarks();
         } catch (error) {
             this.showError(error);
         }

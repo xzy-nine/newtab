@@ -6,8 +6,8 @@
 let translations = {};
 let currentLanguage = 'en';
 let isInitialized = false;
-// 翻译文件列表
-const TRANSLATION_FILES = ['messages', 'notifications', 'menus', 'containers', 'widgets'];
+// 统一翻译文件名
+const TRANSLATION_FILE = 'messages';
 
 /**
  * 国际化API
@@ -39,22 +39,29 @@ export const I18n = {
       console.error('国际化模块初始化失败:', error);
       throw error;
     }
-  },
-
-  /**
-   * 获取指定key的翻译文本
+  },  /**
+   * 获取指定key的翻译文本，支持默认值
    * @param {string} key - 翻译键值
-   * @returns {string|null} - 翻译后的文本，未找到则返回null
+   * @param {string} defaultValue - 默认值，中文语言时直接使用此值
+   * @returns {string} - 翻译后的文本
    */
-  getMessage: function(key) {
+  getMessage: function(key, defaultValue = '') {
     if (!key) return '';
     
     if (!isInitialized) {
       //console.warn('国际化模块尚未初始化，可能导致翻译缺失');
     }
-    
+
+    // 检查是否为中文语言（支持 zh 和 zh_CN）
+    const isChinese = currentLanguage === 'zh' || currentLanguage === 'zh_CN' || currentLanguage.startsWith('zh');
+
+    // 如果是中文且提供了默认值，直接返回默认值（因为中文有默认值机制）
+    if (isChinese && defaultValue) {
+      return defaultValue;
+    }
+
     try {
-      // 首先尝试从Chrome i18n API获取
+      // 首先尝试从Chrome i18n API获取（主要用于manifest.json的键值）
       if (chrome && chrome.i18n) {
         const message = chrome.i18n.getMessage(key);
         if (message) return message;
@@ -68,13 +75,15 @@ export const I18n = {
       return translations[key].message;
     }
     
-    // 不再返回键名作为默认值，而是返回null或undefined使得 || 操作符可以生效
-    console.warn(`【未翻译】未找到键 "${key}" 的翻译 - 查看调用堆栈↓`);
-    console.trace(); // 这会自动在控制台显示完整的调用堆栈
-    return null; // 返回null使得 || 操作符可以生效
-  },
+    // 如果找不到翻译且不是中文，记录警告
+    if (!isChinese) {
+      console.warn(`【未翻译]未找到键 "${key}" 的翻译 - 查看调用堆栈↓`);
+      console.trace();
+    }
 
-  /**
+    // 返回默认值（如果提供）或null
+    return defaultValue || null;
+  },  /**
    * 应用翻译到UI元素
    */
   applyTranslations: function() {
@@ -84,16 +93,35 @@ export const I18n = {
     
     document.querySelectorAll('[data-i18n]').forEach(element => {
       const key = element.getAttribute('data-i18n');
-      element.textContent = this.getMessage(key);
+      const translation = this.getMessage(key);
+      // 只有当翻译存在时才更新文本，避免清空默认文本
+      if (translation) {
+        element.textContent = translation;
+      }
     });
     
     // 更新页面标题
-    document.title = this.getMessage('newTab');
+    const newTabTitle = this.getMessage('newTab');
+    if (newTabTitle) {
+      document.title = newTabTitle;
+    }
     
     // 更新占位符文本
     document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
       const key = element.getAttribute('data-i18n-placeholder');
-      element.placeholder = this.getMessage(key);
+      const translation = this.getMessage(key);
+      if (translation) {
+        element.placeholder = translation;
+      }
+    });
+    
+    // 更新title属性
+    document.querySelectorAll('[data-i18n-title]').forEach(element => {
+      const key = element.getAttribute('data-i18n-title');
+      const translation = this.getMessage(key);
+      if (translation) {
+        element.title = translation;
+      }
     });
   },
 
@@ -158,7 +186,7 @@ async function setUserLanguage() {
       currentLanguage = result.language;
     } else {
       const browserLang = navigator.language.slice(0, 2);
-      currentLanguage = ['en', 'zh', 'ja'].includes(browserLang) ? browserLang : 'en';
+      currentLanguage = ['en', 'zh'].includes(browserLang) ? browserLang : 'en';
       await chrome.storage.sync.set({ language: currentLanguage });
     }
   } catch (error) {
@@ -182,59 +210,38 @@ async function loadTranslationsFromFiles() {
     // 清空当前翻译数据
     translations = {};
     
-    // 存储加载进度
-    const loadResults = {
-      total: TRANSLATION_FILES.length,
-      loaded: 0,
-      failed: 0,
-      keys: 0
-    };
-    
-    // 加载所有翻译文件
-    const loadPromises = TRANSLATION_FILES.map(async (fileType) => {
-      try {
-        //console.log(`尝试加载翻译文件: /_locales/${locale}/${fileType}.json`);
+    try {
+      console.log(`尝试加载翻译文件: /_locales/${locale}/${TRANSLATION_FILE}.json`);
+      const response = await fetch(`/_locales/${locale}/${TRANSLATION_FILE}.json`);
+      
+      if (!response.ok) {
+        console.warn(`无法加载 ${locale} 语言的 ${TRANSLATION_FILE}.json，尝试回退到英文版本`);
         
-        const response = await fetch(`/_locales/${locale}/${fileType}.json`);
-        if (!response.ok) {
-          console.warn(`无法加载 ${locale} 语言的 ${fileType}.json，尝试回退到英文版本`);
-          
-          const fallbackResponse = await fetch(`/_locales/en/${fileType}.json`);
-          if (!fallbackResponse.ok) {
-            throw new Error(`无法加载翻译文件: ${fileType}.json, 错误状态: ${fallbackResponse.status}`);
-          }
-          
-          const fallbackData = await fallbackResponse.json();
-          const keysCount = Object.keys(fallbackData).length;
-          translations = { ...translations, ...fallbackData };
-          
-          //console.log(`已从英文版本加载 ${fileType}.json (${keysCount} 项翻译)`);
-          loadResults.loaded++;
-          loadResults.keys += keysCount;
-        } else {
-          const messagesData = await response.json();
-          const keysCount = Object.keys(messagesData).length;
-          translations = { ...translations, ...messagesData };
-          
-          //console.log(`成功加载 ${locale} 版本的 ${fileType}.json (${keysCount} 项翻译)`);
-          loadResults.loaded++;
-          loadResults.keys += keysCount;
+        const fallbackResponse = await fetch(`/_locales/en/${TRANSLATION_FILE}.json`);
+        if (!fallbackResponse.ok) {
+          throw new Error(`无法加载翻译文件: ${TRANSLATION_FILE}.json, 错误状态: ${fallbackResponse.status}`);
         }
-      } catch (error) {
-        console.error(`加载 ${fileType} 翻译文件失败:`, error);
-        loadResults.failed++;
+        
+        const fallbackData = await fallbackResponse.json();
+        const keysCount = Object.keys(fallbackData).length;
+        translations = fallbackData;
+        
+        console.log(`已从英文版本加载 ${TRANSLATION_FILE}.json (${keysCount} 项翻译)`);
+      } else {
+        const translationData = await response.json();
+        const keysCount = Object.keys(translationData).length;
+        translations = translationData;
+        
+        console.log(`成功加载 ${locale} 版本的 ${TRANSLATION_FILE}.json (${keysCount} 项翻译)`);
       }
-    });
-    
-    // 等待所有翻译文件加载完成
-    await Promise.all(loadPromises);
-    
-    // 报告加载结果
-    //console.log(`翻译文件加载完成: 成功=${loadResults.loaded}, 失败=${loadResults.failed}, 共加载 ${loadResults.keys} 条翻译`);
+    } catch (error) {
+      console.error(`加载 ${TRANSLATION_FILE} 翻译文件失败:`, error);
+      throw error;
+    }
     
     // 如果翻译对象为空，发出警告
     if (Object.keys(translations).length === 0) {
-      console.error('警告: 所有翻译加载失败，将使用空对象');
+      console.error('警告: 翻译加载失败，将使用空对象');
       translations = {};
     }
   } catch (error) {
@@ -273,4 +280,3 @@ function initLanguageSelector() {
     location.reload();
   });
 }
-

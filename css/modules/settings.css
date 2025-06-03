@@ -1,0 +1,788 @@
+/* 设置按钮样式 */
+#settings-btn {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 3001;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px 0 16px;
+  height: 44px;
+  border-radius: 22px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  font-size: 16px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: box-shadow 0.2s, background 0.2s, transform 0.15s;
+}
+
+#settings-btn:hover {
+  background: var(--color-primary-dark);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  transform: translateY(-2px) scale(1.04);
+}
+
+.settings-icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.settings-label {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  user-select: none;
+}
+
+/* 设置模态框样式 */
+.settings-modal .modal-content {
+  width: 90vw;
+  max-width: 1000px;
+  height: 80vh;
+  max-height: 700px;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.settings-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  background: var(--bg-secondary, #f8f9fa);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.modal-close {
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-secondary, #666);
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: var(--text-primary, #333);
+}
+
+.settings-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 左侧分类栏 */
+.settings-sidebar {
+  width: 240px;
+  background: var(--bg-tertiary, #f0f2f5);
+  border-right: 1px solid var(--border-color, #e0e0e0);
+  overflow-y: auto;
+}
+
+.settings-category {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  border-bottom: 1px solid var(--border-light, #f0f0f0);
+}
+
+.settings-category:hover {
+  background: var(--bg-hover, #e8eaed);
+}
+
+.settings-category.active {
+  background: var(--color-primary, #007bff);
+  color: white;
+}
+
+.category-icon {
+  font-size: 18px;
+  width: 20px;
+  text-align: center;
+}
+
+.category-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 右侧内容区 */
+.settings-content-area {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.category-title {
+  margin: 0 0 24px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.settings-items {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 设置项样式 */
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px;
+  background: var(--bg-card, white);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  transition: box-shadow 0.2s;
+}
+
+.setting-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.setting-item-header {
+  flex: 1;
+  margin-right: 20px;
+}
+
+.setting-label {
+  display: block;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.setting-description {
+  font-size: 14px;
+  color: var(--text-secondary, #666);
+  line-height: 1.4;
+}
+
+.setting-control {
+  display: flex;
+  align-items: center;
+  min-width: 200px;
+  justify-content: flex-end;
+}
+
+/* 复选框开关样式 */
+.setting-checkbox {
+  display: none;
+}
+
+.checkbox-switch {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  background: var(--bg-muted, #ccc);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.checkbox-switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+.setting-checkbox:checked + .checkbox-switch {
+  background: var(--color-primary, #007bff);
+}
+
+.setting-checkbox:checked + .checkbox-switch::before {
+  transform: translateX(24px);
+}
+
+/* 滑块样式 */
+.range-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 200px;
+}
+
+.setting-range {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-muted, #ddd);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.setting-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary, #007bff);
+  cursor: pointer;
+}
+
+.setting-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary, #007bff);
+  cursor: pointer;
+  border: none;
+}
+
+.range-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+  min-width: 60px;
+  text-align: right;
+}
+
+/* 下拉选择框样式 */
+.setting-select {
+  min-width: 150px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  background: var(--bg-card, white);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.setting-select:focus {
+  outline: none;
+  border-color: var(--color-primary, #007bff);
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+/* 单选按钮组样式 */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.setting-radio {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.radio-item label {
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-primary, #333);
+}
+
+/* 按钮样式 */
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-primary {
+  background: var(--color-primary, #007bff);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark, #0056b3);
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* 搜索引擎列表样式 */
+.search-engine-list-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.search-engine-item-setting {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  background: #fafafa;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.search-engine-item-setting:hover {
+  background: #f0f0f0;
+  border-color: #d0d0d0;
+}
+
+.search-engine-item-setting.current-engine {
+  background: #e8f5e8;
+  border-color: #4caf50;
+}
+
+.search-engine-item-setting .engine-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.search-engine-item-setting .engine-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-engine-item-setting .engine-name {
+  font-weight: 500;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.search-engine-item-setting .engine-url {
+  font-size: 12px;
+  color: #666;
+  word-break: break-all;
+}
+
+.search-engine-item-setting .engine-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+.search-engine-item-setting .current-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #4caf50;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: auto;
+}
+
+.error-message {
+  text-align: center;
+  color: #f44336;
+  padding: 20px;
+  font-style: italic;
+}
+
+/* 快速提示词编辑器样式 */
+.quick-prompts-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prompts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.prompt-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.prompt-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.prompt-input:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.setting-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s ease;
+}
+
+.setting-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.setting-input[type="password"] {
+  font-family: monospace;
+}
+
+/* 密码切换容器样式 */
+.password-toggle-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input {
+  flex: 1;
+  padding-right: 40px; /* 为切换按钮留出空间 */
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+  opacity: 1;
+  background-color: var(--hover-bg, rgba(0, 0, 0, 0.1));
+}
+
+.eye-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* 深色主题适配 */
+[data-theme="dark"] {
+  --color-primary: #1e88e5;
+  --color-primary-dark: #1565c0;
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #262626;
+  --bg-card: #1e1e1e;
+  --bg-hover: #333333;
+  --bg-muted: #404040;
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --border-color: #404040;
+  --border-light: #333333;
+  --hover-bg: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] #settings-btn {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+[data-theme="dark"] #settings-btn:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+[data-theme="dark"] .settings-modal .modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .modal-header {
+  background: var(--bg-secondary);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .settings-sidebar {
+  background: var(--bg-tertiary);
+  border-right-color: var(--border-color);
+}
+
+[data-theme="dark"] .settings-category {
+  color: var(--text-primary);
+  border-bottom-color: var(--border-light);
+}
+
+[data-theme="dark"] .settings-category:hover {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .settings-category.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+[data-theme="dark"] .setting-item {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .setting-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+[data-theme="dark"] .setting-label {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-description {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .checkbox-switch {
+  background: var(--bg-muted);
+}
+
+[data-theme="dark"] .setting-checkbox:checked + .checkbox-switch {
+  background: var(--color-primary);
+}
+
+[data-theme="dark"] .setting-range {
+  background: var(--bg-muted);
+}
+
+[data-theme="dark"] .setting-range::-webkit-slider-thumb {
+  background: var(--color-primary);
+}
+
+[data-theme="dark"] .setting-range::-moz-range-thumb {
+  background: var(--color-primary);
+}
+
+[data-theme="dark"] .range-value {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-select {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+}
+
+[data-theme="dark"] .radio-item label {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .btn-primary {
+  background: var(--color-primary);
+}
+
+[data-theme="dark"] .btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+[data-theme="dark"] .search-engine-list-container {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+}
+
+[data-theme="dark"] .search-engine-item-setting {
+  background: var(--bg-tertiary);
+  border-color: var(--border-light);
+}
+
+[data-theme="dark"] .search-engine-item-setting:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .search-engine-item-setting.current-engine {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4caf50;
+}
+
+[data-theme="dark"] .engine-name {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .engine-url {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .error-message {
+  color: #ff6b6b;
+}
+
+[data-theme="dark"] .prompt-input,
+[data-theme="dark"] .setting-textarea {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .prompt-input:focus,
+[data-theme="dark"] .setting-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+}
+
+/* 在深色主题适配部分添加缺少的样式 */
+[data-theme="dark"] {
+  --color-primary: #1e88e5;
+  --color-primary-dark: #1565c0;
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #262626;
+  --bg-card: #1e1e1e;
+  --bg-hover: #333333;
+  --bg-muted: #404040;
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --border-color: #404040;
+  --border-light: #333333;
+  --hover-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* 添加缺少的深色模式样式 */
+[data-theme="dark"] .settings-content-area {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .category-title {
+  color: var(--text-primary);
+}
+
+/* 修复输入框样式 */
+[data-theme="dark"] .setting-input {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+}
+
+/* 修复密码输入框样式 */
+[data-theme="dark"] .setting-input[type="password"] {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .setting-input[type="password"]:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+}
+
+/* 修复密码切换按钮 */
+[data-theme="dark"] .password-toggle-btn {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .password-toggle-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--hover-bg);
+}
+
+/* 添加其他可能缺少的元素样式 */
+[data-theme="dark"] .setting-number {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .setting-number:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25);
+}
+
+/* 确保所有文本输入元素都有深色样式 */
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="url"],
+[data-theme="dark"] input[type="email"] {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] input[type="text"]:focus,
+[data-theme="dark"] input[type="password"]:focus,
+[data-theme="dark"] input[type="number"]:focus,
+[data-theme="dark"] input[type="url"]:focus,
+[data-theme="dark"] input[type="email"]:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.25) !important;
+}
+
+/* 确保模态框背景也应用深色主题 */
+[data-theme="dark"] .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
+}

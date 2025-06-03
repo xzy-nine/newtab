@@ -48,18 +48,16 @@
 }
 
 /* 为深色模式调整网格颜色 */
-@media (prefers-color-scheme: dark) {
-  .show-grid::before {
-    background-image: 
-      linear-gradient(to right, rgba(58, 159, 255, 0.2) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(58, 159, 255, 0.2) 1px, transparent 1px);
-  }
-  
-  .show-grid::after {
-    background-image: 
-      linear-gradient(to right, rgba(58, 159, 255, 0.35) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(58, 159, 255, 0.35) 1px, transparent 1px);
-  }
+[data-theme="dark"] .show-grid::before {
+  background-image: 
+    linear-gradient(to right, rgba(58, 159, 255, 0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(58, 159, 255, 0.2) 1px, transparent 1px);
+}
+
+[data-theme="dark"] .show-grid::after {
+  background-image: 
+    linear-gradient(to right, rgba(58, 159, 255, 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(58, 159, 255, 0.35) 1px, transparent 1px);
 }
 
 /* 网格调试线样式 */
@@ -89,10 +87,8 @@
 }
 
 /* 在深色模式中调整网格调试线颜色 */
-@media (prefers-color-scheme: dark) {
-  .grid-line {
-    background-color: rgba(58, 159, 255, 0.25);
-  }
+[data-theme="dark"] .grid-line {
+  background-color: rgba(58, 159, 255, 0.25);
 }
 
 /* 元素在网格中移动时的过渡效果 */
