@@ -526,6 +526,67 @@
   line-height: 1;
 }
 
+/* 范围控件按钮样式 */
+.range-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-start;
+}
+
+.range-buttons .btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: 60px;
+  border-radius: 4px;
+}
+
+.test-notification-btn {
+  background-color: var(--info-color, #2196f3);
+  color: white;
+  border: none;
+}
+
+.test-notification-btn:hover {
+  background-color: var(--info-hover-color, #1976d2);
+}
+
+.reset-default-btn {
+  background-color: var(--secondary-color, #6c757d);
+  color: white;
+  border: none;
+}
+
+.reset-default-btn:hover {
+  background-color: var(--secondary-hover-color, #5a6268);
+}
+
+/* 只读状态的范围控件样式 */
+.setting-range:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 范围容器布局 */
+.range-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.range-container > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-value {
+  min-width: 60px;
+  text-align: right;
+  font-weight: 500;
+  color: var(--primary-color, #007bff);
+}
+
 /* 深色主题适配 */
 [data-theme="dark"] {
   --color-primary: #1e88e5;

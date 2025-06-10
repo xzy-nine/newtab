@@ -36,7 +36,86 @@ export const Settings = {
             { value: 'dark', label: I18n.getMessage('themeDark', '深色模式') }
           ],
           getValue: () => localStorage.getItem('theme') || 'auto',
-          description: I18n.getMessage('settingsThemeDesc', '选择应用的主题外观')
+          description: I18n.getMessage('settingsThemeDesc', '选择应用的主题外观')        }
+      ]
+    },
+    {
+      id: 'notifications',
+      icon: '🔔',
+      title: I18n.getMessage('settingsNotifications', '通知设置'),
+      items: [
+        {
+          id: 'notification-duration-info',
+          label: I18n.getMessage('settingsNotificationDurationInfo', '信息通知显示时间'),
+          type: 'range',
+          min: 1,
+          max: 30,
+          step: 0.5,
+          getValue: () => {
+            const ms = parseInt(localStorage.getItem('notification-duration-info') || '3000');
+            return ms / 1000; // 转换为秒
+          },
+          unit: I18n.getMessage('seconds', '秒'),
+          description: I18n.getMessage('settingsNotificationDurationInfoDesc', '信息类通知的显示时间'),
+          testButton: true,
+          resetButton: true,
+          defaultValue: 3, // 默认3秒
+          testType: 'info'
+        },
+        {
+          id: 'notification-duration-success',
+          label: I18n.getMessage('settingsNotificationDurationSuccess', '成功通知显示时间'),
+          type: 'range',
+          min: 1,
+          max: 30,
+          step: 0.5,
+          getValue: () => {
+            const ms = parseInt(localStorage.getItem('notification-duration-success') || '2000');
+            return ms / 1000; // 转换为秒
+          },
+          unit: I18n.getMessage('seconds', '秒'),
+          description: I18n.getMessage('settingsNotificationDurationSuccessDesc', '成功类通知的显示时间'),
+          testButton: true,
+          resetButton: true,
+          defaultValue: 2, // 默认2秒
+          testType: 'success'
+        },
+        {
+          id: 'notification-duration-warning',
+          label: I18n.getMessage('settingsNotificationDurationWarning', '警告通知显示时间'),
+          type: 'range',
+          min: 1,
+          max: 30,
+          step: 0.5,
+          getValue: () => {
+            const ms = parseInt(localStorage.getItem('notification-duration-warning') || '5000');
+            return ms / 1000; // 转换为秒
+          },
+          unit: I18n.getMessage('seconds', '秒'),
+          description: I18n.getMessage('settingsNotificationDurationWarningDesc', '警告类通知的显示时间'),
+          testButton: true,
+          resetButton: true,
+          defaultValue: 5, // 默认5秒
+          testType: 'warning'
+        },
+        {
+          id: 'notification-duration-error',
+          label: I18n.getMessage('settingsNotificationDurationError', '错误通知显示时间'),
+          type: 'range',
+          min: 1,
+          max: 30,
+          step: 0.5,
+          getValue: () => {
+            const ms = parseInt(localStorage.getItem('notification-duration-error') || '8000');
+            return ms / 1000; // 转换为秒
+          },
+          unit: I18n.getMessage('seconds', '秒'),
+          description: I18n.getMessage('settingsNotificationDurationErrorDesc', '错误类通知的显示时间（固定配置）'),
+          testButton: true,
+          resetButton: true,
+          defaultValue: 8, // 默认8秒
+          testType: 'error',
+          readonly: true // 错误通知时间为只读，但可以测试
         }
       ]
     },
@@ -131,7 +210,7 @@ export const Settings = {
           buttonText: I18n.getMessage('addCustomSearchEngine', '添加自定义搜索引擎'),
           buttonClass: 'btn-primary',
           description: I18n.getMessage('settingsAddSearchEngineDesc', '添加新的自定义搜索引擎')
-        }
+        },
       ]
     },
     {
@@ -327,9 +406,20 @@ export const Settings = {
           case 'language':
             return window.I18n ? I18n.getCurrentLanguage() : 'zh';
           case 'sync-mode':
-            return localStorage.getItem('sync-mode') || 'disabled';
-          case 'sync-interval':
+            return localStorage.getItem('sync-mode') || 'disabled';          case 'sync-interval':
             return localStorage.getItem('sync-interval') || '0';
+          case 'notification-duration-info':
+            return parseInt(localStorage.getItem('notification-duration-info') || '3000');
+          case 'notification-duration-success':
+            return parseInt(localStorage.getItem('notification-duration-success') || '2000');
+          case 'notification-duration-warning':
+            return parseInt(localStorage.getItem('notification-duration-warning') || '5000');
+          case 'notification-auto-close-info':
+            return localStorage.getItem('notification-auto-close-info') !== 'false';
+          case 'notification-auto-close-success':
+            return localStorage.getItem('notification-auto-close-success') !== 'false';
+          case 'notification-auto-close-warning':
+            return localStorage.getItem('notification-auto-close-warning') !== 'false';
           default:
             return item.value || item.defaultValue || '';
         }
@@ -426,14 +516,17 @@ export const Settings = {
               console.error('GridSystem 未初始化');
               checkbox.checked = false;
             }
-          });
-        } else if (item.id === 'ai-enabled') {
+          });        } else if (item.id === 'ai-enabled') {
           checkbox.addEventListener('change', (e) => {
             Settings.handleAIEnabledChange(e.target.checked);
             // 立即更新显示状态
             setTimeout(() => {
               checkbox.checked = getCurrentValue();
             }, 100);
+          });
+        } else if (item.id.startsWith('notification-auto-close-')) {
+          checkbox.addEventListener('change', (e) => {
+            Settings.handleNotificationAutoCloseChange(item.id, e.target.checked);
           });
         }
         
@@ -450,14 +543,86 @@ export const Settings = {
           step: item.step,
           value: currentValue
         });
-        const rangeValue = Utils.createElement('span', 'range-value', {}, `${currentValue}${item.unit || ''}`);
-        rangeContainer.append(range, rangeValue);
-        itemControl.appendChild(rangeContainer);
         
+        // 如果是只读模式，禁用滑块
+        if (item.readonly) {
+          range.disabled = true;
+          range.style.opacity = '0.6';
+        }
+        
+        // 格式化显示值 - 支持秒数显示
+        const formatValue = (value) => {
+          if (item.id.startsWith('notification-duration-')) {
+            // 对于通知时间，显示为"X.X秒"格式
+            return `${parseFloat(value).toFixed(1)}${item.unit || ''}`;
+          }
+          return `${value}${item.unit || ''}`;
+        };
+        
+        const rangeValue = Utils.createElement('span', 'range-value', {}, formatValue(currentValue));
+        
+        // 创建按钮容器
+        const rangeButtons = Utils.createElement('div', 'range-buttons');
+        
+        // 添加测试按钮
+        if (item.testButton) {
+          const testBtn = Utils.createElement('button', 'btn btn-small btn-info test-notification-btn', {
+            type: 'button',
+            'data-test-type': item.testType || 'info'
+          }, I18n.getMessage('testNotification', '测试通知'));
+          
+          testBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            Settings.testNotification(item.testType, parseFloat(range.value) * 1000);
+          });
+          
+          rangeButtons.appendChild(testBtn);
+        }
+        
+        // 添加恢复默认按钮
+        if (item.resetButton && typeof item.defaultValue !== 'undefined') {
+          const resetBtn = Utils.createElement('button', 'btn btn-small btn-secondary reset-default-btn', {
+            type: 'button'
+          }, I18n.getMessage('resetDefault', '恢复默认'));
+          
+          resetBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // 设置为默认值
+            range.value = item.defaultValue;
+            rangeValue.textContent = formatValue(item.defaultValue);
+            
+            // 保存到localStorage（转换为毫秒）
+            if (item.id.startsWith('notification-duration-')) {
+              const msValue = Math.round(item.defaultValue * 1000);
+              Settings.handleNotificationDurationChange(item.id, msValue);
+            }
+            
+            // 显示确认通知
+            Notification.notify({
+              title: I18n.getMessage('defaultRestored', '已恢复默认'),
+              message: `${item.label}: ${formatValue(item.defaultValue)}`,
+              type: 'success',
+              duration: 2000
+            });
+          });
+          
+          rangeButtons.appendChild(resetBtn);
+        }
+        
+        rangeContainer.append(range, rangeValue);
+        
+        // 如果有按钮，添加按钮容器
+        if (rangeButtons.children.length > 0) {
+          rangeContainer.appendChild(rangeButtons);
+        }
+        
+        itemControl.appendChild(rangeContainer);
+
         // 更新显示值和实际值
         range.addEventListener('input', (e) => {
-          const value = parseInt(e.target.value);
-          rangeValue.textContent = `${value}${item.unit || ''}`;
+          const value = parseFloat(e.target.value);
+          rangeValue.textContent = formatValue(value);
           
           // 为网格吸附阈值添加实时更新
           if (item.id === 'grid-snap-threshold') {
@@ -470,6 +635,10 @@ export const Settings = {
                 console.error('设置网格吸附阈值失败:', error);
               }
             }
+          } else if (item.id.startsWith('notification-duration-')) {
+            // 通知时间设置 - 转换为毫秒存储
+            const msValue = Math.round(value * 1000);
+            Settings.handleNotificationDurationChange(item.id, msValue);
           }
         });
         
@@ -478,7 +647,7 @@ export const Settings = {
           const latestValue = getCurrentValue();
           if (range.value !== latestValue.toString()) {
             range.value = latestValue;
-            rangeValue.textContent = `${latestValue}${item.unit || ''}`;
+            rangeValue.textContent = formatValue(latestValue);
           }
         };
         
@@ -1515,6 +1684,66 @@ export const Settings = {
       I18n.getMessage('save', '保存'),
       I18n.getMessage('cancel', '取消')
     );
+  },
+
+  /**
+   * 测试通知功能
+   * @param {string} type - 通知类型 ('info', 'success', 'warning', 'error')
+   * @param {number} duration - 通知持续时间（毫秒）
+   */
+  testNotification(type, duration) {
+    const testMessages = {
+      'info': {
+        title: I18n.getMessage('testNotificationInfo', '信息通知测试'),
+        message: I18n.getMessage('testNotificationInfoMessage', '这是一条信息类型的测试通知')
+      },
+      'success': {
+        title: I18n.getMessage('testNotificationSuccess', '成功通知测试'),
+        message: I18n.getMessage('testNotificationSuccessMessage', '这是一条成功类型的测试通知')
+      },
+      'warning': {
+        title: I18n.getMessage('testNotificationWarning', '警告通知测试'),
+        message: I18n.getMessage('testNotificationWarningMessage', '这是一条警告类型的测试通知')
+      },
+      'error': {
+        title: I18n.getMessage('testNotificationError', '错误通知测试'),
+        message: I18n.getMessage('testNotificationErrorMessage', '这是一条错误类型的测试通知')
+      }
+    };
+
+    const testData = testMessages[type] || testMessages['info'];
+    
+    Notification.notify({
+      title: testData.title,
+      message: `${testData.message} (${I18n.getMessage('duration', '持续时间')}: ${(duration / 1000).toFixed(1)}${I18n.getMessage('seconds', '秒')})`,
+      type: type,
+      duration: duration
+    });
+  },
+
+  /**
+   * 处理通知时间设置变化
+   * @param {string} settingId - 设置ID
+   * @param {number} duration - 持续时间（毫秒）
+   */
+  handleNotificationDurationChange(settingId, duration) {
+    try {
+      // 保存设置到localStorage
+      localStorage.setItem(settingId, duration.toString());
+      console.log(`通知时间设置已更新: ${settingId} = ${duration}ms`);
+      
+      // 可选：显示设置更新的确认
+      // 但为了避免过多通知，这里不显示确认通知
+    } catch (error) {
+      console.error('保存通知时间设置失败:', error);
+      
+      Notification.notify({
+        title: I18n.getMessage('error', '错误'),
+        message: I18n.getMessage('saveSettingsFailed', '保存设置失败'),
+        type: 'error',
+        duration: 3000
+      });
+    }
   },
 
   /**

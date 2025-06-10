@@ -9,7 +9,48 @@ import { Utils } from './utils.js';
 /**
  * 通知系统命名空间
  */
-export const Notification = {  /**
+export const Notification = {
+  /**
+   * 获取通知配置
+   * @param {string} type - 通知类型
+   * @returns {Object} 通知配置
+   */
+  getNotificationConfig: (type) => {
+    // 错误通知始终使用固定配置，不受设置控制
+    if (type === 'error') {
+      // 可以从localStorage读取用户自定义的错误通知时间，但默认为8秒
+      const errorDuration = parseInt(localStorage.getItem('notification-duration-error') || '8000');
+      return {
+        duration: errorDuration,
+        autoClose: true
+      };
+    }
+    
+    // 加载通知始终不自动关闭
+    if (type === 'loading') {
+      return {
+        duration: 0,
+        autoClose: false
+      };
+    }
+    
+    // 从设置中获取其他类型通知的配置
+    const defaultDurations = {
+      'info': 3000,
+      'success': 2000,
+      'warning': 5000
+    };
+    
+    const duration = parseInt(localStorage.getItem(`notification-duration-${type}`) || defaultDurations[type] || 3000);
+    
+    // 移除autoClose逻辑，所有有时间设置的通知都自动关闭
+    return {
+      duration: duration,
+      autoClose: true
+    };
+  },
+
+  /**
    * 显示通知
    * @param {Object} options 通知选项
    * @param {string} options.title 通知标题
@@ -19,7 +60,7 @@ export const Notification = {  /**
    * @param {Array} options.buttons 按钮配置: [{text, class, callback}]
    * @param {Function} options.onClose 关闭回调函数
    * @returns {Object} 通知控制对象: {close, getElement}
-   */notify: (options) => {
+   */  notify: (options) => {
     const { 
       title = '', 
       message = '', 
@@ -29,19 +70,13 @@ export const Notification = {  /**
       onClose = null 
     } = options;
 
+    // 获取通知配置
+    const config = Notification.getNotificationConfig(type);
+    
     // 智能设置持续时间
     let finalDuration = duration;
     if (finalDuration === null) {
-      if (type === 'error') {
-        // 错误通知显示更长时间（8秒）
-        finalDuration = 8000;
-      } else if (type === 'loading') {
-        // 加载通知不自动关闭
-        finalDuration = 0;
-      } else {
-        // 普通通知最多3秒
-        finalDuration = 3000;
-      }
+      finalDuration = config.duration;
     }
 
     const notification = Utils.createElement('div', `notification notification-${type}`);
