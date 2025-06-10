@@ -97,4 +97,57 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
+  
+  // 处理弹出页面通知
+  if (request.action === 'addPopupNotification') {
+    addPopupNotification(request.notification);
+    sendResponse({ success: true });
+    return true;
+  }
+  
+  // 处理通知清除
+  if (request.action === 'notificationsCleared') {
+    chrome.action.setBadgeText({ text: '' });
+    sendResponse({ success: true });
+    return true;
+  }
 });
+
+/**
+ * 添加通知到弹出页面
+ * @param {Object} notification 通知对象
+ */
+async function addPopupNotification(notification) {
+  try {
+    const result = await chrome.storage.local.get(['popupNotifications']);
+    const notifications = result.popupNotifications || [];
+    
+    const newNotification = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      read: false,
+      ...notification
+    };
+    
+    notifications.unshift(newNotification);
+    
+    // 限制通知数量，只保留最新的50条
+    if (notifications.length > 50) {
+      notifications.splice(50);
+    }
+    
+    await chrome.storage.local.set({ popupNotifications: notifications });
+    
+    // 更新徽标
+    const unreadCount = notifications.filter(n => !n.read).length;
+    if (unreadCount > 0) {
+      chrome.action.setBadgeText({
+        text: unreadCount > 99 ? '99+' : unreadCount.toString()
+      });
+      chrome.action.setBadgeBackgroundColor({ color: '#dc3545' });
+    }
+    
+  } catch (error) {
+    console.error('添加弹出页面通知失败:', error);
+  }
+}

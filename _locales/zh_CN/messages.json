@@ -14,5 +14,10 @@
   "backgroundButton": {
     "message": "背景",
     "description": "背景按钮文本"
+  },
+  "extensionTitle": {
+    "message": "新标签页扩展",
+    "description": "扩展标题"
   }
 }
+

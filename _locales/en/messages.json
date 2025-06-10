@@ -2,10 +2,88 @@
   "appName": {
     "message": "Bookmark New Tab Extension",
     "description": "应用程序的名称"
-  },
-  "appDescription": {
+  },  "appDescription": {
     "message": "A clean and brutify new tab extension with search engine switching, bookmark shortcuts, and background switching.",
     "description": "应用程序的描述"
+  },
+  "extensionTitle": {
+    "message": "New Tab Extension",
+    "description": "扩展标题"
+  },
+  "notifications": {
+    "message": "Notifications",
+    "description": "通知标签"
+  },
+  "developer": {
+    "message": "Developer",
+    "description": "开发者标签"
+  },
+  "notificationCenter": {
+    "message": "Notification Center",
+    "description": "通知中心标题"
+  },
+  "clearAll": {
+    "message": "Clear",
+    "description": "清除所有按钮"
+  },
+  "noNotifications": {
+    "message": "No notifications",
+    "description": "无通知提示"
+  },  "openNewTab": {
+    "message": "Open New Tab",
+    "description": "打开新标签页按钮"
+  },
+  "developerOptions": {
+    "message": "Developer Options",
+    "description": "开发者选项标题"
+  },
+  "inDevelopment": {
+    "message": "In Development...",
+    "description": "开发中提示"
+  },
+  "clearAllTooltip": {
+    "message": "Clear all notifications",
+    "description": "清除所有通知按钮提示"
+  },
+  "deleteNotification": {
+    "message": "Delete this notification",
+    "description": "删除通知按钮提示"
+  },
+  "markAsRead": {
+    "message": "Mark as read",
+    "description": "标记为已读提示"
+  },
+  "notificationType": {
+    "message": "Notification Type",
+    "description": "通知类型标签"
+  },
+  "info": {
+    "message": "Info",
+    "description": "信息类型"
+  },
+  "success": {
+    "message": "Success",
+    "description": "成功类型"
+  },
+  "warning": {
+    "message": "Warning",
+    "description": "警告类型"
+  },
+  "error": {
+    "message": "Error",
+    "description": "错误类型"
+  },
+  "justNow": {
+    "message": "Just now",
+    "description": "刚刚时间显示"
+  },
+  "minutesAgo": {
+    "message": "{0} minutes ago",
+    "description": "几分钟前时间显示"
+  },
+  "hoursAgo": {
+    "message": "{0} hours ago",
+    "description": "几小时前时间显示"
   },
   "loading": {
     "message": "Loading...",

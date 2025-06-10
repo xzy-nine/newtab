@@ -48,9 +48,7 @@ export const Notification = {
       duration: duration,
       autoClose: true
     };
-  },
-
-  /**
+  },  /**
    * 显示通知
    * @param {Object} options 通知选项
    * @param {string} options.title 通知标题
@@ -59,16 +57,31 @@ export const Notification = {
    * @param {number} options.duration 显示持续时间(毫秒)，null表示使用默认时间(普通通知3秒，错误通知8秒)，0表示不自动关闭
    * @param {Array} options.buttons 按钮配置: [{text, class, callback}]
    * @param {Function} options.onClose 关闭回调函数
+   * @param {boolean} options.sendToPopup 是否同时发送到弹出页面(默认true)
+   * @param {boolean} options.forceLocal 强制只显示本地通知，不发送到弹出页面
    * @returns {Object} 通知控制对象: {close, getElement}
-   */  notify: (options) => {
+   */  
+  notify: (options) => {
     const { 
       title = '', 
       message = '', 
       type = 'info', 
       duration = null, 
       buttons = null, 
-      onClose = null 
+      onClose = null,
+      sendToPopup = true,
+      forceLocal = false
     } = options;
+
+    // 智能判断是否发送到弹出页面
+    const shouldSendToPopup = sendToPopup && 
+                              !forceLocal && 
+                              type !== 'loading' && 
+                              Notification.isExtensionEnvironment();
+
+    if (shouldSendToPopup) {
+      Notification.sendToPopup({ title, message, type });
+    }
 
     // 获取通知配置
     const config = Notification.getNotificationConfig(type);
@@ -408,9 +421,88 @@ export const Notification = {
       loadingMessage.textContent = message;
       loadingMessage.style.color = '#e53935';
     }
-    
-    if (progressBar) progressBar.style.backgroundColor = '#e53935';
+      if (progressBar) progressBar.style.backgroundColor = '#e53935';
     
     setTimeout(() => Notification.hideLoadingIndicator(true), 5000);
+  },
+  /**
+   * 发送通知到扩展弹出页面
+   * @param {Object} notification 通知对象
+   */
+  sendToPopup: async (notification) => {
+    try {
+      // 检查是否为扩展环境
+      if (Notification.isExtensionEnvironment()) {
+        // 发送消息到background script
+        await chrome.runtime.sendMessage({
+          action: 'addPopupNotification',
+          notification: notification
+        });
+      }
+    } catch (error) {
+      console.log('发送通知到弹出页面失败:', error);
+    }
+  },
+
+  /**
+   * 检查是否为扩展环境
+   * @returns {boolean} 是否为扩展环境
+   */
+  isExtensionEnvironment: () => {
+    try {
+      return typeof chrome !== 'undefined' && 
+             chrome.runtime && 
+             chrome.runtime.sendMessage &&
+             chrome.runtime.getURL;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  /**
+   * 检查当前是否为新标签页
+   * @returns {boolean} 是否为新标签页
+   */
+  isNewTabPage: () => {
+    try {
+      // 检查URL或页面特征来判断是否为新标签页
+      return window.location.pathname.includes('newtab.html') || 
+             window.location.protocol === 'chrome-extension:';
+    } catch (error) {
+      return false;
+    }
+  },
+
+  /**
+   * 简化的通知API，专为弹出页面设计
+   */
+  popup: {
+    /**
+     * 显示信息通知
+     */
+    info: (title, message) => Notification.notify({
+      title, message, type: 'info', forceLocal: true
+    }),
+
+    /**
+     * 显示成功通知
+     */
+    success: (title, message) => Notification.notify({
+      title, message, type: 'success', forceLocal: true
+    }),
+
+    /**
+     * 显示警告通知
+     */
+    warning: (title, message) => Notification.notify({
+      title, message, type: 'warning', forceLocal: true
+    }),
+
+    /**
+     * 显示错误通知
+     */
+    error: (title, message) => Notification.notify({
+      title, message, type: 'error', forceLocal: true
+    })
   }
 };

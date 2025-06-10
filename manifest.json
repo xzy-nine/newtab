@@ -12,6 +12,15 @@
   "background": {
     "service_worker": "html/js/background.js",
     "type": "module"
+  },  "action": {
+    "default_popup": "html/popup.html",
+    "default_title": "__MSG_extensionTitle__",
+    "default_icon": {
+      "16": "/favicon.png",
+      "32": "/favicon.png",
+      "48": "/favicon.png",
+      "128": "/favicon.png"
+    }
   },
   "chrome_url_overrides": {
     "newtab": "html/newtab.html"

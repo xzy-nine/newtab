@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新标签页扩展</title>
+    <link rel="stylesheet" href="../css/popup.css">
+</head>
+<body>
+    <div class="popup-container">        <!-- 标签页导航 -->
+        <div class="popup-tabs">
+            <button class="popup-tab-btn active" data-tab="notifications">
+                <span class="tab-emoji">🔔</span>
+                <span class="tab-label" data-i18n="notifications">通知</span>
+                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+            </button>
+            <button class="popup-tab-btn" data-tab="developer">
+                <span class="tab-emoji">⚙️</span>
+                <span class="tab-label" data-i18n="developer">开发者</span>
+            </button>
+        </div>
+
+        <!-- 标签页内容 -->
+        <div class="popup-content">            <!-- 通知标签页 -->
+            <div class="popup-tab-content active" id="notifications">
+                <div class="notification-header">
+                    <h3 data-i18n="notificationCenter">通知中心</h3>
+                    <div class="notification-controls">
+                        <div class="filter-dropdown">
+                            <button class="filter-btn" id="filterBtn">
+                                <span>🔍</span>
+                            </button>
+                            <div class="filter-menu" id="filterMenu">
+                                <button class="filter-option active" data-filter="all">全部</button>
+                                <button class="filter-option" data-filter="unread">未读</button>
+                                <button class="filter-option" data-filter="info">信息</button>
+                                <button class="filter-option" data-filter="success">成功</button>
+                                <button class="filter-option" data-filter="warning">警告</button>
+                                <button class="filter-option" data-filter="error">错误</button>
+                            </div>
+                        </div>
+                        <button id="clearAllNotifications" class="clear-btn" data-i18n-title="clearAllTooltip" data-i18n="clearAll" title="清除所有通知">清除</button>
+                    </div>
+                </div>
+                <div class="notification-list" id="notificationList">
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p data-i18n="noNotifications">暂无通知</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 开发者选项标签页 -->
+            <div class="popup-tab-content" id="developer">
+                <div class="developer-header">
+                    <h3 data-i18n="developerOptions">开发者选项</h3>
+                </div>
+                <div class="developer-content">
+                    <div class="empty-state">
+                        <div class="empty-icon">🚧</div>
+                        <p data-i18n="inDevelopment">开发中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>        <!-- 底部操作栏 -->
+        <div class="popup-footer">
+            <button id="openNewTab" class="footer-btn">
+                <span>🏠</span>
+                <span data-i18n="openNewTab">打开新标签页</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="js/popup.js" type="module"></script>
+</body>
+</html>
