@@ -3,6 +3,8 @@
  * 提供扩展页面访问功能，并显示通知
  */
 
+import { Notification } from './modules/notification.js';
+
 // 当扩展安装或更新时运行
 chrome.runtime.onInstalled.addListener(() => {
   console.log('新标签页扩展已安装或更新');
@@ -47,16 +49,19 @@ function setupExtensionPage() {
  * 打开新标签页并显示通知
  */
 function openNewTabWithNotification() {
-  // 获取扩展页面URL
   const extensionPageUrl = chrome.runtime.getURL('html/newtab.html');
   
-  // 直接打开新标签页
   chrome.tabs.create({
     url: 'html/newtab.html'
   }, tab => {
-    // 创建通知消息
     setTimeout(() => {
-      // 给页面一些加载时间，然后发送消息显示通知
+      // 使用后台通知API发送安装成功通知
+      Notification.background.success(
+        '扩展安装成功', 
+        '新标签页扩展已成功安装并可以使用了！',
+        { showInBadge: true }
+      );
+      
       chrome.tabs.sendMessage(tab.id, { 
         action: 'showMobileInstruction',
         extensionUrl: extensionPageUrl
@@ -114,7 +119,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 /**
- * 添加通知到弹出页面
+ * 添加通知到弹出页面 - 改进错误处理
  * @param {Object} notification 通知对象
  */
 async function addPopupNotification(notification) {
@@ -126,20 +131,18 @@ async function addPopupNotification(notification) {
       id: Date.now().toString(),
       timestamp: Date.now(),
       read: false,
-      showInBadge: notification.showInBadge !== false, // 默认显示在徽标中，除非明确设置为false
+      showInBadge: notification.showInBadge !== false,
       ...notification
     };
     
     notifications.unshift(newNotification);
     
-    // 限制通知数量，只保留最新的50条
     if (notifications.length > 50) {
       notifications.splice(50);
     }
     
     await chrome.storage.local.set({ popupNotifications: notifications });
     
-    // 更新徽标 - 只计算需要显示在徽标中的未读通知
     const unreadBadgeCount = notifications.filter(n => !n.read && n.showInBadge !== false).length;
     if (unreadBadgeCount > 0) {
       chrome.action.setBadgeText({
@@ -152,5 +155,36 @@ async function addPopupNotification(notification) {
     
   } catch (error) {
     console.error('添加弹出页面通知失败:', error);
+    
+    // 使用通知系统记录错误
+    Notification.background.error(
+      '通知系统错误',
+      `无法保存通知: ${error.message}`,
+      { showInBadge: false }
+    );
   }
 }
+
+// 错误处理 - 监听未捕获的错误
+chrome.runtime.onSuspend.addListener(() => {
+  console.log('Service Worker 即将暂停');
+});
+
+// 监听扩展错误
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'install') {
+    console.log('新标签页扩展首次安装');
+  } else if (details.reason === 'update') {
+    console.log('新标签页扩展已更新到版本:', chrome.runtime.getManifest().version);
+    
+    // 发送更新通知
+    Notification.background.info(
+      '扩展已更新',
+      `新标签页扩展已更新到版本 ${chrome.runtime.getManifest().version}`,
+      { showInBadge: true }
+    );
+  }
+  
+  setupExtensionPage();
+  openNewTabWithNotification();
+});
