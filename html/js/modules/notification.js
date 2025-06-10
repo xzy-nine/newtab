@@ -9,8 +9,67 @@ import { Utils } from './utils.js';
 /**
  * 通知系统命名空间
  */
-export const Notification = {  /**
-   * 显示通知
+export const Notification = {
+  /**
+   * 检查是否为 Service Worker 环境
+   * @returns {boolean} 是否为 Service Worker 环境
+   */
+  isServiceWorker: () => {
+    return typeof window === 'undefined' && typeof document === 'undefined' && typeof importScripts === 'function';
+  },
+
+  /**
+   * 检查是否有 DOM 环境
+   * @returns {boolean} 是否有 DOM 环境
+   */
+  hasDOMEnvironment: () => {
+    return typeof window !== 'undefined' && typeof document !== 'undefined';
+  },
+
+  /**
+   * 获取通知配置
+   * @param {string} type - 通知类型
+   * @returns {Object} 通知配置
+   */
+  getNotificationConfig: (type) => {
+    // 错误通知始终使用固定配置，不受设置控制
+    if (type === 'error') {
+      // 在 Service Worker 中使用默认值
+      const errorDuration = Notification.hasDOMEnvironment() ? 
+        parseInt(localStorage.getItem('notification-duration-error') || '8000') : 8000;
+      return {
+        duration: errorDuration,
+        autoClose: true
+      };
+    }
+    
+    // 加载通知始终不自动关闭
+    if (type === 'loading') {
+      return {
+        duration: 0,
+        autoClose: false
+      };
+    }
+    
+    // 从设置中获取其他类型通知的配置
+    const defaultDurations = {
+      'info': 3000,
+      'success': 2000,
+      'warning': 5000
+    };
+    
+    const duration = Notification.hasDOMEnvironment() ? 
+      parseInt(localStorage.getItem(`notification-duration-${type}`) || defaultDurations[type] || 3000) :
+      defaultDurations[type] || 3000;
+    
+    return {
+      duration: duration,
+      autoClose: true
+    };
+  },
+
+  /**
+   * 显示通知 - 支持 Service Worker 环境
    * @param {Object} options 通知选项
    * @param {string} options.title 通知标题
    * @param {string} options.message 通知消息
@@ -18,30 +77,74 @@ export const Notification = {  /**
    * @param {number} options.duration 显示持续时间(毫秒)，null表示使用默认时间(普通通知3秒，错误通知8秒)，0表示不自动关闭
    * @param {Array} options.buttons 按钮配置: [{text, class, callback}]
    * @param {Function} options.onClose 关闭回调函数
+   * @param {boolean} options.sendToPopup 是否同时发送到弹出页面(默认true)
+   * @param {boolean} options.forceLocal 强制只显示本地通知，不发送到弹出页面
+   * @param {boolean} options.showInBadge 是否在徽标中显示未读状态(默认true，但新标签页通知为false)
    * @returns {Object} 通知控制对象: {close, getElement}
-   */notify: (options) => {
+   */  
+  notify: (options) => {
     const { 
       title = '', 
       message = '', 
       type = 'info', 
       duration = null, 
       buttons = null, 
-      onClose = null 
+      onClose = null,
+      sendToPopup = true,
+      forceLocal = false,
+      showInBadge = null
     } = options;
 
+    // 在 Service Worker 环境中，只处理消息发送
+    if (Notification.isServiceWorker()) {
+      if (sendToPopup && !forceLocal) {
+        const shouldShowInBadge = showInBadge !== null ? showInBadge : true;
+        Notification.sendToPopup({ 
+          title, 
+          message, 
+          type,
+          showInBadge: shouldShowInBadge
+        });
+      }
+      
+      // 返回一个简化的控制对象
+      return { 
+        close: () => console.log('通知关闭（Service Worker环境）'),
+        getElement: () => null 
+      };
+    }
+
+    // 原有的 DOM 环境逻辑
+    if (!Notification.hasDOMEnvironment()) {
+      console.warn('通知模块需要 DOM 环境');
+      return { close: () => {}, getElement: () => null };
+    }
+
+    // 智能判断是否发送到弹出页面
+    const shouldSendToPopup = sendToPopup && 
+                              !forceLocal && 
+                              type !== 'loading' && 
+                              Notification.isExtensionEnvironment();
+
+    // 智能判断是否在徽标中显示
+    const shouldShowInBadge = showInBadge !== null ? showInBadge : !Notification.isNewTabPage();
+
+    if (shouldSendToPopup) {
+      Notification.sendToPopup({ 
+        title, 
+        message, 
+        type,
+        showInBadge: shouldShowInBadge
+      });
+    }
+
+    // 获取通知配置
+    const config = Notification.getNotificationConfig(type);
+    
     // 智能设置持续时间
     let finalDuration = duration;
     if (finalDuration === null) {
-      if (type === 'error') {
-        // 错误通知显示更长时间（8秒）
-        finalDuration = 8000;
-      } else if (type === 'loading') {
-        // 加载通知不自动关闭
-        finalDuration = 0;
-      } else {
-        // 普通通知最多3秒
-        finalDuration = 3000;
-      }
+      finalDuration = config.duration;
     }
 
     const notification = Utils.createElement('div', `notification notification-${type}`);
@@ -55,7 +158,6 @@ export const Notification = {  /**
         ).join('') + '</div>';
     }
     
-    // 添加复制按钮，但不为加载类型通知添加
     const copyButtonHtml = type !== 'loading' ? 
       '<button class="notification-copy" title="' + I18n.getMessage('copyToClipboard', '复制内容') + '">' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
@@ -137,7 +239,8 @@ export const Notification = {  /**
         });
       }
     }
-      if (buttons?.length) {
+
+    if (buttons?.length) {
       buttons.forEach((btn, index) => {
         const btnElement = notification.querySelector(`[data-button-index="${index}"]`);
         if (btnElement && typeof btn.callback === 'function') {
@@ -173,6 +276,8 @@ export const Notification = {  /**
     visibleLimit: 3, // 最大同时显示数量
     
     add: (notification, duration, closeCallback, visibilityCallback) => {
+      if (!Notification.hasDOMEnvironment()) return;
+      
       const notificationItem = {
         element: notification,
         duration,
@@ -183,7 +288,10 @@ export const Notification = {  /**
       Notification.notificationManager.notifications.push(notificationItem);
       Notification.notificationManager.updateVisibility();
     },
-      updateVisibility: () => {
+
+    updateVisibility: () => {
+      if (!Notification.hasDOMEnvironment()) return;
+      
       const notifications = Notification.notificationManager.notifications;
       
       // 更新所有通知的可见状态
@@ -204,6 +312,8 @@ export const Notification = {  /**
     },
     
     remove: (notification) => {
+      if (!Notification.hasDOMEnvironment()) return;
+      
       const index = Notification.notificationManager.notifications.findIndex(
         item => item.element === notification
       );
@@ -214,7 +324,10 @@ export const Notification = {  /**
       }
     }
   },
+
   adjustNotificationPositions: () => {
+    if (!Notification.hasDOMEnvironment()) return;
+    
     const notifications = document.querySelectorAll('.notification');
     notifications.forEach((notification, index) => {
       // 清除所有偏移类
@@ -232,7 +345,11 @@ export const Notification = {  /**
   },
   // 加载指示器相关方法
   showLoadingIndicator: (loadingText = null, containerId = null) => {
-    // 如果没有提供loadingText，使用I18n获取
+    if (!Notification.hasDOMEnvironment()) {
+      console.log('加载指示器仅在DOM环境中可用');
+      return null;
+    }
+
     const displayText = loadingText || I18n.getMessage('loading', '加载中');
     
     // 移除原有的全屏加载逻辑
@@ -279,6 +396,8 @@ export const Notification = {  /**
     const MIN_DISPLAY_TIME = 500; // 最低显示时间为500毫秒(0.5秒)
 
     return (percent, message) => {
+      if (!Notification.hasDOMEnvironment()) return;
+      
       const loadingNotification = document.querySelector('.notification.loading-notification');
       if (!loadingNotification) return;
       
@@ -336,6 +455,8 @@ export const Notification = {  /**
   })(),
 
   hideLoadingIndicator: (force = false) => {
+    if (!Notification.hasDOMEnvironment()) return;
+    
     const loadingNotification = document.querySelector('.notification.loading-notification');
     if (!loadingNotification) return;
     
@@ -363,6 +484,8 @@ export const Notification = {  /**
   },
 
   showErrorMessage: message => {
+    if (!Notification.hasDOMEnvironment()) return;
+    
     const loadingNotification = document.querySelector('.notification.loading-notification');
     if (!loadingNotification) return;
     
@@ -373,9 +496,118 @@ export const Notification = {  /**
       loadingMessage.textContent = message;
       loadingMessage.style.color = '#e53935';
     }
-    
     if (progressBar) progressBar.style.backgroundColor = '#e53935';
     
     setTimeout(() => Notification.hideLoadingIndicator(true), 5000);
+  },
+
+  /**
+   * 发送通知到扩展弹出页面 - 改进的错误处理
+   * @param {Object} notification 通知对象
+   */
+  sendToPopup: async (notification) => {
+    try {
+      // 检查是否为扩展环境
+      if (Notification.isExtensionEnvironment() || Notification.isServiceWorker()) {
+        // 发送消息到background script
+        const response = await chrome.runtime.sendMessage({
+          action: 'addPopupNotification',
+          notification: notification
+        });
+        
+        if (!response?.success) {
+          console.warn('发送通知到弹出页面失败');
+        }
+      }
+    } catch (error) {
+      console.log('发送通知到弹出页面失败:', error);
+    }
+  },
+
+  /**
+   * 检查是否为扩展环境 - 改进的检测
+   * @returns {boolean} 是否为扩展环境
+   */
+  isExtensionEnvironment: () => {
+    try {
+      return typeof chrome !== 'undefined' && 
+             chrome.runtime && 
+             chrome.runtime.sendMessage;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  /**
+   * 检查当前是否为新标签页
+   * @returns {boolean} 是否为新标签页
+   */
+  isNewTabPage: () => {
+    try {
+      if (Notification.isServiceWorker()) return false;
+      return window.location.pathname.includes('newtab.html') || 
+             window.location.protocol === 'chrome-extension:';
+    } catch (error) {
+      return false;
+    }
+  },
+
+  /**
+   * 简化的通知API，专为后台脚本和弹出页面设计
+   */
+  background: {
+    /**
+     * 发送通知到弹出页面（后台专用）
+     */
+    sendNotification: (type, title, message, options = {}) => {
+      return Notification.sendToPopup({
+        type,
+        title,
+        message,
+        showInBadge: options.showInBadge !== false,
+        ...options
+      });
+    },
+
+    /**
+     * 显示信息通知
+     */
+    info: (title, message, options) => Notification.background.sendNotification('info', title, message, options),
+
+    /**
+     * 显示成功通知
+     */
+    success: (title, message, options) => Notification.background.sendNotification('success', title, message, options),
+
+    /**
+     * 显示警告通知
+     */
+    warning: (title, message, options) => Notification.background.sendNotification('warning', title, message, options),
+
+    /**
+     * 显示错误通知
+     */
+    error: (title, message, options) => Notification.background.sendNotification('error', title, message, options)
+  },
+
+  /**
+   * 简化的通知API，专为弹出页面设计
+   */
+  popup: {
+    info: (title, message) => Notification.notify({
+      title, message, type: 'info', forceLocal: true
+    }),
+
+    success: (title, message) => Notification.notify({
+      title, message, type: 'success', forceLocal: true
+    }),
+
+    warning: (title, message) => Notification.notify({
+      title, message, type: 'warning', forceLocal: true
+    }),
+
+    error: (title, message) => Notification.notify({
+      title, message, type: 'error', forceLocal: true
+    })
   }
 };
