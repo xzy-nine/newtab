@@ -48,7 +48,9 @@ export const Notification = {
       duration: duration,
       autoClose: true
     };
-  },  /**
+  },
+
+  /**
    * 显示通知
    * @param {Object} options 通知选项
    * @param {string} options.title 通知标题
@@ -59,6 +61,7 @@ export const Notification = {
    * @param {Function} options.onClose 关闭回调函数
    * @param {boolean} options.sendToPopup 是否同时发送到弹出页面(默认true)
    * @param {boolean} options.forceLocal 强制只显示本地通知，不发送到弹出页面
+   * @param {boolean} options.showInBadge 是否在徽标中显示未读状态(默认true，但新标签页通知为false)
    * @returns {Object} 通知控制对象: {close, getElement}
    */  
   notify: (options) => {
@@ -70,7 +73,8 @@ export const Notification = {
       buttons = null, 
       onClose = null,
       sendToPopup = true,
-      forceLocal = false
+      forceLocal = false,
+      showInBadge = null // 新增参数
     } = options;
 
     // 智能判断是否发送到弹出页面
@@ -79,8 +83,17 @@ export const Notification = {
                               type !== 'loading' && 
                               Notification.isExtensionEnvironment();
 
+    // 智能判断是否在徽标中显示
+    // 如果是新标签页环境，默认不在徽标中显示
+    const shouldShowInBadge = showInBadge !== null ? showInBadge : !Notification.isNewTabPage();
+
     if (shouldSendToPopup) {
-      Notification.sendToPopup({ title, message, type });
+      Notification.sendToPopup({ 
+        title, 
+        message, 
+        type,
+        showInBadge: shouldShowInBadge
+      });
     }
 
     // 获取通知配置

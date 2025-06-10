@@ -126,6 +126,7 @@ async function addPopupNotification(notification) {
       id: Date.now().toString(),
       timestamp: Date.now(),
       read: false,
+      showInBadge: notification.showInBadge !== false, // 默认显示在徽标中，除非明确设置为false
       ...notification
     };
     
@@ -138,13 +139,15 @@ async function addPopupNotification(notification) {
     
     await chrome.storage.local.set({ popupNotifications: notifications });
     
-    // 更新徽标
-    const unreadCount = notifications.filter(n => !n.read).length;
-    if (unreadCount > 0) {
+    // 更新徽标 - 只计算需要显示在徽标中的未读通知
+    const unreadBadgeCount = notifications.filter(n => !n.read && n.showInBadge !== false).length;
+    if (unreadBadgeCount > 0) {
       chrome.action.setBadgeText({
-        text: unreadCount > 99 ? '99+' : unreadCount.toString()
+        text: unreadBadgeCount > 99 ? '99+' : unreadBadgeCount.toString()
       });
       chrome.action.setBadgeBackgroundColor({ color: '#dc3545' });
+    } else {
+      chrome.action.setBadgeText({ text: '' });
     }
     
   } catch (error) {
