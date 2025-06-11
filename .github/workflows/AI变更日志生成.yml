@@ -26,7 +26,7 @@ on:
         type: string
     outputs:
       ai_optimized:
-        description: "是否完成AI优化"
+        description( "是否完成AI优化"
         value: ${{ jobs.ai-changelog-generation.outputs.ai_optimized }}
 
 jobs:
@@ -94,7 +94,7 @@ jobs:
         echo "EOF" >> $GITHUB_ENV
         
         echo "✅ 获取到Release信息，ID: $RELEASE_ID"
-        echo "📋 原始变更日志长度: $(echo "$ORIGINAL_CHANGELOG" | wc -c) 字符"    
+        echo "📋 原始变更日志长度: $(echo "$ORIGINAL_.HANGELOG" | wc -c) 字符"  , 
 
     - name: 检查是否已优化
       id: check-optimization-status
@@ -159,35 +159,54 @@ jobs:
         CURRENT_TAG="${{ env.VERSION }}"
         echo "🎯 当前版本: $CURRENT_TAG"
         
-        # 获取上一个版本标签
-        LAST_TAG=$(git tag --sort=-version:refname | grep -v "^$CURRENT_TAG$" | head -1)
+        # 修复：获取上一个正确的版本标签，排除非版本格式的标签
+        LAST_TAG=$(git tag --sort=-version:refname | grep -E '^v?[0-9]+\.[0-9]+(\.[0-9]+)?.*$' | grep -v "^$CURRENT_TAG$" | head -1)
         
         if [ -z "$LAST_TAG" ]; then
           echo "📋 首次发布，获取到当前版本的所有提交记录"
-          # 修复：使用正确的Git命令获取从HEAD到指定标签的提交
-          COMMITS=$(git log HEAD --pretty=format:'%h|%s|%b' --no-merges)
-          COMMIT_RANGE="HEAD"
+          # 获取当前标签的所有提交
+          COMMITS=$(git log $CURRENT_TAG --pretty=format:'%h|%s|%b' --no-merges)
+          COMMIT_RANGE="初始版本到$CURRENT_TAG"
         else
           echo "📋 获取 $LAST_TAG 到 $CURRENT_TAG 之间的提交记录"
           COMMIT_RANGE="$LAST_TAG..$CURRENT_TAG"
           COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
         fi
         
+        # 验证提交范围是否合理
+        COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" || echo "0")
+        echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
+        
+        # 如果提交数量异常多（超过100个），可能是版本识别有问题
+        if [ $COMMIT_COUNT -gt 100 ]; then
+          echo "⚠️ 提交数量异常($COMMIT_COUNT个)，重新尝试获取最近的版本标签"
+          # 尝试获取最近的10个标签，手动筛选
+          RECENT_TAGS=$(git tag --sort=-version:refname | head -10)
+          echo "最近的标签: $RECENT_TAGS"
+          
+          # 重新尝试找到正确的上一版本
+          LAST_TAG=$(echo "$RECENT_TAGS" | grep -E '^v?[0-9]+\.[0-9]+(\.[0-9]+)?$' | grep -v "^$CURRENT_TAG$" | head -1)
+          
+          if [ -n "$LAST_TAG" ]; then
+            echo "🔄 重新计算提交范围: $LAST_TAG..$CURRENT_TAG"
+            COMMIT_RANGE="$LAST_TAG..$CURRENT_TAG"
+            COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
+            COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" || echo "0")
+            echo "✅ 重新获取到 $COMMIT_COUNT 个提交记录"
+          fi
+        fi
+        
         echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
         echo "$COMMITS" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
         
-        COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" || echo "0")
-        echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
-        
-        # 保存原始变更日志用于折叠显示 - 修复这里的逻辑
+        # 保存原始变更日志用于折叠显示
         echo "RAW_ORIGINAL_FOR_COLLAPSE<<EOF" >> $GITHUB_ENV
         if [[ -n "$ORIGINAL_CHANGELOG" && "$ORIGINAL_CHANGELOG" != "null" && "$ORIGINAL_CHANGELOG" != "" ]]; then
           echo "$ORIGINAL_CHANGELOG" >> $GITHUB_ENV
         else
           echo "## 提交记录" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          # 修复：正确处理提交记录的格式化
           if [[ -n "$COMMITS" ]]; then
             echo "$COMMITS" | while IFS='|' read -r hash message body; do
               if [[ -n "$hash" ]]; then
@@ -200,15 +219,20 @@ jobs:
         fi
         echo "EOF" >> $GITHUB_ENV
         
-        # 保存 LAST_TAG 到环境变量供后续使用
+        # 保存变量到环境变量
         echo "LAST_TAG=$LAST_TAG" >> $GITHUB_ENV
         echo "COMMIT_RANGE=$COMMIT_RANGE" >> $GITHUB_ENV
+        echo "COMMIT_COUNT=$COMMIT_COUNT" >> $GITHUB_ENV
 
     - name: 分析并生成AI变更日志
       id: generate-ai-changelog
       if: env.NEED_OPTIMIZE == 'true'
       run: |
         echo "🤖 开始生成精美的AI变更日志..."
+        
+        # 初始化AI调用状态
+        echo "DEEPSEEK_API_SUCCESS=false" >> $GITHUB_ENV
+        echo "DEEPSEEK_ERROR_MSG=" >> $GITHUB_ENV
         
         # 初始化各类别的提交数组
         declare -a FEATURE_COMMITS=()
@@ -299,6 +323,7 @@ jobs:
         # 检查API调用是否成功
         if [[ $(echo "$DEEPSEEK_RESPONSE" | jq -r 'has("choices")') == "true" ]]; then
           echo "✅ DeepSeek API调用成功"
+          echo "DEEPSEEK_API_SUCCESS=true" >> $GITHUB_ENV
           
           # 提取AI分析结果
           AI_CONTENT=$(echo "$DEEPSEEK_RESPONSE" | jq -r '.choices[0].message.content')
@@ -602,6 +627,17 @@ jobs:
           echo "| Release URL | [查看发布]($(echo "$UPDATE_RESPONSE" | jq -r '.html_url')) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
+          # AI API调用状态
+          echo "### 🤖 AI分析状态" >> $GITHUB_STEP_SUMMARY
+          echo "| 项目 | 状态 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| DeepSeek API | $(if [ "${{ env.DEEPSEEK_API_SUCCESS }}" == "true" ]; then echo "✅ 调用成功"; else echo "❌ 调用失败"; fi) |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ env.DEEPSEEK_API_SUCCESS }}" != "true" ] && [ -n "${{ env.DEEPSEEK_ERROR_MSG }}" ]; then
+            echo "| 错误信息 | ${{ env.DEEPSEEK_ERROR_MSG }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "| 生成方式 | $(if [ "${{ env.DEEPSEEK_API_SUCCESS }}" == "true" ]; then echo "🧠 AI智能生成"; else echo "📝 基础规则生成"; fi) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           # 提交统计信息
           echo "### 📊 提交统计" >> $GITHUB_STEP_SUMMARY
           echo "| 分类 | 数量 |" >> $GITHUB_STEP_SUMMARY
@@ -662,6 +698,7 @@ jobs:
           else
             echo "- **提交范围**: 从首次提交到当前版本" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "- **处理的提交数**: ${{ env.COMMIT_COUNT }} 个" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # 运行时间信息
