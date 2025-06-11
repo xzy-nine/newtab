@@ -1,0 +1,335 @@
+name: AI变更日志生成
+on:
+  workflow_dispatch:
+    inputs:
+      版本号:
+        description: '版本号（如v1.0.0）'
+        required: true
+        type: string
+      发布ID:
+        description: 'Release ID（自动发布时填写）'
+        required: false
+        type: string
+      标签:
+        description: '要优化变更日志的标签（手动优化时填写）'
+        required: false
+        type: string
+
+jobs:
+  AI变更日志生成:
+    name: AI变更日志生成
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 验证输入参数
+      id: 参数验证
+      run: |
+        if [ -n "${{ inputs.发布ID }}" ]; then
+          echo "运行模式=自动发布" >> $GITHUB_ENV
+          echo "VERSION=${{ inputs.版本号 }}" >> $GITHUB_ENV
+          echo "RELEASE_ID=${{ inputs.发布ID }}" >> $GITHUB_ENV
+          echo "🤖 自动发布模式: 版本 ${{ inputs.版本号 }}, Release ID ${{ inputs.发布ID }}"
+        elif [ -n "${{ inputs.标签 }}" ]; then
+          echo "运行模式=手动优化" >> $GITHUB_ENV
+          echo "VERSION=${{ inputs.标签 }}" >> $GITHUB_ENV
+          echo "📝 手动优化模式: 标签 ${{ inputs.标签 }}"
+        else
+          echo "❌ 必须提供发布ID或标签参数之一"
+          exit 1
+        fi
+
+    - name: 获取Release信息
+      id: 获取发布信息
+      run: |
+        if [ "${{ env.运行模式 }}" == "自动发布" ]; then
+          # 通过Release ID获取信息
+          RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${{ env.RELEASE_ID }}")
+        else
+          # 通过标签获取信息
+          RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ env.VERSION }}")
+        fi
+        
+        # 验证是否成功获取Release信息
+        if [[ $(echo "$RELEASE_INFO" | jq -r 'has("id")') != "true" ]]; then
+          echo "❌ 无法获取Release信息: $(echo "$RELEASE_INFO" | jq -r '.message // "未知错误"')"
+          exit 1
+        fi
+        
+        RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r '.id')
+        ORIGINAL_CHANGELOG=$(echo "$RELEASE_INFO" | jq -r '.body')
+        
+        echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
+        echo "ORIGINAL_CHANGELOG<<EOF" >> $GITHUB_ENV
+        echo "$ORIGINAL_CHANGELOG" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        
+        echo "✅ 获取到Release信息，ID: $RELEASE_ID"
+        echo "📋 原始变更日志长度: $(echo "$ORIGINAL_CHANGELOG" | wc -c) 字符"
+
+    - name: 检查是否已优化
+      id: 检查优化状态
+      run: |
+        if [[ "$ORIGINAL_CHANGELOG" == *"[AI生成的变更日志摘要]"* ]]; then
+          echo "⚠️ 此Release已包含AI生成的变更日志"
+          if [ "${{ env.运行模式 }}" == "手动优化" ]; then
+            echo "📝 手动模式，将重新生成AI变更日志"
+            echo "需要优化=true" >> $GITHUB_ENV
+          else
+            echo "🤖 自动模式，跳过重复优化"
+            echo "需要优化=false" >> $GITHUB_ENV
+          fi
+        else
+          echo "✅ 可以进行AI优化"
+          echo "需要优化=true" >> $GITHUB_ENV
+        fi
+
+    - name: 错峰时间检查
+      id: 错峰检查
+      if: env.需要优化 == 'true'
+      run: |
+        # 错峰时间检查函数
+        check_off_peak_time() {
+          local hour=$(date -u +%H)
+          local minute=$(date -u +%M)
+          local time_in_minutes=$((hour * 60 + minute))
+          # 错峰时段：UTC 16:30-24:30 (北京时间 00:30-08:30)
+          local start_time=$((16 * 60 + 30))
+          local end_time=$((24 * 60 + 30))
+          
+          if [ $time_in_minutes -ge $start_time ] || [ $time_in_minutes -le $((end_time - 24 * 60)) ]; then
+            return 0
+          else
+            if [ $time_in_minutes -lt $start_time ]; then
+              echo $((start_time - time_in_minutes))
+            else
+              echo $((start_time + 24 * 60 - time_in_minutes))
+            fi
+            return 1
+          fi
+        }
+        
+        MAX_WAIT_MINUTES=60
+        
+        if ! check_off_peak_time; then
+          minutes_to_wait=$?
+          if [ $minutes_to_wait -le $MAX_WAIT_MINUTES ]; then
+            echo "⏳ 距离错峰时段还有 $minutes_to_wait 分钟，开始等待..."
+            sleep $((minutes_to_wait * 60))
+            echo "✅ 已进入错峰时段"
+          else
+            echo "⚠️ 距离错峰时段超过 $MAX_WAIT_MINUTES 分钟，将直接调用API"
+          fi
+        else
+          echo "✅ 当前已在错峰时段"
+        fi
+
+    - name: 生成AI变更日志
+      id: 生成AI日志
+      if: env.需要优化 == 'true'
+      continue-on-error: true
+      run: |
+        MAX_RETRIES=3
+        MAX_TOKENS=1500
+        
+        # 生成AI变更日志的函数
+        generate_ai_changelog() {
+          local original_content="$1"
+          local ai_changelog=""
+          
+          # 检查输入内容
+          if [ -z "$original_content" ]; then
+            echo "❌ 传入的原始变更日志内容为空"
+            return 1
+          fi
+          
+          echo "📊 原始内容长度: $(echo "$original_content" | wc -c) 字符"
+          
+          # 转义原始内容以便安全地插入到JSON中
+          local json_escaped_content=$(echo "$original_content" | jq -Rs '.')
+          
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "🔄 尝试第 $i 次生成AI变更日志..."
+            
+            # 构建请求体
+            local request_body="{
+              \"model\": \"deepseek-chat\",
+              \"messages\": [
+                {
+                  \"role\": \"system\", 
+                  \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"
+                }, 
+                {
+                  \"role\": \"user\", 
+                  \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。其中功能新增只包含绝对的新功能,对每个变更都必须包含原始提交ID作为引用：${json_escaped_content:1:-1}\"
+                }
+              ],
+              \"max_tokens\": $MAX_TOKENS
+            }"
+            
+            echo "📡 正在调用DeepSeek API..."
+            
+            # 执行API调用
+            local api_response_file=$(mktemp)
+            local api_headers_file=$(mktemp)
+            
+            curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
+              -d "$request_body" \
+              -D "$api_headers_file" \
+              https://api.deepseek.com/v1/chat/completions > "$api_response_file"
+            
+            local curl_status=$?
+            
+            if [ $curl_status -ne 0 ]; then
+              echo "❌ API调用失败，错误代码: $curl_status"
+              if [ $i -eq $MAX_RETRIES ]; then
+                rm -f "$api_response_file" "$api_headers_file"
+                return $curl_status
+              fi
+              sleep 5
+              continue
+            fi
+            
+            # 检查HTTP状态码
+            local http_status=$(grep -o 'HTTP/[0-9.]* [0-9]\{3\}' "$api_headers_file" | tail -1 | awk '{print $2}')
+            
+            if [ "$http_status" != "200" ]; then
+              echo "⚠️ API返回状态码: $http_status"
+              cat "$api_response_file"
+              
+              if [ $i -eq $MAX_RETRIES ]; then
+                echo "❌ 在 $MAX_RETRIES 次尝试后API仍返回错误"
+                rm -f "$api_response_file" "$api_headers_file"
+                return 1
+              fi
+              
+              sleep 5
+              continue
+            fi
+            
+            # 解析响应
+            if [ -s "$api_response_file" ] && jq '.' "$api_response_file" > /dev/null 2>&1; then
+              ai_changelog=$(jq -r '.choices[0].message.content // empty' "$api_response_file")
+            else
+              echo "⚠️ 收到无效响应"
+              ai_changelog=""
+            fi
+            
+            # 清理临时文件
+            rm -f "$api_response_file" "$api_headers_file"
+            
+            if [ ! -z "$ai_changelog" ]; then
+              echo "✅ AI变更日志生成成功，长度: $(echo "$ai_changelog" | wc -c) 字符"
+              echo "$ai_changelog"
+              return 0
+            fi
+            
+            if [ $i -eq $MAX_RETRIES ]; then
+              echo "❌ 尝试了 $MAX_RETRIES 次后AI变更日志生成失败"
+              return 1
+            else
+              echo "⚠️ 第 $i 次尝试失败，等待5秒后重试..."
+              sleep 5
+            fi
+          done
+          
+          return 1
+        }
+        
+        # 调用生成函数
+        echo "🚀 开始生成AI变更日志..."
+        AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
+        
+        if [ $? -eq 0 ] && [ ! -z "$AI_CHANGELOG" ]; then
+          # 保存AI变更日志到环境变量
+          echo "AI_CHANGELOG<<EOF" >> $GITHUB_ENV
+          echo "$AI_CHANGELOG" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
+          echo "AI生成成功=true" >> $GITHUB_ENV
+          echo "✅ AI变更日志生成完成"
+        else
+          echo "AI生成成功=false" >> $GITHUB_ENV
+          echo "❌ AI变更日志生成失败"
+        fi
+
+    - name: 更新Release内容
+      if: env.需要优化 == 'true' && env.AI生成成功 == 'true'
+      run: |
+        echo "📝 准备更新Release内容..."
+        
+        # 构建新的Release内容
+        if [ "${{ env.运行模式 }}" == "手动优化" ]; then
+          TITLE_PREFIX="## 版本 ${{ env.VERSION }} 更新摘要"
+        else
+          TITLE_PREFIX="# 版本 ${{ env.VERSION }} 更新摘要"
+        fi
+        
+        NEW_BODY=$(cat << EOF
+${TITLE_PREFIX} [AI生成的变更日志摘要]
+
+${AI_CHANGELOG}
+
+<details>
+<summary>查看原始提交记录</summary>
+
+${ORIGINAL_CHANGELOG}
+
+</details>
+EOF
+)
+        
+        echo "🔄 正在更新Release..."
+        UPDATE_RESPONSE=$(curl -s -X PATCH \
+          -H "Authorization: token ${{ secrets.PAT }}" \
+          -H "Content-Type: application/json" \
+          -d "$(echo "$NEW_BODY" | jq -R -s '{body: .}')" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/${{ env.RELEASE_ID }}")
+        
+        # 验证更新结果
+        if [[ $(echo "$UPDATE_RESPONSE" | jq -r 'has("id")') == "true" ]]; then
+          RELEASE_URL=$(echo "$UPDATE_RESPONSE" | jq -r '.html_url')
+          echo "✅ Release更新成功"
+          echo "🌐 Release URL: $RELEASE_URL"
+          
+          # 添加到作业摘要
+          echo "## 🤖 AI变更日志优化完成" >> $GITHUB_STEP_SUMMARY
+          echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| 版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 运行模式 | ${{ env.运行模式 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release ID | \`${{ env.RELEASE_ID }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release URL | [$RELEASE_URL]($RELEASE_URL) |" >> $GITHUB_STEP_SUMMARY
+          echo "| AI内容长度 | $(echo "$AI_CHANGELOG" | wc -c) 字符 |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Release更新失败: $(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')"
+          exit 1
+        fi
+
+    - name: 输出结果摘要
+      if: always()
+      run: |
+        echo "## 📊 执行结果摘要"
+        echo "- 🏷️ 版本: ${{ env.VERSION }}"
+        echo "- 🔧 运行模式: ${{ env.运行模式 }}"
+        echo "- 📋 Release ID: ${{ env.RELEASE_ID }}"
+        
+        if [ "${{ env.需要优化 }}" == "true" ]; then
+          if [ "${{ env.AI生成成功 }}" == "true" ]; then
+            echo "- ✅ AI变更日志生成: 成功"
+            echo "- 📝 AI内容长度: $(echo "$AI_CHANGELOG" | wc -c) 字符"
+          else
+            echo "- ❌ AI变更日志生成: 失败"
+          fi
+        else
+          echo "- ⏭️ AI优化: 已跳过（不满足条件）"
+        fi

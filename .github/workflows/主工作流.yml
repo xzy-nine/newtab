@@ -1,0 +1,22 @@
+name: 主工作流
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  版本检查与构建:
+    name: 版本检查与构建
+    uses: ./.github/workflows/版本检查与构建.yml
+    secrets: inherit
+
+  发布管理:
+    name: 发布管理
+    needs: 版本检查与构建
+    if: needs.版本检查与构建.outputs.是否新版本 == 'true' && needs.版本检查与构建.outputs.标签是否存在 == 'false'
+    uses: ./.github/workflows/发布管理.yml
+    with:
+      版本号: ${{ needs.版本检查与构建.outputs.版本号 }}
+      变更日志: ${{ needs.版本检查与构建.outputs.变更日志 }}
+      构建包路径: ${{ needs.版本检查与构建.outputs.构建包路径 }}
+    secrets: inherit

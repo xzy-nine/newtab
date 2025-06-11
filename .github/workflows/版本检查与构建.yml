@@ -1,0 +1,160 @@
+name: 版本检查与构建
+on:
+  push:
+    branches:
+      - main
+  workflow_call:
+    outputs:
+      版本号:
+        description: "当前版本号"
+        value: ${{ jobs.版本检查与构建.outputs.版本号 }}
+      是否新版本:
+        description: "是否为新版本"
+        value: ${{ jobs.版本检查与构建.outputs.是否新版本 }}
+      标签是否存在:
+        description: "版本标签是否已存在"
+        value: ${{ jobs.版本检查与构建.outputs.标签是否存在 }}
+      变更日志:
+        description: "生成的变更日志"
+        value: ${{ jobs.版本检查与构建.outputs.变更日志 }}
+      构建包路径:
+        description: "构建包的路径"
+        value: ${{ jobs.版本检查与构建.outputs.构建包路径 }}
+
+jobs:
+  版本检查与构建:
+    name: 版本检查与构建
+    runs-on: ubuntu-latest
+    outputs:
+      版本号: ${{ env.VERSION }}
+      是否新版本: ${{ env.new_version }}
+      标签是否存在: ${{ env.tag_exists }}
+      变更日志: ${{ env.CHANGELOG }}
+      构建包路径: ${{ env.BUILD_PATH }}
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 从manifest.json获取版本信息
+      id: 获取版本
+      run: |
+        VERSION=$(jq -r '.version' manifest.json)
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "📋 当前版本: $VERSION"
+
+    - name: 获取最新发布版本
+      id: 获取最新发布
+      run: |
+        LATEST_VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name // "0.0.0"')
+        echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
+        echo "📋 最新发布版本: $LATEST_VERSION"
+
+    - name: 比较版本标签
+      id: 比较版本
+      run: |
+        if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then
+            echo "new_version=true" >> $GITHUB_ENV
+            echo "✅ 检测到新版本: $VERSION"
+        else
+            echo "new_version=false" >> $GITHUB_ENV
+            echo "ℹ️ 版本未更新，当前版本: $VERSION，最新版本: $LATEST_VERSION"
+        fi
+
+    - name: 检查标签是否存在
+      id: 检查标签
+      run: |
+        if git rev-parse "refs/tags/${{ env.VERSION }}" >/dev/null 2>&1; then
+          echo "tag_exists=true" >> $GITHUB_ENV
+          echo "⚠️ 标签 ${{ env.VERSION }} 已存在"
+        else
+          echo "tag_exists=false" >> $GITHUB_ENV
+          echo "✅ 标签 ${{ env.VERSION }} 不存在，可以创建"
+        fi
+
+    - name: 生成变更日志
+      id: 生成变更日志
+      if: env.new_version == 'true' && env.tag_exists == 'false'
+      run: |
+        echo "📝 开始生成变更日志..."
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        
+        if [ -z "$LAST_TAG" ]; then
+          echo "📋 首次发布，获取所有提交记录"
+          CHANGELOG=$(git log --pretty=format:"%h - %s")
+        else
+          echo "📋 获取自 $LAST_TAG 以来的提交记录"
+          CHANGELOG=$(git log --pretty=format:"%h - %s" $LAST_TAG..HEAD)
+        fi
+        
+        if [ -z "$CHANGELOG" ]; then
+          CHANGELOG="没有新的变更记录"
+        fi
+        
+        # 格式化变更日志
+        CHANGELOG=$(echo "$CHANGELOG" | sed 's/ \([0-9a-f]\{7\} - \)/\n\1/g' | sed 's/\(fix\|add\|style\|update\)/\n\1/g')
+        CHANGELOG=$(echo "$CHANGELOG" | jq -R -s '.')
+        echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
+        echo "✅ 变更日志生成完成"
+
+    - name: 创建构建包
+      id: 创建构建包
+      if: env.new_version == 'true' && env.tag_exists == 'false'
+      run: |
+        echo "📦 开始创建构建包..."
+        
+        # 创建构建目录
+        mkdir -p build
+        
+        # 创建zip包，排除不需要的文件
+        zip -r "newtab-${{ env.VERSION }}.zip" . \
+          -x ".*" \
+          -x "*/.*" \
+          -x "build/*" \
+          -x "README.md" \
+          -x ".github/*" \
+          -x "doc/*" \
+          -x "examples/*" \
+          -x "*.log" \
+          -x "node_modules/*"
+        
+        # 移动到构建目录
+        mv "newtab-${{ env.VERSION }}.zip" "build/"
+        
+        # 设置构建包路径
+        BUILD_PATH="build/newtab-${{ env.VERSION }}.zip"
+        echo "BUILD_PATH=$BUILD_PATH" >> $GITHUB_ENV
+        
+        # 验证文件
+        if [ -f "$BUILD_PATH" ]; then
+          FILE_SIZE=$(ls -lh "$BUILD_PATH" | awk '{print $5}')
+          echo "✅ 构建包创建成功: $BUILD_PATH (大小: $FILE_SIZE)"
+        else
+          echo "❌ 构建包创建失败"
+          exit 1
+        fi
+
+    - name: 上传构建包为工件
+      if: env.new_version == 'true' && env.tag_exists == 'false'
+      uses: actions/upload-artifact@v4
+      with:
+        name: newtab-构建包-${{ env.VERSION }}
+        path: build/newtab-${{ env.VERSION }}.zip
+        retention-days: 30
+
+    - name: 输出构建结果
+      run: |
+        echo "## 🔍 构建结果摘要" >> $GITHUB_STEP_SUMMARY
+        echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
+        echo "| 当前版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| 最新发布版本 | \`${{ env.LATEST_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| 是否新版本 | ${{ env.new_version == 'true' && '✅ 是' || '❌ 否' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 标签是否存在 | ${{ env.tag_exists == 'true' && '⚠️ 已存在' || '✅ 不存在' }} |" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ env.new_version }}" == "true" ] && [ "${{ env.tag_exists }}" == "false" ]; then
+          echo "| 构建包 | ✅ 已创建 |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| 构建包 | ❌ 未创建（不满足条件） |" >> $GITHUB_STEP_SUMMARY
+        fi

@@ -1,0 +1,189 @@
+name: 发布管理
+on:
+  workflow_run:
+    workflows: ["版本检查与构建"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_call:
+    inputs:
+      版本号:
+        description: "版本号"
+        required: true
+        type: string
+      变更日志:
+        description: "变更日志内容"
+        required: true
+        type: string
+      构建包路径:
+        description: "构建包路径"
+        required: true
+        type: string
+    outputs:
+      发布ID:
+        description: "创建的Release ID"
+        value: ${{ jobs.发布管理.outputs.发布ID }}
+      发布URL:
+        description: "Release页面URL"
+        value: ${{ jobs.发布管理.outputs.发布URL }}
+
+jobs:
+  发布管理:
+    name: 发布管理
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_call'
+    outputs:
+      发布ID: ${{ steps.创建发布.outputs.id }}
+      发布URL: ${{ steps.创建发布.outputs.html_url }}
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 获取构建工件信息
+      if: github.event_name == 'workflow_run'
+      id: 获取工件信息
+      run: |
+        # 从触发的工作流获取版本信息
+        echo "获取构建工作流的输出信息..."
+        
+        # 通过API获取工作流运行的工件
+        ARTIFACTS_URL="https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/artifacts"
+        ARTIFACTS_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$ARTIFACTS_URL")
+        
+        # 查找构建包工件
+        ARTIFACT_NAME=$(echo "$ARTIFACTS_RESPONSE" | jq -r '.artifacts[] | select(.name | contains("newtab-构建包")) | .name' | head -1)
+        if [ -z "$ARTIFACT_NAME" ]; then
+          echo "❌ 未找到构建包工件"
+          exit 1
+        fi
+        
+        # 从工件名称提取版本号
+        VERSION=$(echo "$ARTIFACT_NAME" | sed 's/newtab-构建包-//')
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+        echo "✅ 找到构建包工件: $ARTIFACT_NAME，版本: $VERSION"
+
+    - name: 设置输入参数
+      if: github.event_name == 'workflow_call'
+      run: |
+        echo "VERSION=${{ inputs.版本号 }}" >> $GITHUB_ENV
+        echo "✅ 使用工作流调用参数，版本: ${{ inputs.版本号 }}"
+
+    - name: 下载构建包工件
+      if: github.event_name == 'workflow_run'
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: build/
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        run-id: ${{ github.event.workflow_run.id }}
+
+    - name: 生成发布变更日志
+      id: 生成发布变更日志
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_call" ]; then
+          # 使用传入的变更日志
+          CHANGELOG='${{ inputs.变更日志 }}'
+        else
+          # 重新生成变更日志
+          echo "📝 重新生成变更日志..."
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LAST_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"%h - %s")
+          else
+            CHANGELOG=$(git log --pretty=format:"%h - %s" $LAST_TAG..HEAD)
+          fi
+          
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="没有新的变更记录"
+          fi
+          
+          # 格式化变更日志
+          CHANGELOG=$(echo "$CHANGELOG" | sed 's/ \([0-9a-f]\{7\} - \)/\n\1/g' | sed 's/\(fix\|add\|style\|update\)/\n\1/g')
+          CHANGELOG=$(echo "$CHANGELOG" | jq -R -s '.')
+        fi
+        
+        echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
+        echo "✅ 发布变更日志准备完成"
+
+    - name: 验证构建包
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_call" ]; then
+          BUILD_FILE="${{ inputs.构建包路径 }}"
+        else
+          BUILD_FILE="build/newtab-${{ env.VERSION }}.zip"
+        fi
+        
+        if [ -f "$BUILD_FILE" ]; then
+          FILE_SIZE=$(ls -lh "$BUILD_FILE" | awk '{print $5}')
+          echo "✅ 构建包验证成功: $BUILD_FILE (大小: $FILE_SIZE)"
+          echo "BUILD_FILE=$BUILD_FILE" >> $GITHUB_ENV
+        else
+          echo "❌ 构建包不存在: $BUILD_FILE"
+          echo "📁 当前目录内容:"
+          find . -name "*.zip" -type f
+          exit 1
+        fi
+
+    - name: 创建Release
+      id: 创建发布
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.VERSION }}
+        name: "发布 ${{ env.VERSION }}"
+        body: ${{ fromJson(env.CHANGELOG) }}
+        files: ${{ env.BUILD_FILE }}
+        draft: false
+        prerelease: false
+        generate_release_notes: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+
+    - name: 验证发布结果
+      run: |
+        if [ -n "${{ steps.创建发布.outputs.id }}" ]; then
+          echo "✅ Release创建成功"
+          echo "🔗 Release ID: ${{ steps.创建发布.outputs.id }}"
+          echo "🌐 Release URL: ${{ steps.创建发布.outputs.html_url }}"
+          
+          # 添加到作业摘要
+          echo "## 🎉 发布成功" >> $GITHUB_STEP_SUMMARY
+          echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| 版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release ID | \`${{ steps.创建发布.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release URL | [${{ steps.创建发布.outputs.html_url }}](${{ steps.创建发布.outputs.html_url }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| 构建包 | \`${{ env.BUILD_FILE }}\` |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Release创建失败"
+          exit 1
+        fi
+
+    - name: 触发AI变更日志生成
+      if: success()
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const { owner, repo } = context.repo;
+          
+          try {
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: 'AI变更日志生成.yml',
+              ref: 'main',
+              inputs: {
+                '版本号': '${{ env.VERSION }}',
+                '发布ID': '${{ steps.创建发布.outputs.id }}'
+              }
+            });
+            console.log('✅ 已触发AI变更日志生成工作流');
+          } catch (error) {
+            console.log('⚠️ 触发AI变更日志生成工作流失败:', error.message);
+          }
