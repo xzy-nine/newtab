@@ -57,7 +57,7 @@ jobs:
           echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
           echo "RELEASE_ID=${{ inputs.release-id }}" >> $GITHUB_ENV
           echo "🤖 自动发布模式: 版本 ${{ inputs.version }}, Release ID ${{ inputs.release-id }}"
-        elif [ -n "${{ inputs.tag }}" ]; then
+        elif [ -n "${{ i(puts.tag }}" ]; then
           echo "RUN_MODE=manual_optimize" >> $GITHUB_ENV
           echo "VERSION=${{ inputs.tag }}" >> $GITHUB_ENV
           echo "📝 手动优化模式: 标签 ${{ inputs.tag }}"
@@ -349,6 +349,7 @@ jobs:
         # 初始化AI调用状态
         echo "DEEPSEEK_API_SUCCESS=false" >> $GITHUB_ENV
         echo "DEEPSEEK_ERROR_MSG=" >> $GITHUB_ENV
+        echo "DEEPSEEK_RAW_RESPONSE=" >> $GITHUB_ENV
         
         # 初始化各类别的提交数组
         declare -a FEATURE_COMMITS=()
@@ -410,42 +411,81 @@ jobs:
 
         echo "🧠 调用DeepSeek API进行智能分析和优化..."
         
+        # 转义特殊字符，防止JSON格式错误
+        ESCAPED_COMMITS=$(echo -e "$ALL_COMMITS_FOR_AI" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/$/\\n/' | tr -d '\n')
+        
         # 创建DeepSeek API请求
         cat > deepseek_request.json << EOF
         {
           "model": "deepseek-chat",
-          "messages": [
-            {
-              "role": "system",
-              "content": "你是一个专业的软件开发变更日志生成专家。请分析以下Git提交记录，对每个提交进行正确分类，并生成专业的变更日志。\n\n分类规则：\n- FEATURE: 新功能、新特性\n- FIX: Bug修复、问题解决\n- STYLE: UI/UX改进、样式调整\n- REFACTOR: 代码重构、结构优化\n- PERF: 性能优化\n- DOCS: 文档更新\n- BUILD: 构建、版本、CI/CD相关\n- OTHER: 其他类型\n\n要求：\n1. 保留原始的Git哈希值\n2. 如果初步分类不正确，请纠正\n3. 生成简洁专业的描述\n4. 按重要性排序\n5. 使用中文输出"
-            },
-            {
-              "role": "user",
-              "content": "请分析以下提交记录并生成优化的变更日志：\n\n$(echo -e "$ALL_COMMITS_FOR_AI")\n\n请按照JSON格式返回分析结果：\n{\n  \"categories\": {\n    \"FEATURE\": [{\"hash\": \"commit_hash\", \"message\": \"优化后的描述\", \"importance\": 1-5}],\n    \"FIX\": [...],\n    \"STYLE\": [...],\n    \"REFACTOR\": [...],\n    \"PERF\": [...],\n    \"DOCS\": [...],\n    \"BUILD\": [...],\n    \"OTHER\": [...]\n  },\n  \"summary\": \"版本整体改进摘要\",\n  \"highlights\": [\"主要亮点1\", \"主要亮点2\"]\n}"
+            "messages": [
+          {
+             "role": "system",
+             "content": "你是一个专业的软件开发变更日志生成专家。请分析以下Git提交记录，对每个提交进行正确分类，并生成专业的变更日志。\\n\\n分类规则：\\n- FEATURE: 新功能、新特性\\n- FIX: Bug修复、问题解决\\n- STYLE: UI/UX改进、样式调整\\n- REFACTOR: 代码重构、结构优化\\n- PERF: 性能优化\\n- DOCS: 文档更新\\n- BUILD: 构建、版本、CI/CD相关\\n- OTHER: 其他类型\\n\\n要求：\\n1. 保留原始的Git哈希值\\n2. 如果初步分类不正确，请纠正\\n3. 生成简洁专业的描述\\n4. 按重要性排序\\n5. 使用中文输出"
+          },
+           {
+            "role": "user",
+             "content": "请分析以下提交记录并生成优化的变更日志：\\n\\n${ESCAPED_COMMITS}\\n\\n请按照JSON格式返回分析结果：\\n{\\n  \\\"categories\\\": {\\n    \\\"FEATURE\\\": [{\\\"hash\\\": \\\"commit_hash\\\", \\\"message\\\": \\\"优化后的描述\\\", \\\"importance\\\": 1-5}],\\n    \\\"FIX\\\": [...],\\n    \\\"STYLE\\\": [...],\\n    \\\"REFACTOR\\\": [...],\\n    \\\"PERF\\\": [...],\\n    \\\"DOCS\\\": [...],\\n    \\\"BUILD\\\": [...],\\n    \\\"OTHER\\\": [...]\\n  },\\n  \\\"summary\\\": \\\"版本整体改进摘要\\\",\\n  \\\"highlights\\\": [\\\"主要亮点1\\\", \\\"主要亮点2\\\"]\\n}"
             }
-          ],
-          "temperature": 0.3,
+         ],
+             "temperature": 0.3,
           "max_tokens": 4000
-        }
-        EOF
+          }
+         EOF
 
         # 调用DeepSeek API
+        echo "📡 发送API请求..."
         DEEPSEEK_RESPONSE=$(curl -s -X POST \
           -H "Content-Type: application/json" \
           -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
+          -w "\nHTTP_STATUS:%{http_code}\n" \
           "https://api.deepseek.com/v1/chat/completions" \
           -d @deepseek_request.json)
 
-        # 检查API调用是否成功
-        if [[ $(echo "$DEEPSEEK_RESPONSE" | jq -r 'has("choices")') == "true" ]]; then
+        # 分离HTTP状态码和响应内容
+        HTTP_STATUS=$(echo "$DEEPSEEK_RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+        ACTUAL_RESPONSE=$(echo "$DEEPSEEK_RESPONSE" | sed '/HTTP_STATUS:/d')
+        
+        # 保存原始响应用于调试
+        echo "DEEPSEEK_RAW_RESPONSE<<EOF" >> $GITHUB_ENV
+        echo "$ACTUAL_RESPONSE" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
+        echo "📊 API响应状态码: $HTTP_STATUS"
+        
+        # 检查HTTP状态码
+        if [[ "$HTTP_STATUS" != "200" ]]; then
+          ERROR_MSG="HTTP错误 $HTTP_STATUS: $(echo "$ACTUAL_RESPONSE" | jq -r '.error.message // .message // "未知HTTP错误"' 2>/dev/null || echo "响应解析失败")"
+          echo "❌ API调用HTTP错误: $ERROR_MSG"
+          echo "DEEPSEEK_ERROR_MSG=$ERROR_MSG" >> $GITHUB_ENV
+          
+        # 检查响应格式
+        elif [[ -z "$ACTUAL_RESPONSE" ]]; then
+          ERROR_MSG="API响应为空"
+          echo "❌ $ERROR_MSG"
+          echo "DEEPSEEK_ERROR_MSG=$ERROR_MSG" >> $GITHUB_ENV
+          
+        # 检查是否包含choices字段
+        elif [[ $(echo "$ACTUAL_RESPONSE" | jq -r 'has("choices")' 2>/dev/null) != "true" ]]; then
+          ERROR_MSG="API响应格式异常: $(echo "$ACTUAL_RESPONSE" | jq -r '.error.message // .message // "缺少choices字段"' 2>/dev/null || echo "JSON解析失败")"
+          echo "❌ $ERROR_MSG"
+          echo "DEEPSEEK_ERROR_MSG=$ERROR_MSG" >> $GITHUB_ENV
+          
+        else
           echo "✅ DeepSeek API调用成功"
           echo "DEEPSEEK_API_SUCCESS=true" >> $GITHUB_ENV
           
           # 提取AI分析结果
-          AI_CONTENT=$(echo "$DEEPSEEK_RESPONSE" | jq -r '.choices[0].message.content')
+          AI_CONTENT=$(echo "$ACTUAL_RESPONSE" | jq -r '.choices[0].message.content' 2>/dev/null)
           
+          if [[ -z "$AI_CONTENT" || "$AI_CONTENT" == "null" ]]; then
+            ERROR_MSG="AI响应内容为空"
+            echo "❌ $ERROR_MSG"
+            echo "DEEPSEEK_ERROR_MSG=$ERROR_MSG" >> $GITHUB_ENV
+            echo "DEEPSEEK_API_SUCCESS=false" >> $GITHUB_ENV
+            
           # 尝试解析JSON结果
-          if echo "$AI_CONTENT" | jq . > /dev/null 2>&1; then
+          elif echo "$AI_CONTENT" | jq . > /dev/null 2>&1; then
             echo "📊 AI智能分析完成，开始生成优化变更日志..."
             
             # 保存AI分析结果
@@ -458,14 +498,14 @@ jobs:
             # 开始生成优化后的变更日志
             AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
-             ## 📋 更新概览
-             $AI_SUMMARY"
+            ## 📋 更新概览
+            $AI_SUMMARY"
             
             # 添加主要亮点
             if [[ -n "$AI_HIGHLIGHTS" ]]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-             ### ✨ 主要亮点"
+            ### ✨ 主要亮点"
               while IFS= read -r highlight; do
                 if [[ -n "$highlight" ]]; then
                   AI_CHANGELOG="$AI_CHANGELOG
@@ -476,7 +516,7 @@ jobs:
             
             AI_CHANGELOG="$AI_CHANGELOG
 
-              ---"
+               "
             
             # 按优先级生成各个分类
             declare -a CATEGORIES=("FEATURE" "FIX" "PERF" "STYLE" "REFACTOR" "DOCS" "BUILD" "OTHER")
@@ -498,7 +538,7 @@ jobs:
               if [[ -n "$CATEGORY_COMMITS" ]]; then
                 AI_CHANGELOG="$AI_CHANGELOG
 
-             #### ${CATEGORY_TITLES[$category]}"
+            #### ${CATEGORY_TITLES[$category]}"
                 
                 # 按重要性排序并添加提交
                 echo "$AI_CONTENT" | jq -r ".categories.$category | sort_by(-.importance) | .[] | \"\\(.hash)|\\(.message)|\\(.importance)\"" | while IFS='|' read -r hash message importance; do
@@ -514,8 +554,8 @@ jobs:
                     esac
                     
                     AI_CHANGELOG="$AI_CHANGELOG
-                   - $icon **$message**  
-                     \`$hash\`"
+            - $icon **$message**  
+             \`$hash\`"
                   fi
                 done
               fi
@@ -524,43 +564,45 @@ jobs:
             echo "✅ AI优化变更日志生成完成"
             
           else
-            echo "⚠️ DeepSeek API返回格式异常，使用基础分析结果"
+            ERROR_MSG="AI返回内容不是有效的JSON格式"
+            echo "⚠️ $ERROR_MSG，使用基础分析结果"
+            echo "🔍 AI原始返回内容前100字符: $(echo "$AI_CONTENT" | head -c 100)..."
+            echo "DEEPSEEK_ERROR_MSG=$ERROR_MSG" >> $GITHUB_ENV
             
             # 生成基础变更日志
             AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
-            ## 📋 更新概览
-            基于智能分析的版本更新
+          ## 📋 更新概览
+          基于智能分析的版本更新
 
-         ---"
+            "
             
-            # 功能新增部分
+            # 使用基础分类逻辑生成变更日志
             if [ ${#FEATURE_COMMITS[@]} -gt 0 ]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-             #### 🚀 功能新增"
+          #### 🚀 功能新增"
               
               for commit in "${FEATURE_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 title=$(echo "$message" | sed 's/^feat[[:space:]]*:[[:space:]]*//' | sed 's/^feature[[:space:]]*:[[:space:]]*//' | sed 's/新增[[:space:]]*//' | sed 's/添加[[:space:]]*//')
                 AI_CHANGELOG="$AI_CHANGELOG
-              - **${title}**  
-                 \`$hash\`"
+          - **${title}**  
+          \`$hash\`"
               done
             fi
             
-            # 问题修复部分
             if [ ${#FIX_COMMITS[@]} -gt 0 ]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-             #### 🐛 问题修复"
+          #### 🐛 问题修复"
               
               for commit in "${FIX_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 title=$(echo "$message" | sed 's/^fix[[:space:]]*:[[:space:]]*//' | sed 's/^bug[[:space:]]*:[[:space:]]*//' | sed 's/修复[[:space:]]*//' | sed 's/解决[[:space:]]*//')
                 AI_CHANGELOG="$AI_CHANGELOG
-              - **${title}**  
-              \`$hash\`"
+          - **${title}**  
+          \`$hash\`"
               done
             fi
             
@@ -568,59 +610,59 @@ jobs:
             if [ ${#PERF_COMMITS[@]} -gt 0 ]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-               #### ⚡ 性能优化"
+          #### ⚡ 性能优化"
               for commit in "${PERF_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 AI_CHANGELOG="$AI_CHANGELOG
-                 - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-             \`$hash\`"
+          - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+         \`$hash\`"
               done
             fi
             
             if [ ${#STYLE_COMMITS[@]} -gt 0 ]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-             #### 💄 样式优化"
+         #### 💄 样式优化"
               for commit in "${STYLE_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 AI_CHANGELOG="$AI_CHANGELOG
-             - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-              \`$hash\`"
+          - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+           \`$hash\`"
               done
             fi
             
             if [ ${#REFACTOR_COMMITS[@]} -gt 0 ]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-            #### ♻️ 代码重构"
+          #### ♻️ 代码重构"
               for commit in "${REFACTOR_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 AI_CHANGELOG="$AI_CHANGELOG
-              - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-              \`$hash\`"
+           - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+           \`$hash\`"
               done
             fi
             
             if [ ${#DOCS_COMMITS[@]} -gt 0 ]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-            #### 📝 文档更新"
+          #### 📝 文档更新"
               for commit in "${DOCS_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 AI_CHANGELOG="$AI_CHANGELOG
-               - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-                  \`$hash\`"
+           - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+           \`$hash\`"
               done
             fi
             
             if [ ${#BUILD_COMMITS[@]} -gt 0 ]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-              #### 🏗️ 构建相关"
+          #### 🏗️ 构建相关"
               for commit in "${BUILD_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 AI_CHANGELOG="$AI_CHANGELOG
-         - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+            - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
             \`$hash\`"
               done
             fi
@@ -632,46 +674,62 @@ jobs:
               for commit in "${OTHER_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 AI_CHANGELOG="$AI_CHANGELOG
-               - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-               \`$hash\`"
+            - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+             \`$hash\`"
               done
             fi
           fi
+        fi
+        
+        # 如果API失败，使用基础逻辑作为后备方案
+        if [[ "${{ env.DEEPSEEK_API_SUCCESS }}" != "true" ]]; then
+          echo "🔄 使用基础逻辑生成变更日志..."
           
-        else
-          echo "❌ DeepSeek API调用失败，使用基础逻辑"
-          echo "错误信息: $(echo "$DEEPSEEK_RESPONSE" | jq -r '.error.message // "未知错误"')"
-          
-          # 使用原有逻辑作为后备
           AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
-                 ---"
+           ## 📋 更新概览
+           基于规则分析的版本更新
+
+            ---"
           
           # 原有的基础分析逻辑...
           if [ ${#FEATURE_COMMITS[@]} -gt 0 ]; then
             AI_CHANGELOG="$AI_CHANGELOG
 
-                   #### 🚀 功能新增"
+            #### 🚀 功能新增"
             
             for commit in "${FEATURE_COMMITS[@]}"; do
               IFS='|' read -r hash message <<< "$commit"
               title=$(echo "$message" | sed 's/^feat[[:space:]]*:[[:space:]]*//' | sed 's/^feature[[:space:]]*:[[:space:]]*//' | sed 's/新增[[:space:]]*//' | sed 's/添加[[:space:]]*//')
               AI_CHANGELOG="$AI_CHANGELOG
              - **${title}**  
-               \`$hash\`"
+             \`$hash\`"
             done
           fi
           
           if [ ${#FIX_COMMITS[@]} -gt 0 ]; then
             AI_CHANGELOG="$AI_CHANGELOG
 
-                  #### 🐛 问题修复"
+          #### 🐛 问题修复"
             
             for commit in "${FIX_COMMITS[@]}"; do
               IFS='|' read -r hash message <<< "$commit"
               title=$(echo "$message" | sed 's/^fix[[:space:]]*:[[:space:]]*//' | sed 's/^bug[[:space:]]*:[[:space:]]*//' | sed 's/修复[[:space:]]*//' | sed 's/解决[[:space:]]*//')
               AI_CHANGELOG="$AI_CHANGELOG
-             - **${title}**  
+            - **${title}**  
+           \`$hash\`"
+            done
+          fi
+          
+          # 处理其他分类...
+          if [ ${#OTHER_COMMITS[@]} -gt 0 ]; then
+            AI_CHANGELOG="$AI_CHANGELOG
+
+         #### 🔧 其他改进"
+            for commit in "${OTHER_COMMITS[@]}"; do
+              IFS='|' read -r hash message <<< "$commit"
+              AI_CHANGELOG="$AI_CHANGELOG
+          - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
               \`$hash\`"
             done
           fi
@@ -680,12 +738,12 @@ jobs:
         # 添加原始变更记录到折叠区域
         AI_CHANGELOG="$AI_CHANGELOG
 
-          <details>
-          <summary>查看原始提交记录</summary>
+             <details>
+            <summary>查看原始提交记录</summary>
 
           $RAW_ORIGINAL_FOR_COLLAPSE
 
-           </details>"
+             </details>"
         
         # 保存生成的变更日志
         echo "AI_CHANGELOG<<EOF" >> $GITHUB_ENV
@@ -743,15 +801,26 @@ jobs:
           echo "| Release URL | [查看发布]($(echo "$UPDATE_RESPONSE" | jq -r '.html_url')) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # AI API调用状态
+          # AI API调用状态 - 包含详细错误信息
           echo "### 🤖 AI分析状态" >> $GITHUB_STEP_SUMMARY
           echo "| 项目 | 状态 |" >> $GITHUB_STEP_SUMMARY
           echo "|------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| DeepSeek API | $(if [ "${{ env.DEEPSEEK_API_SUCCESS }}" == "true" ]; then echo "✅ 调用成功"; else echo "❌ 调用失败"; fi) |" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ env.DEEPSEEK_API_SUCCESS }}" != "true" ] && [ -n "${{ env.DEEPSEEK_ERROR_MSG }}" ]; then
-            echo "| 错误信息 | ${{ env.DEEPSEEK_ERROR_MSG }} |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ env.DEEPSEEK_API_SUCCESS }}" == "true" ]; then
+            echo "| DeepSeek API | ✅ 调用成功 |" >> $GITHUB_STEP_SUMMARY
+            echo "| 生成方式 | 🧠 AI智能生成 |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| DeepSeek API | ❌ 调用失败 |" >> $GITHUB_STEP_SUMMARY
+            echo "| 生成方式 | 📝 基础规则生成 |" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ env.DEEPSEEK_ERROR_MSG }}" ]; then
+              echo "| 失败原因 | ${{ env.DEEPSEEK_ERROR_MSG }} |" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            # 添加原始响应调试信息（截取前200字符）
+            if [ -n "${{ env.DEEPSEEK_RAW_RESPONSE }}" ]; then
+              RAW_PREVIEW=$(echo "${{ env.DEEPSEEK_RAW_RESPONSE }}" | head -c 200)
+              echo "| API原始响应 | \`${RAW_PREVIEW}...\` |" >> $GITHUB_STEP_SUMMARY
+            fi
           fi
-          echo "| 生成方式 | $(if [ "${{ env.DEEPSEEK_API_SUCCESS }}" == "true" ]; then echo "🧠 AI智能生成"; else echo "📝 基础规则生成"; fi) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # 提交统计信息
@@ -783,6 +852,17 @@ jobs:
             echo "| 增长率 | N/A（原始为空） |" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # AI失败时显示更多调试信息
+          if [ "${{ env.DEEPSEEK_API_SUCCESS }}" != "true" ]; then
+            echo "### 🔍 调试信息" >> $GITHUB_STEP_SUMMARY
+            echo "| 项目 | 信息 |" >> $GITHUB_STEP_SUMMARY
+            echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+            echo "| API密钥配置 | $(if [ -n "${{ secrets.DEEPSEEK_API_KEY }}" ]; then echo "✅ 已配置"; else echo "❌ 未配置"; fi) |" >> $GITHUB_STEP_SUMMARY
+            echo "| 请求数据大小 | $(wc -c < deepseek_request.json 2>/dev/null || echo "N/A") 字节 |" >> $GITHUB_STEP_SUMMARY
+            echo "| 提交数据量 | ${#ALL_COMMITS_FOR_AI} 字符 |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
           
           # 如果AI分析结果存在，显示AI分析的亮点
           if [[ -f "ai_analysis.json" ]]; then
@@ -826,24 +906,49 @@ jobs:
           # 成功状态
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "✅ **状态**: AI变更日志生成并更新成功" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ env.DEEPSEEK_API_SUCCESS }}" == "true" ]; then
+            echo "✅ **状态**: AI变更日志生成并更新成功" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **状态**: 变更日志生成并更新成功（使用基础规则，AI分析失败）" >> $GITHUB_STEP_SUMMARY
+          fi
           
         else
           echo "❌ Release变更日志更新失败"
           echo "错误信息: $(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')"
           echo "ai_optimized=false" >> $GITHUB_OUTPUT
           
-          # 失败时的摘要
+          # 失败时的详细摘要
           echo "## ❌ AI变更日志生成失败" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 错误信息" >> $GITHUB_STEP_SUMMARY
-          echo "错误详情: $(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')" >> $GITHUB_STEP_SUMMARY
+          
+          # Release更新失败的详细信息
+          echo "### 🚨 Release更新失败" >> $GITHUB_STEP_SUMMARY
+          echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| 错误信息 | $(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release ID | ${{ env.RELEASE_ID }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 版本号 | ${{ env.VERSION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 运行模式 | ${{ env.RUN_MODE }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 基本信息" >> $GITHUB_STEP_SUMMARY
-          echo "- **版本**: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Release ID**: ${{ env.RELEASE_ID }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **运行模式**: ${{ env.RUN_MODE }}" >> $GITHUB_STEP_SUMMARY
+          
+          # AI分析状态（即使Release更新失败也显示）
+          echo "### 🤖 AI分析状态" >> $GITHUB_STEP_SUMMARY
+          echo "| 项目 | 状态 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ env.DEEPSEEK_API_SUCCESS }}" == "true" ]; then
+            echo "| DeepSeek API | ✅ 调用成功 |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| DeepSeek API | ❌ 调用失败 |" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ env.DEEPSEEK_ERROR_MSG }}" ]; then
+              echo "| AI失败原因 | ${{ env.DEEPSEEK_ERROR_MSG }} |" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 执行信息
+          echo "### ⏱️ 执行信息" >> $GITHUB_STEP_SUMMARY
           echo "- **执行时间**: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **工作流**: [\`${{ github.workflow }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
           
           exit 1
         fi
