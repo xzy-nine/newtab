@@ -307,70 +307,6 @@ jobs:
           echo "📋 备选方案获取到 $COMMIT_COUNT 个提交记录"
         fi
         
-        # 如果提交数量异常多（超过100个），可能是版本识别有问题
-        if [ "$COMMIT_COUNT" -gt 100 ]; then
-          echo "⚠️ 提交数量异常($COMMIT_COUNT个)，重新尝试获取最近的版本标签"
-          # 尝试获取最近的10个标签，手动筛选
-          RECENT_TAGS=$(git tag --sort=-version:refname | head -10)
-          echo "最近的标签: $RECENT_TAGS"
-          
-          # 重新尝试找到正确的上一版本（确保是比当前版本旧的版本）
-          CURRENT_VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//')
-          CORRECT_LAST_TAG=""
-          
-          echo "$RECENT_TAGS" | while read tag; do
-            if [ "$tag" != "$CURRENT_TAG" ]; then
-              TAG_VERSION=$(echo "$tag" | sed 's/^v//')
-              COMPARE_RESULT=$(printf "%s\n%s\n" "$TAG_VERSION" "$CURRENT_VERSION" | sort -V | tail -1)
-              if [ "$COMPARE_RESULT" = "$CURRENT_VERSION" ]; then
-                CORRECT_LAST_TAG="$tag"
-                break
-              fi
-            fi
-          done
-          
-          if [ -n "$CORRECT_LAST_TAG" ]; then
-            echo "🔄 重新计算提交范围: $CORRECT_LAST_TAG..$CURRENT_TAG"
-            COMMIT_RANGE="$CORRECT_LAST_TAG..$CURRENT_TAG"
-            COMMITS=$(git log "$COMMIT_RANGE" --pretty=format:'%h|%s|%b' --no-merges)
-            COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
-            COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
-            LAST_TAG="$CORRECT_LAST_TAG"
-            echo "✅ 重新获取到 $COMMIT_COUNT 个提交记录"
-          else
-            echo "⚠️ 无法找到合适的比较版本，使用当前版本的最近提交"
-            COMMITS=$(git log "$CURRENT_TAG" --pretty=format:'%h|%s|%b' --no-merges | head -30)
-            COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
-            COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
-            COMMIT_RANGE="当前版本的最近30个提交"
-            LAST_TAG=""
-            echo "📋 获取到 $COMMIT_COUNT 个提交记录"
-          fi
-        fi
-        
-        # 最终检查
-        if [ "$COMMIT_COUNT" -eq 0 ]; then
-          echo "❌ 仍然无法获取到有效的提交记录"
-          echo "🔍 调试信息："
-          echo "  - 当前标签: $CURRENT_TAG"
-          echo "  - 上一标签: $LAST_TAG"
-          echo "  - 提交范围: $COMMIT_RANGE"
-          echo "  - Git 仓库状态："
-          git status --porcelain
-          echo "  - 最近的标签（按版本排序）："
-          git tag --sort=-version:refname | head -5
-          echo "  - 当前分支："
-          git branch --show-current
-          
-          # 作为最后的备选方案，获取最近的一些提交
-          echo "🚨 使用备选方案：获取最近的提交记录"
-          COMMITS=$(git log --oneline -n 10 --pretty=format:'%h|%s|%b')
-          COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
-          COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
-          COMMIT_RANGE="最近10个提交"
-          echo "📋 备选方案获取到 $COMMIT_COUNT 个提交记录"
-        fi
-        
         # 修复：正确设置多行环境变量
         {
           echo "COMMITS_RAW<<EOF"
@@ -901,9 +837,7 @@ jobs:
           echo "## ❌ AI变更日志生成失败" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 错误信息" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
-          echo "$(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "错误详情: $(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 基本信息" >> $GITHUB_STEP_SUMMARY
           echo "- **版本**: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
