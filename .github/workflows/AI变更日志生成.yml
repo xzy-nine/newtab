@@ -46,7 +46,7 @@ jobs:
     - name: 验证输入参数
       id: validate-params
       run: |
-        echo "🔍 验证输入参数..(")
+        echo "🔍 验证输入参数..."
         if [ "${{ github.event_name }}" == "workflow_call" ]; then
           echo "RUN_MODE=workflow_call" >> $GITHUB_ENV
           echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
@@ -94,7 +94,7 @@ jobs:
         echo "EOF" >> $GITHUB_ENV
         
         echo "✅ 获取到Release信息，ID: $RELEASE_ID"
-        echo "📋 原始变更日志长度: $(echo "$ORIGINAL_.HANGELOG" | wc -c) 字符"  , 
+        echo "📋 原始变更日志长度: $(echo "$ORIGINAL_CHANGELOG" | wc -c) 字符"
 
     - name: 检查是否已优化
       id: check-optimization-status
