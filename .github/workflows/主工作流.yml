@@ -4,6 +4,12 @@ on:
     branches:
       - main
 
+# 添加权限设置
+permissions:
+  contents: write
+  actions: read
+  packages: write
+
 jobs:
   version-check-and-build:
     name: 版本检查与构建
@@ -13,7 +19,6 @@ jobs:
   release-management:
     name: 发布管理
     needs: version-check-and-build
-    # 修改条件判断，确保字符串比较正确
     if: |
       needs.version-check-and-build.outputs.is_new_version == 'true' && 
       needs.version-check-and-build.outputs.tag_exists == 'false' &&
@@ -24,6 +29,10 @@ jobs:
       changelog: ${{ needs.version-check-and-build.outputs.changelog }}
       build-path: ${{ needs.version-check-and-build.outputs.build_path }}
     secrets: inherit
+    # 添加权限
+    permissions:
+      contents: write
+      actions: read
 
   ai-changelog-generation:
     name: AI变更日志生成

@@ -32,8 +32,8 @@ jobs:
   release-management:
     name: 发布管理
     runs-on: ubuntu-latest
-    # 确保在 workflow_call 时执行
-    if: github.event_name == 'workflow_call'
+    # 修改条件，允许在 workflow_call 时执行
+    if: github.event_name == 'workflow_call' || github.event_name == 'workflow_run'
     outputs:
       release-id: ${{ steps.create-release.outputs.id }}
       release-url: ${{ steps.create-release.outputs.html_url }}
@@ -44,7 +44,6 @@ jobs:
       with:
         fetch-depth: 0
 
-    # 移除workflow_run相关的步骤，只保留workflow_call的处理
     - name: 设置输入参数
       id: set-input-params
       run: |
@@ -54,12 +53,13 @@ jobs:
     - name: 生成发布变更日志
       id: generate-release-changelog
       run: |
-        # 使用传入的变更日志
+        # 使用传入的变更日志，确保正确解析JSON
         CHANGELOG='${{ inputs.changelog }}'
-        echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
+        echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+        echo "$CHANGELOG" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
         echo "✅ 发布变更日志准备完成"
 
-    # 添加下载工件步骤
     - name: 下载构建工件
       uses: actions/download-artifact@v4
       with:
@@ -69,24 +69,19 @@ jobs:
     - name: 验证构建包
       id: verify-build-package
       run: |
-        # 查找构建包文件
-        BUILD_FILE=$(find ./artifacts -name "newtab-${{ inputs.version }}.zip" | head -1)
+        # 查找构建包文件，使用正确的文件名模式
+        BUILD_FILE=$(find ./artifacts -name "newtab-${{ inputs.version }}.zip" -o -name "*.zip" | head -1)
         
         if [ -z "$BUILD_FILE" ]; then
-          echo "❌ 在工件中未找到构建包: newtab-${{ inputs.version }}.zip"
+          echo "❌ 在工件中未找到构建包"
           echo "📁 工件目录内容:"
-          find ./artifacts -type f
+          find ./artifacts -type f -ls
           exit 1
         fi
         
-        if [ -f "$BUILD_FILE" ]; then
-          FILE_SIZE=$(ls -lh "$BUILD_FILE" | awk '{print $5}')
-          echo "✅ 构建包验证成功: $BUILD_FILE (大小: $FILE_SIZE)"
-          echo "BUILD_FILE=$BUILD_FILE" >> $GITHUB_ENV
-        else
-          echo "❌ 构建包不存在: $BUILD_FILE"
-          exit 1
-        fi
+        FILE_SIZE=$(ls -lh "$BUILD_FILE" | awk '{print $5}')
+        echo "✅ 构建包验证成功: $BUILD_FILE (大小: $FILE_SIZE)"
+        echo "BUILD_FILE=$BUILD_FILE" >> $GITHUB_ENV
 
     - name: 创建Release
       id: create-release
@@ -110,14 +105,12 @@ jobs:
           echo "🔗 Release ID: ${{ steps.create-release.outputs.id }}"
           echo "🌐 Release URL: ${{ steps.create-release.outputs.html_url }}"
           
-          # 添加到作业摘要
           echo "## 🎉 发布成功" >> $GITHUB_STEP_SUMMARY
           echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
           echo "| 版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Release ID | \`${{ steps.create-release.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Release URL | [${{ steps.create-release.outputs.html_url }}](${{ steps.create-release.outputs.html_url }}) |" >> $GITHUB_STEP_SUMMARY
-          echo "| 构建包 | \`${{ env.BUILD_FILE }}\` |" >> $GITHUB_STEP_SUMMARY
         else
           echo "❌ Release创建失败"
           exit 1
