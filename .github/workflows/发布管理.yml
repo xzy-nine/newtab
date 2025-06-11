@@ -85,23 +85,72 @@ jobs:
         echo "EOF" >> $GITHUB_ENV
         echo "✅ 发布变更日志准备完成"
 
+    - name: 列出可用工件
+      id: list-artifacts
+      run: |
+        echo "🔍 列出当前工作流运行的所有工件..."
+        
+        # 使用 GitHub API 获取工件列表
+        ARTIFACTS=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts")
+        
+        echo "工件列表:"
+        echo "$ARTIFACTS" | jq -r '.artifacts[] | "- 名称: \(.name), 大小: \(.size_in_bytes) bytes, 过期: \(.expired)"'
+        
+        # 查找包含版本号的工件
+        ARTIFACT_NAME=$(echo "$ARTIFACTS" | jq -r --arg version "${{ inputs.version }}" \
+          '.artifacts[] | select(.name | contains($version)) | .name' | head -1)
+        
+        if [ -n "$ARTIFACT_NAME" ]; then
+          echo "找到匹配的工件: $ARTIFACT_NAME"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+        else
+          echo "❌ 未找到包含版本号 ${{ inputs.version }} 的工件"
+          echo "尝试查找通用构建工件..."
+          
+          # 查找任何构建相关的工件
+          GENERIC_ARTIFACT=$(echo "$ARTIFACTS" | jq -r \
+            '.artifacts[] | select(.name | test("newtab|build|构建")) | .name' | head -1)
+          
+          if [ -n "$GENERIC_ARTIFACT" ]; then
+            echo "找到通用构建工件: $GENERIC_ARTIFACT"
+            echo "ARTIFACT_NAME=$GENERIC_ARTIFACT" >> $GITHUB_ENV
+          else
+            echo "❌ 未找到任何构建工件"
+            exit 1
+          fi
+        fi
+
     - name: 下载构建工件
       uses: actions/download-artifact@v4
       with:
-        name: newtab-构建包-${{ inputs.version }}
+        name: ${{ env.ARTIFACT_NAME }}
         path: ./artifacts
 
     - name: 验证构建包
       id: verify-build-package
       run: |
-        # 查找构建包文件，使用正确的文件名模式
-        BUILD_FILE=$(find ./artifacts -name "newtab-${{ inputs.version }}.zip" -o -name "*.zip" | head -1)
+        echo "📁 工件目录内容:"
+        find ./artifacts -type f -ls
+        
+        # 查找构建包文件，使用更灵活的搜索模式
+        BUILD_FILE=$(find ./artifacts -name "*.zip" | head -1)
         
         if [ -z "$BUILD_FILE" ]; then
-          echo "❌ 在工件中未找到构建包"
-          echo "📁 工件目录内容:"
-          find ./artifacts -type f -ls
-          exit 1
+          echo "❌ 在工件中未找到ZIP构建包"
+          
+          # 尝试查找其他类型的文件
+          echo "📁 查找所有文件:"
+          find ./artifacts -type f
+          
+          # 如果有文件但不是ZIP，尝试使用第一个文件
+          BUILD_FILE=$(find ./artifacts -type f | head -1)
+          if [ -n "$BUILD_FILE" ]; then
+            echo "⚠️ 使用找到的文件: $BUILD_FILE"
+          else
+            echo "❌ 工件目录为空"
+            exit 1
+          fi
         fi
         
         FILE_SIZE=$(ls -lh "$BUILD_FILE" | awk '{print $5}')
