@@ -64,6 +64,7 @@ jobs:
           echo "❌ 必须提供发布ID或标签参数之一"
           exit 1
         fi    
+
     - name: 获取Release信息
       id: get-release-info
       run: |
@@ -93,13 +94,14 @@ jobs:
         
         echo "✅ 获取到Release信息，ID: $RELEASE_ID"
         echo "📋 原始变更日志长度: $(echo "$ORIGINAL_CHANGELOG" | wc -c) 字符"    
+
     - name: 检查是否已优化
       id: check-optimization-status
       run: |
         echo "🔍 检查变更日志优化状态..."
         
         # 更严格的AI优化检查
-        if [[ "$ORIGINAL_CHANGELOG" == *"AI生成"* ]] && [[ "$ORIGINAL_CHANGELOG" == *"变更日志"* ]]; then
+        if [[ "$ORIGINAL_CHANGELOG" == *"AI生成的变更日志摘要"* ]]; then
           echo "⚠️ 此Release已包含AI生成的变更日志"
           
           if [ "${{ env.RUN_MODE }}" == "manual_optimize" ]; then
@@ -114,25 +116,10 @@ jobs:
           echo "✅ 变更日志未经AI优化，可以进行优化"
           echo "NEED_OPTIMIZE=true" >> $GITHUB_ENV
         fi
-        
-        # 输出诊断信息
-        echo "📋 变更日志预览（前200字符）:"
-        echo "$ORIGINAL_CHANGELOG" | head -c 200
-    - name: 错峰时间检查
-      id: off-peak-check
-      if: env.NEED_OPTIMIZE == 'true'
-      run: |
-        echo "💡 提示：DeepSeek错峰时段(北京时间00:30-08:30)享受优惠价格"
-        echo "📝 当前直接执行，无需等待"
-        echo "CAN_EXECUTE=true" >> $GITHUB_ENV
-    - name: 延迟等待
-      if: env.NEED_OPTIMIZE == 'true' && env.CAN_EXECUTE == 'false'
-      run: |
-        echo "⏳ 等待 ${{ env.DELAY_HOURS }} 小时后重试..."
-        sleep $((${{ env.DELAY_HOURS }} * 3600))
+
     - name: 获取详细提交信息
       id: get-detailed-commits
-      if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize')
+      if: env.NEED_OPTIMIZE == 'true'
       run: |
         echo "📊 获取详细的提交信息..."
         
@@ -147,157 +134,202 @@ jobs:
           COMMIT_RANGE="$LAST_TAG..${{ env.VERSION }}"
         fi
         
-        # 获取详细的提交信息，处理特殊字符
+        # 获取详细的提交信息
         if [ -z "$COMMIT_RANGE" ]; then
-          git log --pretty=format:'%H|%h|%an|%ad|%s|%b' --date=iso | while IFS='|' read -r hash short_hash author date message body; do
-            # 清理和转义特殊字符
-            message=$(echo "$message" | sed 's/"/\\"/g' | tr -d '\n\r\t' | tr -cd '[:print:][:space:]')
-            body=$(echo "$body" | sed 's/"/\\"/g' | tr -d '\n\r\t' | tr -cd '[:print:][:space:]')
-            author=$(echo "$author" | sed 's/"/\\"/g' | tr -d '\n\r\t')
-            
-            echo "{\"hash\":\"$hash\",\"short_hash\":\"$short_hash\",\"author\":\"$author\",\"date\":\"$date\",\"message\":\"$message\",\"body\":\"$body\"}"
-          done | jq -s '.' > commits_temp.json
+          COMMITS=$(git log --pretty=format:'%h|%s|%b' --no-merges)
         else
-          git log $COMMIT_RANGE --pretty=format:'%H|%h|%an|%ad|%s|%b' --date=iso | while IFS='|' read -r hash short_hash author date message body; do
-            # 清理和转义特殊字符
-            message=$(echo "$message" | sed 's/"/\\"/g' | tr -d '\n\r\t' | tr -cd '[:print:][:space:]')
-            body=$(echo "$body" | sed 's/"/\\"/g' | tr -d '\n\r\t' | tr -cd '[:print:][:space:]')
-            author=$(echo "$author" | sed 's/"/\\"/g' | tr -d '\n\r\t')
-            
-            echo "{\"hash\":\"$hash\",\"short_hash\":\"$short_hash\",\"author\":\"$author\",\"date\":\"$date\",\"message\":\"$message\",\"body\":\"$body\"}"
-          done | jq -s '.' > commits_temp.json
-        fi
-        
-        # 读取生成的JSON文件
-        if [ -f commits_temp.json ]; then
-          COMMITS_JSON=$(cat commits_temp.json)
-        else
-          COMMITS_JSON='[]'
-        fi
-        
-        # 获取文件变更统计
-        if [ -z "$COMMIT_RANGE" ]; then
-          FILES_CHANGED=$(git diff --name-only --diff-filter=A HEAD 2>/dev/null | wc -l || echo "0")
-          FILES_MODIFIED=$(git diff --name-only --diff-filter=M HEAD 2>/dev/null | wc -l || echo "0")
-          FILES_DELETED=$(git diff --name-only --diff-filter=D HEAD 2>/dev/null | wc -l || echo "0")
-        else
-          FILES_CHANGED=$(git diff --name-only --diff-filter=A $COMMIT_RANGE 2>/dev/null | wc -l || echo "0")
-          FILES_MODIFIED=$(git diff --name-only --diff-filter=M $COMMIT_RANGE 2>/dev/null | wc -l || echo "0")
-          FILES_DELETED=$(git diff --name-only --diff-filter=D $COMMIT_RANGE 2>/dev/null | wc -l || echo "0")
+          COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
         fi
         
         # 保存提交信息到环境变量
-        echo "COMMITS_JSON<<EOF" >> $GITHUB_ENV
-        echo "$COMMITS_JSON" >> $GITHUB_ENV
+        echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
+        echo "$COMMITS" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
         
-        echo "FILES_CHANGED=$FILES_CHANGED" >> $GITHUB_ENV
-        echo "FILES_MODIFIED=$FILES_MODIFIED" >> $GITHUB_ENV
-        echo "FILES_DELETED=$FILES_DELETED" >> $GITHUB_ENV
-        
-        COMMIT_COUNT=$(echo "$COMMITS_JSON" | jq length)
+        COMMIT_COUNT=$(echo "$COMMITS" | wc -l)
         echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
-        echo "📁 文件变更: 新增 $FILES_CHANGED, 修改 $FILES_MODIFIED, 删除 $FILES_DELETED"
-        
-        # 清理临时文件
-        rm -f commits_temp.json   
-    - name: 分析提交类型
-      id: analyze-commit-types
-      if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize')
+
+    - name: 分析并生成AI变更日志
+      id: generate-ai-changelog
+      if: env.NEED_OPTIMIZE == 'true'
       run: |
-        echo "🔍 分析提交类型..."
+        echo "🤖 开始生成精美的AI变更日志..."
         
-        # 使用jq分析提交消息的类型
-        FEATURE_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(feat|feature)"; "i"))] | length')
-        BUG_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(fix|bug)"; "i"))] | length')
-        STYLE_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(style|ui)"; "i"))] | length')
-        REFACTOR_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(refactor|refact)"; "i"))] | length')
-        DOCS_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(docs|doc)"; "i"))] | length')
-        PERF_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(perf|performance)"; "i"))] | length')
-        TEST_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(test|spec)"; "i"))] | length')
-        CHORE_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(chore|build|ci)"; "i"))] | length')
+        # 初始化各类别的提交数组
+        declare -a FEATURE_COMMITS=()
+        declare -a FIX_COMMITS=()
+        declare -a STYLE_COMMITS=()
+        declare -a REFACTOR_COMMITS=()
+        declare -a PERF_COMMITS=()
+        declare -a DOCS_COMMITS=()
+        declare -a BUILD_COMMITS=()
+        declare -a OTHER_COMMITS=()
         
-        echo "FEATURE_COUNT=$FEATURE_COUNT" >> $GITHUB_ENV
-        echo "BUG_COUNT=$BUG_COUNT" >> $GITHUB_ENV
-        echo "STYLE_COUNT=$STYLE_COUNT" >> $GITHUB_ENV
-        echo "REFACTOR_COUNT=$REFACTOR_COUNT" >> $GITHUB_ENV
-        echo "DOCS_COUNT=$DOCS_COUNT" >> $GITHUB_ENV
-        echo "PERF_COUNT=$PERF_COUNT" >> $GITHUB_ENV
-        echo "TEST_COUNT=$TEST_COUNT" >> $GITHUB_ENV
-        echo "CHORE_COUNT=$CHORE_COUNT" >> $GITHUB_ENV
+        # 解析提交记录
+        while IFS='|' read -r hash message body; do
+          if [[ -n "$hash" ]]; then
+            # 清理消息内容
+            clean_message=$(echo "$message" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+            
+            # 分类提交
+            if [[ "$clean_message" =~ ^(feat|feature|新增|添加) ]]; then
+              FEATURE_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(fix|bug|修复|解决) ]]; then
+              FIX_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(style|ui|样式|界面) ]]; then
+              STYLE_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(refactor|重构) ]]; then
+              REFACTOR_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(perf|performance|优化|性能) ]]; then
+              PERF_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(docs|doc|文档) ]]; then
+              DOCS_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(build|版本|构建) ]]; then
+              BUILD_COMMITS+=("$hash|$clean_message")
+            else
+              OTHER_COMMITS+=("$hash|$clean_message")
+            fi
+          fi
+        done <<< "$COMMITS_RAW"
         
-        echo "📊 提交类型统计:"
-        echo "✨ 新功能: $FEATURE_COUNT"
-        echo "🐛 bug修复: $BUG_COUNT"
-        echo "💄 样式更新: $STYLE_COUNT"
-        echo "♻️ 重构: $REFACTOR_COUNT"
-        echo "📝 文档: $DOCS_COUNT"
-        echo "⚡ 性能优化: $PERF_COUNT"
-        echo "✅ 测试: $TEST_COUNT"
-        echo "🔧 构建/工具: $CHORE_COUNT"    
-    - name: 生成AI变更日志摘要
-      id: generate-ai-summary
-      if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize')
-      run: |
-        echo "🤖 开始生成AI变更日志摘要..."
-        
-        # 生成简洁的AI摘要
-        AI_SUMMARY="## [AI生成的变更日志摘要]
+        # 开始生成变更日志
+        AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
-        🎯 **本次更新亮点**"
+        ---"
         
-        # 根据提交类型添加重点内容
-        if [ $FEATURE_COUNT -gt 0 ]; then
-          AI_SUMMARY="$AI_SUMMARY
+        # 功能新增部分
+        if [ ${#FEATURE_COMMITS[@]} -gt 0 ]; then
+          AI_CHANGELOG="$AI_CHANGELOG
 
-        ✨ **新增功能 ($FEATURE_COUNT项)**
-        - 基于提交记录，本版本新增了 $FEATURE_COUNT 个功能特性"
+        #### 功能新增"
+          
+          for commit in "${FEATURE_COMMITS[@]}"; do
+            IFS='|' read -r hash message <<< "$commit"
+            # 提取关键词作为标题
+            title=$(echo "$message" | sed 's/^feat[[:space:]]*:[[:space:]]*//' | sed 's/^feature[[:space:]]*:[[:space:]]*//' | sed 's/新增[[:space:]]*//' | sed 's/添加[[:space:]]*//')
+            AI_CHANGELOG="$AI_CHANGELOG
+        - **${title}**  
+          \`$hash\`  
+          $message"
+          done
         fi
         
-        if [ $BUG_COUNT -gt 0 ]; then
-          AI_SUMMARY="$AI_SUMMARY
-
-        🐛 **问题修复 ($BUG_COUNT项)**
-        - 修复了 $BUG_COUNT 个已知问题，提升了系统稳定性"
-        fi
-        
-        if [ $STYLE_COUNT -gt 0 ]; then
-          AI_SUMMARY="$AI_SUMMARY
-
-        💄 **界面优化 ($STYLE_COUNT项)**
-        - 优化了用户界面和交互体验"
-        fi
-        
-        if [ $PERF_COUNT -gt 0 ]; then
-          AI_SUMMARY="$AI_SUMMARY
-
-        ⚡ **性能提升 ($PERF_COUNT项)**
-        - 进行了性能优化，提升了运行效率"
-        fi
-        
-        # 添加技术细节
-        AI_SUMMARY="$AI_SUMMARY
-
-        📊 **更新统计**
-        - 📝 提交记录: $(echo "$COMMITS_JSON" | jq length) 个
-        - 📁 文件变更: 新增 $FILES_CHANGED 个，修改 $FILES_MODIFIED 个，删除 $FILES_DELETED 个
-        - 🏷️ 版本标签: ${{ env.VERSION }}
+        # 问题修复部分
+        if [ ${#FIX_COMMITS[@]} -gt 0 ]; then
+          AI_CHANGELOG="$AI_CHANGELOG
 
         ---
 
-        ### 详细变更记录
-        $ORIGINAL_CHANGELOG"
+        ####  问题修复"
+          
+          for commit in "${FIX_COMMITS[@]}"; do
+            IFS='|' read -r hash message <<< "$commit"
+            title=$(echo "$message" | sed 's/^fix[[:space:]]*:[[:space:]]*//' | sed 's/^bug[[:space:]]*:[[:space:]]*//' | sed 's/修复[[:space:]]*//' | sed 's/解决[[:space:]]*//')
+            AI_CHANGELOG="$AI_CHANGELOG
+        - **${title}**  
+          \`$hash\`  
+          $message"
+          done
+        fi
         
-        # 保存AI摘要
-        echo "AI_SUMMARY<<EOF" >> $GITHUB_ENV
-        echo "$AI_SUMMARY" >> $GITHUB_ENV
+        # 改进优化部分
+        improvement_sections=""
+        
+        # 样式优化
+        if [ ${#STYLE_COMMITS[@]} -gt 0 ]; then
+          improvement_sections="$improvement_sections
+        - **界面样式优化**  "
+          for commit in "${STYLE_COMMITS[@]}"; do
+            IFS='|' read -r hash message <<< "$commit"
+            improvement_sections="$improvement_sections
+          \`$hash\` "
+          done
+          improvement_sections="$improvement_sections 
+          界面样式和视觉效果优化"
+        fi
+        
+        # 性能优化
+        if [ ${#PERF_COMMITS[@]} -gt 0 ]; then
+          improvement_sections="$improvement_sections
+        - **性能优化**  "
+          for commit in "${PERF_COMMITS[@]}"; do
+            IFS='|' read -r hash message <<< "$commit"
+            improvement_sections="$improvement_sections
+          \`$hash\` "
+          done
+          improvement_sections="$improvement_sections 
+          系统性能和响应速度优化"
+        fi
+        
+        # 重构
+        if [ ${#REFACTOR_COMMITS[@]} -gt 0 ]; then
+          improvement_sections="$improvement_sections
+        - **代码重构**  "
+          for commit in "${REFACTOR_COMMITS[@]}"; do
+            IFS='|' read -r hash message <<< "$commit"
+            improvement_sections="$improvement_sections
+          \`$hash\` "
+          done
+          improvement_sections="$improvement_sections 
+          代码结构优化和重构"
+        fi
+        
+        # 其他改进
+        if [ ${#OTHER_COMMITS[@]} -gt 0 ]; then
+          improvement_sections="$improvement_sections
+        - **其他改进**  "
+          for commit in "${OTHER_COMMITS[@]}"; do
+            IFS='|' read -r hash message <<< "$commit"
+            improvement_sections="$improvement_sections
+          \`$hash\` "
+          done
+          improvement_sections="$improvement_sections 
+          其他功能改进和优化"
+        fi
+        
+        if [ -n "$improvement_sections" ]; then
+          AI_CHANGELOG="$AI_CHANGELOG
+
+        ---
+
+        #### 改进优化$improvement_sections"
+        fi
+        
+        # 版本构建部分
+        if [ ${#BUILD_COMMITS[@]} -gt 0 ]; then
+          AI_CHANGELOG="$AI_CHANGELOG
+
+        ---
+
+        **版本构建**  "
+          for commit in "${BUILD_COMMITS[@]}"; do
+            IFS='|' read -r hash message <<< "$commit"
+            AI_CHANGELOG="$AI_CHANGELOG
+        \`$hash\` $message"
+          done
+        fi
+        
+        # 添加原始变更记录
+        AI_CHANGELOG="$AI_CHANGELOG
+
+        <details>
+        <summary>查看原始提交记录</summary>
+
+        $ORIGINAL_CHANGELOG
+
+        </details>"
+        
+        # 保存生成的变更日志
+        echo "AI_CHANGELOG<<EOF" >> $GITHUB_ENV
+        echo "$AI_CHANGELOG" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
         
-        echo "✅ AI变更日志摘要生成完成"
-        echo "📝 摘要长度: $(echo "$AI_SUMMARY" | wc -c) 字符"    
+        echo "✅ AI变更日志生成完成"
+        echo "📝 变更日志长度: $(echo "$AI_CHANGELOG" | wc -c) 字符"
+
     - name: 更新Release变更日志
       id: update-release-changelog
-      if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize' || env.RUN_MODE == 'workflow_call')
+      if: env.NEED_OPTIMIZE == 'true'
       run: |
         echo "📝 更新Release变更日志..."
         
@@ -306,7 +338,7 @@ jobs:
           -H "Authorization: token ${{ secrets.PAT }}" \
           -H "Accept: application/vnd.github.v3+json" \
           "https://api.github.com/repos/${{ github.repository }}/releases/${{ env.RELEASE_ID }}" \
-          -d "{\"body\": $(echo "$AI_SUMMARY" | jq -R -s '.')}")
+          -d "{\"body\": $(echo "$AI_CHANGELOG" | jq -R -s '.')}")
         
         # 检查更新结果
         if [[ $(echo "$UPDATE_RESPONSE" | jq -r 'has("id")') == "true" ]]; then
@@ -320,8 +352,6 @@ jobs:
           echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
           echo "| 版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Release ID | \`${{ env.RELEASE_ID }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| 提交数量 | $(echo "$COMMITS_JSON" | jq length) |" >> $GITHUB_STEP_SUMMARY
-          echo "| 文件变更 | 新增 $FILES_CHANGED, 修改 $FILES_MODIFIED, 删除 $FILES_DELETED |" >> $GITHUB_STEP_SUMMARY
           echo "| Release URL | [查看发布]($(echo "$UPDATE_RESPONSE" | jq -r '.html_url')) |" >> $GITHUB_STEP_SUMMARY
         else
           echo "❌ Release变更日志更新失败"
@@ -334,6 +364,5 @@ jobs:
       if: always()
       run: |
         echo "🧹 清理临时文件..."
-        # 清理可能的临时文件
         find . -name "*.tmp" -delete 2>/dev/null || true
         echo "✅ 清理完成"
