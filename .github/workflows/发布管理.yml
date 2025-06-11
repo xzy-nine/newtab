@@ -8,34 +8,34 @@ on:
       - main
   workflow_call:
     inputs:
-      版本号:
+      version:
         description: "版本号"
         required: true
         type: string
-      变更日志:
+      changelog:
         description: "变更日志内容"
         required: true
         type: string
-      构建包路径:
+      build-path:
         description: "构建包路径"
         required: true
         type: string
     outputs:
-      发布ID:
+      release-id:
         description: "创建的Release ID"
-        value: ${{ jobs.发布管理.outputs.发布ID }}
-      发布URL:
+        value: ${{ jobs.release-management.outputs.release-id }}
+      release-url:
         description: "Release页面URL"
-        value: ${{ jobs.发布管理.outputs.发布URL }}
+        value: ${{ jobs.release-management.outputs.release-url }}
 
 jobs:
-  发布管理:
+  release-management:
     name: 发布管理
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_call'
     outputs:
-      发布ID: ${{ steps.创建发布.outputs.id }}
-      发布URL: ${{ steps.创建发布.outputs.html_url }}
+      release-id: ${{ steps.create-release.outputs.id }}
+      release-url: ${{ steps.create-release.outputs.html_url }}
 
     steps:
     - name: 检出代码
@@ -45,7 +45,7 @@ jobs:
 
     - name: 获取构建工件信息
       if: github.event_name == 'workflow_run'
-      id: 获取工件信息
+      id: get-artifact-info
       run: |
         # 从触发的工作流获取版本信息
         echo "获取构建工作流的输出信息..."
@@ -68,10 +68,11 @@ jobs:
         echo "✅ 找到构建包工件: $ARTIFACT_NAME，版本: $VERSION"
 
     - name: 设置输入参数
+      id: set-input-params
       if: github.event_name == 'workflow_call'
       run: |
-        echo "VERSION=${{ inputs.版本号 }}" >> $GITHUB_ENV
-        echo "✅ 使用工作流调用参数，版本: ${{ inputs.版本号 }}"
+        echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+        echo "✅ 使用工作流调用参数，版本: ${{ inputs.version }}"
 
     - name: 下载构建包工件
       if: github.event_name == 'workflow_run'
@@ -83,11 +84,11 @@ jobs:
         run-id: ${{ github.event.workflow_run.id }}
 
     - name: 生成发布变更日志
-      id: 生成发布变更日志
+      id: generate-release-changelog
       run: |
         if [ "${{ github.event_name }}" == "workflow_call" ]; then
           # 使用传入的变更日志
-          CHANGELOG='${{ inputs.变更日志 }}'
+          CHANGELOG='${{ inputs.changelog }}'
         else
           # 重新生成变更日志
           echo "📝 重新生成变更日志..."
@@ -112,9 +113,10 @@ jobs:
         echo "✅ 发布变更日志准备完成"
 
     - name: 验证构建包
+      id: verify-build-package
       run: |
         if [ "${{ github.event_name }}" == "workflow_call" ]; then
-          BUILD_FILE="${{ inputs.构建包路径 }}"
+          BUILD_FILE="${{ inputs.build-path }}"
         else
           BUILD_FILE="build/newtab-${{ env.VERSION }}.zip"
         fi
@@ -131,7 +133,7 @@ jobs:
         fi
 
     - name: 创建Release
-      id: 创建发布
+      id: create-release
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ env.VERSION }}
@@ -145,19 +147,20 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.PAT }}
 
     - name: 验证发布结果
+      id: verify-release-result
       run: |
-        if [ -n "${{ steps.创建发布.outputs.id }}" ]; then
+        if [ -n "${{ steps.create-release.outputs.id }}" ]; then
           echo "✅ Release创建成功"
-          echo "🔗 Release ID: ${{ steps.创建发布.outputs.id }}"
-          echo "🌐 Release URL: ${{ steps.创建发布.outputs.html_url }}"
+          echo "🔗 Release ID: ${{ steps.create-release.outputs.id }}"
+          echo "🌐 Release URL: ${{ steps.create-release.outputs.html_url }}"
           
           # 添加到作业摘要
           echo "## 🎉 发布成功" >> $GITHUB_STEP_SUMMARY
           echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
           echo "| 版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Release ID | \`${{ steps.创建发布.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Release URL | [${{ steps.创建发布.outputs.html_url }}](${{ steps.创建发布.outputs.html_url }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release ID | \`${{ steps.create-release.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release URL | [${{ steps.create-release.outputs.html_url }}](${{ steps.create-release.outputs.html_url }}) |" >> $GITHUB_STEP_SUMMARY
           echo "| 构建包 | \`${{ env.BUILD_FILE }}\` |" >> $GITHUB_STEP_SUMMARY
         else
           echo "❌ Release创建失败"
@@ -165,6 +168,7 @@ jobs:
         fi
 
     - name: 触发AI变更日志生成
+      id: trigger-ai-changelog
       if: success()
       uses: actions/github-script@v6
       with:
@@ -180,7 +184,7 @@ jobs:
               ref: 'main',
               inputs: {
                 '版本号': '${{ env.VERSION }}',
-                '发布ID': '${{ steps.创建发布.outputs.id }}'
+                '发布ID': '${{ steps.create-release.outputs.id }}'
               }
             });
             console.log('✅ 已触发AI变更日志生成工作流');

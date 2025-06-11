@@ -5,18 +5,17 @@ on:
       - main
 
 jobs:
-  版本检查与构建:
+  version-check-and-build:
     name: 版本检查与构建
     uses: ./.github/workflows/版本检查与构建.yml
     secrets: inherit
-
-  发布管理:
+  release-management:
     name: 发布管理
-    needs: 版本检查与构建
-    if: needs.版本检查与构建.outputs.是否新版本 == 'true' && needs.版本检查与构建.outputs.标签是否存在 == 'false'
+    needs: version-check-and-build
+    if: needs.version-check-and-build.outputs.is_new_version == 'true' && needs.version-check-and-build.outputs.tag_exists == 'false'
     uses: ./.github/workflows/发布管理.yml
     with:
-      版本号: ${{ needs.版本检查与构建.outputs.版本号 }}
-      变更日志: ${{ needs.版本检查与构建.outputs.变更日志 }}
-      构建包路径: ${{ needs.版本检查与构建.outputs.构建包路径 }}
+      version: ${{ needs.version-check-and-build.outputs.version }}
+      changelog: ${{ needs.version-check-and-build.outputs.changelog }}
+      build-path: ${{ needs.version-check-and-build.outputs.build_path }}
     secrets: inherit

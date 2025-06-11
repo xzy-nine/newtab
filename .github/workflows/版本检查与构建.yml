@@ -2,36 +2,35 @@ name: 版本检查与构建
 on:
   push:
     branches:
-      - main
+      - main  
   workflow_call:
     outputs:
-      版本号:
+      version:
         description: "当前版本号"
-        value: ${{ jobs.版本检查与构建.outputs.版本号 }}
-      是否新版本:
+        value: ${{ jobs.version-check-and-build.outputs.version }}
+      is_new_version:
         description: "是否为新版本"
-        value: ${{ jobs.版本检查与构建.outputs.是否新版本 }}
-      标签是否存在:
+        value: ${{ jobs.version-check-and-build.outputs.is_new_version }}
+      tag_exists:
         description: "版本标签是否已存在"
-        value: ${{ jobs.版本检查与构建.outputs.标签是否存在 }}
-      变更日志:
+        value: ${{ jobs.version-check-and-build.outputs.tag_exists }}
+      changelog:
         description: "生成的变更日志"
-        value: ${{ jobs.版本检查与构建.outputs.变更日志 }}
-      构建包路径:
+        value: ${{ jobs.version-check-and-build.outputs.changelog }}
+      build_path:
         description: "构建包的路径"
-        value: ${{ jobs.版本检查与构建.outputs.构建包路径 }}
+        value: ${{ jobs.version-check-and-build.outputs.build_path }}
 
-jobs:
-  版本检查与构建:
+jobs:  
+  version-check-and-build:
     name: 版本检查与构建
     runs-on: ubuntu-latest
     outputs:
-      版本号: ${{ env.VERSION }}
-      是否新版本: ${{ env.new_version }}
-      标签是否存在: ${{ env.tag_exists }}
-      变更日志: ${{ env.CHANGELOG }}
-      构建包路径: ${{ env.BUILD_PATH }}
-
+      version: ${{ steps.get-version.outputs.version }}
+      is_new_version: ${{ steps.compare-versions.outputs.is_new_version }}
+      tag_exists: ${{ steps.check-tag-exists.outputs.tag_exists }}
+      changelog: ${{ steps.generate-changelog.outputs.changelog }}
+      build_path: ${{ steps.create-build-package.outputs.build_path }}
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
@@ -39,21 +38,22 @@ jobs:
         fetch-depth: 0
 
     - name: 从manifest.json获取版本信息
-      id: 获取版本
+      id: get-version
       run: |
         VERSION=$(jq -r '.version' manifest.json)
         echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "📋 当前版本: $VERSION"
 
     - name: 获取最新发布版本
-      id: 获取最新发布
+      id: get-latest-release
       run: |
         LATEST_VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name // "0.0.0"')
         echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
         echo "📋 最新发布版本: $LATEST_VERSION"
 
     - name: 比较版本标签
-      id: 比较版本
+      id: compare-versions
       run: |
         if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then
             echo "new_version=true" >> $GITHUB_ENV
@@ -64,7 +64,7 @@ jobs:
         fi
 
     - name: 检查标签是否存在
-      id: 检查标签
+      id: check-tag-exists
       run: |
         if git rev-parse "refs/tags/${{ env.VERSION }}" >/dev/null 2>&1; then
           echo "tag_exists=true" >> $GITHUB_ENV
@@ -75,7 +75,7 @@ jobs:
         fi
 
     - name: 生成变更日志
-      id: 生成变更日志
+      id: generate-changelog
       if: env.new_version == 'true' && env.tag_exists == 'false'
       run: |
         echo "📝 开始生成变更日志..."
@@ -100,7 +100,7 @@ jobs:
         echo "✅ 变更日志生成完成"
 
     - name: 创建构建包
-      id: 创建构建包
+      id: create-build-package
       if: env.new_version == 'true' && env.tag_exists == 'false'
       run: |
         echo "📦 开始创建构建包..."
@@ -137,6 +137,7 @@ jobs:
         fi
 
     - name: 上传构建包为工件
+      id: upload-artifact
       if: env.new_version == 'true' && env.tag_exists == 'false'
       uses: actions/upload-artifact@v4
       with:
@@ -145,6 +146,7 @@ jobs:
         retention-days: 30
 
     - name: 输出构建结果
+      id: output-summary
       run: |
         echo "## 🔍 构建结果摘要" >> $GITHUB_STEP_SUMMARY
         echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY

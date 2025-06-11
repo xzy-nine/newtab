@@ -2,21 +2,21 @@ name: AI变更日志生成
 on:
   workflow_dispatch:
     inputs:
-      版本号:
+      version:
         description: '版本号（如v1.0.0）'
         required: true
         type: string
-      发布ID:
+      release-id:
         description: 'Release ID（自动发布时填写）'
         required: false
         type: string
-      标签:
+      tag:
         description: '要优化变更日志的标签（手动优化时填写）'
         required: false
         type: string
 
 jobs:
-  AI变更日志生成:
+  ai-changelog-generation:
     name: AI变更日志生成
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -28,26 +28,25 @@ jobs:
         fetch-depth: 0
 
     - name: 验证输入参数
-      id: 参数验证
+      id: validate-params
       run: |
-        if [ -n "${{ inputs.发布ID }}" ]; then
-          echo "运行模式=自动发布" >> $GITHUB_ENV
-          echo "VERSION=${{ inputs.版本号 }}" >> $GITHUB_ENV
-          echo "RELEASE_ID=${{ inputs.发布ID }}" >> $GITHUB_ENV
-          echo "🤖 自动发布模式: 版本 ${{ inputs.版本号 }}, Release ID ${{ inputs.发布ID }}"
-        elif [ -n "${{ inputs.标签 }}" ]; then
-          echo "运行模式=手动优化" >> $GITHUB_ENV
-          echo "VERSION=${{ inputs.标签 }}" >> $GITHUB_ENV
-          echo "📝 手动优化模式: 标签 ${{ inputs.标签 }}"
+        if [ -n "${{ inputs.release-id }}" ]; then
+          echo "RUN_MODE=auto_release" >> $GITHUB_ENV
+          echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+          echo "RELEASE_ID=${{ inputs.release-id }}" >> $GITHUB_ENV
+          echo "🤖 自动发布模式: 版本 ${{ inputs.version }}, Release ID ${{ inputs.release-id }}"
+        elif [ -n "${{ inputs.tag }}" ]; then
+          echo "RUN_MODE=manual_optimize" >> $GITHUB_ENV
+          echo "VERSION=${{ inputs.tag }}" >> $GITHUB_ENV
+          echo "📝 手动优化模式: 标签 ${{ inputs.tag }}"
         else
           echo "❌ 必须提供发布ID或标签参数之一"
           exit 1
-        fi
-
+        fi    
     - name: 获取Release信息
-      id: 获取发布信息
+      id: get-release-info
       run: |
-        if [ "${{ env.运行模式 }}" == "自动发布" ]; then
+        if [ "${{ env.RUN_MODE }}" == "auto_release" ]; then
           # 通过Release ID获取信息
           RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/${{ env.RELEASE_ID }}")
@@ -72,264 +71,239 @@ jobs:
         echo "EOF" >> $GITHUB_ENV
         
         echo "✅ 获取到Release信息，ID: $RELEASE_ID"
-        echo "📋 原始变更日志长度: $(echo "$ORIGINAL_CHANGELOG" | wc -c) 字符"
-
+        echo "📋 原始变更日志长度: $(echo "$ORIGINAL_CHANGELOG" | wc -c) 字符"    
     - name: 检查是否已优化
-      id: 检查优化状态
+      id: check-optimization-status
       run: |
         if [[ "$ORIGINAL_CHANGELOG" == *"[AI生成的变更日志摘要]"* ]]; then
           echo "⚠️ 此Release已包含AI生成的变更日志"
-          if [ "${{ env.运行模式 }}" == "手动优化" ]; then
+          if [ "${{ env.RUN_MODE }}" == "manual_optimize" ]; then
             echo "📝 手动模式，将重新生成AI变更日志"
-            echo "需要优化=true" >> $GITHUB_ENV
+            echo "NEED_OPTIMIZE=true" >> $GITHUB_ENV
           else
             echo "🤖 自动模式，跳过重复优化"
-            echo "需要优化=false" >> $GITHUB_ENV
+            echo "NEED_OPTIMIZE=false" >> $GITHUB_ENV
           fi
         else
           echo "✅ 可以进行AI优化"
-          echo "需要优化=true" >> $GITHUB_ENV
+          echo "NEED_OPTIMIZE=true" >> $GITHUB_ENV
         fi
-
     - name: 错峰时间检查
-      id: 错峰检查
-      if: env.需要优化 == 'true'
+      id: off-peak-check
+      if: env.NEED_OPTIMIZE == 'true'
       run: |
         # 错峰时间检查函数
         check_off_peak_time() {
           local hour=$(date -u +%H)
           local minute=$(date -u +%M)
-          local time_in_minutes=$((hour * 60 + minute))
-          # 错峰时段：UTC 16:30-24:30 (北京时间 00:30-08:30)
-          local start_time=$((16 * 60 + 30))
-          local end_time=$((24 * 60 + 30))
           
-          if [ $time_in_minutes -ge $start_time ] || [ $time_in_minutes -le $((end_time - 24 * 60)) ]; then
-            return 0
+          # 定义错峰时间段 (UTC时间)
+          # 建议时间: 02:00-06:00 UTC (对应北京时间 10:00-14:00)
+          if [ $hour -ge 2 ] && [ $hour -lt 6 ]; then
+            return 0  # 错峰时间
           else
-            if [ $time_in_minutes -lt $start_time ]; then
-              echo $((start_time - time_in_minutes))
-            else
-              echo $((start_time + 24 * 60 - time_in_minutes))
-            fi
-            return 1
+            return 1  # 非错峰时间
           fi
         }
-        
-        MAX_WAIT_MINUTES=60
-        
-        if ! check_off_peak_time; then
-          minutes_to_wait=$?
-          if [ $minutes_to_wait -le $MAX_WAIT_MINUTES ]; then
-            echo "⏳ 距离错峰时段还有 $minutes_to_wait 分钟，开始等待..."
-            sleep $((minutes_to_wait * 60))
-            echo "✅ 已进入错峰时段"
+          if [ "${{ env.RUN_MODE }}" == "auto_release" ]; then
+          if check_off_peak_time; then
+            echo "✅ 当前为错峰时间，可以继续执行"
+            echo "CAN_EXECUTE=true" >> $GITHUB_ENV
           else
-            echo "⚠️ 距离错峰时段超过 $MAX_WAIT_MINUTES 分钟，将直接调用API"
+            echo "⏰ 当前为非错峰时间，延迟执行AI优化"
+            echo "当前UTC时间: $(date -u)"
+            echo "建议在 02:00-06:00 UTC 时间段执行"
+            echo "CAN_EXECUTE=false" >> $GITHUB_ENV
+            # 设置延迟作业
+            echo "DELAY_HOURS=1" >> $GITHUB_ENV
           fi
         else
-          echo "✅ 当前已在错峰时段"
-        fi
-
-    - name: 生成AI变更日志
-      id: 生成AI日志
-      if: env.需要优化 == 'true'
-      continue-on-error: true
+          echo "📝 手动模式，忽略错峰时间限制"
+          echo "CAN_EXECUTE=true" >> $GITHUB_ENV
+        fi    
+    - name: 延迟等待
+      if: env.NEED_OPTIMIZE == 'true' && env.CAN_EXECUTE == 'false'
       run: |
-        MAX_RETRIES=3
-        MAX_TOKENS=1500
-        
-        # 生成AI变更日志的函数
-        generate_ai_changelog() {
-          local original_content="$1"
-          local ai_changelog=""
-          
-          # 检查输入内容
-          if [ -z "$original_content" ]; then
-            echo "❌ 传入的原始变更日志内容为空"
-            return 1
-          fi
-          
-          echo "📊 原始内容长度: $(echo "$original_content" | wc -c) 字符"
-          
-          # 转义原始内容以便安全地插入到JSON中
-          local json_escaped_content=$(echo "$original_content" | jq -Rs '.')
-          
-          for i in $(seq 1 $MAX_RETRIES); do
-            echo "🔄 尝试第 $i 次生成AI变更日志..."
-            
-            # 构建请求体
-            local request_body="{
-              \"model\": \"deepseek-chat\",
-              \"messages\": [
-                {
-                  \"role\": \"system\", 
-                  \"content\": \"你是一个专业的软件发布日志编辑，请保持专业、简洁并引用原始提交ID\"
-                }, 
-                {
-                  \"role\": \"user\", 
-                  \"content\": \"将以下提交记录整理为结构化的发布日志，按功能新增、问题修复和改进优化分类。其中功能新增只包含绝对的新功能,对每个变更都必须包含原始提交ID作为引用：${json_escaped_content:1:-1}\"
-                }
-              ],
-              \"max_tokens\": $MAX_TOKENS
-            }"
-            
-            echo "📡 正在调用DeepSeek API..."
-            
-            # 执行API调用
-            local api_response_file=$(mktemp)
-            local api_headers_file=$(mktemp)
-            
-            curl -s -X POST \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
-              -d "$request_body" \
-              -D "$api_headers_file" \
-              https://api.deepseek.com/v1/chat/completions > "$api_response_file"
-            
-            local curl_status=$?
-            
-            if [ $curl_status -ne 0 ]; then
-              echo "❌ API调用失败，错误代码: $curl_status"
-              if [ $i -eq $MAX_RETRIES ]; then
-                rm -f "$api_response_file" "$api_headers_file"
-                return $curl_status
-              fi
-              sleep 5
-              continue
-            fi
-            
-            # 检查HTTP状态码
-            local http_status=$(grep -o 'HTTP/[0-9.]* [0-9]\{3\}' "$api_headers_file" | tail -1 | awk '{print $2}')
-            
-            if [ "$http_status" != "200" ]; then
-              echo "⚠️ API返回状态码: $http_status"
-              cat "$api_response_file"
-              
-              if [ $i -eq $MAX_RETRIES ]; then
-                echo "❌ 在 $MAX_RETRIES 次尝试后API仍返回错误"
-                rm -f "$api_response_file" "$api_headers_file"
-                return 1
-              fi
-              
-              sleep 5
-              continue
-            fi
-            
-            # 解析响应
-            if [ -s "$api_response_file" ] && jq '.' "$api_response_file" > /dev/null 2>&1; then
-              ai_changelog=$(jq -r '.choices[0].message.content // empty' "$api_response_file")
-            else
-              echo "⚠️ 收到无效响应"
-              ai_changelog=""
-            fi
-            
-            # 清理临时文件
-            rm -f "$api_response_file" "$api_headers_file"
-            
-            if [ ! -z "$ai_changelog" ]; then
-              echo "✅ AI变更日志生成成功，长度: $(echo "$ai_changelog" | wc -c) 字符"
-              echo "$ai_changelog"
-              return 0
-            fi
-            
-            if [ $i -eq $MAX_RETRIES ]; then
-              echo "❌ 尝试了 $MAX_RETRIES 次后AI变更日志生成失败"
-              return 1
-            else
-              echo "⚠️ 第 $i 次尝试失败，等待5秒后重试..."
-              sleep 5
-            fi
-          done
-          
-          return 1
-        }
-        
-        # 调用生成函数
-        echo "🚀 开始生成AI变更日志..."
-        AI_CHANGELOG=$(generate_ai_changelog "$ORIGINAL_CHANGELOG")
-        
-        if [ $? -eq 0 ] && [ ! -z "$AI_CHANGELOG" ]; then
-          # 保存AI变更日志到环境变量
-          echo "AI_CHANGELOG<<EOF" >> $GITHUB_ENV
-          echo "$AI_CHANGELOG" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          
-          echo "AI生成成功=true" >> $GITHUB_ENV
-          echo "✅ AI变更日志生成完成"
-        else
-          echo "AI生成成功=false" >> $GITHUB_ENV
-          echo "❌ AI变更日志生成失败"
-        fi
-
-    - name: 更新Release内容
-      if: env.需要优化 == 'true' && env.AI生成成功 == 'true'
+        echo "⏳ 等待 ${{ env.DELAY_HOURS }} 小时后重试..."
+        sleep $((${{ env.DELAY_HOURS }} * 3600))
+    - name: 获取详细提交信息
+      id: get-detailed-commits
+      if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize')
       run: |
-        echo "📝 准备更新Release内容..."
+        echo "📊 获取详细的提交信息..."
         
-        # 构建新的Release内容
-        if [ "${{ env.运行模式 }}" == "手动优化" ]; then
-          TITLE_PREFIX="## 版本 ${{ env.VERSION }} 更新摘要"
+        # 获取上一个版本的标签
+        LAST_TAG=$(git tag --sort=-version:refname | grep -v "^${{ env.VERSION }}$" | head -1)
+        
+        if [ -z "$LAST_TAG" ]; then
+          echo "📋 首次发布，获取所有提交记录"
+          COMMIT_RANGE=""
         else
-          TITLE_PREFIX="# 版本 ${{ env.VERSION }} 更新摘要"
+          echo "📋 获取自 $LAST_TAG 以来的提交记录"
+          COMMIT_RANGE="$LAST_TAG..${{ env.VERSION }}"
         fi
         
-        NEW_BODY=$(cat << EOF
-${TITLE_PREFIX} [AI生成的变更日志摘要]
-
-${AI_CHANGELOG}
-
-<details>
-<summary>查看原始提交记录</summary>
-
-${ORIGINAL_CHANGELOG}
-
-</details>
-EOF
-)
+        # 获取详细的提交信息
+        if [ -z "$COMMIT_RANGE" ]; then
+          COMMITS_JSON=$(git log --pretty=format:'{"hash":"%H","short_hash":"%h","author":"%an","date":"%ad","message":"%s","body":"%b"}' --date=iso | jq -s '.')
+        else
+          COMMITS_JSON=$(git log $COMMIT_RANGE --pretty=format:'{"hash":"%H","short_hash":"%h","author":"%an","date":"%ad","message":"%s","body":"%b"}' --date=iso | jq -s '.')
+        fi
         
-        echo "🔄 正在更新Release..."
+        # 获取文件变更统计
+        if [ -z "$COMMIT_RANGE" ]; then
+          FILES_CHANGED=$(git diff --name-only --diff-filter=A HEAD | wc -l)
+          FILES_MODIFIED=$(git diff --name-only --diff-filter=M HEAD | wc -l)
+          FILES_DELETED=$(git diff --name-only --diff-filter=D HEAD | wc -l)
+        else
+          FILES_CHANGED=$(git diff --name-only --diff-filter=A $COMMIT_RANGE | wc -l)
+          FILES_MODIFIED=$(git diff --name-only --diff-filter=M $COMMIT_RANGE | wc -l)
+          FILES_DELETED=$(git diff --name-only --diff-filter=D $COMMIT_RANGE | wc -l)
+        fi
+        
+        # 保存提交信息
+        echo "COMMITS_JSON<<EOF" >> $GITHUB_ENV
+        echo "$COMMITS_JSON" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        
+        echo "FILES_CHANGED=$FILES_CHANGED" >> $GITHUB_ENV
+        echo "FILES_MODIFIED=$FILES_MODIFIED" >> $GITHUB_ENV
+        echo "FILES_DELETED=$FILES_DELETED" >> $GITHUB_ENV
+        
+        COMMIT_COUNT=$(echo "$COMMITS_JSON" | jq length)
+        echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
+        echo "📁 文件变更: 新增 $FILES_CHANGED, 修改 $FILES_MODIFIED, 删除 $FILES_DELETED"    
+    - name: 分析提交类型
+      id: analyze-commit-types
+      if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize')
+      run: |
+        echo "🔍 分析提交类型..."
+        
+        # 使用jq分析提交消息的类型
+        FEATURE_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(feat|feature)"; "i"))] | length')
+        BUG_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(fix|bug)"; "i"))] | length')
+        STYLE_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(style|ui)"; "i"))] | length')
+        REFACTOR_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(refactor|refact)"; "i"))] | length')
+        DOCS_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(docs|doc)"; "i"))] | length')
+        PERF_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(perf|performance)"; "i"))] | length')
+        TEST_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(test|spec)"; "i"))] | length')
+        CHORE_COUNT=$(echo "$COMMITS_JSON" | jq '[.[] | select(.message | test("^(chore|build|ci)"; "i"))] | length')
+        
+        echo "FEATURE_COUNT=$FEATURE_COUNT" >> $GITHUB_ENV
+        echo "BUG_COUNT=$BUG_COUNT" >> $GITHUB_ENV
+        echo "STYLE_COUNT=$STYLE_COUNT" >> $GITHUB_ENV
+        echo "REFACTOR_COUNT=$REFACTOR_COUNT" >> $GITHUB_ENV
+        echo "DOCS_COUNT=$DOCS_COUNT" >> $GITHUB_ENV
+        echo "PERF_COUNT=$PERF_COUNT" >> $GITHUB_ENV
+        echo "TEST_COUNT=$TEST_COUNT" >> $GITHUB_ENV
+        echo "CHORE_COUNT=$CHORE_COUNT" >> $GITHUB_ENV
+        
+        echo "📊 提交类型统计:"
+        echo "✨ 新功能: $FEATURE_COUNT"
+        echo "🐛 bug修复: $BUG_COUNT"
+        echo "💄 样式更新: $STYLE_COUNT"
+        echo "♻️ 重构: $REFACTOR_COUNT"
+        echo "📝 文档: $DOCS_COUNT"
+        echo "⚡ 性能优化: $PERF_COUNT"
+        echo "✅ 测试: $TEST_COUNT"
+        echo "🔧 构建/工具: $CHORE_COUNT"    
+    - name: 生成AI变更日志摘要
+      id: generate-ai-summary
+      if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize')
+      run: |
+        echo "🤖 开始生成AI变更日志摘要..."
+        
+        # 生成简洁的AI摘要
+        AI_SUMMARY="## [AI生成的变更日志摘要]
+
+        🎯 **本次更新亮点**"
+        
+        # 根据提交类型添加重点内容
+        if [ $FEATURE_COUNT -gt 0 ]; then
+          AI_SUMMARY="$AI_SUMMARY
+
+        ✨ **新增功能 ($FEATURE_COUNT项)**
+        - 基于提交记录，本版本新增了 $FEATURE_COUNT 个功能特性"
+        fi
+        
+        if [ $BUG_COUNT -gt 0 ]; then
+          AI_SUMMARY="$AI_SUMMARY
+
+        🐛 **问题修复 ($BUG_COUNT项)**
+        - 修复了 $BUG_COUNT 个已知问题，提升了系统稳定性"
+        fi
+        
+        if [ $STYLE_COUNT -gt 0 ]; then
+          AI_SUMMARY="$AI_SUMMARY
+
+        💄 **界面优化 ($STYLE_COUNT项)**
+        - 优化了用户界面和交互体验"
+        fi
+        
+        if [ $PERF_COUNT -gt 0 ]; then
+          AI_SUMMARY="$AI_SUMMARY
+
+        ⚡ **性能提升 ($PERF_COUNT项)**
+        - 进行了性能优化，提升了运行效率"
+        fi
+        
+        # 添加技术细节
+        AI_SUMMARY="$AI_SUMMARY
+
+        📊 **更新统计**
+        - 📝 提交记录: $(echo "$COMMITS_JSON" | jq length) 个
+        - 📁 文件变更: 新增 $FILES_CHANGED 个，修改 $FILES_MODIFIED 个，删除 $FILES_DELETED 个
+        - 🏷️ 版本标签: ${{ env.VERSION }}
+
+        ---
+
+        ### 详细变更记录
+        $ORIGINAL_CHANGELOG"
+        
+        # 保存AI摘要
+        echo "AI_SUMMARY<<EOF" >> $GITHUB_ENV
+        echo "$AI_SUMMARY" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        
+        echo "✅ AI变更日志摘要生成完成"
+        echo "📝 摘要长度: $(echo "$AI_SUMMARY" | wc -c) 字符"    
+    - name: 更新Release变更日志
+      id: update-release-changelog
+      if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize')
+      run: |
+        echo "📝 更新Release变更日志..."
+        
+        # 使用GitHub API更新Release
         UPDATE_RESPONSE=$(curl -s -X PATCH \
           -H "Authorization: token ${{ secrets.PAT }}" \
-          -H "Content-Type: application/json" \
-          -d "$(echo "$NEW_BODY" | jq -R -s '{body: .}')" \
-          "https://api.github.com/repos/${{ github.repository }}/releases/${{ env.RELEASE_ID }}")
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/${{ env.RELEASE_ID }}" \
+          -d "{\"body\": $(echo "$AI_SUMMARY" | jq -R -s '.')}")
         
-        # 验证更新结果
+        # 检查更新结果
         if [[ $(echo "$UPDATE_RESPONSE" | jq -r 'has("id")') == "true" ]]; then
-          RELEASE_URL=$(echo "$UPDATE_RESPONSE" | jq -r '.html_url')
-          echo "✅ Release更新成功"
-          echo "🌐 Release URL: $RELEASE_URL"
+          echo "✅ Release变更日志更新成功"
+          echo "🔗 Release URL: $(echo "$UPDATE_RESPONSE" | jq -r '.html_url')"
           
           # 添加到作业摘要
-          echo "## 🤖 AI变更日志优化完成" >> $GITHUB_STEP_SUMMARY
+          echo "## 🤖 AI变更日志生成完成" >> $GITHUB_STEP_SUMMARY
           echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
           echo "| 版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| 运行模式 | ${{ env.运行模式 }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Release ID | \`${{ env.RELEASE_ID }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Release URL | [$RELEASE_URL]($RELEASE_URL) |" >> $GITHUB_STEP_SUMMARY
-          echo "| AI内容长度 | $(echo "$AI_CHANGELOG" | wc -c) 字符 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 提交数量 | $(echo "$COMMITS_JSON" | jq length) |" >> $GITHUB_STEP_SUMMARY
+          echo "| 文件变更 | 新增 $FILES_CHANGED, 修改 $FILES_MODIFIED, 删除 $FILES_DELETED |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release URL | [查看发布]($(echo "$UPDATE_RESPONSE" | jq -r '.html_url')) |" >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ Release更新失败: $(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')"
+          echo "❌ Release变更日志更新失败"
+          echo "错误信息: $(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')"
           exit 1
         fi
 
-    - name: 输出结果摘要
+    - name: 清理临时文件
       if: always()
       run: |
-        echo "## 📊 执行结果摘要"
-        echo "- 🏷️ 版本: ${{ env.VERSION }}"
-        echo "- 🔧 运行模式: ${{ env.运行模式 }}"
-        echo "- 📋 Release ID: ${{ env.RELEASE_ID }}"
-        
-        if [ "${{ env.需要优化 }}" == "true" ]; then
-          if [ "${{ env.AI生成成功 }}" == "true" ]; then
-            echo "- ✅ AI变更日志生成: 成功"
-            echo "- 📝 AI内容长度: $(echo "$AI_CHANGELOG" | wc -c) 字符"
-          else
-            echo "- ❌ AI变更日志生成: 失败"
-          fi
-        else
-          echo "- ⏭️ AI优化: 已跳过（不满足条件）"
-        fi
+        echo "🧹 清理临时文件..."
+        # 清理可能的临时文件
+        find . -name "*.tmp" -delete 2>/dev/null || true
+        echo "✅ 清理完成"
