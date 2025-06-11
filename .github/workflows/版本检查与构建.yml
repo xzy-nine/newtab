@@ -31,6 +31,7 @@ jobs:
       tag_exists: ${{ steps.check-tag-exists.outputs.tag_exists }}
       changelog: ${{ steps.generate-changelog.outputs.changelog }}
       build_path: ${{ steps.create-build-package.outputs.build_path }}
+      should_release: ${{ steps.set-release-flag.outputs.should_release }}
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
@@ -159,4 +160,15 @@ jobs:
           echo "| 构建包 | ✅ 已创建 |" >> $GITHUB_STEP_SUMMARY
         else
           echo "| 构建包 | ❌ 未创建（不满足条件） |" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: 设置发布标志
+      id: set-release-flag
+      run: |
+        if [ "${{ env.new_version }}" == "true" ] && [ "${{ env.tag_exists }}" == "false" ]; then
+          echo "should_release=true" >> $GITHUB_OUTPUT
+          echo "✅ 需要发布新版本"
+        else
+          echo "should_release=false" >> $GITHUB_OUTPUT
+          echo "ℹ️ 不需要发布"
         fi
