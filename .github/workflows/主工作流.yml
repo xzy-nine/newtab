@@ -49,7 +49,7 @@ jobs:
         echo "## 🚀 主工作流执行总结" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 执行状态" >> $GITHUB_STEP_SUMMARY
-        echo "| 作业 | 状态 | 结果 |" >> $GITHUB_STEP_SUMMARY
+        echo "| 作业 | 状态 |,结果 |" >> $GITHUB_STEP_SUMMARY
         echo "|------|------|------|" >> $GITHUB_STEP_SUMMARY
         echo "| 版本检查与构建 | ${{ needs.version-check-and-build.result }} | ${{ needs.version-check-and-build.result == 'success' && '✅ 成功' || '❌ 失败' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| 发布管理 | ${{ needs.release-management.result }} | ${{ needs.release-management.result == 'success' && '✅ 成功' || needs.release-management.result == 'skipped' && '⏭️ 跳过' || '❌ 失败' }} |" >> $GITHUB_STEP_SUMMARY
@@ -105,7 +105,12 @@ jobs:
         echo "- is_new_version: ${{ needs.version-check-and-build.outputs.is_new_version }}"
         echo "- tag_exists: ${{ needs.version-check-and-build.outputs.tag_exists }}"
         echo "- result: ${{ needs.version-check-and-build.result }}"
+        echo "- build_path: ${{ needs.version-check-and-build.outputs.build_path }}"
+        echo "- changelog length: $(echo '${{ needs.version-check-and-build.outputs.changelog }}' | wc -c)"
         echo ""
         echo "条件判断:"
         echo "- is_new_version == 'true': ${{ needs.version-check-and-build.outputs.is_new_version == 'true' }}"
         echo "- tag_exists == 'false': ${{ needs.version-check-and-build.outputs.tag_exists == 'false' }}"
+        echo "- result == 'success': ${{ needs.version-check-and-build.result == 'success' }}"
+        echo ""
+        echo "完整条件: ${{ needs.version-check-and-build.outputs.is_new_version == 'true' && needs.version-check-and-build.outputs.tag_exists == 'false' && needs.version-check-and-build.result == 'success' }}"

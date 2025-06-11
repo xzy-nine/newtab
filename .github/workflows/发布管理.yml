@@ -59,10 +59,25 @@ jobs:
         echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
         echo "✅ 发布变更日志准备完成"
 
+    # 添加下载工件步骤
+    - name: 下载构建工件
+      uses: actions/download-artifact@v4
+      with:
+        name: newtab-构建包-${{ inputs.version }}
+        path: ./artifacts
+
     - name: 验证构建包
       id: verify-build-package
       run: |
-        BUILD_FILE="${{ inputs.build-path }}"
+        # 查找构建包文件
+        BUILD_FILE=$(find ./artifacts -name "newtab-${{ inputs.version }}.zip" | head -1)
+        
+        if [ -z "$BUILD_FILE" ]; then
+          echo "❌ 在工件中未找到构建包: newtab-${{ inputs.version }}.zip"
+          echo "📁 工件目录内容:"
+          find ./artifacts -type f
+          exit 1
+        fi
         
         if [ -f "$BUILD_FILE" ]; then
           FILE_SIZE=$(ls -lh "$BUILD_FILE" | awk '{print $5}')
@@ -70,8 +85,6 @@ jobs:
           echo "BUILD_FILE=$BUILD_FILE" >> $GITHUB_ENV
         else
           echo "❌ 构建包不存在: $BUILD_FILE"
-          echo "📁 当前目录内容:"
-          find . -name "*.zip" -type f
           exit 1
         fi
 
