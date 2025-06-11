@@ -542,6 +542,41 @@
     background-color: var(--hover-bg, rgba(0, 123, 255, 0.1));
 }
 
+/* AI消息内容控制按钮容器 */
+.ai-message-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+}
+
+.ai-markdown-toggle {
+    background: none;
+    border: 1px solid #d1d5db;
+    color: var(--ai-text-color);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ai-markdown-toggle:hover {
+    background-color: var(--ai-primary-color);
+    color: white;
+    border-color: var(--ai-primary-color);
+}
+
+.ai-markdown-toggle.active {
+    background-color: var(--ai-primary-color);
+    color: white;
+    border-color: var(--ai-primary-color);
+}
+
 .ai-reasoning-content {
     padding: 12px;
     font-size: 13px;
@@ -652,6 +687,24 @@
   background: #0f172a;
 }
 
+/* 深色模式下的Markdown切换按钮 */
+[data-theme="dark"] .ai-markdown-toggle {
+  border-color: #374151;
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .ai-markdown-toggle:hover {
+  background-color: var(--ai-primary-color);
+  color: white;
+  border-color: var(--ai-primary-color);
+}
+
+[data-theme="dark"] .ai-markdown-toggle.active {
+  background-color: var(--ai-primary-color);
+  color: white;
+  border-color: var(--ai-primary-color);
+}
+
 /* 响应式适配 */
 @media (max-width: 768px) {
   .ai-modal-content {
@@ -666,9 +719,18 @@
   .ai-message {
     max-width: 90%;
   }
-  
-  .ai-quick-prompts {
+    .ai-quick-prompts {
     justify-content: center;
+  }
+  
+  .ai-message-controls {
+    justify-content: center;
+    margin-bottom: 6px;
+  }
+  
+  .ai-markdown-toggle {
+    font-size: 10px;
+    padding: 3px 6px;
   }
 }
 

@@ -3,12 +3,7 @@
  * 提供小部件容器创建、管理和交互功能
  */
 
-import { Utils } from './utils.js';
-import { I18n } from './i18n.js';
-import { Menu } from './menu.js';
-import { Notification } from './notification.js';
-import { WidgetRegistry } from './widgetRegistry.js';
-import { GridSystem } from './gridSystem.js';  // 导入网格系统
+import { Utils, Menu, GridSystem, I18n, Notification, WidgetRegistry } from '../core/index.js';
 
 // 小部件系统状态管理
 class WidgetSystemState {
@@ -65,11 +60,8 @@ class WidgetSystemState {
  * @param {string} defaultText - 默认文本
  */
 function getI18nMessage(key, defaultText) {
-    // 如果国际化模块尚未初始化，直接返回默认文本
-    if (!I18n.isInitialized) {
-        return defaultText;
-    }
-    return I18n.getMessage(key) || defaultText;
+    // 使用统一的国际化方法
+    return I18n.getMessage(key, defaultText);
 }
 
 /**
@@ -628,20 +620,18 @@ export const WidgetSystem = {
             if (addButton && contentArea.children.length === 1) {
                 contentArea.removeChild(addButton);
             }
-            
-            // 创建小部件项容器
-            const widgetItem = document.createElement('div');
+              // 创建小部件项容器
+            const widgetItem = Utils.createElement('div');
             widgetItem.className = 'widget-item';
             widgetItem.dataset.widgetType = widgetType;
             widgetItem.id = widgetData.id || `widget-${widgetType}-${Date.now()}`;
             
             // 存储小部件数据
             widgetItem.widgetData = widgetData;
-            
-            // 添加加载指示器
-            const loadingIndicator = document.createElement('div');
+              // 添加加载指示器
+            const loadingIndicator = Utils.createElement('div');
             loadingIndicator.className = 'widget-loading';
-            loadingIndicator.textContent = '加载中...';
+            loadingIndicator.textContent = getI18nMessage('loading', '加载中...');
             widgetItem.appendChild(loadingIndicator);
             
             // 先添加到容器，让用户看到加载状态
@@ -695,13 +685,11 @@ export const WidgetSystem = {
                 // 显示错误信息替代加载指示器
                 if (widgetItem.contains(loadingIndicator)) {
                     widgetItem.removeChild(loadingIndicator);
-                }
-                
-                const errorElement = document.createElement('div');
-                errorElement.className = 'widget-error';
-                errorElement.innerHTML = `<div>加载失败: ${error.message}</div>
-                                     <button class="retry-button">重试</button>
-                                     <button class="remove-button">移除</button>`;
+                }                
+                const errorElement = Utils.createElement('div');
+                errorElement.className = 'widget-error';                errorElement.innerHTML = `<div>${getI18nMessage('loadFailed', '加载失败')}: ${error.message}</div>
+                                     <button class="retry-button">${getI18nMessage('retry', '重试')}</button>
+                                     <button class="remove-button">${getI18nMessage('remove', '移除')}</button>`;
                 
                 // 添加重试和移除按钮的事件处理
                 widgetItem.appendChild(errorElement);
@@ -985,10 +973,9 @@ export const WidgetSystem = {
         }
         
         indicatorsContainer.classList.remove('hidden'); // 显示指示器
-        
-        // 创建指示器点
+          // 创建指示器点
         Array.from(widgetItems).forEach((_, index) => {
-            const indicator = document.createElement('span');
+            const indicator = Utils.createElement('span');
             indicator.className = 'widget-indicator';
             indicator.dataset.index = index;
             
@@ -1805,32 +1792,25 @@ export const WidgetSystem = {
         }
 
         return true;
-    },
-
-    /**
+    },    /**
      * 安全的DOM操作包装器
+     * 现在使用Utils中的Environment.safeDOMOperation
      * @param {Function} operation - 要执行的DOM操作
      * @param {string} errorMessage - 错误消息
      * @returns {*} 操作结果
      */
     safeDOMOperation(operation, errorMessage = 'DOM操作失败') {
-        try {
-            return operation();
-        } catch (error) {
-            Utils.handleError(error, errorMessage);
-            return null;
-        }
+        return Utils.Environment.safeDOMOperation(operation, null) || Utils.handleError(new Error(errorMessage), errorMessage);
     },
 
     /**
-     * 节流函数
+     * 节流函数，直接使用Utils中的throttle方法
      * @param {Function} func - 要节流的函数
      * @param {number} limit - 节流间隔（毫秒）
      * @returns {Function} 节流后的函数
      */
     throttle(func, limit) {
-        // 使用Utils中的debounce作为节流的替代
-        return Utils.debounce(func, limit);
+        return Utils.throttle(func, limit);
     },
 
     /**

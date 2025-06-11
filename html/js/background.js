@@ -3,7 +3,15 @@
  * 提供扩展页面访问功能，并显示通知
  */
 
-import { Notification } from './modules/notification.js';
+// 导入合并后的核心模块（Utils现在自动检测环境）
+import { Notification, I18n, Utils, BackgroundUtils } from './modules/core/index.js';
+
+// 外部通知统计和管理
+const externalNotificationStats = {
+  totalRequests: 0,
+  requestsByDomain: new Map(),
+  recentRequests: []
+};
 
 // 当扩展安装或更新时运行
 chrome.runtime.onInstalled.addListener(() => {
@@ -53,14 +61,28 @@ function openNewTabWithNotification() {
   
   chrome.tabs.create({
     url: 'html/newtab.html'
-  }, tab => {
-    setTimeout(() => {
-      // 使用后台通知API发送安装成功通知
-      Notification.background.success(
-        '扩展安装成功', 
-        '新标签页扩展已成功安装并可以使用了！',
-        { showInBadge: true }
-      );
+  }, tab => {    setTimeout(async () => {      
+      // 等待I18n模块初始化后再使用国际化功能
+      let title = '扩展已安装';
+      let message = '新标签页扩展安装成功';
+      
+      try {
+        // 安全地尝试获取国际化消息
+        if (I18n && typeof I18n.getMessage === 'function') {
+          title = I18n.getMessage('extensionInstalled') || title;
+          message = I18n.getMessage('extensionInstalledDesc') || message;
+        }
+      } catch (error) {
+        console.warn('I18n模块尚未准备好，使用默认消息');
+      }
+      
+      // 直接添加安装成功通知到弹出页面
+      await addPopupNotification({
+        type: 'success',
+        title: title, 
+        message: message,
+        showInBadge: true
+      });
       
       chrome.tabs.sendMessage(tab.id, { 
         action: 'showMobileInstruction',
@@ -101,13 +123,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       url: chrome.runtime.getURL('html/newtab.html')
     });
     return true;
-  }
-  
-  // 处理弹出页面通知
+  }  // 处理弹出页面通知
   if (request.action === 'addPopupNotification') {
-    addPopupNotification(request.notification);
-    sendResponse({ success: true });
-    return true;
+    addPopupNotification(request.notification).then(() => {
+      sendResponse({ success: true });
+    }).catch(error => {
+      console.error('处理弹出通知失败:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true; // 保持消息通道开放以进行异步响应
   }
   
   // 处理通知清除
@@ -118,8 +142,238 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+// 处理来自 content script 的外部通知请求
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // 处理外部通知请求
+  if (request.action === 'showExternalNotification') {
+    handleExternalNotification(request.options, sender);
+    sendResponse({ success: true });
+    return true;
+  }
+  
+  // 处理外部加载指示器请求
+  if (request.action === 'showExternalLoading') {
+    handleExternalLoading(request.message, sender);
+    sendResponse({ success: true });
+    return true;
+  }
+  
+  // 处理隐藏外部加载指示器
+  if (request.action === 'hideExternalLoading') {
+    handleHideExternalLoading(sender);
+    sendResponse({ success: true });
+    return true;
+  }
+  
+  // 处理更新外部加载进度
+  if (request.action === 'updateExternalLoadingProgress') {
+    handleUpdateExternalLoadingProgress(request.percent, request.message, sender);
+    sendResponse({ success: true });
+    return true;
+  }
+  
+  // 处理获取扩展版本请求
+  if (request.action === 'getExtensionVersion') {
+    sendResponse({ 
+      version: chrome.runtime.getManifest().version,
+      name: chrome.runtime.getManifest().name 
+    });
+    return true;
+  }
+  
+  // 处理获取外部通知统计请求
+  if (request.action === 'getExternalNotificationStats') {
+    sendResponse({
+      success: true,
+      stats: {
+        totalRequests: externalNotificationStats.totalRequests,
+        requestsByDomain: Object.fromEntries(externalNotificationStats.requestsByDomain),
+        recentRequests: externalNotificationStats.recentRequests.slice(0, 20) // 只返回最近20个
+      }
+    });
+    return true;
+  }
+  
+  // 处理清除外部通知统计
+  if (request.action === 'clearExternalNotificationStats') {
+    externalNotificationStats.totalRequests = 0;
+    externalNotificationStats.requestsByDomain.clear();
+    externalNotificationStats.recentRequests = [];
+    sendResponse({ success: true });
+    return true;
+  }
+});
+
 /**
- * 添加通知到弹出页面 - 改进错误处理
+ * 处理外部通知请求
+ * @param {Object} options 通知选项
+ * @param {Object} sender 发送者信息
+ */
+async function handleExternalNotification(options, sender) {
+  try {
+    console.log('=== 外部通知请求调试信息 ===');
+    console.log('sender.tab:', sender.tab);
+    console.log('sender.tab.url:', sender.tab?.url);
+    console.log('options:', options);
+    
+    // 验证来源是否可信
+    if (!sender.tab || !sender.tab.url || !isTrustedDomain(sender.tab.url)) {
+      console.warn('外部通知请求来源无效或不可信:', sender.tab?.url);
+      console.log('isTrustedDomain结果:', isTrustedDomain(sender.tab?.url));
+      return;
+    }
+
+    const hostname = new URL(sender.tab.url).hostname;
+    const notificationType = options.type || 'info';
+    
+    console.log('通过了域名验证, hostname:', hostname);
+    
+    // 记录统计信息
+    recordExternalNotificationStats(hostname, notificationType);
+
+    // 记录外部通知请求
+    console.log('收到外部通知请求:', {
+      url: sender.tab.url,
+      title: sender.tab.title,
+      type: notificationType,
+      options: options
+    });
+
+    // 验证通知选项
+    if (!options.title && !options.message) {
+      console.warn('外部通知请求缺少标题和消息');
+      return;
+    }
+
+    console.log('通过了选项验证，准备发送通知');
+
+    // 添加来源信息到通知
+    const enhancedOptions = {
+      ...options,
+      title: `[${hostname}] ${options.title || '通知'}`,
+      showInBadge: options.showInBadge !== false // 外部通知默认显示在徽标中
+    };
+
+    console.log('enhancedOptions:', enhancedOptions);    // 直接添加到弹出页面通知
+    await addPopupNotification({
+      type: notificationType,
+      title: enhancedOptions.title,
+      message: options.message || '',
+      showInBadge: enhancedOptions.showInBadge,
+      duration: options.duration,
+      source: 'external',
+      sourceUrl: sender.tab.url,
+      sourceTitle: sender.tab.title,
+      domain: hostname
+    });    
+    console.log('通知已成功添加到弹出页面');
+
+  } catch (error) {
+    console.error('处理外部通知请求失败:', error);
+  }
+}
+
+/**
+ * 处理外部加载指示器请求
+ * @param {string} message 加载消息
+ * @param {Object} sender 发送者信息
+ */
+async function handleExternalLoading(message, sender) {
+  try {
+    const hostname = new URL(sender.tab.url).hostname;
+    const enhancedMessage = `[${hostname}] ${message}`;
+      // 发送加载通知到弹出页面
+    await addPopupNotification({
+      type: 'info',
+      title: '外部加载',
+      message: enhancedMessage,
+      showInBadge: false, // 加载通知不显示在徽标中
+      source: 'external-loading',
+      sourceUrl: sender.tab.url
+    });
+
+  } catch (error) {
+    console.error('处理外部加载请求失败:', error);
+  }
+}
+
+/**
+ * 处理隐藏外部加载指示器
+ * @param {Object} sender 发送者信息
+ */
+async function handleHideExternalLoading(sender) {
+  try {
+    const hostname = new URL(sender.tab.url).hostname;
+      // 发送完成通知
+    await addPopupNotification({
+      type: 'success',
+      title: '外部加载完成',
+      message: `[${hostname}] 加载完成`,
+      showInBadge: false,
+      source: 'external-loading-complete',
+      sourceUrl: sender.tab.url
+    });
+
+  } catch (error) {
+    console.error('处理隐藏外部加载请求失败:', error);
+  }
+}
+
+/**
+ * 处理更新外部加载进度
+ * @param {number} percent 进度百分比
+ * @param {string} message 进度消息
+ * @param {Object} sender 发送者信息
+ */
+async function handleUpdateExternalLoadingProgress(percent, message, sender) {
+  try {
+    const hostname = new URL(sender.tab.url).hostname;
+    const enhancedMessage = `[${hostname}] ${message} (${percent}%)`;
+      // 更新进度通知
+    await addPopupNotification({
+      type: 'info',
+      title: '外部加载进度',
+      message: enhancedMessage,
+      showInBadge: false,
+      source: 'external-loading-progress',
+      sourceUrl: sender.tab.url
+    });
+
+  } catch (error) {
+    console.error('处理更新外部加载进度失败:', error);
+  }
+}
+
+/**
+ * 记录外部通知统计
+ * @param {string} domain 域名
+ * @param {string} type 通知类型
+ */
+function recordExternalNotificationStats(domain, type) {
+  externalNotificationStats.totalRequests++;
+  
+  if (!externalNotificationStats.requestsByDomain.has(domain)) {
+    externalNotificationStats.requestsByDomain.set(domain, { count: 0, types: {} });
+  }
+  
+  const domainStats = externalNotificationStats.requestsByDomain.get(domain);
+  domainStats.count++;
+  domainStats.types[type] = (domainStats.types[type] || 0) + 1;
+  
+  // 记录最近的请求（最多保留100个）
+  externalNotificationStats.recentRequests.unshift({
+    domain,
+    type,
+    timestamp: Date.now()
+  });
+  
+  if (externalNotificationStats.recentRequests.length > 100) {
+    externalNotificationStats.recentRequests.pop();
+  }
+}
+
+/**
+ * 添加通知到弹出页面
  * @param {Object} notification 通知对象
  */
 async function addPopupNotification(notification) {
@@ -131,37 +385,64 @@ async function addPopupNotification(notification) {
       id: Date.now().toString(),
       timestamp: Date.now(),
       read: false,
-      showInBadge: notification.showInBadge !== false,
+      type: 'info',
+      showInBadge: notification.showInBadge !== false, // 默认显示在徽标中
       ...notification
     };
     
     notifications.unshift(newNotification);
     
-    if (notifications.length > 50) {
-      notifications.splice(50);
+    // 限制通知数量，只保留最新的90条
+    if (notifications.length > 90) {
+      notifications.splice(90);
     }
     
     await chrome.storage.local.set({ popupNotifications: notifications });
     
-    const unreadBadgeCount = notifications.filter(n => !n.read && n.showInBadge !== false).length;
-    if (unreadBadgeCount > 0) {
+    // 更新徽标 - 只计算需要显示在徽标中的未读通知
+    const unreadCount = notifications.filter(n => !n.read && n.showInBadge !== false).length;
+    if (unreadCount > 0) {
       chrome.action.setBadgeText({
-        text: unreadBadgeCount > 99 ? '99+' : unreadBadgeCount.toString()
+        text: unreadCount > 99 ? '99+' : unreadCount.toString()
       });
-      chrome.action.setBadgeBackgroundColor({ color: '#dc3545' });
+      chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
     } else {
       chrome.action.setBadgeText({ text: '' });
     }
     
   } catch (error) {
-    console.error('添加弹出页面通知失败:', error);
+    console.error('添加通知失败:', error);
+  }
+}
+
+/**
+ * 检查域名是否可信（可以根据需要扩展这个列表）
+ * @param {string} url 页面URL
+ * @returns {boolean} 是否可信
+ */
+function isTrustedDomain(url) {
+  try {
+    console.log('检查域名是否可信:', url);
+    const hostname = new URL(url).hostname;
+    console.log('hostname:', hostname);
     
-    // 使用通知系统记录错误
-    Notification.background.error(
-      '通知系统错误',
-      `无法保存通知: ${error.message}`,
-      { showInBadge: false }
-    );
+    // 本地开发环境
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local')) {
+      console.log('匹配本地开发环境');
+      return true;
+    }
+    
+    // HTTPS页面
+    if (url.startsWith('https://')) {
+      console.log('匹配HTTPS页面');
+      return true;
+    }
+    
+    console.log('未匹配任何信任条件');
+    return false;
+  } catch (error) {
+    console.log('域名检查出错:', error);
+    return false;
   }
 }
 
@@ -173,16 +454,15 @@ chrome.runtime.onSuspend.addListener(() => {
 // 监听扩展错误
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
-    console.log('新标签页扩展首次安装');
-  } else if (details.reason === 'update') {
+    console.log('新标签页扩展首次安装');  } else if (details.reason === 'update') {
     console.log('新标签页扩展已更新到版本:', chrome.runtime.getManifest().version);
-    
-    // 发送更新通知
-    Notification.background.info(
-      '扩展已更新',
-      `新标签页扩展已更新到版本 ${chrome.runtime.getManifest().version}`,
-      { showInBadge: true }
-    );
+      // 发送更新通知
+    addPopupNotification({
+      type: 'info',
+      title: I18n.getMessage('extensionUpdated') || '扩展已更新',
+      message: I18n.getMessage('extensionUpdatedDesc', [chrome.runtime.getManifest().version]) || `扩展已更新到版本 ${chrome.runtime.getManifest().version}`,
+      showInBadge: true
+    });
   }
   
   setupExtensionPage();

@@ -1,6 +1,9 @@
 /**
  * 菜单系统模块
  * 包含上下文菜单、模态框、表单模态框等功能
+ * 
+ * 注意：此模块依赖 Utils 和 I18n，但由于它们在 index.js 中的导出顺序，
+ * 这里需要直接导入以避免循环依赖
  */
 import { Utils } from './utils.js';
 import { I18n } from './i18n.js';
@@ -747,7 +750,31 @@ export const Menu = {
       modalContent.style.position = 'absolute';
       modalContent.style.left = `${x}px`;
       modalContent.style.top = `${y}px`;
-      modalContent.style.margin = '0';
-    }, 0);
+      modalContent.style.margin = '0';    }, 0);
   }
 };
+
+// 只在 DOM 环境中执行初始化代码
+if (typeof document !== 'undefined') {
+  // 监听工具模块的UI事件初始化，然后初始化菜单系统
+  document.addEventListener('utils-ui-events-initialized', () => {
+    Menu.Modal.initEvents();
+    Menu.ContextMenu.init();
+  });
+
+  // 如果工具模块已经初始化过了，直接初始化菜单系统
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        Menu.Modal.initEvents();
+        Menu.ContextMenu.init();
+      }, 100);
+    });
+  } else {
+    // 文档已经加载完成，延迟初始化
+    setTimeout(() => {
+      Menu.Modal.initEvents();
+      Menu.ContextMenu.init();
+    }, 100);
+  }
+}

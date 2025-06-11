@@ -18,6 +18,264 @@
   "extensionTitle": {
     "message": "新标签页扩展",
     "description": "扩展标题"
+  },
+  "quickPrompt_summary": {
+    "message": "总结",
+    "description": "AI快速提示词-总结"
+  },
+  "quickPrompt_translate": {
+    "message": "翻译",
+    "description": "AI快速提示词-翻译"
+  },
+  "quickPrompt_rewrite": {
+    "message": "改写",
+    "description": "AI快速提示词-改写"
+  },
+  "quickPrompt_expand": {
+    "message": "扩写",
+    "description": "AI快速提示词-扩写"
+  },
+  "quickPrompt_polish": {
+    "message": "润色",
+    "description": "AI快速提示词-润色"
+  },
+  "quickPrompt_analyze": {
+    "message": "分析",
+    "description": "AI快速提示词-分析"
+  },
+  "quickPrompt_code": {
+    "message": "写代码",
+    "description": "AI快速提示词-写代码"
+  },
+  "quickPrompt_debug": {
+    "message": "调试",
+    "description": "AI快速提示词-调试"
+  },
+  "quickPrompt_optimize": {
+    "message": "优化",
+    "description": "AI快速提示词-优化"
+  },
+  "quickPrompt_explain": {
+    "message": "解释",
+    "description": "AI快速提示词-解释"
+  },
+  "systemPrompt": {
+    "message": "你是一个有用的AI助手，请根据用户的需求提供准确、详细的回答。",
+    "description": "AI系统提示词"
+  },
+  "hideThinking": {
+    "message": "隐藏推理",
+    "description": "隐藏AI推理过程按钮文本"
+  },
+  "showThinking": {
+    "message": "显示推理",
+    "description": "显示AI推理过程按钮文本"
+  },
+  "extensionInstalled": {
+    "message": "扩展安装成功",
+    "description": "扩展安装成功通知标题"
+  },
+  "extensionInstalledDesc": {
+    "message": "新标签页扩展已成功安装并可以使用了！",
+    "description": "扩展安装成功通知描述"
+  },  "notificationSystemError": {
+    "message": "通知系统错误",
+    "description": "通知系统错误标题"
+  },
+  "timeJustNow": {
+    "message": "刚刚",
+    "description": "时间显示-刚刚"
+  },
+  "timeMinutesAgo": {
+    "message": "$1分钟前",
+    "description": "时间显示-分钟前",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },  "timeHoursAgo": {
+    "message": "$1小时前",
+    "description": "时间显示-小时前",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },  "conversationCount": {
+    "message": "条",
+    "description": "对话数量单位"
+  },
+  "timerWidgetName": {
+    "message": "计时器",
+    "description": "计时器小部件名称"
+  },
+  "timerWidgetDesc": {
+    "message": "提供秒表功能",
+    "description": "计时器小部件描述"
+  },
+  "timerStart": {
+    "message": "开始",
+    "description": "计时器开始按钮"
+  },
+  "timerPause": {
+    "message": "暂停",
+    "description": "计时器暂停按钮"
+  },
+  "timerReset": {
+    "message": "重置",
+    "description": "计时器重置按钮"
+  },
+  "timerConfirm": {
+    "message": "确认?",
+    "description": "计时器重置确认"
+  },
+  "timerCountdown": {
+    "message": "倒计时",
+    "description": "倒计时模式标题"
+  },  "timerStopwatch": {
+    "message": "秒表",
+    "description": "秒表模式标题"
+  },
+  "counterWidgetName": {
+    "message": "计数器",
+    "description": "计数器小部件名称"
+  },
+  "counterWidgetDesc": {
+    "message": "简单的计数器小部件，可增加、减少和重置数值",
+    "description": "计数器小部件描述"
+  },
+  "counterDefaultTitle": {
+    "message": "计数",
+    "description": "计数器默认标题"
+  },
+  "counterReset": {
+    "message": "重置",
+    "description": "计数器重置按钮"
+  },
+  "counterResetConfirm": {
+    "message": "确认重置?",
+    "description": "计数器重置确认"
+  },
+  "clear": {
+    "message": "清除",
+    "description": "清除按钮文本"
+  },
+  "loadFailed": {
+    "message": "加载失败",
+    "description": "加载失败提示"
+  },
+  "retry": {
+    "message": "重试",
+    "description": "重试按钮"
+  },
+  "remove": {
+    "message": "移除",
+    "description": "移除按钮"
+  },
+  "notificationSaveError": {
+    "message": "无法保存通知: $1",
+    "description": "通知保存错误消息",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "错误详情"
+      }
+    }
+  },
+  "extensionUpdated": {
+    "message": "扩展已更新",
+    "description": "扩展更新通知标题"
+  },
+  "extensionUpdatedDesc": {
+    "message": "新标签页扩展已更新到版本 $1",
+    "description": "扩展更新通知描述",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "1.0.0"
+      }
+    }
+  },
+  "externalNotificationsSection": {
+    "message": "外部通知API",
+    "description": "外部通知API设置分节标题"
+  },
+  "externalNotificationsEnabled": {
+    "message": "启用外部通知API",
+    "description": "外部通知API启用选项标签"
+  },
+  "externalNotificationsEnabledDesc": {
+    "message": "允许其他网页和油猴脚本使用扩展的通知功能",
+    "description": "外部通知API启用选项描述"
+  },
+  "externalNotificationsApiEnabled": {
+    "message": "外部通知API已启用",
+    "description": "外部通知API启用成功通知标题"
+  },
+  "externalNotificationsApiEnabledDesc": {
+    "message": "其他网页现在可以使用扩展的通知功能",
+    "description": "外部通知API启用成功通知消息"  },
+  "externalNotificationsStats": {
+    "message": "外部通知统计",
+    "description": "外部通知统计选项标签"
+  },  "externalNotificationsStatsDesc": {
+    "message": "查看和管理外部通知请求的统计信息",
+    "description": "外部通知统计选项描述"
+  },
+  "markdownRendering": {
+    "message": "Markdown渲染",
+    "description": "Markdown渲染按钮文本"
+  },
+  "rawText": {
+    "message": "原始文本",
+    "description": "原始文本按钮文本"
+  },
+  "settingsAITitleGeneration": {
+    "message": "启用AI生成标题",
+    "description": "AI标题生成设置项标签"
+  },
+  "settingsAITitleGenerationDesc": {
+    "message": "让AI为对话生成简洁的标题，而不是使用用户问题",
+    "description": "AI标题生成设置项描述"
+  },
+  "settingsAITitleUpdateInterval": {
+    "message": "标题更新间隔",
+    "description": "AI标题更新间隔设置项标签"
+  },
+  "settingsAITitleUpdateIntervalDesc": {
+    "message": "每隔多少轮对话重新生成标题（第1轮总是生成）",
+    "description": "AI标题更新间隔设置项描述"
+  },
+  "settingsAITitleMaxTokens": {
+    "message": "标题生成Token限制",
+    "description": "AI标题生成Token限制设置项标签"
+  },
+  "settingsAITitleMaxTokensDesc": {
+    "message": "控制标题生成的Token数量，较少的Token可节约成本",
+    "description": "AI标题生成Token限制设置项描述"
+  },
+  "aiTitleGenerationEnabled": {
+    "message": "AI标题生成已启用",
+    "description": "AI标题生成启用成功通知"
+  },
+  "aiTitleGenerationDisabled": {
+    "message": "AI标题生成已禁用",
+    "description": "AI标题生成禁用成功通知"
+  },
+  "titleGenerationPrompt": {
+    "message": "请为以下对话生成一个简洁、准确的标题。标题应该：\n1. 不超过20个字符\n2. 准确概括对话的主要内容\n3. 使用中文（如果对话是中文）或英文（如果对话是英文）\n4. 不要包含引号或特殊符号\n5. 直接输出标题，不要其他解释\n\n对话内容：",
+    "description": "AI标题生成的系统提示词"
+  },
+  "rounds": {
+    "message": "轮",
+    "description": "对话轮数单位"
+  },
+  "tokens": {
+    "message": "tokens",
+    "description": "Token数量单位"
   }
 }
 

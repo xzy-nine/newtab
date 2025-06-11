@@ -3,11 +3,29 @@
  * 提供秒表功能
  */
 
-export default {
-    // 小部件元数据
+import { I18n, Utils } from '../../core/index.js';
+
+// 国际化辅助函数
+function getTimerI18nMessage(key, defaultText) {
+    // 使用统一的国际化方法，通过导入的I18n模块
+    if (typeof I18n !== 'undefined' && I18n.getMessage) {
+        return I18n.getMessage(key, defaultText);
+    }
+    // 后备方案：尝试通过全局访问
+    try {
+        if (window.I18n && window.I18n.getMessage) {
+            return window.I18n.getMessage(key, defaultText);
+        }
+    } catch (error) {
+        console.warn('Timer widget I18n access failed:', error);
+    }
+    return defaultText;
+}
+
+export default {    // 小部件元数据
     metadata: {
-        name: '计时器',
-        description: '提供秒表功能',
+        name: I18n.getMessage('timerWidgetName', '计时器'),
+        description: I18n.getMessage('timerWidgetDesc', '提供秒表功能'),
         version: '1.2.0',
         author: 'System'
     },
@@ -52,7 +70,7 @@ export default {
           // 如果计时器正在运行，则继续运行
         if (this.isRunning) {
             const mainBtn = container.querySelector('#mainBtn');
-            mainBtn.textContent = "暂停";
+            mainBtn.textContent = getTimerI18nMessage('timerPause', '暂停');
             mainBtn.classList.add("timer-btn-pause");
             mainBtn.classList.remove("timer-btn-start", "widget-btn-primary");
             mainBtn.classList.add("widget-btn-danger");
@@ -69,11 +87,13 @@ export default {
      * @param {HTMLElement} container - 小部件容器元素
      */    render: function(container) {
         // 添加基础类名，使用公共样式
-        container.classList.add('timer-widget', 'widget-base');
-          // 创建小部件HTML - 支持倒计时和正计时模式，使用公共样式类
+        container.classList.add('timer-widget', 'widget-base');        // 创建小部件HTML - 支持倒计时和正计时模式，使用公共样式类
+        const titleText = this.isCountdown ? 
+            getTimerI18nMessage('timerCountdown', '倒计时') : 
+            getTimerI18nMessage('timerStopwatch', '秒表');
         const html = `
             <div class="timer-header">
-                <h3 class="timer-title widget-title">${this.isCountdown ? "倒计时" : "秒表"}</h3>
+                <h3 class="timer-title widget-title">${titleText}</h3>
             </div>
             
             <div class="timer-display widget-display" id="timerDisplay">
@@ -110,8 +130,8 @@ export default {
             </div>
             
             <div class="timer-compact-controls widget-controls widget-controls-horizontal">
-                <button class="timer-main-btn timer-btn-start widget-btn widget-btn-rect widget-btn-primary" id="mainBtn">开始</button>
-                <button class="timer-reset-btn widget-btn widget-btn-small widget-btn-normal" id="resetBtn">重置</button>
+                <button class="timer-main-btn timer-btn-start widget-btn widget-btn-rect widget-btn-primary" id="mainBtn">${getTimerI18nMessage('timerStart', '开始')}</button>
+                <button class="timer-reset-btn widget-btn widget-btn-small widget-btn-normal" id="resetBtn">${getTimerI18nMessage('timerReset', '重置')}</button>
             </div>
         `;
         
@@ -345,7 +365,7 @@ export default {
         if (this.isRunning) {
             clearInterval(this.timerInterval);
             this.isRunning = false;
-            button.textContent = "开始";
+            button.textContent = getTimerI18nMessage('timerStart', '开始');
             button.classList.add("timer-btn-start", "widget-btn-primary");
             button.classList.remove("timer-btn-pause", "widget-btn-danger");
         } else {
@@ -355,7 +375,7 @@ export default {
             }
               this.timerInterval = setInterval(() => self.updateTime(container), 100);
             this.isRunning = true;
-            button.textContent = "暂停";
+            button.textContent = getTimerI18nMessage('timerPause', '暂停');
             button.classList.add("timer-btn-pause", "widget-btn-danger");
             button.classList.remove("timer-btn-start", "widget-btn-primary");
             
@@ -392,7 +412,7 @@ export default {
                 // 更新标题
                 const title = container.querySelector('.timer-title');
                 if (title) {
-                    title.textContent = "倒计时";
+                    title.textContent = getTimerI18nMessage('timerCountdown', '倒计时');
                 }
             }
         } else {            // 如果时间为0，切换回正计时模式
@@ -403,7 +423,7 @@ export default {
                 // 更新标题
                 const title = container.querySelector('.timer-title');
                 if (title) {
-                    this.title = "秒表";
+                    this.title = getTimerI18nMessage('timerStopwatch', '秒表');
                     title.textContent = this.title;
                 }
             }
@@ -626,9 +646,8 @@ export default {
           if (this.isRunning) {
             clearInterval(this.timerInterval);
             this.isRunning = false;
-            
-            const mainBtn = container.querySelector('#mainBtn');
-            mainBtn.textContent = "开始";
+              const mainBtn = container.querySelector('#mainBtn');
+            mainBtn.textContent = getTimerI18nMessage('timerStart', '开始');
             mainBtn.classList.add("timer-btn-start", "widget-btn-primary");
             mainBtn.classList.remove("timer-btn-pause", "widget-btn-danger");
         }
@@ -655,17 +674,15 @@ export default {
                   // 切换回正计时模式
                 this.isCountdown = false;
                 this.initialTime = 0;
-                
-                // 更新标题
+                  // 更新标题
                 const title = container.querySelector('.timer-title');
                 if (title) {
-                    this.title = "秒表";
+                    this.title = getTimerI18nMessage('timerStopwatch', '秒表');
                     title.textContent = this.title;
                 }
                   // 更新按钮状态
-                const mainBtn = container.querySelector('#mainBtn');
-                if (mainBtn) {
-                    mainBtn.textContent = "开始";
+                const mainBtn = container.querySelector('#mainBtn');                if (mainBtn) {
+                    mainBtn.textContent = getTimerI18nMessage('timerStart', '开始');
                     mainBtn.classList.add("timer-btn-start", "widget-btn-primary");
                     mainBtn.classList.remove("timer-btn-pause", "widget-btn-danger");
                 }
@@ -727,17 +744,15 @@ export default {
                 e.stopPropagation(); // 阻止事件冒泡
                 
                 const now = Date.now();
-                
-                // 第一次点击
+                  // 第一次点击
                 if (!resetBtn.classList.contains('confirm') || now - resetClickTime > 3000) {
-                    resetBtn.textContent = '确认?';
+                    resetBtn.textContent = getTimerI18nMessage('timerConfirm', '确认?');
                     resetBtn.classList.add('confirm');
                     resetClickTime = now;
-                    
-                    // 3秒后自动恢复
+                      // 3秒后自动恢复
                     setTimeout(() => {
                         if (resetBtn.classList.contains('confirm')) {
-                            resetBtn.textContent = '重置';
+                            resetBtn.textContent = getTimerI18nMessage('timerReset', '重置');
                             resetBtn.classList.remove('confirm');
                         }
                     }, 3000);
@@ -745,13 +760,11 @@ export default {
                 }
                 
                 // 第二次点击，检查时间间隔
-                if (now - resetClickTime > 1000) {
-                    // 超过1秒，重新开始确认流程
-                    resetBtn.textContent = '确认?';
-                    resetClickTime = now;
-                    setTimeout(() => {
+                if (now - resetClickTime > 1000) {                    // 超过1秒，重新开始确认流程
+                    resetBtn.textContent = getTimerI18nMessage('timerConfirm', '确认?');
+                    resetClickTime = now;                    setTimeout(() => {
                         if (resetBtn.classList.contains('confirm')) {
-                            resetBtn.textContent = '重置';
+                            resetBtn.textContent = getTimerI18nMessage('timerReset', '重置');
                             resetBtn.classList.remove('confirm');
                         }
                     }, 3000);
@@ -759,7 +772,7 @@ export default {
                 }
                 
                 // 在1秒内的第二次点击，执行重置
-                resetBtn.textContent = '重置';
+                resetBtn.textContent = getTimerI18nMessage('timerReset', '重置');
                 resetBtn.classList.remove('confirm');
                 self.stopTiming(container);
             };
@@ -783,13 +796,12 @@ export default {
             // 已经在编辑状态则不处理
             if (titleElement.classList.contains('editing')) return;
             
-            const currentTitle = this.title || "秒表";
+            const currentTitle = this.title || getTimerI18nMessage('timerStopwatch', '秒表');
             
             // 添加编辑类
-            titleElement.classList.add('editing');
-            
+            titleElement.classList.add('editing');            
             // 创建输入框
-            const inputElement = document.createElement('input');
+            const inputElement = Utils.createElement('input');
             inputElement.type = 'text';
             inputElement.value = currentTitle;
             inputElement.maxLength = 20;
@@ -812,10 +824,9 @@ export default {
             // 自动聚焦输入框
             inputElement.focus();
             inputElement.select();
-            
-            // 保存标题的函数
+              // 保存标题的函数
             const saveTitle = () => {
-                const newTitle = inputElement.value.trim() || "秒表";
+                const newTitle = inputElement.value.trim() || getTimerI18nMessage('timerStopwatch', '秒表');
                 this.title = newTitle;
                 titleElement.textContent = newTitle;
                 titleElement.classList.remove('editing');
@@ -828,10 +839,9 @@ export default {
             inputElement.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    saveTitle();
-                } else if (e.key === 'Escape') {
+                    saveTitle();                } else if (e.key === 'Escape') {
                     e.preventDefault();
-                    titleElement.textContent = this.title || "秒表";
+                    titleElement.textContent = this.title || getTimerI18nMessage('timerStopwatch', '秒表');
                     titleElement.classList.remove('editing');
                 }
             });
@@ -844,9 +854,8 @@ export default {
         document.addEventListener('click', (e) => {
             if (titleElement.classList.contains('editing') && 
                 !titleElement.contains(e.target)) {
-                const inputElement = titleElement.querySelector('input');
-                if (inputElement) {
-                    const newTitle = inputElement.value.trim() || "秒表";
+                const inputElement = titleElement.querySelector('input');                if (inputElement) {
+                    const newTitle = inputElement.value.trim() || getTimerI18nMessage('timerStopwatch', '秒表');
                     this.title = newTitle;
                     titleElement.textContent = newTitle;
                     titleElement.classList.remove('editing');
@@ -873,10 +882,9 @@ export default {
         if (resetBtn && !resetBtn.classList.contains('confirm')) {
             if (width < 140) {
                 // 超小尺寸
-                resetBtn.textContent = 'R';
-            } else {
+                resetBtn.textContent = 'R';            } else {
                 // 正常尺寸
-                resetBtn.textContent = '重置';
+                resetBtn.textContent = getTimerI18nMessage('timerReset', '重置');
             }
         }
     },

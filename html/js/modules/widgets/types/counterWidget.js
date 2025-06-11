@@ -2,11 +2,12 @@
  * 计数器小部件模块
  */
 
-export default {
-    // 小部件元数据
+import { I18n, Utils } from '../../core/index.js';
+
+export default {    // 小部件元数据
     metadata: {
-        name: '计数器',
-        description: '简单的计数器小部件，可增加、减少和重置数值',
+        name: I18n.getMessage('counterWidgetName', '计数器'),
+        description: I18n.getMessage('counterWidgetDesc', '简单的计数器小部件，可增加、减少和重置数值'),
         version: '1.0.0',
         author: 'System'
     },
@@ -41,14 +42,12 @@ export default {
         }
         if (!container.style.height || parseInt(container.style.height) < this.config.default.height) {
             container.style.height = `${this.config.default.height}px`;
-        }
-          // 创建小部件内容
-        const widgetContent = document.createElement('div');
+        }          // 创建小部件内容
+        const widgetContent = Utils.createElement('div');
         widgetContent.className = 'counter-widget widget-base';
-        
-        // 初始计数值，使用保存的值或默认值0
+          // 初始计数值，使用保存的值或默认值0
         const count = data.count || 0;
-        const title = data.title || '计数';
+        const title = data.title || I18n.getMessage('counterDefaultTitle', '计数');
           // 创建小部件结构 - 使用公共样式类
         widgetContent.innerHTML = `
             <div class="counter-title widget-title">${title}</div>
@@ -57,7 +56,7 @@ export default {
                 <div class="counter-display widget-display">${count}</div>
                 <button class="counter-button increase widget-btn widget-btn-round">+</button>
             </div>
-            <div class="counter-reset widget-btn widget-btn-small widget-btn-normal">重置</div>
+            <div class="counter-reset widget-btn widget-btn-small widget-btn-normal">${I18n.getMessage('counterReset', '重置')}</div>
         `;
         
         // 添加到容器
@@ -289,15 +288,14 @@ export default {
             // 更新显示和数据
             countDisplay.textContent = newCount;
             container.widgetData.count = newCount;
-            
-            // 根据数字长度调整字体大小
+              // 根据数字长度调整字体大小
             const width = container.offsetWidth;
             const height = container.offsetHeight;
             const fontSize = this.calculateOptimalFontSize(newCount.toString().length, width, height);
             countDisplay.style.fontSize = `${fontSize}px`;
             
             // 重置按钮恢复正常状态
-            resetButton.textContent = '重置';
+            resetButton.textContent = I18n.getMessage('counterReset', '重置');
             resetButton.classList.remove('confirm');
             
             // 触发数据变更事件
@@ -315,12 +313,11 @@ export default {
             
             // 根据数字长度调整字体大小
             const width = container.offsetWidth;
-            const height = container.offsetHeight;
-            const fontSize = this.calculateOptimalFontSize(newCount.toString().length, width, height);
+            const height = container.offsetHeight;            const fontSize = this.calculateOptimalFontSize(newCount.toString().length, width, height);
             countDisplay.style.fontSize = `${fontSize}px`;
             
             // 重置按钮恢复正常状态
-            resetButton.textContent = '重置';
+            resetButton.textContent = I18n.getMessage('counterReset', '重置');
             resetButton.classList.remove('confirm');
             
             // 触发数据变更事件
@@ -503,17 +500,16 @@ export default {
             e.stopPropagation();
             e.preventDefault(); // 防止文本选择
             const now = Date.now();
-            
-            // 第一次点击
+              // 第一次点击
             if (!resetButton.classList.contains('confirm') || now - resetClickTime > 3000) {
-                resetButton.textContent = '确认重置?';
+                resetButton.textContent = I18n.getMessage('counterResetConfirm', '确认重置?');
                 resetButton.classList.add('confirm');
                 resetClickTime = now;
                 
                 // 3秒后自动恢复，如果没有第二次点击
                 setTimeout(() => {
                     if (now === resetClickTime) { // 确保没有新的点击更新了时间戳
-                        resetButton.textContent = '重置';
+                        resetButton.textContent = I18n.getMessage('counterReset', '重置');
                         resetButton.classList.remove('confirm');
                     }
                 }, 3000);
@@ -530,11 +526,10 @@ export default {
                 // 调整字体大小回到默认
                 const width = container.offsetWidth;
                 const height = container.offsetHeight;
-                const fontSize = this.calculateOptimalFontSize(1, width, height);
-                countDisplay.style.fontSize = `${fontSize}px`;
+                const fontSize = this.calculateOptimalFontSize(1, width, height);                countDisplay.style.fontSize = `${fontSize}px`;
                 
                 // 重置按钮恢复正常状态
-                resetButton.textContent = '重置';
+                resetButton.textContent = I18n.getMessage('counterReset', '重置');
                 resetButton.classList.remove('confirm');
                 resetClickTime = 0;
                 
@@ -547,17 +542,15 @@ export default {
         titleElement.addEventListener('dblclick', (e) => {
             e.stopPropagation();
             e.preventDefault(); // 防止文本选择
-            
-            // 已经在编辑状态则不处理
+              // 已经在编辑状态则不处理
             if (titleElement.classList.contains('editing')) return;
             
-            const currentTitle = container.widgetData.title || '计数';
+            const currentTitle = container.widgetData.title || I18n.getMessage('counterDefaultTitle', '计数');
             
             // 添加编辑类
-            titleElement.classList.add('editing');
-            
+            titleElement.classList.add('editing');            
             // 创建输入框
-            const inputElement = document.createElement('input');
+            const inputElement = Utils.createElement('input');
             inputElement.type = 'text';
             inputElement.value = currentTitle;
             inputElement.maxLength = 20; // 长度限制
@@ -568,10 +561,9 @@ export default {
             
             // 自动聚焦输入框
             inputElement.focus();
-            
-            // 保存标题的函数
+              // 保存标题的函数
             const saveTitle = () => {
-                let newTitle = inputElement.value.trim() || '计数';
+                let newTitle = inputElement.value.trim() || I18n.getMessage('counterDefaultTitle', '计数');
                 // 根据容器大小决定标题长度
                 const maxLength = container.offsetWidth < 180 ? 10 : 15;
                 
@@ -603,11 +595,10 @@ export default {
             
             // 阻止冒泡，避免立即触发其他点击事件
             inputElement.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
+                e.stopPropagation();            });
             
             // 重置按钮恢复正常状态
-            resetButton.textContent = '重置';
+            resetButton.textContent = I18n.getMessage('counterReset', '重置');
             resetButton.classList.remove('confirm');
         });
         
@@ -624,10 +615,9 @@ export default {
                     inputElement.blur();
                 }
             }
-            
-            // 点击外部区域时重置按钮恢复正常状态
+              // 点击外部区域时重置按钮恢复正常状态
             if (!resetButton.contains(e.target) && resetButton.classList.contains('confirm')) {
-                resetButton.textContent = '重置';
+                resetButton.textContent = I18n.getMessage('counterReset', '重置');
                 resetButton.classList.remove('confirm');
             }
         });

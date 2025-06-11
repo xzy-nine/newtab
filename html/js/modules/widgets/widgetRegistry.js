@@ -20,13 +20,22 @@ export const WidgetRegistry = {
         if (!path || typeof path !== 'string') {
             throw new Error('小部件路径必须是有效的字符串');
         }
-        
-        if (registeredWidgets.has(type)) {
+          if (registeredWidgets.has(type)) {
             console.warn(`小部件类型 "${type}" 已注册，将被覆盖`);
         }
         
-        // 创建导入函数
-        const importFunction = async () => import(path);
+        // 创建标准化的导入函数
+        const importFunction = async () => {
+            // 使用统一的Chrome扩展URL方式
+            const fullPath = chrome.runtime ? chrome.runtime.getURL(path) : path;
+            try {
+                const module = await import(fullPath);
+                return module;
+            } catch (error) {
+                console.error(`导入小部件模块失败: ${path}`, error);
+                throw error;
+            }
+        };
         
         registeredWidgets.set(type, {
             type,
@@ -147,9 +156,9 @@ export const WidgetRegistry = {
 };
 
 // 注册所有可用的小部件类型，只提供路径
-WidgetRegistry.register('counter', './widgets/counterWidget.js');
-WidgetRegistry.register('timer', './widgets/timerWidget.js');
+WidgetRegistry.register('counter', '/html/js/modules/widgets/types/counterWidget.js');
+WidgetRegistry.register('timer', '/html/js/modules/widgets/types/timerWidget.js');
 
 // 在这里注册新的小部件类型
 // 例如:
-// WidgetRegistry.register('weather', './widgets/weatherWidget.js');
+// WidgetRegistry.register('weather', '/html/js/modules/widgets/types/weatherWidget.js');

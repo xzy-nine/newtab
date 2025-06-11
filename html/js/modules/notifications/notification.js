@@ -3,8 +3,7 @@
  * 包含通知、加载指示器等功能
  */
 
-import { I18n } from './i18n.js';
-import { Utils } from './utils.js';
+import { I18n, Utils } from '../core/index.js';
 
 /**
  * 通知系统命名空间

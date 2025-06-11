@@ -1,9 +1,12 @@
 /**
  * 精简版图标管理模块 - 处理网站图标的获取和缓存
+ * 
+ * 注意：此模块依赖 Utils 和 I18n，但由于它们在 index.js 中的导出顺序，
+ * 这里需要直接导入以避免循环依赖
  */
 
 import { Utils } from './utils.js';
-import { I18n } from './i18n.js'; 
+import { I18n } from './i18n.js';
 
 // 核心数据结构
 const iconCache = new Map();

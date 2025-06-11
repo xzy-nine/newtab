@@ -2,10 +2,7 @@
  * 背景图像处理模块
  */
 
-import { Utils } from './utils.js';
-import { I18n } from './i18n.js';
-import { Notification } from './notification.js';
-import { Menu } from './menu.js';
+import { Utils, Menu, I18n, Notification } from './core/index.js';
 
 // 背景图片缓存相关常量
 const CACHE_KEY = 'bingImageCache';
@@ -32,10 +29,9 @@ class BackgroundManager {
      * 初始化背景图像及控件
      * @returns {Promise<void>}
      */
-    async initialize() {
-        // 创建背景容器
+    async initialize() {        // 创建背景容器
         if (!document.querySelector('.bg-container')) {
-            const bgContainer = document.createElement('div');
+            const bgContainer = Utils.createElement('div');
             bgContainer.className = 'bg-container';
             document.body.appendChild(bgContainer);
         }
@@ -614,7 +610,7 @@ class BackgroundManager {
             }
             
             // 创建临时背景层
-            const tempBg = document.createElement('div');
+            const tempBg = Utils.createElement('div');
             tempBg.className = 'background-temp';
             tempBg.style.cssText = `
                 position: fixed;

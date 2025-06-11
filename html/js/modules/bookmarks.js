@@ -3,11 +3,7 @@
  * 负责处理Chrome书签的显示和交互
  */
 
-import { Utils } from './utils.js';
-import { I18n } from './i18n.js';
-import { IconManager } from './iconManager.js';
-import { Notification } from './notification.js';
-import { Menu } from './menu.js';
+import { Utils, Menu, I18n, IconManager, Notification } from './core/index.js';
 
 // 当前文件夹
 let currentFolder = "";

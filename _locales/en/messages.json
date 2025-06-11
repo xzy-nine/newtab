@@ -61,17 +61,9 @@
     "message": "Info",
     "description": "信息类型"
   },
-  "success": {
-    "message": "Success",
-    "description": "成功类型"
-  },
   "warning": {
     "message": "Warning",
     "description": "警告类型"
-  },
-  "error": {
-    "message": "Error",
-    "description": "错误类型"
   },
   "justNow": {
     "message": "Just now",
@@ -100,8 +92,7 @@
   "cancel": {
     "message": "Cancel",
     "description": "取消按钮文本"
-  },
-  "confirm": {
+  },  "confirm": {
     "message": "Confirm",
     "description": "确认按钮文本"
   },
@@ -864,10 +855,29 @@
   "addWidgetTitle": {
     "message": "Add Widget",
     "description": "添加小部件对话框标题"
-  },
-  "counterWidget": {
+  },  "counterWidget": {
     "message": "Counter",
     "description": "计数器小部件名称"
+  },
+  "counterWidgetName": {
+    "message": "Counter",
+    "description": "计数器小部件名称"
+  },
+  "counterWidgetDesc": {
+    "message": "Simple counter widget with increment, decrement and reset functions",
+    "description": "计数器小部件描述"
+  },
+  "counterDefaultTitle": {
+    "message": "Count",
+    "description": "计数器默认标题"
+  },
+  "counterReset": {
+    "message": "Reset",
+    "description": "计数器重置按钮"
+  },
+  "counterResetConfirm": {
+    "message": "Confirm Reset?",
+    "description": "计数器重置确认"
   },
   "widgetsAdded": {
     "message": "Selected widgets added",
@@ -972,9 +982,241 @@
   "enterPrompt": {
     "message": "Enter prompt...",
     "description": "输入提示词"
-  },
-  "addPrompt": {
+  },  "addPrompt": {
     "message": "Add Prompt",
     "description": "添加提示词"
+  },
+  "quickPrompt_summary": {
+    "message": "Summary",
+    "description": "AI快速提示词-总结"
+  },
+  "quickPrompt_translate": {
+    "message": "Translate",
+    "description": "AI快速提示词-翻译"
+  },
+  "quickPrompt_rewrite": {
+    "message": "Rewrite",
+    "description": "AI快速提示词-改写"
+  },
+  "quickPrompt_expand": {
+    "message": "Expand",
+    "description": "AI快速提示词-扩写"
+  },
+  "quickPrompt_polish": {
+    "message": "Polish",
+    "description": "AI快速提示词-润色"
+  },
+  "quickPrompt_analyze": {
+    "message": "Analyze",
+    "description": "AI快速提示词-分析"
+  },
+  "quickPrompt_code": {
+    "message": "Code",
+    "description": "AI快速提示词-写代码"
+  },
+  "quickPrompt_debug": {
+    "message": "Debug",
+    "description": "AI快速提示词-调试"
+  },
+  "quickPrompt_optimize": {
+    "message": "Optimize",
+    "description": "AI快速提示词-优化"
+  },
+  "quickPrompt_explain": {
+    "message": "Explain",
+    "description": "AI快速提示词-解释"
+  },
+  "hideThinking": {
+    "message": "Hide Thinking",
+    "description": "隐藏AI推理过程按钮文本"
+  },
+  "showThinking": {
+    "message": "Show Thinking",
+    "description": "显示AI推理过程按钮文本"
+  },
+  "extensionInstalled": {
+    "message": "Extension Installed Successfully",
+    "description": "扩展安装成功通知标题"
+  },
+  "extensionInstalledDesc": {
+    "message": "New Tab Extension has been successfully installed and is ready to use!",
+    "description": "扩展安装成功通知描述"
+  },
+  "notificationSystemError": {
+    "message": "Notification System Error",
+    "description": "通知系统错误标题"
+  },
+  "notificationSaveError": {
+    "message": "Unable to save notification: $1",
+    "description": "通知保存错误消息",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "error details"
+      }
+    }
+  },
+  "extensionUpdated": {
+    "message": "Extension Updated",
+    "description": "扩展更新通知标题"
+  },  "extensionUpdatedDesc": {
+    "message": "New Tab Extension has been updated to version $1",
+    "description": "扩展更新通知描述",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "1.0.0"
+      }
+    }
+  },
+  "timeJustNow": {
+    "message": "Just now",
+    "description": "时间显示-刚刚"
+  },
+  "timeMinutesAgo": {
+    "message": "$1 minutes ago",
+    "description": "时间显示-分钟前",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },  "timeHoursAgo": {
+    "message": "$1 hours ago",
+    "description": "时间显示-小时前",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },  "conversationCount": {
+    "message": " items",
+    "description": "对话数量单位"
+  },
+  "timerWidgetName": {
+    "message": "Timer",
+    "description": "计时器小部件名称"
+  },
+  "timerWidgetDesc": {
+    "message": "Provides stopwatch functionality",
+    "description": "计时器小部件描述"
+  },
+  "timerStart": {
+    "message": "Start",
+    "description": "计时器开始按钮"
+  },
+  "timerPause": {
+    "message": "Pause",
+    "description": "计时器暂停按钮"
+  },
+  "timerReset": {
+    "message": "Reset",
+    "description": "计时器重置按钮"
+  },
+  "timerConfirm": {
+    "message": "Confirm?",
+    "description": "计时器重置确认"
+  },
+  "timerCountdown": {
+    "message": "Countdown",
+    "description": "倒计时模式标题"
+  },  "timerStopwatch": {
+    "message": "Stopwatch",
+    "description": "秒表模式标题"
+  },
+  "clear": {
+    "message": "Clear",
+    "description": "清除按钮文本"
+  },
+  "loadFailed": {
+    "message": "Load failed",
+    "description": "加载失败提示"
+  },
+  "retry": {
+    "message": "Retry",
+    "description": "重试按钮"
+  },  "remove": {
+    "message": "Remove",
+    "description": "移除按钮"
+  },
+  "externalNotificationsSection": {
+    "message": "External Notification API",
+    "description": "外部通知API设置分节标题"
+  },
+  "externalNotificationsEnabled": {
+    "message": "Enable External Notification API",
+    "description": "外部通知API启用选项标签"
+  },
+  "externalNotificationsEnabledDesc": {
+    "message": "Allow other websites and userscripts to use the extension's notification features",
+    "description": "外部通知API启用选项描述"
+  },
+  "externalNotificationsApiEnabled": {
+    "message": "External Notification API Enabled",
+    "description": "外部通知API启用成功通知标题"
+  },
+  "externalNotificationsApiEnabledDesc": {
+    "message": "Other websites can now use the extension's notification features",
+    "description": "外部通知API启用成功通知消息"
+  },  "externalNotificationsStats": {
+    "message": "External Notification Statistics",
+    "description": "外部通知统计选项标签"
+  },  "externalNotificationsStatsDesc": {
+    "message": "View and manage statistics for external notification requests",
+    "description": "外部通知统计选项描述"
+  },
+  "markdownRendering": {
+    "message": "Markdown Rendering",
+    "description": "Markdown渲染按钮文本"
+  },
+  "rawText": {
+    "message": "Raw Text",
+    "description": "原始文本按钮文本"
+  },
+  "settingsAITitleGeneration": {
+    "message": "Enable AI Title Generation",
+    "description": "AI标题生成设置项标签"
+  },
+  "settingsAITitleGenerationDesc": {
+    "message": "Let AI generate concise titles for conversations instead of using user questions",
+    "description": "AI标题生成设置项描述"
+  },
+  "settingsAITitleUpdateInterval": {
+    "message": "Title Update Interval",
+    "description": "AI标题更新间隔设置项标签"
+  },
+  "settingsAITitleUpdateIntervalDesc": {
+    "message": "How many conversation rounds to wait before regenerating the title (1st round always generates)",
+    "description": "AI标题更新间隔设置项描述"
+  },
+  "settingsAITitleMaxTokens": {
+    "message": "Title Generation Token Limit",
+    "description": "AI标题生成Token限制设置项标签"
+  },
+  "settingsAITitleMaxTokensDesc": {
+    "message": "Control the number of tokens for title generation, fewer tokens save cost",
+    "description": "AI标题生成Token限制设置项描述"
+  },
+  "aiTitleGenerationEnabled": {
+    "message": "AI Title Generation Enabled",
+    "description": "AI标题生成启用成功通知"
+  },
+  "aiTitleGenerationDisabled": {
+    "message": "AI Title Generation Disabled",
+    "description": "AI标题生成禁用成功通知"
+  },
+  "titleGenerationPrompt": {
+    "message": "Please generate a concise and accurate title for the following conversation. The title should:\n1. Be no more than 20 characters\n2. Accurately summarize the main content of the conversation\n3. Use Chinese (if the conversation is in Chinese) or English (if the conversation is in English)\n4. Not include quotes or special symbols\n5. Output the title directly without other explanations\n\nConversation content:",
+    "description": "AI标题生成的系统提示词"
+  },
+  "rounds": {
+    "message": "rounds",
+    "description": "对话轮数单位"
+  },
+  "tokens": {
+    "message": "tokens",
+    "description": "Token数量单位"
   }
 }

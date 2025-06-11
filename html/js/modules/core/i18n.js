@@ -87,6 +87,11 @@ export const I18n = {
    * 应用翻译到UI元素
    */
   applyTranslations: function() {
+    // 只在 DOM 环境中执行
+    if (typeof document === 'undefined') {
+      return;
+    }
+    
     if (!isInitialized) {
       //console.log('尝试在国际化模块初始化之前应用翻译');
     }
@@ -133,22 +138,38 @@ export const I18n = {
     return currentLanguage;
   },
 
+  // ...existing code...
+  
   /**
    * 更改语言设置
    * @param {string} language - 新的语言代码
    * @returns {Promise<void>}
    */
   changeLanguage: async function(language) {
-    currentLanguage = language;
-    await chrome.storage.sync.set({ language });
-    
-    // 重新加载翻译
-    translations = {}; // 清空现有翻译
-    await loadTranslationsFromFiles(); // 加载新语言的翻译
-    this.applyTranslations();
-    
-    console.log(`语言已更改为: ${language}`);
+    try {
+      console.log(`开始切换语言: ${currentLanguage} -> ${language}`);
+      
+      // 先更新内部状态
+      currentLanguage = language;
+      
+      // 保存到存储
+      await chrome.storage.sync.set({ language });
+      console.log(`语言设置已保存到存储: ${language}`);
+      
+      // 清空现有翻译并重新加载
+      translations = {}; 
+      await loadTranslationsFromFiles(); 
+      
+      // 应用翻译到界面
+      this.applyTranslations();
+      
+      console.log(`语言已成功更改为: ${language}`);
+    } catch (error) {
+      console.error('更改语言失败:', error);
+      throw error;
+    }
   },
+
 
   /**
    * 设置i18n相关的事件
@@ -267,6 +288,11 @@ function getMessage(key) {
  * 初始化语言选择器
  */
 function initLanguageSelector() {
+  // 只在 DOM 环境中执行
+  if (typeof document === 'undefined') {
+    return;
+  }
+  
   const languageSelect = document.getElementById('language-select');
   if (!languageSelect) return;
   

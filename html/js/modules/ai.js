@@ -2,10 +2,7 @@
  * AI助手模块
  * 负责AI功能的管理和交互
  */
-import { I18n } from './i18n.js';
-import { Utils } from './utils.js';
-import { Menu } from './menu.js';
-import { Notification } from './notification.js';
+import { I18n, Utils, Menu, Notification, IconManager } from './core/index.js';
 // AI配置相关变量
 let aiConfig = {
     enabled: false,
@@ -18,13 +15,13 @@ let aiConfig = {
         }
     ],
     currentProvider: null,
-    quickPrompts: [
-        '帮我总结这段内容',
-        '翻译成中文',
-        '优化这段文字',
-        '写一个关于这个主题的大纲'
-    ],
-    systemPrompt: '你是一个智能助手，请用简洁友好的语言回答用户的问题。'
+    quickPrompts: [],  // 将在初始化时填充国际化的默认提示词
+    systemPrompt: '',   // 将在初始化时填充国际化的默认系统提示
+    titleGeneration: {
+        enabled: true,                    // 是否启用AI生成标题
+        updateInterval: 3,                // 每隔多少轮对话更新标题
+        maxTokensForTitle: 100           // 标题生成的最大token数
+    }
 };
 
 // 对话历史记录,
@@ -41,12 +38,14 @@ const STORAGE_KEYS = {
  * AI模块API命名空间
  * @namespace
  */
-export const AI = {
-    /**
+export const AI = {    /**
      * 初始化AI模块
      * @returns {Promise<void>}
      */
     async initialize() {
+        // 设置默认的国际化文本
+        setDefaultI18nTexts();
+        
         // 从存储加载AI配置和对话历史
         await loadAIConfig();
         await loadConversationHistory();
@@ -244,13 +243,11 @@ export const AI = {
                 }
                 
                 conversation.messages.push(aiMessage);
-                
-                // 更新对话的最后更新时间和标题
+                  // 更新对话的最后更新时间
                 conversation.lastUpdated = Date.now();
-                if (conversation.messages.length === 2) {
-                    // 如果是第一轮对话，用用户的问题作为标题
-                    conversation.title = message.length > 50 ? message.substring(0, 50) + '...' : message;
-                }
+                
+                // 处理对话标题生成
+                await updateConversationTitle(conversation, message);
 
                 // 保存对话历史
                 await saveConversationHistory();
@@ -280,12 +277,13 @@ export const AI = {
                 
                 console.error('AI请求详细错误:', error);
                 throw error; // 重新抛出已处理的错误
-            }
-        } catch (error) {
+            }        } catch (error) {
             console.error('AI请求失败:', error);
             
-            // 如果错误已经被处理过，直接抛出
-            if (error.message.includes('API') || error.message.includes('网络') || error.message.includes('请求')) {
+            // 如果错误已经被处理过（包含国际化的错误消息），直接抛出
+            if (error.message.includes(I18n.getMessage('networkError', 'network')) || 
+                error.message.includes(I18n.getMessage('requestTimeout', 'timeout')) ||
+                error.message.includes(I18n.getMessage('networkUnavailable', 'unavailable'))) {
                 throw error;
             }
             
@@ -377,11 +375,12 @@ export const AI = {
             if (error instanceof TypeError && error.message.includes('fetch')) {
                 throw new Error(I18n.getMessage('apiConnectionFailed', 'API连接失败，请检查API地址配置'));
             }
+              console.error('获取模型列表失败:', error);
             
-            console.error('获取模型列表失败:', error);
-            
-            // 如果错误已经被处理过，直接抛出
-            if (error.message.includes('API') || error.message.includes('网络') || error.message.includes('请求')) {
+            // 如果错误已经被处理过（包含国际化的错误消息），直接抛出
+            if (error.message.includes(I18n.getMessage('networkError', 'network')) || 
+                error.message.includes(I18n.getMessage('requestTimeout', 'timeout')) ||
+                error.message.includes(I18n.getMessage('networkUnavailable', 'unavailable'))) {
                 throw error;
             }
             
@@ -468,6 +467,451 @@ export const AI = {
      */
     reinitializeButton() {
         setupAIEvents();
+    },
+
+    /**
+     * 创建AI设置项
+     * @returns {Array} - 设置项配置数组
+     */
+    createSettingsItems() {
+        return [
+            {
+                id: 'ai-enabled',
+                label: I18n.getMessage('settingsAIEnabled', '启用AI助手'),
+                type: 'checkbox',
+                getValue: () => this.getConfig().enabled,
+                description: I18n.getMessage('settingsAIEnabledDesc', '启用后可在搜索框旁显示AI按钮'),
+                onChange: async (value) => {
+                    const success = await this.updateConfig({ enabled: value });
+                    if (success) {
+                        Notification.notify({
+                            title: value 
+                                ? I18n.getMessage('aiEnabled', 'AI助手已启用')
+                                : I18n.getMessage('aiDisabled', 'AI助手已禁用'),
+                            message: value
+                                ? I18n.getMessage('aiEnabledMessage', '您可以在搜索框旁看到AI按钮')
+                                : I18n.getMessage('aiDisabledMessage', 'AI按钮已隐藏'),
+                            type: value ? 'success' : 'info',
+                            duration: 2000
+                        });
+                    }
+                }
+            },
+            {
+                id: 'ai-provider-list',
+                label: I18n.getMessage('settingsAIProviders', 'AI供应商管理'),
+                type: 'custom',
+                description: I18n.getMessage('settingsAIProvidersDesc', '管理和配置AI供应商'),
+                createControl: async () => {
+                    return await this.createProviderListControl();
+                }
+            },
+            {
+                id: 'add-ai-provider',
+                label: I18n.getMessage('settingsAddAIProvider', '添加AI供应商'),
+                type: 'button',
+                buttonText: I18n.getMessage('addCustomAIProvider', '添加自定义AI供应商'),
+                buttonClass: 'btn-primary',
+                description: I18n.getMessage('settingsAddAIProviderDesc', '添加新的AI供应商配置'),
+                onClick: () => {
+                    this.showAddProviderModal();
+                }
+            },
+            {
+                id: 'ai-system-prompt',
+                label: I18n.getMessage('settingsAISystemPrompt', '系统提示词'),
+                type: 'textarea',
+                getValue: () => this.getConfig().systemPrompt,
+                description: I18n.getMessage('settingsAISystemPromptDesc', '定义AI的行为和回答风格'),
+                onChange: (value) => {
+                    this.updateConfig({ systemPrompt: value });
+                }
+            },            {
+                id: 'ai-quick-prompts',
+                label: I18n.getMessage('settingsAIQuickPrompts', '快速提示词'),
+                type: 'custom',
+                description: I18n.getMessage('settingsAIQuickPromptsDesc', '管理快速提示词，用逗号分隔'),
+                createControl: () => {
+                    return this.createQuickPromptsControl();
+                }
+            },
+            {
+                id: 'ai-title-generation-enabled',
+                label: I18n.getMessage('settingsAITitleGeneration', '启用AI生成标题'),
+                type: 'checkbox',
+                getValue: () => this.getConfig().titleGeneration?.enabled ?? true,
+                description: I18n.getMessage('settingsAITitleGenerationDesc', '让AI为对话生成简洁的标题，而不是使用用户问题'),
+                onChange: async (value) => {
+                    const titleGeneration = { ...this.getConfig().titleGeneration, enabled: value };
+                    const success = await this.updateConfig({ titleGeneration });
+                    if (success) {
+                        Notification.notify({
+                            title: I18n.getMessage('success', '成功'),
+                            message: value 
+                                ? I18n.getMessage('aiTitleGenerationEnabled', 'AI标题生成已启用')
+                                : I18n.getMessage('aiTitleGenerationDisabled', 'AI标题生成已禁用'),
+                            type: 'success',
+                            duration: 2000
+                        });
+                    }
+                }
+            },
+            {
+                id: 'ai-title-update-interval',
+                label: I18n.getMessage('settingsAITitleUpdateInterval', '标题更新间隔'),
+                type: 'range',
+                min: 1,
+                max: 10,
+                step: 1,
+                getValue: () => this.getConfig().titleGeneration?.updateInterval ?? 3,
+                unit: I18n.getMessage('rounds', '轮'),
+                description: I18n.getMessage('settingsAITitleUpdateIntervalDesc', '每隔多少轮对话重新生成标题（第1轮总是生成）'),
+                onChange: async (value) => {
+                    const titleGeneration = { ...this.getConfig().titleGeneration, updateInterval: parseInt(value) };
+                    const success = await this.updateConfig({ titleGeneration });
+                    if (success) {
+                        console.log(`标题更新间隔已设置为: ${value}轮`);
+                    }
+                }
+            },
+            {
+                id: 'ai-title-max-tokens',
+                label: I18n.getMessage('settingsAITitleMaxTokens', '标题生成Token限制'),
+                type: 'range',
+                min: 50,
+                max: 200,
+                step: 10,
+                getValue: () => this.getConfig().titleGeneration?.maxTokensForTitle ?? 100,
+                unit: I18n.getMessage('tokens', 'tokens'),
+                description: I18n.getMessage('settingsAITitleMaxTokensDesc', '控制标题生成的Token数量，较少的Token可节约成本'),
+                onChange: async (value) => {
+                    const titleGeneration = { ...this.getConfig().titleGeneration, maxTokensForTitle: parseInt(value) };
+                    const success = await this.updateConfig({ titleGeneration });
+                    if (success) {
+                        console.log(`标题生成Token限制已设置为: ${value}`);
+                    }
+                }
+            }
+        ];
+    },
+
+    /**
+     * 创建AI供应商列表控件
+     * @returns {HTMLElement} - AI供应商列表容器
+     */
+    async createProviderListControl() {
+        const listContainer = Utils.createElement('div', 'ai-provider-list-container');
+        
+        try {
+            const config = this.getConfig();
+            const providers = config.providers || [];
+            const currentProvider = config.currentProvider || providers[0];
+            
+            providers.forEach((provider, index) => {
+                const providerItem = Utils.createElement('div', 'search-engine-item-setting');
+                
+                // 供应商图标
+                const providerIcon = Utils.createElement('img', 'engine-icon', {
+                    alt: provider.name,
+                    style: 'width: 24px; height: 24px; object-fit: contain;'
+                });
+                
+                // 改进图标URL获取逻辑
+                let iconUrl;
+                if (provider.iconUrl) {
+                    iconUrl = provider.iconUrl;
+                } else {
+                    try {
+                        const apiDomain = new URL(provider.apiUrl);
+                        let mainDomain = apiDomain.origin;
+                        
+                        if (apiDomain.hostname.startsWith('api.')) {
+                            mainDomain = `${apiDomain.protocol}//${apiDomain.hostname.replace('api.', '')}`;
+                        }
+                        iconUrl = mainDomain;
+                    } catch (error) {
+                        iconUrl = provider.apiUrl;
+                    }
+                }
+                
+                IconManager.setIconForElement(providerIcon, iconUrl);
+                providerIcon.onerror = () => IconManager.handleIconError(providerIcon, '../favicon.png');
+                
+                // 供应商名称
+                const providerName = Utils.createElement('div', 'engine-name', {}, provider.name);
+                
+                // 供应商API URL
+                const providerUrl = Utils.createElement('div', 'engine-url', {}, provider.apiUrl);
+                
+                // 当前供应商标识
+                const isCurrentProvider = currentProvider && currentProvider.name === provider.name;
+                if (isCurrentProvider) {
+                    providerItem.classList.add('current-engine');
+                    const currentBadge = Utils.createElement('span', 'current-badge', {}, I18n.getMessage('currentEngine', '当前'));
+                    providerItem.appendChild(currentBadge);
+                }
+                
+                // 供应商信息容器
+                const providerInfo = Utils.createElement('div', 'engine-info');
+                providerInfo.append(providerName, providerUrl);
+                
+                // 操作按钮
+                const providerActions = Utils.createElement('div', 'engine-actions');
+                
+                // 设为当前按钮
+                if (!isCurrentProvider) {
+                    const setCurrentBtn = Utils.createElement('button', 'btn btn-small btn-primary', {}, I18n.getMessage('setAsCurrent', '设为当前'));
+                    setCurrentBtn.addEventListener('click', async () => {
+                        const success = await this.updateConfig({ currentProvider: provider });
+                        if (success) {
+                            this.refreshProviderListControl();
+                            Notification.notify({
+                                title: I18n.getMessage('success', '成功'),
+                                message: I18n.getMessage('providerSwitched', 'AI供应商已切换'),
+                                type: 'success',
+                                duration: 2000
+                            });
+                        }
+                    });
+                    providerActions.appendChild(setCurrentBtn);
+                }
+                
+                // 编辑按钮
+                const editBtn = Utils.createElement('button', 'btn btn-small btn-secondary', {}, I18n.getMessage('edit', '编辑'));
+                editBtn.addEventListener('click', () => {
+                    this.showEditProviderModal(provider, index);
+                });
+                providerActions.appendChild(editBtn);
+                
+                // 删除按钮
+                if (!provider.isDefault && providers.length > 1) {
+                    const deleteBtn = Utils.createElement('button', 'btn btn-small btn-danger', {}, I18n.getMessage('delete', '删除'));
+                    deleteBtn.addEventListener('click', () => {
+                        Notification.notify({
+                            title: I18n.getMessage('confirmDelete', '确认删除'),
+                            message: `${I18n.getMessage('confirmDeleteProvider', '确定要删除AI供应商')} "${provider.name}" ${I18n.getMessage('confirmDeleteProviderSuffix', '吗？')}`,
+                            duration: 0,
+                            type: 'confirm',
+                            buttons: [
+                                {
+                                    text: I18n.getMessage('confirm', '确认'),
+                                    class: 'btn-primary confirm-yes',
+                                    callback: async () => {
+                                        const success = await this.deleteProvider(index);
+                                        if (success) {
+                                            this.refreshProviderListControl();
+                                        }
+                                    }
+                                },
+                                {
+                                    text: I18n.getMessage('cancel', '取消'),
+                                    class: 'confirm-no',
+                                    callback: () => {}
+                                }
+                            ]
+                        });
+                    });
+                    providerActions.appendChild(deleteBtn);
+                }
+                
+                providerItem.append(providerIcon, providerInfo, providerActions);
+                listContainer.appendChild(providerItem);
+            });
+            
+        } catch (error) {
+            console.error('创建AI供应商列表失败:', error);
+            const errorMsg = Utils.createElement('div', 'error-message', {}, I18n.getMessage('loadProviderListError', '加载AI供应商列表失败'));
+            listContainer.appendChild(errorMsg);
+        }
+        
+        return listContainer;
+    },
+
+    /**
+     * 创建快速提示词控件
+     * @returns {HTMLElement} - 快速提示词编辑器
+     */
+    createQuickPromptsControl() {
+        const container = Utils.createElement('div', 'quick-prompts-editor');
+        
+        const config = this.getConfig();
+        const currentPrompts = config.quickPrompts || [];
+        
+        const textarea = Utils.createElement('textarea', 'setting-textarea', {
+            rows: 3,
+            placeholder: I18n.getMessage('quickPromptsPlaceholder', '输入快速提示词，用逗号分隔...')
+        });
+        textarea.value = currentPrompts.join(', ');
+        
+        const saveBtn = Utils.createElement('button', 'btn btn-primary btn-small', {}, I18n.getMessage('save', '保存'));
+        
+        saveBtn.addEventListener('click', () => {
+            const value = textarea.value.trim();
+            const prompts = value ? value.split(',').map(p => p.trim()).filter(p => p) : [];
+            
+            this.updateConfig({ quickPrompts: prompts });
+            
+            Notification.notify({
+                title: I18n.getMessage('success', '成功'),
+                message: I18n.getMessage('quickPromptsSaved', '快速提示词已保存'),
+                type: 'success',
+                duration: 2000
+            });
+        });
+        
+        container.append(textarea, saveBtn);
+        return container;
+    },
+
+    /**
+     * 刷新供应商列表控件
+     */
+    refreshProviderListControl() {
+        const listContainer = document.querySelector('.ai-provider-list-container');
+        if (!listContainer) return;
+        
+        this.createProviderListControl().then(newList => {
+            listContainer.parentNode.replaceChild(newList, listContainer);
+        });
+    },
+
+    /**
+     * 显示添加供应商模态框
+     */
+    showAddProviderModal() {
+        showAIConfigModal();
+    },
+
+    /**
+     * 显示编辑供应商模态框
+     * @param {Object} provider - 供应商对象
+     * @param {number} index - 供应商索引
+     */
+    showEditProviderModal(provider, index) {
+        const formItems = [
+            {
+                type: 'text',
+                id: 'edit-provider-name',
+                label: I18n.getMessage('providerName', 'AI供应商名称'),
+                value: provider.name,
+                required: true
+            },
+            {
+                type: 'url',
+                id: 'edit-provider-api-url',
+                label: I18n.getMessage('providerApiUrl', 'API地址'),
+                value: provider.apiUrl,
+                required: true
+            },
+            {
+                type: 'password-toggle',
+                id: 'edit-provider-api-key',
+                label: I18n.getMessage('providerApiKey', 'API密钥'),
+                value: provider.apiKey || '',
+                required: true
+            },
+            {
+                type: 'text',
+                id: 'edit-provider-model',
+                label: I18n.getMessage('providerModel', '模型名称'),
+                value: provider.model,
+                required: true
+            },
+            {
+                type: 'url',
+                id: 'edit-provider-icon',
+                label: I18n.getMessage('providerIconUrl', '图标URL（可选）'),
+                value: provider.iconUrl || '',
+                required: false
+            }
+        ];
+
+        Menu.showFormModal(
+            `${I18n.getMessage('editProvider', '编辑AI供应商')} - ${provider.name}`,
+            formItems,
+            async (formData) => {
+                const name = formData['edit-provider-name'];
+                const apiUrl = formData['edit-provider-api-url'];
+                const apiKey = formData['edit-provider-api-key'];
+                const model = formData['edit-provider-model'];
+                const iconUrl = formData['edit-provider-icon'];
+                
+                const config = this.getConfig();
+                const providers = [...config.providers];
+                const updatedProvider = { ...provider, name, apiUrl, apiKey, model, iconUrl };
+                providers[index] = updatedProvider;
+                
+                // 如果编辑的是当前供应商，更新当前供应商配置
+                let updateConfig = { providers };
+                if (config.currentProvider && config.currentProvider.name === provider.name) {
+                    updateConfig.currentProvider = updatedProvider;
+                }
+                
+                const success = await this.updateConfig(updateConfig);
+                if (success) {
+                    this.refreshProviderListControl();
+                    Notification.notify({
+                        title: I18n.getMessage('success', '成功'),
+                        message: I18n.getMessage('updateProviderSuccess', 'AI供应商更新成功'),
+                        type: 'success',
+                        duration: 2000
+                    });
+                } else {
+                    Notification.notify({
+                        title: I18n.getMessage('error', '错误'),
+                        message: I18n.getMessage('updateProviderError', '更新AI供应商失败'),
+                        type: 'error',
+                        duration: 3000
+                    });
+                }
+            },
+            I18n.getMessage('save', '保存'),
+            I18n.getMessage('cancel', '取消')
+        );
+    },
+
+    /**
+     * 删除供应商
+     * @param {number} index - 供应商索引
+     * @returns {Promise<boolean>} - 操作是否成功
+     */
+    async deleteProvider(index) {
+        try {
+            const config = this.getConfig();
+            const providers = [...config.providers];
+            const deletedProvider = providers[index];
+            
+            if (!deletedProvider || deletedProvider.isDefault) {
+                return false;
+            }
+            
+            providers.splice(index, 1);
+            
+            // 如果删除的是当前供应商，设置第一个为当前供应商
+            let newCurrentProvider = config.currentProvider;
+            if (config.currentProvider && config.currentProvider.name === deletedProvider.name) {
+                newCurrentProvider = providers[0];
+            }
+            
+            const success = await this.updateConfig({ 
+                providers,
+                currentProvider: newCurrentProvider
+            });
+            
+            if (success) {
+                Notification.notify({
+                    title: I18n.getMessage('success', '成功'),
+                    message: I18n.getMessage('providerDeleted', 'AI供应商已删除'),
+                    type: 'success',
+                    duration: 2000
+                });
+            }
+            
+            return success;
+        } catch (error) {
+            console.error('删除供应商失败:', error);
+            return false;
+        }
     }
 };
 
@@ -492,6 +936,163 @@ function createNewConversation(firstMessage) {
  */
 function generateConversationId() {
     return 'conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+/**
+ * 更新对话标题（使用AI生成）
+ * @param {Object} conversation - 对话对象
+ * @param {string} latestMessage - 最新的用户消息
+ * @returns {Promise<void>}
+ */
+async function updateConversationTitle(conversation, latestMessage) {
+    try {
+        const config = aiConfig.titleGeneration;
+        
+        // 检查是否启用标题生成
+        if (!config.enabled) {
+            // 如果是第一轮对话且未启用AI标题生成，使用用户问题作为标题
+            if (conversation.messages.length === 2) {
+                conversation.title = latestMessage.length > 50 ? latestMessage.substring(0, 50) + '...' : latestMessage;
+            }
+            return;
+        }
+        
+        // 计算对话轮数（用户+AI消息对数）
+        const roundCount = Math.floor(conversation.messages.length / 2);
+        
+        // 检查是否需要生成/更新标题
+        const shouldGenerateTitle = (
+            roundCount === 1 || // 第一轮对话
+            (roundCount > 1 && roundCount % config.updateInterval === 0) // 达到更新间隔
+        );
+        
+        if (!shouldGenerateTitle) {
+            return;
+        }
+        
+        // 构建标题生成的上下文
+        const context = buildTitleContext(conversation);
+        
+        // 调用AI生成标题
+        const generatedTitle = await generateTitleWithAI(context, config.maxTokensForTitle);
+        
+        if (generatedTitle && generatedTitle.trim()) {
+            conversation.title = generatedTitle.trim();
+            console.log(`对话 ${conversation.id} 标题已更新为: ${conversation.title}`);
+        }
+        
+    } catch (error) {
+        console.warn('生成对话标题失败:', error);
+        // 降级处理：如果是第一轮对话，使用用户问题作为标题
+        if (Math.floor(conversation.messages.length / 2) === 1) {
+            conversation.title = latestMessage.length > 50 ? latestMessage.substring(0, 50) + '...' : latestMessage;
+        }
+    }
+}
+
+/**
+ * 构建用于标题生成的上下文
+ * @param {Object} conversation - 对话对象
+ * @returns {string} 上下文字符串
+ */
+function buildTitleContext(conversation) {
+    // 获取前几轮对话作为上下文（最多6条消息，3轮对话）
+    const maxMessages = 6;
+    const messages = conversation.messages.slice(0, maxMessages);
+    
+    let context = '';
+    for (let i = 0; i < messages.length; i += 2) {
+        if (i + 1 < messages.length) {
+            const userMsg = messages[i].content;
+            const aiMsg = messages[i + 1].content;
+            
+            // 限制每条消息的长度避免context过长
+            const truncatedUser = userMsg.length > 200 ? userMsg.substring(0, 200) + '...' : userMsg;
+            const truncatedAI = aiMsg.length > 200 ? aiMsg.substring(0, 200) + '...' : aiMsg;
+            
+            context += `用户: ${truncatedUser}\nAI: ${truncatedAI}\n\n`;
+        }
+    }
+    
+    return context.trim();
+}
+
+/**
+ * 使用AI生成对话标题
+ * @param {string} context - 对话上下文
+ * @param {number} maxTokens - 最大token数
+ * @returns {Promise<string>} 生成的标题
+ */
+async function generateTitleWithAI(context, maxTokens) {
+    const currentProvider = aiConfig.currentProvider || aiConfig.providers[0];
+    
+    if (!currentProvider || !currentProvider.apiUrl || !currentProvider.apiKey) {
+        throw new Error('AI配置不完整，无法生成标题');
+    }
+    
+    // 构建标题生成的系统提示
+    const titlePrompt = I18n.getMessage('titleGenerationPrompt', 
+        '请为以下对话生成一个简洁、准确的标题。标题应该：\n1. 不超过20个字符\n2. 准确概括对话的主要内容\n3. 使用中文（如果对话是中文）或英文（如果对话是英文）\n4. 不要包含引号或特殊符号\n5. 直接输出标题，不要其他解释\n\n对话内容：');
+    
+    const messages = [
+        {
+            role: 'system',
+            content: titlePrompt
+        },
+        {
+            role: 'user',
+            content: context
+        }
+    ];
+    
+    // 构建API URL
+    let chatUrl;
+    const apiUrl = currentProvider.apiUrl.trim();
+    
+    if (apiUrl.includes('/chat/completions')) {
+        chatUrl = apiUrl;
+    } else if (apiUrl.includes('/v1')) {
+        chatUrl = apiUrl.endsWith('/') ? apiUrl + 'chat/completions' : apiUrl + '/chat/completions';
+    } else {
+        const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+        chatUrl = baseUrl + '/v1/chat/completions';
+    }
+    
+    // 发送请求
+    const requestBody = {
+        model: currentProvider.model,
+        messages: messages,
+        max_tokens: maxTokens,
+        temperature: 0.3, // 较低的temperature以获得更稳定的结果
+        stream: false
+    };
+    
+    const response = await fetch(chatUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentProvider.apiKey}`
+        },
+        body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`标题生成API请求失败: ${response.status} ${errorText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        throw new Error('标题生成API响应格式错误');
+    }
+    
+    const title = data.choices[0]?.message?.content;
+    if (!title) {
+        throw new Error('AI未返回有效标题');
+    }
+    
+    return title;
 }
 
 /**
@@ -753,7 +1354,7 @@ function loadConversationsList(conversationsList, chatHistory, chatTitle, getCur
         const convTitle = Utils.createElement('div', 'ai-conversation-title', {}, conv.title);
         const convMeta = Utils.createElement('div', 'ai-conversation-meta');
         const lastUpdated = new Date(conv.lastUpdated).toLocaleDateString();
-        convMeta.textContent = `${lastUpdated} · ${Math.max(0, Math.floor(conv.messageCount/2))}条`;
+        convMeta.textContent = `${lastUpdated} · ${Math.max(0, Math.floor(conv.messageCount/2))}${I18n.getMessage('conversationCount', '条')}`;
         
         const deleteBtn = Utils.createElement('button', 'ai-conversation-delete', { 
             title: I18n.getMessage('delete', '删除')
@@ -1089,8 +1690,7 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
                         reasoningToggle.addEventListener('click', () => {
                             const isVisible = reasoningContentElement.style.display !== 'none';
                             reasoningContentElement.style.display = isVisible ? 'none' : 'block';
-                            const isStreaming = reasoningContentElement.querySelector('.typing-indicator');
-                            reasoningToggle.textContent = `🧠 ${isVisible ? '查看思维过程' : (isStreaming ? '思维过程（实时）' : '隐藏思维过程')}`;
+                            reasoningToggle.textContent = `🧠 ${isVisible ? I18n.getMessage('hideThinking', '隐藏思维过程') : I18n.getMessage('showThinking', '查看思维过程')}`;
                         });
                         
                         reasoningHeader.appendChild(reasoningToggle);
@@ -1117,20 +1717,54 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
                     
                     // 滚动到底部
                     chatHistory.scrollTop = chatHistory.scrollHeight;
+                }            });
+              // 流式完成后，用Markdown渲染最终内容
+            const finalContent = result.reply || '';
+            
+            // 为流式AI消息添加控制按钮
+            const controlsContainer = Utils.createElement('div', 'ai-message-controls');
+            const markdownToggle = Utils.createElement('button', 'ai-markdown-toggle active', {
+                type: 'button',
+                title: I18n.getMessage('markdownRendering', 'Markdown渲染')
+            }, '📝 MD');
+            
+            // 存储原始消息和渲染状态
+            let isMarkdownMode = true;
+            
+            // 初始渲染为Markdown
+            aiContentElement.innerHTML = renderMarkdown(finalContent);
+            
+            // 切换Markdown渲染
+            markdownToggle.addEventListener('click', () => {
+                if (isMarkdownMode) {
+                    // 切换到纯文本模式
+                    aiContentElement.textContent = finalContent;
+                    markdownToggle.textContent = '📄 TXT';
+                    markdownToggle.title = I18n.getMessage('rawText', '原始文本');
+                    markdownToggle.classList.remove('active');
+                    isMarkdownMode = false;
+                } else {
+                    // 切换到Markdown模式
+                    aiContentElement.innerHTML = renderMarkdown(finalContent);
+                    markdownToggle.textContent = '📝 MD';
+                    markdownToggle.title = I18n.getMessage('markdownRendering', 'Markdown渲染');
+                    markdownToggle.classList.add('active');
+                    isMarkdownMode = true;
                 }
             });
             
-            // 流式完成后，用Markdown渲染最终内容
-            const finalContent = result.reply;
-            aiContentElement.innerHTML = renderMarkdown(finalContent);
+            controlsContainer.appendChild(markdownToggle);
+            // 将控制按钮插入到AI消息元素的开头
+            aiMessageElement.insertBefore(controlsContainer, aiContentElement);
             
             // 如果有推理内容，渲染最终的推理内容
             if (result.reasoning && reasoningContentElement) {
-                reasoningContentElement.innerHTML = renderMarkdown(result.reasoning);
+                const reasoningText = result.reasoning || '';
+                reasoningContentElement.innerHTML = renderMarkdown(reasoningText);
                 // 更新按钮文本
                 const reasoningToggle = reasoningContainer.querySelector('.ai-reasoning-toggle');
                 if (reasoningToggle) {
-                    reasoningToggle.textContent = '🧠 隐藏思维过程';
+                    reasoningToggle.textContent = `🧠 ${I18n.getMessage('hideThinking', '隐藏思维过程')}`;
                 }
             }
             
@@ -1216,16 +1850,16 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
         const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
             type: 'button'
         }, '🧠 查看思维过程');
-        
-        const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
+          const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
         reasoningContent.style.display = 'none'; // 默认隐藏
-        reasoningContent.innerHTML = renderMarkdown(reasoning);
+        const reasoningText = reasoning || '';
+        reasoningContent.innerHTML = renderMarkdown(reasoningText);
         
         // 切换显示/隐藏推理内容
         reasoningToggle.addEventListener('click', () => {
             const isVisible = reasoningContent.style.display !== 'none';
             reasoningContent.style.display = isVisible ? 'none' : 'block';
-            reasoningToggle.textContent = `🧠 ${isVisible ? '查看思维过程' : '隐藏思维过程'}`;
+            reasoningToggle.textContent = `🧠 ${isVisible ? I18n.getMessage('hideThinking', '隐藏思维过程') : I18n.getMessage('showThinking', '查看思维过程')}`;
         });
         
         reasoningHeader.appendChild(reasoningToggle);
@@ -1238,8 +1872,41 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
     const messageContent = Utils.createElement('div', 'ai-message-content');
     
     if (type === 'ai') {
-        // AI消息支持Markdown渲染
-        messageContent.innerHTML = renderMarkdown(message);
+        // AI消息添加控制按钮
+        const controlsContainer = Utils.createElement('div', 'ai-message-controls');
+        const markdownToggle = Utils.createElement('button', 'ai-markdown-toggle active', {
+            type: 'button',
+            title: I18n.getMessage('markdownRendering', 'Markdown渲染')
+        }, '📝 MD');
+        
+        // 存储原始消息和渲染状态
+        let isMarkdownMode = true;
+        const originalMessage = message || '';
+        
+        // 初始渲染为Markdown
+        messageContent.innerHTML = renderMarkdown(originalMessage);
+        
+        // 切换Markdown渲染
+        markdownToggle.addEventListener('click', () => {
+            if (isMarkdownMode) {
+                // 切换到纯文本模式
+                messageContent.textContent = originalMessage;
+                markdownToggle.textContent = '📄 TXT';
+                markdownToggle.title = I18n.getMessage('rawText', '原始文本');
+                markdownToggle.classList.remove('active');
+                isMarkdownMode = false;
+            } else {
+                // 切换到Markdown模式
+                messageContent.innerHTML = renderMarkdown(originalMessage);
+                markdownToggle.textContent = '📝 MD';
+                markdownToggle.title = I18n.getMessage('markdownRendering', 'Markdown渲染');
+                markdownToggle.classList.add('active');
+                isMarkdownMode = true;
+            }
+        });
+        
+        controlsContainer.appendChild(markdownToggle);
+        messageElement.appendChild(controlsContainer);
     } else {
         // 用户消息和错误消息直接显示文本
         messageContent.textContent = message;
@@ -1253,60 +1920,28 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
 }
 
 /**
- * 简单的Markdown渲染器 - 使用marked库
+ * 简单的Markdown渲染器
  * @param {string} text - 要渲染的文本
  * @returns {string} 渲染后的HTML
  */
 function renderMarkdown(text) {
-    // 检查marked库是否可用
-    if (typeof marked === 'undefined') {
-        console.warn('marked库未加载，使用简单渲染器');
-        return renderSimpleMarkdown(text);
-    }
-
-    try {
-        // 配置marked选项 - 使用新版本的API
-        const renderer = new marked.Renderer();
-        
-        // 自定义代码块渲染
-        renderer.code = function(code, language) {
-            const validLanguage = language && typeof hljs !== 'undefined' && hljs.getLanguage(language);
-            
-            if (validLanguage) {
-                try {
-                    const highlighted = hljs.highlight(code, {language: language}).value;
-                    return `<pre class="ai-code-block"><code class="language-${language}">${highlighted}</code></pre>`;
-                } catch (err) {
-                    console.warn('代码高亮失败:', err);
-                }
+    // 确保text是字符串类型
+    if (typeof text !== 'string') {
+        console.warn('renderMarkdown: 传入的参数不是字符串类型:', typeof text, text);
+        // 如果是对象，尝试序列化为JSON；否则转为字符串
+        if (text && typeof text === 'object') {
+            try {
+                text = JSON.stringify(text, null, 2);
+            } catch (e) {
+                text = String(text);
             }
-            
-            return `<pre class="ai-code-block"><code>${code}</code></pre>`;
-        };
-
-        // 自定义行内代码渲染
-        renderer.codespan = function(code) {
-            return `<code class="ai-inline-code">${code}</code>`;
-        };
-
-        // 配置marked选项
-        marked.setOptions({
-            renderer: renderer,
-            gfm: true,           // 启用GitHub风格Markdown
-            tables: true,        // 启用表格支持
-            breaks: true,        // 将换行符转换为<br>
-            pedantic: false,     // 不使用原始markdown.pl的怪异部分
-            sanitize: false,     // 不清理HTML（我们信任AI的输出）
-            smartLists: true,    // 使用比原始markdown更智能的列表行为
-            smartypants: false   // 不使用智能标点
-        });
-
-        // 使用marked渲染
-        return marked.parse(text);
-    } catch (error) {
-        console.error('marked渲染失败，使用简单渲染器:', error);
-        return renderSimpleMarkdown(text);
+        } else {
+            text = String(text || '');
+        }
     }
+    
+    // 直接使用简单的Markdown渲染器
+    return renderSimpleMarkdown(text);
 }
 
 /**
@@ -1315,6 +1950,21 @@ function renderMarkdown(text) {
  * @returns {string} 渲染后的HTML
  */
 function renderSimpleMarkdown(text) {
+    // 确保text是字符串类型
+    if (typeof text !== 'string') {
+        console.warn('renderSimpleMarkdown: 传入的参数不是字符串类型:', typeof text, text);
+        // 如果是对象，尝试序列化为JSON；否则转为字符串
+        if (text && typeof text === 'object') {
+            try {
+                text = JSON.stringify(text, null, 2);
+            } catch (e) {
+                text = String(text);
+            }
+        } else {
+            text = String(text || '');
+        }
+    }
+    
     // 转义HTML特殊字符
     let html = text
         .replace(/&/g, '&amp;')
@@ -1555,9 +2205,8 @@ function showAIConfigModal() {
                         currentFormState.fetching = false;
                         
                         // 更新下拉框
-                        modelSelect.innerHTML = '';
-                        models.forEach(model => {
-                            const option = document.createElement('option');
+                        modelSelect.innerHTML = '';                        models.forEach(model => {
+                            const option = Utils.createElement('option');
                             option.value = model;
                             option.textContent = model;
                             modelSelect.appendChild(option);
@@ -1723,6 +2372,7 @@ async function sendStreamMessage(url, requestBody, apiKey, conversation, onChunk
                         const parsed = JSON.parse(data);
                         const delta = parsed.choices?.[0]?.delta;
                         
+                                               
                         if (delta?.content) {
                             fullContent += delta.content;
                             // 调用回调函数，传递增量内容
@@ -1755,14 +2405,18 @@ async function sendStreamMessage(url, requestBody, apiKey, conversation, onChunk
         if (reasoning) {
             aiMessage.reasoning_content = reasoning;
         }
-        
-        conversation.messages.push(aiMessage);
+          conversation.messages.push(aiMessage);
         conversation.lastUpdated = Date.now();
+        
+        // 处理对话标题生成（获取最新的用户消息）
+        const latestUserMessage = conversation.messages.filter(msg => msg.role === 'user').pop();
+        if (latestUserMessage) {
+            await updateConversationTitle(conversation, latestUserMessage.content);
+        }
         
         // 保存对话历史
         await saveConversationHistory();
-        
-        return {
+          return {
             reply: fullContent,
             reasoning: reasoning,
             conversationId: conversation.id,
@@ -1785,22 +2439,41 @@ function createReasoningContainer(reasoning) {
     const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
         type: 'button'
     }, '🧠 查看思维过程');
-    
-    const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
+      const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
     reasoningContent.style.display = 'none';
-    reasoningContent.innerHTML = renderMarkdown(reasoning);
+    const reasoningText = reasoning || '';
+    reasoningContent.innerHTML = renderMarkdown(reasoningText);
     
     // 切换显示/隐藏推理内容
     reasoningToggle.addEventListener('click', () => {
         const isVisible = reasoningContent.style.display !== 'none';
         reasoningContent.style.display = isVisible ? 'none' : 'block';
-        reasoningToggle.textContent = `🧠 ${isVisible ? '查看思维过程' : '隐藏思维过程'}`;
+        reasoningToggle.textContent = `🧠 ${isVisible ? I18n.getMessage('hideThinking', '隐藏思维过程') : I18n.getMessage('showThinking', '查看思维过程')}`;
     });
     
     reasoningHeader.appendChild(reasoningToggle);
     reasoningContainer.appendChild(reasoningHeader);
     reasoningContainer.appendChild(reasoningContent);
+      return reasoningContainer;
+}
+
+/**
+ * 设置默认的国际化文本
+ */
+function setDefaultI18nTexts() {
+    // 如果AI配置还没有快速提示词，设置默认的国际化版本
+    if (!aiConfig.quickPrompts || aiConfig.quickPrompts.length === 0) {
+        aiConfig.quickPrompts = [
+            I18n.getMessage('defaultPrompt1', '帮我总结这段内容'),
+            I18n.getMessage('defaultPrompt2', '翻译成中文'),
+            I18n.getMessage('defaultPrompt3', '优化这段文字'),
+            I18n.getMessage('defaultPrompt4', '写一个关于这个主题的大纲')
+        ];
+    }
     
-    return reasoningContainer;
+    // 如果AI配置还没有系统提示，设置默认的国际化版本
+    if (!aiConfig.systemPrompt) {
+        aiConfig.systemPrompt = I18n.getMessage('defaultSystemPrompt', '你是一个智能助手，请用简洁友好的语言回答用户的问题。');
+    }
 }
 

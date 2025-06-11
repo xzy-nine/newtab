@@ -1,3 +1,6 @@
 {
-    "marscode.chatLanguage": "cn"
+    "marscode.chatLanguage": "cn",
+    "cSpell.words": [
+        "userscripts"
+    ]
 }

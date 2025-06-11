@@ -134,9 +134,8 @@ class PopupManager {
                     break;
                 case 'important':
                     clearButton.textContent = this.getMessage('clearImportant', '清除重要');
-                    break;
-                default:
-                    clearButton.textContent = `清除${currentFilterText}`;
+                    break;                default:
+                    clearButton.textContent = this.getMessage('clear', '清除') + currentFilterText;
             }
         }
     }
@@ -245,20 +244,18 @@ class PopupManager {
             important: '🔥'
         };
         return icons[type] || 'ℹ️';
-    }
-
-    /**
+    }    /**
      * 获取通知类型标签
      */
     getTypeLabel(type) {
         const labels = {
-            info: '信息',
-            success: '成功',
-            warning: '警告',
-            error: '错误',
-            important: '重要'
+            info: this.getMessage('info', '信息'),
+            success: this.getMessage('success', '成功'),
+            warning: this.getMessage('warning', '警告'),
+            error: this.getMessage('error', '错误'),
+            important: this.getMessage('important', '重要')
         };
-        return this.getMessage(type, labels[type] || '信息');
+        return labels[type] || this.getMessage('info', '信息');
     }
 
     /**
@@ -271,15 +268,14 @@ class PopupManager {
         const minute = 60 * 1000;
         const hour = 60 * minute;
         const day = 24 * hour;
-        
-        if (diff < minute) {
-            return '刚刚';
+          if (diff < minute) {
+            return this.getMessage('timeJustNow', '刚刚');
         } else if (diff < hour) {
             const minutes = Math.floor(diff / minute);
-            return `${minutes}分钟前`;
+            return this.getMessage('timeMinutesAgo', '$1分钟前').replace('$1', minutes);
         } else if (diff < day) {
             const hours = Math.floor(diff / hour);
-            return `${hours}小时前`;
+            return this.getMessage('timeHoursAgo', '$1小时前').replace('$1', hours);
         } else {
             const date = new Date(timestamp);
             return `${date.getMonth() + 1}/${date.getDate()}`;

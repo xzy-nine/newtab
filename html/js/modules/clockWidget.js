@@ -1,5 +1,7 @@
 //时钟组件模块
 
+import { Utils } from './core/index.js';
+
 
 // 时钟组件配置
 let clockConfig = {
@@ -77,17 +79,14 @@ export const ClockWidget = {
 function createClockElement() {
     if (document.getElementById('time')) return;
 
-    const timeDiv = document.createElement('div');
+    const timeDiv = Utils.createElement('div');
     timeDiv.className = 'time';
-    timeDiv.id = 'time';
-    
+    timeDiv.id = 'time';    
     // 创建一个内部容器来强制单行布局
-    const innerContainer = document.createElement('div');
+    const innerContainer = Utils.createElement('div');
     innerContainer.className = 'time-inner-container';
-    timeDiv.appendChild(innerContainer);
-
-    // 创建小时组
-    const hourGroup = document.createElement('div');
+    timeDiv.appendChild(innerContainer);    // 创建小时组
+    const hourGroup = Utils.createElement('div');
     hourGroup.className = 'hour-group';
     const hourTens = createDigit();
     const hourOnes = createDigit();
@@ -96,9 +95,8 @@ function createClockElement() {
     // 创建第一个冒号
     const colon1 = createColon();
     colon1.classList.add('blink');
-    
-    // 创建分钟组
-    const minuteGroup = document.createElement('div');
+      // 创建分钟组
+    const minuteGroup = Utils.createElement('div');
     minuteGroup.className = 'minute-group';
     const minuteTens = createDigit();
     const minuteOnes = createDigit();
@@ -106,10 +104,9 @@ function createClockElement() {
     
     // 创建第二个冒号
     const colon2 = createColon();
-    colon2.classList.add('blink');
-    
+    colon2.classList.add('blink');    
     // 创建秒钟组
-    const secondGroup = document.createElement('div');
+    const secondGroup = Utils.createElement('div');
     secondGroup.className = 'second-group';
     const secondTens = createDigit();
     const secondOnes = createDigit();
@@ -124,13 +121,12 @@ function createClockElement() {
 }
 
 function createDigit() {
-    const digit = document.createElement('div');
+    const digit = Utils.createElement('div');
     digit.className = 'digit';
     
     // 创建7段数码管加小数点，共8个部分
-    const segments = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'];
-    segments.forEach(seg => {
-        const segment = document.createElement('div');
+    const segments = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'];    segments.forEach(seg => {
+        const segment = Utils.createElement('div');
         segment.className = `segment segment-${seg}`;
         // 根据段的类型应用水平或垂直样式
         if (seg === 'a' || seg === 'd' || seg === 'g') {
@@ -145,7 +141,7 @@ function createDigit() {
 }
 
 function createColon() {
-    const colon = document.createElement('div');
+    const colon = Utils.createElement('div');
     colon.className = 'split';
     return colon;
 }

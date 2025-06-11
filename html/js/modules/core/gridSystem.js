@@ -1,10 +1,14 @@
 /**
  * 网格系统模块
  * 提供网格定位、吸附和响应式布局功能
+ * 
+ * 注意：此模块依赖 Notification、I18n 和 Utils，但由于它们在 index.js 中的导出顺序，
+ * 这里需要直接导入以避免循环依赖
  */
 
-import { Notification } from './notification.js';
+import { Notification } from '../notifications/notification.js';
 import { I18n } from './i18n.js';
+import { Utils } from './utils.js';
 
 /**
  * 获取国际化消息或使用默认值
@@ -12,11 +16,8 @@ import { I18n } from './i18n.js';
  * @param {string} defaultText - 默认文本
  */
 function getI18nMessage(key, defaultText) {
-    // 如果国际化模块尚未初始化，直接返回默认文本
-    if (!I18n.isInitialized) {
-        return defaultText;
-    }
-    return I18n.getMessage(key) || defaultText;
+    // 使用统一的国际化方法
+    return I18n.getMessage(key, defaultText);
 }
 
 /**
@@ -256,10 +257,9 @@ export const GridSystem = {
     /**
      * 更新调试网格显示
      */
-    updateDebugGrid() {
-        let debugGrid = document.getElementById('debug-grid');
+    updateDebugGrid() {        let debugGrid = document.getElementById('debug-grid');
         if (!debugGrid) {
-            debugGrid = document.createElement('div');
+            debugGrid = Utils.createElement('div');
             debugGrid.id = 'debug-grid';
             debugGrid.className = 'debug-grid';
             document.body.appendChild(debugGrid);
@@ -270,18 +270,16 @@ export const GridSystem = {
         
         const cellWidth = parseFloat(document.body.dataset.gridCellWidth);
         const cellHeight = parseFloat(document.body.dataset.gridCellHeight);
-        
-        // 创建网格线
+          // 创建网格线
         for (let i = 0; i <= this.gridColumnCount; i++) {
-            const line = document.createElement('div');
+            const line = Utils.createElement('div');
             line.className = 'grid-line vertical';
             line.style.left = `${i * cellWidth}px`;
             line.style.height = '100%';
             debugGrid.appendChild(line);
-        }
-        
+        }        
         for (let i = 0; i <= this.gridRowCount; i++) {
-            const line = document.createElement('div');
+            const line = Utils.createElement('div');
             line.className = 'grid-line horizontal';
             line.style.top = `${i * cellHeight}px`;
             line.style.width = '100%';
@@ -546,23 +544,14 @@ export const GridSystem = {
         validated.gridY = Math.max(0, Math.min(validated.gridY, this.gridRowCount - validated.gridRows));
         
         return validated;
-    },
-
-    /**
-     * 防抖函数，限制函数调用频率
+    },    /**
+     * 防抖函数，使用 Utils 中的防抖方法
      * @param {Function} func - 要执行的函数
      * @param {number} wait - 等待时间（毫秒）
      * @returns {Function} 防抖处理后的函数
      */
     debounce(func, wait) {
-        let timeout;
-        return function() {
-            const context = this, args = arguments;
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                func.apply(context, args);
-            }, wait);
-        };
+        return Utils.debounce(func, wait);
     },
 
     /**
@@ -591,7 +580,70 @@ export const GridSystem = {
           debug: this.isDebugMode,
           threshold: this.snapThreshold
         });
-      }
+      },
+
+    /**
+     * 创建网格系统设置项
+     * @returns {Array} - 设置项配置数组
+     */
+    createSettingsItems() {
+        return [
+            {
+                id: 'grid-enabled',
+                label: I18n.getMessage('settingsGridEnabled', '启用网格系统'),
+                type: 'checkbox',
+                getValue: () => this.gridEnabled,
+                description: I18n.getMessage('settingsGridEnabledDesc', '启用后元素将自动吸附到网格位置'),
+                onChange: async (value) => {
+                    await this.toggleGridSystem(value);
+                    Notification.notify({
+                        title: value 
+                            ? I18n.getMessage('gridSystemEnabled', '网格系统已启用')
+                            : I18n.getMessage('gridSystemDisabled', '网格系统已禁用'),
+                        message: value
+                            ? I18n.getMessage('gridSystemEnabledMessage', '元素将吸附到网格')
+                            : I18n.getMessage('gridSystemDisabledMessage', '元素将自由放置'),
+                        type: value ? 'success' : 'info',
+                        duration: 2000
+                    });
+                }
+            },
+            {
+                id: 'grid-debug',
+                label: I18n.getMessage('settingsGridDebug', '显示网格线'),
+                type: 'checkbox',
+                getValue: () => this.isDebugMode,
+                description: I18n.getMessage('settingsGridDebugDesc', '显示网格辅助线，帮助对齐元素'),
+                onChange: async (value) => {
+                    this.toggleGridDebug(value);
+                    Notification.notify({
+                        title: value
+                            ? I18n.getMessage('gridDebugEnabled', '网格调试已启用')
+                            : I18n.getMessage('gridDebugDisabled', '网格调试已禁用'),
+                        message: value
+                            ? I18n.getMessage('gridDebugEnabledMessage', '现在您可以看到网格线')
+                            : I18n.getMessage('gridDebugDisabledMessage', '网格线已隐藏'),
+                        type: 'info',
+                        duration: 2000
+                    });
+                }
+            },
+            {
+                id: 'grid-snap-threshold',
+                label: I18n.getMessage('settingsGridSnapThreshold', '吸附阈值'),
+                type: 'range',
+                min: 5,
+                max: 30,
+                step: 1,
+                getValue: () => this.snapThreshold,
+                unit: 'px',
+                description: I18n.getMessage('settingsGridSnapThresholdDesc', '元素吸附到网格的距离阈值'),
+                onChange: (value) => {
+                    this.setSnapThreshold(value);
+                }
+            }
+        ];
+    },
 };
 
 // 确保在模块加载时就暴露到全局

@@ -3,17 +3,20 @@
  * 负责协调各模块的初始化和交互
  */
 
-import { I18n } from './modules/i18n.js';
-import backgroundManager from './modules/backgroundImage.js';
-import { SearchEngineAPI } from './modules/searchEngine.js'; 
-import { BookmarkManager } from './modules/bookmarks.js';
-import { ClockWidget } from './modules/clockWidget.js';
-import { Utils } from './modules/utils.js';
-import { Notification } from './modules/notification.js'; 
-import { Menu } from './modules/menu.js'; 
-import { WidgetSystem } from './modules/widgetSystem.js';
-import { Settings } from './modules/settings.js';
-import { AI } from './modules/ai.js';
+// 使用统一的模块导出
+import { 
+    I18n, 
+    Utils, 
+    Menu, 
+    Notification, 
+    Settings,
+    SearchEngineAPI,
+    backgroundManager,
+    initManager
+} from './modules/core/index.js';
+
+// 导入模块配置
+import { moduleConfigs, validateModuleConfigs } from './modules/core/init/moduleConfig.js';
 
 // 版本号
 let VERSION = '0.0.0'; 
@@ -165,30 +168,14 @@ async function getExtensionVersion() {
 }
 
 /**
- * 带超时的异步函数执行
- * @param {Function} asyncFunc - 异步函数
- * @param {number} timeout - 超时时间(毫秒)
- * @param {string} moduleName - 模块名称(用于错误信息)
- * @returns {Promise} - 处理结果
- */
-async function executeWithTimeout(asyncFunc, timeout = 10000, moduleName = '') {
-    return Promise.race([
-        asyncFunc(),
-        new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new Error(`Module ${moduleName} initialization timeout`));
-            }, timeout);
-        })
-    ]);
-}
-
-/**
  * 初始化应用
  */
 async function init() {
-    try {        // 首先加载直接翻译数据
+    try {
+        // 首先加载直接翻译数据
         await loadDirectTranslations();
-          // 尽早应用主题设置以避免主题闪烁
+        
+        // 尽早应用主题设置以避免主题闪烁
         const savedTheme = localStorage.getItem('theme') || 'auto';
         const root = document.documentElement;
         if (savedTheme === 'auto') {
@@ -213,100 +200,86 @@ async function init() {
         const loadingText = await getDirectMessage('loading', '加载中...');
         Notification.showLoadingIndicator(loadingText);
         
-        // 先初始化国际化模块
-        const i18nLoadingText = await getDirectMessage('loadingI18n', '加载国际化资源...');
-        Notification.updateLoadingProgress(10, i18nLoadingText);
-        
-        await executeWithTimeout(() => I18n.init(), 5000, 'I18n');
-        
-        // 国际化初始化完成后，重新应用翻译到UI元素
-        I18n.applyTranslations();
-        
         // 获取扩展版本
         VERSION = await getExtensionVersion();
-          // 初始化基础模块
-        const basicModules = [
-            {
-                name: 'Background',
-                action: backgroundManager.initialize.bind(backgroundManager),
-                timeout: 5000
-            },
-            {
-                name: 'SearchEngine',
-                action: SearchEngineAPI.initialize.bind(SearchEngineAPI),
-                timeout: 5000
-            },
-            {
-                name: 'Bookmarks',
-                action: BookmarkManager.init.bind(BookmarkManager),
-                timeout: 5000
-            },
-            {
-                name: 'Clock',
-                action: ClockWidget.init.bind(ClockWidget),
-                timeout: 5000
-            },            {
-                name: 'AI',
-                action: AI.initialize.bind(AI),
-                timeout: 5000
-            },
-            {
-                name: 'Settings',
-                action: () => {
-                    // 初始化设置模块并确保主题设置正确应用
-                    if (typeof Settings !== 'undefined' && Settings.applyTheme) {
-                        const currentTheme = localStorage.getItem('theme') || 'auto';
-                        Settings.applyTheme(currentTheme);
-                    }
-                    return Promise.resolve();
-                },
-                timeout: 5000
-            },
-            {
-                name: 'Events',
-                action: () => {
-                    setupEvents();
-                    I18n.setupEvents();
-                    return Promise.resolve();
-                },
-                timeout: 5000
-            }
-        ];
-
-        // 依次执行基础模块初始化步骤
-        for (let i = 0; i < basicModules.length; i++) {
-            const step = basicModules[i];
-            try {
-                await executeWithTimeout(step.action, step.timeout, step.name);
-                Notification.updateLoadingProgress(((i + 2) / (basicModules.length + 2)) * 100);
-            } catch (error) {
-                console.error(`模块初始化失败: ${step.name}`, error);
-                throw error;
-            }
+        
+        // 验证模块配置
+        const configValidation = validateModuleConfigs();
+        if (!configValidation.valid) {
+            console.error('模块配置验证失败:', configValidation.errors);
+            throw new Error('模块配置无效: ' + configValidation.errors.join(', '));
         }
         
-        // 最后初始化小部件系统
-        try {
-            await executeWithTimeout(() => WidgetSystem.init(), 5000, 'WidgetSystem');
-            Notification.updateLoadingProgress(100);
-        } catch (error) {
-            console.error('小部件系统初始化失败:', error);
-            // 小部件系统错误不阻止其他功能
+        if (configValidation.warnings.length > 0) {
+            console.warn('模块配置警告:', configValidation.warnings);
+        }
+        
+        // 注册所有模块
+        initManager.registerModules(moduleConfigs);
+        
+        // 设置进度回调
+        initManager.setProgressCallback((progress, moduleName, status, error) => {
+            const percentage = Math.round(progress);
+            let message;
+            
+            if (status === 'success') {
+                message = `${moduleName} 初始化完成`;
+            } else if (status === 'error') {
+                message = `${moduleName} 初始化失败: ${error?.message || '未知错误'}`;
+            } else {
+                message = `正在初始化 ${moduleName}...`;
+            }
+            
+            Notification.updateLoadingProgress(percentage, message);
+        });
+        
+        console.log('开始模块初始化...');
+        
+        // 执行所有模块的初始化
+        await initManager.initializeAll({
+            continueOnError: false, // 遇到错误时停止
+            maxRetries: 2 // 失败模块最多重试2次
+        });
+        
+        // 获取初始化状态
+        const status = initManager.getStatus();
+        console.log('模块初始化状态:', status);
+        
+        if (status.failed > 0) {
+            console.warn(`有 ${status.failed} 个模块初始化失败:`, status.modules.failed);
+            
+            // 显示警告但继续执行
             Notification.notify({
-                title: await getDirectMessage('error', '错误'),
-                message: '小部件系统加载失败',
+                title: await getDirectMessage('warning', '警告'),
+                message: `部分功能可能不可用，${status.failed} 个模块初始化失败`,
                 type: 'warning',
-                duration: 3000
+                duration: 5000
             });
         }
         
+        // 设置所有模块的事件处理
+        setupEvents();
+        
+        // 执行启动后任务
         await performPostInitTasks();
+        
         isInitialized = true;
         Notification.hideLoadingIndicator();
+        
+        console.log(`应用初始化完成！成功: ${status.initialized}, 失败: ${status.failed}`);
         
     } catch (error) {
         console.error('初始化失败:', error);
         Notification.hideLoadingIndicator();
+        
+        // 显示用户友好的错误信息
+        Notification.notify({
+            title: await getDirectMessage('error', '错误'),
+            message: '应用初始化失败，请刷新页面重试',
+            type: 'error',
+            duration: 0 // 不自动关闭
+        });
+        
         throw error;
     }
 }
@@ -320,27 +293,29 @@ function createBasicUI() {
         if (!container) {
             throw new Error('找不到container元素');
         }
+          // 创建书签盒子（使用原生DOM方法）
+        const bookmarkBox = document.createElement('div');
+        bookmarkBox.id = 'bookmark-box';
         
-        // 创建书签盒子
-        const bookmarkBox = Utils.createElement('div', '', { id: 'bookmark-box' });
-        const folderList = Utils.createElement('div', '', { id: 'folder-list' });
-        const shortcutList = Utils.createElement('div', '', { id: 'shortcut-list' });
+        const folderList = document.createElement('div');
+        folderList.id = 'folder-list';
+        
+        const shortcutList = document.createElement('div');
+        shortcutList.id = 'shortcut-list';
         
         bookmarkBox.appendChild(folderList);
         bookmarkBox.appendChild(shortcutList);
-          // 创建背景按钮
-        const backgroundButton = Utils.createElement('button', '', { 
-            id: 'background-button',
-            title: '更换背景',
-            'data-i18n': 'backgroundButton'
-        });
+          // 创建背景按钮（使用原生DOM方法）
+        const backgroundButton = document.createElement('button');
+        backgroundButton.id = 'background-button';
+        backgroundButton.title = '更换背景';
+        backgroundButton.setAttribute('data-i18n', 'backgroundButton');
         
-        // 创建设置按钮
-        const settingsButton = Utils.createElement('button', '', { 
-            id: 'settings-btn',
-            title: '设置',
-            'data-i18n-title': 'settingsTitle'
-        });
+        // 创建设置按钮（使用原生DOM方法）
+        const settingsButton = document.createElement('button');
+        settingsButton.id = 'settings-btn';
+        settingsButton.title = '设置';
+        settingsButton.setAttribute('data-i18n-title', 'settingsTitle');
         
         // 设置按钮的SVG图标
         settingsButton.innerHTML = `
@@ -384,10 +359,26 @@ function createBasicUI() {
  */
 function setupEvents() {
     try {
-        backgroundManager.setupEvents();
-        SearchEngineAPI.setupEvents();
-        BookmarkManager.init();
-        Utils.UI.Events.initUIEvents();
+        // 只为已初始化的模块设置事件
+        if (initManager.isInitialized('Background')) {
+            backgroundManager.setupEvents();
+        }
+        
+        if (initManager.isInitialized('SearchEngine')) {
+            SearchEngineAPI.setupEvents();
+        }
+        
+        if (initManager.isInitialized('Bookmarks')) {
+            // BookmarkManager的事件在init中已经设置
+        }
+        
+        if (initManager.isInitialized('I18n')) {
+            I18n.setupEvents();
+        }
+        
+        // Utils的UI事件在其初始化过程中已经设置
+        console.log('事件设置完成');
+        
     } catch (error) {
         console.error('事件设置失败:', error);
     }
@@ -534,5 +525,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// 导出版本号
+// 导出版本号和实用函数
 export { VERSION, showMobileInstruction };

@@ -71,7 +71,7 @@ jobs:
     - name: 创建并提交 zip 包
       if: env.new_version == 'true' && env.tag_exists == 'false'
       run: |
-        zip -r newtab-${{ env.VERSION }}.zip . -x ".*" -x "*/.*" -x "build/*" -x "README.md" -x ".github/*"
+        zip -r newtab-${{ env.VERSION }}.zip . -x ".*" -x "*/.*" -x "build/*" -x "README.md" -x ".github/*" -x "doc/*" -x "examples/*"
         mkdir -p build
         cp newtab-${{ env.VERSION }}.zip build/
 
