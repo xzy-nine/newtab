@@ -57,7 +57,7 @@ jobs:
           echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
           echo "RELEASE_ID=${{ inputs.release-id }}" >> $GITHUB_ENV
           echo "🤖 自动发布模式: 版本 ${{ inputs.version }}, Release ID ${{ inputs.release-id }}"
-        elif [ -n "${{ i(puts.tag }}" ]; then
+        elif [ -n "${{ inputs.tag }}" ]; then
           echo "RUN_MODE=manual_optimize" >> $GITHUB_ENV
           echo "VERSION=${{ inputs.tag }}" >> $GITHUB_ENV
           echo "📝 手动优化模式: 标签 ${{ inputs.tag }}"
