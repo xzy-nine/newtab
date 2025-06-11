@@ -56,15 +56,21 @@ jobs:
     - name: 比较版本标签
       id: compare-versions
       run: |
-        if [ "$LATEST_VERSION" = "$VERSION" ]; then
+        echo "🔍 比较版本: 当前=$VERSION, 最新=$LATEST_VERSION"
+        
+        # 处理首次发布的情况
+        if [ "$LATEST_VERSION" = "0.0.0" ] || [ -z "$LATEST_VERSION" ]; then
+            echo "is_new_version=true" >> $GITHUB_OUTPUT
+            echo "✅ 首次发布，版本: $VERSION"
+        elif [ "$LATEST_VERSION" = "$VERSION" ]; then
             echo "is_new_version=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ 版本未更新，当前版本: $VERSION，最新版本: $LATEST_VERSION"
+            echo "ℹ️ 版本未更新，当前版本: $VERSION"
         elif [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then
             echo "is_new_version=true" >> $GITHUB_OUTPUT
-            echo "✅ 检测到新版本: $VERSION"
+            echo "✅ 检测到新版本: $VERSION (前版本: $LATEST_VERSION)"
         else
             echo "is_new_version=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ 版本低于最新版本，当前版本: $VERSION，最新版本: $LATEST_VERSION"
+            echo "ℹ️ 版本回退，当前版本: $VERSION < 最新版本: $LATEST_VERSION"
         fi
 
     - name: 检查标签是否存在

@@ -14,12 +14,28 @@ on:
         description: '要优化变更日志的标签（手动优化时填写）'
         required: false
         type: string
+  workflow_call:
+    inputs:
+      version:
+        description: '版本号'
+        required: true
+        type: string
+      release-id:
+        description: 'Release ID'
+        required: true
+        type: string
+    outputs:
+      ai_optimized:
+        description: "是否完成AI优化"
+        value: ${{ jobs.ai-changelog-generation.outputs.ai_optimized }}
 
 jobs:
   ai-changelog-generation:
     name: AI变更日志生成
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      ai_optimized: ${{ steps.update-release-changelog.outputs.ai_optimized }}
 
     steps:
     - name: 检出代码
@@ -30,7 +46,12 @@ jobs:
     - name: 验证输入参数
       id: validate-params
       run: |
-        if [ -n "${{ inputs.release-id }}" ]; then
+        if [ "${{ github.event_name }}" == "workflow_call" ]; then
+          echo "RUN_MODE=workflow_call" >> $GITHUB_ENV
+          echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+          echo "RELEASE_ID=${{ inputs.release-id }}" >> $GITHUB_ENV
+          echo "🔗 工作流调用模式: 版本 ${{ inputs.version }}, Release ID ${{ inputs.release-id }}"
+        elif [ -n "${{ inputs.release-id }}" ]; then
           echo "RUN_MODE=auto_release" >> $GITHUB_ENV
           echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
           echo "RELEASE_ID=${{ inputs.release-id }}" >> $GITHUB_ENV
@@ -75,50 +96,68 @@ jobs:
     - name: 检查是否已优化
       id: check-optimization-status
       run: |
-        if [[ "$ORIGINAL_CHANGELOG" == *"[AI生成的变更日志摘要]"* ]]; then
+        echo "🔍 检查变更日志优化状态..."
+        
+        # 更严格的AI优化检查
+        if [[ "$ORIGINAL_CHANGELOG" == *"AI生成"* ]] && [[ "$ORIGINAL_CHANGELOG" == *"变更日志"* ]]; then
           echo "⚠️ 此Release已包含AI生成的变更日志"
+          
           if [ "${{ env.RUN_MODE }}" == "manual_optimize" ]; then
-            echo "📝 手动模式，将重新生成AI变更日志"
+            echo "📝 手动模式，强制重新生成AI变更日志"
             echo "NEED_OPTIMIZE=true" >> $GITHUB_ENV
+            echo "FORCE_REGENERATE=true" >> $GITHUB_ENV
           else
             echo "🤖 自动模式，跳过重复优化"
             echo "NEED_OPTIMIZE=false" >> $GITHUB_ENV
           fi
         else
-          echo "✅ 可以进行AI优化"
+          echo "✅ 变更日志未经AI优化，可以进行优化"
           echo "NEED_OPTIMIZE=true" >> $GITHUB_ENV
         fi
+        
+        # 输出诊断信息
+        echo "📋 变更日志预览（前200字符）:"
+        echo "$ORIGINAL_CHANGELOG" | head -c 200
     - name: 错峰时间检查
       id: off-peak-check
       if: env.NEED_OPTIMIZE == 'true'
       run: |
-        # 错峰时间检查函数
         check_off_peak_time() {
           local hour=$(date -u +%H)
-          local minute=$(date -u +%M)
-          
-          # 定义错峰时间段 (UTC时间)
-          # 建议时间: 02:00-06:00 UTC (对应北京时间 10:00-14:00)
+          # 错峰时间: 02:00-06:00 UTC
           if [ $hour -ge 2 ] && [ $hour -lt 6 ]; then
-            return 0  # 错峰时间
+            return 0
           else
-            return 1  # 非错峰时间
+            return 1
           fi
         }
-          if [ "${{ env.RUN_MODE }}" == "auto_release" ]; then
+        
+        if [ "${{ env.RUN_MODE }}" == "auto_release" ]; then
           if check_off_peak_time; then
             echo "✅ 当前为错峰时间，可以继续执行"
             echo "CAN_EXECUTE=true" >> $GITHUB_ENV
           else
-            echo "⏰ 当前为非错峰时间，延迟执行AI优化"
-            echo "当前UTC时间: $(date -u)"
-            echo "建议在 02:00-06:00 UTC 时间段执行"
-            echo "CAN_EXECUTE=false" >> $GITHUB_ENV
-            # 设置延迟作业
-            echo "DELAY_HOURS=1" >> $GITHUB_ENV
+            echo "⏰ 当前为非错峰时间"
+            current_hour=$(date -u +%H)
+            
+            # 计算到下一个错峰时间的小时数
+            if [ $current_hour -lt 2 ]; then
+              delay_hours=$((2 - current_hour))
+            else
+              delay_hours=$((26 - current_hour))  # 到明天的2点
+            fi
+            
+            # 如果延迟时间超过8小时，则直接执行（避免过长等待）
+            if [ $delay_hours -gt 8 ]; then
+              echo "⚠️ 延迟时间过长($delay_hours小时)，直接执行"
+              echo "CAN_EXECUTE=true" >> $GITHUB_ENV
+            else
+              echo "CAN_EXECUTE=false" >> $GITHUB_ENV
+              echo "DELAY_HOURS=$delay_hours" >> $GITHUB_ENV
+            fi
           fi
         else
-          echo "📝 手动模式，忽略错峰时间限制"
+          echo "📝 非自动模式，忽略错峰时间限制"
           echo "CAN_EXECUTE=true" >> $GITHUB_ENV
         fi    
     - name: 延迟等待
@@ -293,7 +332,7 @@ jobs:
         echo "📝 摘要长度: $(echo "$AI_SUMMARY" | wc -c) 字符"    
     - name: 更新Release变更日志
       id: update-release-changelog
-      if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize')
+      if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize' || env.RUN_MODE == 'workflow_call')
       run: |
         echo "📝 更新Release变更日志..."
         
@@ -308,6 +347,7 @@ jobs:
         if [[ $(echo "$UPDATE_RESPONSE" | jq -r 'has("id")') == "true" ]]; then
           echo "✅ Release变更日志更新成功"
           echo "🔗 Release URL: $(echo "$UPDATE_RESPONSE" | jq -r '.html_url')"
+          echo "ai_optimized=true" >> $GITHUB_OUTPUT
           
           # 添加到作业摘要
           echo "## 🤖 AI变更日志生成完成" >> $GITHUB_STEP_SUMMARY
@@ -321,6 +361,7 @@ jobs:
         else
           echo "❌ Release变更日志更新失败"
           echo "错误信息: $(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')"
+          echo "ai_optimized=false" >> $GITHUB_OUTPUT
           exit 1
         fi
 
