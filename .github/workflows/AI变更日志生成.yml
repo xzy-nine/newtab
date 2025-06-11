@@ -46,7 +46,7 @@ jobs:
     - name: 验证输入参数
       id: validate-params
       run: |
-        echo "🔍 验证输入参数..."
+        echo "🔍 验证输入参数..(")
         if [ "${{ github.event_name }}" == "workflow_call" ]; then
           echo "RUN_MODE=workflow_call" >> $GITHUB_ENV
           echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
@@ -159,7 +159,7 @@ jobs:
         CURRENT_TAG="${{ env.VERSION }}"
         echo "🎯 当前版本: $CURRENT_TAG"
         
-        # 修复：获取上一个正确的版本标签，排除非版本格式的标签
+        # 修复：获取上一个正确的版本标签，排除当前标签，并按版本号正确排序
         LAST_TAG=$(git tag --sort=-version:refname | grep -E '^v?[0-9]+\.[0-9]+(\.[0-9]+)?.*$' | grep -v "^$CURRENT_TAG$" | head -1)
         
         if [ -z "$LAST_TAG" ]; then
@@ -174,11 +174,49 @@ jobs:
         fi
         
         # 验证提交范围是否合理
-        COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" || echo "0")
+        COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
         echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
         
+        # 修复：如果没有获取到提交记录，尝试其他方法
+        if [ "$COMMIT_COUNT" -eq 0 ]; then
+          echo "⚠️ 未获取到提交记录，尝试其他方法..."
+          
+          # 方法1：检查当前标签是否存在
+          if ! git rev-parse "$CURRENT_TAG" >/dev/null 2>&1; then
+            echo "❌ 标签 $CURRENT_TAG 不存在"
+            echo "可用的标签："
+            git tag --sort=-version:refname | head -10
+            exit 1
+          fi
+          
+          # 方法2：如果有上一个标签，检查标签顺序
+          if [ -n "$LAST_TAG" ]; then
+            echo "🔍 验证标签时间顺序..."
+            CURRENT_DATE=$(git log -1 --format="%ct" "$CURRENT_TAG" 2>/dev/null || echo "0")
+            LAST_DATE=$(git log -1 --format="%ct" "$LAST_TAG" 2>/dev/null || echo "0")
+            
+            if [ "$CURRENT_DATE" -le "$LAST_DATE" ]; then
+              echo "⚠️ 检测到版本时间顺序异常，尝试获取最新的提交"
+              # 获取最近的提交记录（不依赖标签）
+              COMMITS=$(git log --since="1 month ago" --pretty=format:'%h|%s|%b' --no-merges | head -50)
+              COMMIT_RANGE="最近一个月的提交"
+            else
+              echo "🔄 重新尝试获取提交记录..."
+              COMMITS=$(git log "$LAST_TAG..$CURRENT_TAG" --pretty=format:'%h|%s|%b' --no-merges)
+            fi
+          else
+            echo "🔄 获取当前标签的所有提交..."
+            COMMITS=$(git log "$CURRENT_TAG" --pretty=format:'%h|%s|%b' --no-merges | head -20)
+            COMMIT_RANGE="当前标签的所有提交"
+          fi
+          
+          # 重新计算提交数量
+          COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
+          echo "🔄 重新获取到 $COMMIT_COUNT 个提交记录"
+        fi
+        
         # 如果提交数量异常多（超过100个），可能是版本识别有问题
-        if [ $COMMIT_COUNT -gt 100 ]; then
+        if [ "$COMMIT_COUNT" -gt 100 ]; then
           echo "⚠️ 提交数量异常($COMMIT_COUNT个)，重新尝试获取最近的版本标签"
           # 尝试获取最近的10个标签，手动筛选
           RECENT_TAGS=$(git tag --sort=-version:refname | head -10)
@@ -190,10 +228,32 @@ jobs:
           if [ -n "$LAST_TAG" ]; then
             echo "🔄 重新计算提交范围: $LAST_TAG..$CURRENT_TAG"
             COMMIT_RANGE="$LAST_TAG..$CURRENT_TAG"
-            COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
-            COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" || echo "0")
+            COMMITS=$(git log "$COMMIT_RANGE" --pretty=format:'%h|%s|%b' --no-merges)
+            COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
             echo "✅ 重新获取到 $COMMIT_COUNT 个提交记录"
           fi
+        fi
+        
+        # 最终检查
+        if [ "$COMMIT_COUNT" -eq 0 ]; then
+          echo "❌ 仍然无法获取到有效的提交记录"
+          echo "🔍 调试信息："
+          echo "  - 当前标签: $CURRENT_TAG"
+          echo "  - 上一标签: $LAST_TAG"
+          echo "  - 提交范围: $COMMIT_RANGE"
+          echo "  - Git 仓库状态："
+          git status --porcelain
+          echo "  - 最近的标签："
+          git tag --sort=-version:refname | head -5
+          echo "  - 当前分支："
+          git branch --show-current
+          
+          # 作为最后的备选方案，获取最近的一些提交
+          echo "🚨 使用备选方案：获取最近的提交记录"
+          COMMITS=$(git log --oneline -n 10 --pretty=format:'%h|%s|%b')
+          COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
+          COMMIT_RANGE="最近10个提交"
+          echo "📋 备选方案获取到 $COMMIT_COUNT 个提交记录"
         fi
         
         echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
@@ -207,7 +267,7 @@ jobs:
         else
           echo "## 提交记录" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          if [[ -n "$COMMITS" ]]; then
+          if [[ -n "$COMMITS" && "$COMMIT_COUNT" -gt 0 ]]; then
             echo "$COMMITS" | while IFS='|' read -r hash message body; do
               if [[ -n "$hash" ]]; then
                 echo "- **$message** \`$hash\`"
