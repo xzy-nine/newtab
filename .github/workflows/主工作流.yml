@@ -13,7 +13,10 @@ jobs:
   release-management:
     name: 发布管理
     needs: version-check-and-build
-    if: needs.version-check-and-build.outputs.is_new_version == 'true' && needs.version-check-and-build.outputs.tag_exists == 'false'
+    # 明确条件：只有在新版本且标签不存在时才执行
+    if: |
+      needs.version-check-and-build.outputs.is_new_version == 'true' && 
+      needs.version-check-and-build.outputs.tag_exists == 'false'
     uses: ./.github/workflows/发布管理.yml
     with:
       version: ${{ needs.version-check-and-build.outputs.version }}
@@ -24,11 +27,11 @@ jobs:
   ai-changelog-generation:
     name: AI变更日志生成
     needs: [version-check-and-build, release-management]
-    # 修复条件判断
+    # 修复条件判断 - 只有在发布成功时才执行
     if: |
       needs.version-check-and-build.outputs.is_new_version == 'true' && 
       needs.version-check-and-build.outputs.tag_exists == 'false' &&
-      (needs.release-management.result == 'success' || needs.release-management.result == 'skipped')
+      needs.release-management.result == 'success'
     uses: ./.github/workflows/AI变更日志生成.yml
     with:
       version: ${{ needs.version-check-and-build.outputs.version }}
@@ -60,7 +63,6 @@ jobs:
           echo "| 当前版本 | \`${{ needs.version-check-and-build.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| 是否新版本 | ${{ needs.version-check-and-build.outputs.is_new_version == 'true' && '✅ 是' || '❌ 否' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 标签是否存在 | ${{ needs.version-check-and-build.outputs.tag_exists == 'true' && '⚠️ 已存在' || '✅ 不存在' }} |" >> $GITHUB_STEP_SUMMARY
-          
           if [ "${{ needs.release-management.result }}" == "success" ]; then
             echo "| Release ID | \`${{ needs.release-management.outputs.release-id }}\` |" >> $GITHUB_STEP_SUMMARY
             echo "| Release URL | [${{ needs.release-management.outputs.release-url }}](${{ needs.release-management.outputs.release-url }}) |" >> $GITHUB_STEP_SUMMARY
