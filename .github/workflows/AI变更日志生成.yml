@@ -87,7 +87,7 @@ jobs:
         
         RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r '.id')
         ORIGINAL_CHANGELOG=$(echo "$RELEASE_INFO" | jq -r '.body')
-        )
+        
         echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
         echo "ORIGINAL_CHANGELOG<<EOF" >> $GITHUB_ENV
         echo "$ORIGINAL_CHANGELOG" >> $GITHUB_ENV
@@ -454,7 +454,7 @@ jobs:
           fi
           
         else
-          echo "❌ DeepSeek API调用失败，使用基础分析"
+          echo "❌ DeepSeek API调用失败，使用基础逻辑"
           echo "错误信息: $(echo "$DEEPSEEK_RESPONSE" | jq -r '.error.message // "未知错误"')"
           
           # 使用原有逻辑作为后备
