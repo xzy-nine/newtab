@@ -4,17 +4,25 @@ on:
     branches:
       - main
 
-# 添加权限设置
+# 完整的权限设置
 permissions:
-  contents: write
-  actions: read
-  packages: write
+  contents: write          # 创建 Release 和标签
+  actions: read           # 读取工作流状态
+  packages: write         # 上传包（如果需要）
+  pull-requests: write    # 更新 PR（如果需要）
+  issues: write          # 创建 Issue（如果需要）
+  repository-projects: read  # 读取项目信息
+  id-token: write        # OIDC token（如果使用）
 
 jobs:
   version-check-and-build:
     name: 版本检查与构建
     uses: ./.github/workflows/版本检查与构建.yml
     secrets: inherit
+    # 明确传递权限
+    permissions:
+      contents: read
+      actions: read
 
   release-management:
     name: 发布管理
@@ -29,7 +37,6 @@ jobs:
       changelog: ${{ needs.version-check-and-build.outputs.changelog }}
       build-path: ${{ needs.version-check-and-build.outputs.build_path }}
     secrets: inherit
-    # 添加权限
     permissions:
       contents: write
       actions: read
@@ -46,6 +53,9 @@ jobs:
       version: ${{ needs.version-check-and-build.outputs.version }}
       release-id: ${{ needs.release-management.outputs.release-id }}
     secrets: inherit
+    permissions:
+      contents: write
+      actions: read
 
   workflow-summary:
     name: 工作流总结

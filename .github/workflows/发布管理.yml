@@ -39,6 +39,31 @@ jobs:
       release-url: ${{ steps.create-release.outputs.html_url }}
 
     steps:
+    - name: 检查权限和 Token
+      id: check-permissions
+      run: |
+        echo "🔍 检查 GitHub Token 权限..."
+        
+        # 检查 Token 是否存在
+        if [ -z "${{ secrets.PAT }}" ]; then
+          echo "❌ PAT token 未配置"
+          exit 1
+        fi
+        
+        # 检查仓库访问权限
+        REPO_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
+          "https://api.github.com/repos/${{ github.repository }}")
+        
+        if echo "$REPO_INFO" | jq -e '.permissions.push' > /dev/null; then
+          echo "✅ Token 有推送权限"
+        else
+          echo "❌ Token 缺少推送权限"
+          echo "Token info: $(echo "$REPO_INFO" | jq '.permissions // "无权限信息"')"
+          exit 1
+        fi
+        
+        echo "✅ 权限检查通过"
+
     - name: 检出代码
       uses: actions/checkout@v4
       with:
