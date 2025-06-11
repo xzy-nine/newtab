@@ -173,8 +173,9 @@ jobs:
           COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
         fi
         
-        # 验证提交范围是否合理
+        # 修复：正确计算提交数量，去除换行符
         COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
+        COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
         echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
         
         # 修复：如果没有获取到提交记录，尝试其他方法
@@ -212,6 +213,7 @@ jobs:
           
           # 重新计算提交数量
           COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
+          COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
           echo "🔄 重新获取到 $COMMIT_COUNT 个提交记录"
         fi
         
@@ -230,6 +232,7 @@ jobs:
             COMMIT_RANGE="$LAST_TAG..$CURRENT_TAG"
             COMMITS=$(git log "$COMMIT_RANGE" --pretty=format:'%h|%s|%b' --no-merges)
             COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
+            COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
             echo "✅ 重新获取到 $COMMIT_COUNT 个提交记录"
           fi
         fi
@@ -252,32 +255,38 @@ jobs:
           echo "🚨 使用备选方案：获取最近的提交记录"
           COMMITS=$(git log --oneline -n 10 --pretty=format:'%h|%s|%b')
           COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
+          COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
           COMMIT_RANGE="最近10个提交"
           echo "📋 备选方案获取到 $COMMIT_COUNT 个提交记录"
         fi
         
-        echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
-        echo "$COMMITS" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
+        # 修复：正确设置多行环境变量
+        {
+          echo "COMMITS_RAW<<EOF"
+          echo "$COMMITS"
+          echo "EOF"
+        } >> $GITHUB_ENV
         
         # 保存原始变更日志用于折叠显示
-        echo "RAW_ORIGINAL_FOR_COLLAPSE<<EOF" >> $GITHUB_ENV
-        if [[ -n "$ORIGINAL_CHANGELOG" && "$ORIGINAL_CHANGELOG" != "null" && "$ORIGINAL_CHANGELOG" != "" ]]; then
-          echo "$ORIGINAL_CHANGELOG" >> $GITHUB_ENV
-        else
-          echo "## 提交记录" >> $GITHUB_ENV
-          echo "" >> $GITHUB_ENV
-          if [[ -n "$COMMITS" && "$COMMIT_COUNT" -gt 0 ]]; then
-            echo "$COMMITS" | while IFS='|' read -r hash message body; do
-              if [[ -n "$hash" ]]; then
-                echo "- **$message** \`$hash\`"
-              fi
-            done >> $GITHUB_ENV
+        {
+          echo "RAW_ORIGINAL_FOR_COLLAPSE<<EOF"
+          if [[ -n "$ORIGINAL_CHANGELOG" && "$ORIGINAL_CHANGELOG" != "null" && "$ORIGINAL_CHANGELOG" != "" ]]; then
+            echo "$ORIGINAL_CHANGELOG"
           else
-            echo "暂无提交记录" >> $GITHUB_ENV
+            echo "## 提交记录"
+            echo ""
+            if [[ -n "$COMMITS" && "$COMMIT_COUNT" -gt 0 ]]; then
+              echo "$COMMITS" | while IFS='|' read -r hash message body; do
+                if [[ -n "$hash" ]]; then
+                  echo "- **$message** \`$hash\`"
+                fi
+              done
+            else
+              echo "暂无提交记录"
+            fi
           fi
-        fi
-        echo "EOF" >> $GITHUB_ENV
+          echo "EOF"
+        } >> $GITHUB_ENV
         
         # 保存变量到环境变量
         echo "LAST_TAG=$LAST_TAG" >> $GITHUB_ENV
