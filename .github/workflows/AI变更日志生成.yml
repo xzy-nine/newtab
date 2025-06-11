@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '版本号（如v1.0.0）'
+        description: '版本号(如v1.0.0）'
         required: true
         type: string
       release-id:
@@ -122,44 +122,9 @@ jobs:
       id: off-peak-check
       if: env.NEED_OPTIMIZE == 'true'
       run: |
-        check_off_peak_time() {
-          local hour=$(date -u +%H)
-          # 错峰时间: 02:00-06:00 UTC
-          if [ $hour -ge 2 ] && [ $hour -lt 6 ]; then
-            return 0
-          else
-            return 1
-          fi
-        }
-        
-        if [ "${{ env.RUN_MODE }}" == "auto_release" ]; then
-          if check_off_peak_time; then
-            echo "✅ 当前为错峰时间，可以继续执行"
-            echo "CAN_EXECUTE=true" >> $GITHUB_ENV
-          else
-            echo "⏰ 当前为非错峰时间"
-            current_hour=$(date -u +%H)
-            
-            # 计算到下一个错峰时间的小时数
-            if [ $current_hour -lt 2 ]; then
-              delay_hours=$((2 - current_hour))
-            else
-              delay_hours=$((26 - current_hour))  # 到明天的2点
-            fi
-            
-            # 如果延迟时间超过8小时，则直接执行（避免过长等待）
-            if [ $delay_hours -gt 8 ]; then
-              echo "⚠️ 延迟时间过长($delay_hours小时)，直接执行"
-              echo "CAN_EXECUTE=true" >> $GITHUB_ENV
-            else
-              echo "CAN_EXECUTE=false" >> $GITHUB_ENV
-              echo "DELAY_HOURS=$delay_hours" >> $GITHUB_ENV
-            fi
-          fi
-        else
-          echo "📝 非自动模式，忽略错峰时间限制"
-          echo "CAN_EXECUTE=true" >> $GITHUB_ENV
-        fi    
+        echo "💡 提示：DeepSeek错峰时段(北京时间00:30-08:30)享受优惠价格"
+        echo "📝 当前直接执行，无需等待"
+        echo "CAN_EXECUTE=true" >> $GITHUB_ENV
     - name: 延迟等待
       if: env.NEED_OPTIMIZE == 'true' && env.CAN_EXECUTE == 'false'
       run: |
