@@ -6,7 +6,7 @@ on:
         description: '版本号(如v1.0.0）'
         required: true
         type: string
-      release-id:
+      release-id:,
         description: 'Release ID（自动发布时填写）'
         required: false
         type: string
@@ -476,25 +476,25 @@ jobs:
                   # 开始生成优化后的变更日志
                   AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
-            ## 📋 更新概览
-            $AI_SUMMARY"
+               ## 📋 更新概览
+               $AI_SUMMARY"
                   
                   # 添加主要亮点
                   if [[ -n "$AI_HIGHLIGHTS" ]]; then
                     AI_CHANGELOG="$AI_CHANGELOG
 
-            ### ✨ 主要亮点"
+                ### ✨ 主要亮点"
                     while IFS= read -r highlight; do
                       if [[ -n "$highlight" ]]; then
                         AI_CHANGELOG="$AI_CHANGELOG
-            - $highlight"
+                 - $highlight"
                       fi
                     done <<< "$AI_HIGHLIGHTS"
                   fi
                   
                   AI_CHANGELOG="$AI_CHANGELOG
 
-               "
+                     ---"
                   
                   # 按优先级生成各个分类
                   declare -a CATEGORIES=("FEATURE" "FIX" "PERF" "STYLE" "REFACTOR" "DOCS" "BUILD" "OTHER")
@@ -516,7 +516,7 @@ jobs:
                     if [[ -n "$CATEGORY_COMMITS" ]]; then
                       AI_CHANGELOG="$AI_CHANGELOG
 
-            #### ${CATEGORY_TITLES[$category]}"
+                    #### ${CATEGORY_TITLES[$category]}"
                       
                       # 按重要性排序并添加提交
                       echo "$AI_CONTENT" | jq -r ".categories.$category | sort_by(-.importance) | .[] | \"\\(.hash)|\\(.message)|\\(.importance)\"" | while IFS='|' read -r hash message importance; do
@@ -532,8 +532,8 @@ jobs:
                           esac
                           
                           AI_CHANGELOG="$AI_CHANGELOG
-            - $icon **$message**  
-             \`$hash\`"
+                  - $icon **$message**  
+                    \`$hash\`"
                         fi
                       done
                     fi
@@ -550,8 +550,8 @@ jobs:
                   # 生成基础变更日志
                   AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
-          ## 📋 更新概览
-          基于智能分析的版本更新
+                 ## 📋 更新概览
+                 基于智能分析的版本更新
 
             "
                   
@@ -559,105 +559,48 @@ jobs:
                   if [ ${#FEATURE_COMMITS[@]} -gt 0 ]; then
                     AI_CHANGELOG="$AI_CHANGELOG
 
-          #### 🚀 功能新增"
+                 #### 🚀 功能新增"
                     
                     for commit in "${FEATURE_COMMITS[@]}"; do
                       IFS='|' read -r hash message <<< "$commit"
                       title=$(echo "$message" | sed 's/^feat[[:space:]]*:[[:space:]]*//' | sed 's/^feature[[:space:]]*:[[:space:]]*//' | sed 's/新增[[:space:]]*//' | sed 's/添加[[:space:]]*//')
                       AI_CHANGELOG="$AI_CHANGELOG
-          - **${title}**  
-          \`$hash\`"
+                   - **${title}**  
+                    \`$hash\`"
                     done
                   fi
                   
                   if [ ${#FIX_COMMITS[@]} -gt 0 ]; then
                     AI_CHANGELOG="$AI_CHANGELOG
 
-          #### 🐛 问题修复"
+                 #### 🐛 问题修复"
                     
                     for commit in "${FIX_COMMITS[@]}"; do
                       IFS='|' read -r hash message <<< "$commit"
                       title=$(echo "$message" | sed 's/^fix[[:space:]]*:[[:space:]]*//' | sed 's/^bug[[:space:]]*:[[:space:]]*//' | sed 's/修复[[:space:]]*//' | sed 's/解决[[:space:]]*//')
                       AI_CHANGELOG="$AI_CHANGELOG
-          - **${title}**  
-          \`$hash\`"
+                   - **${title}**  
+                  \`$hash\`"
                     done
                   fi
                   
                   # 其他分类的处理
-                  if [ ${#PERF_COMMITS[@]} -gt 0 ]; then
-                    AI_CHANGELOG="$AI_CHANGELOG
-
-          #### ⚡ 性能优化"
-                    for commit in "${PERF_COMMITS[@]}"; do
-                      IFS='|' read -r hash message <<< "$commit"
-                      AI_CHANGELOG="$AI_CHANGELOG
-          - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-         \`$hash\`"
-                    done
-                  fi
-                  
-                  if [ ${#STYLE_COMMITS[@]} -gt 0 ]; then
-                    AI_CHANGELOG="$AI_CHANGELOG
-
-         #### 💄 样式优化"
-                    for commit in "${STYLE_COMMITS[@]}"; do
-                      IFS='|' read -r hash message <<< "$commit"
-                      AI_CHANGELOG="$AI_CHANGELOG
-          - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-           \`$hash\`"
-                    done
-                  fi
-                  
-                  if [ ${#REFACTOR_COMMITS[@]} -gt 0 ]; then
-                    AI_CHANGELOG="$AI_CHANGELOG
-
-          #### ♻️ 代码重构"
-                    for commit in "${REFACTOR_COMMITS[@]}"; do
-                      IFS='|' read -r hash message <<< "$commit"
-                      AI_CHANGELOG="$AI_CHANGELOG
-           - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-           \`$hash\`"
-                    done
-                  fi
-                  
-                  if [ ${#DOCS_COMMITS[@]} -gt 0 ]; then
-                    AI_CHANGELOG="$AI_CHANGELOG
-
-          #### 📝 文档更新"
-                    for commit in "${DOCS_COMMITS[@]}"; do
-                      IFS='|' read -r hash message <<< "$commit"
-                      AI_CHANGELOG="$AI_CHANGELOG
-           - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-           \`$hash\`"
-                    done
-                  fi
-                  
-                  if [ ${#BUILD_COMMITS[@]} -gt 0 ]; then
-                    AI_CHANGELOG="$AI_CHANGELOG
-
-          #### 🏗️ 构建相关"
-                    for commit in "${BUILD_COMMITS[@]}"; do
-                      IFS='|' read -r hash message <<< "$commit"
-                      AI_CHANGELOG="$AI_CHANGELOG
-            - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-            \`$hash\`"
-                    done
-                  fi
-                  
                   if [ ${#OTHER_COMMITS[@]} -gt 0 ]; then
                     AI_CHANGELOG="$AI_CHANGELOG
 
-             #### 🔧 其他改进"
+                  #### 🔧 其他改进"
                     for commit in "${OTHER_COMMITS[@]}"; do
                       IFS='|' read -r hash message <<< "$commit"
                       AI_CHANGELOG="$AI_CHANGELOG
-            - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-             \`$hash\`"
+                      - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+                     \`$hash\`"
                     done
                   fi
                 fi
               fi
+            fi
+          fi
+        fi
         
         # 如果API失败，使用基础逻辑作为后备方案
         if [[ "${{ env.DEEPSEEK_API_SUCCESS }}" != "true" ]]; then
@@ -665,50 +608,48 @@ jobs:
           
           AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
-           ## 📋 更新概览
-           基于规则分析的版本更新
+                 ## 📋 更新概览
+               基于规则分析的版本更新
 
-            ---"
+              ---"
           
-          # 原有的基础分析逻辑...
+          # 基础分析逻辑
           if [ ${#FEATURE_COMMITS[@]} -gt 0 ]; then
             AI_CHANGELOG="$AI_CHANGELOG
 
-            #### 🚀 功能新增"
-            
+             #### 🚀 功能新增"
             for commit in "${FEATURE_COMMITS[@]}"; do
               IFS='|' read -r hash message <<< "$commit"
               title=$(echo "$message" | sed 's/^feat[[:space:]]*:[[:space:]]*//' | sed 's/^feature[[:space:]]*:[[:space:]]*//' | sed 's/新增[[:space:]]*//' | sed 's/添加[[:space:]]*//')
               AI_CHANGELOG="$AI_CHANGELOG
              - **${title}**  
-             \`$hash\`"
+                \`$hash\`"
             done
           fi
           
           if [ ${#FIX_COMMITS[@]} -gt 0 ]; then
             AI_CHANGELOG="$AI_CHANGELOG
 
-          #### 🐛 问题修复"
-            
+            #### 🐛 问题修复"
             for commit in "${FIX_COMMITS[@]}"; do
               IFS='|' read -r hash message <<< "$commit"
               title=$(echo "$message" | sed 's/^fix[[:space:]]*:[[:space:]]*//' | sed 's/^bug[[:space:]]*:[[:space:]]*//' | sed 's/修复[[:space:]]*//' | sed 's/解决[[:space:]]*//')
               AI_CHANGELOG="$AI_CHANGELOG
-            - **${title}**  
-           \`$hash\`"
+             - **${title}**  
+              \`$hash\`"
             done
           fi
           
-          # 处理其他分类...
+          # 处理其他分类
           if [ ${#OTHER_COMMITS[@]} -gt 0 ]; then
             AI_CHANGELOG="$AI_CHANGELOG
 
-         #### 🔧 其他改进"
+               #### 🔧 其他改进"
             for commit in "${OTHER_COMMITS[@]}"; do
               IFS='|' read -r hash message <<< "$commit"
               AI_CHANGELOG="$AI_CHANGELOG
-          - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
-              \`$hash\`"
+            - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+           \`$hash\`"
             done
           fi
         fi
@@ -716,12 +657,12 @@ jobs:
         # 添加原始变更记录到折叠区域
         AI_CHANGELOG="$AI_CHANGELOG
 
-             <details>
+           <details>
             <summary>查看原始提交记录</summary>
 
-          $RAW_ORIGINAL_FOR_COLLAPSE
+               $RAW_ORIGINAL_FOR_COLLAPSE
 
-             </details>"
+           </details>"
         
         # 保存生成的变更日志
         echo "AI_CHANGELOG<<EOF" >> $GITHUB_ENV
