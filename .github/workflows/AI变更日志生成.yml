@@ -4,7 +4,7 @@ on:
     inputs:
       version:
         description: '版本号(如v1.0.0）'
-        required: true:,
+        required: true
         type: string
       release-id:
         description: 'Release ID（自动发布时填写）'
@@ -14,12 +14,12 @@ on:
         description: '要优化变更日志的标签（手动优化时填写）'
         required: false
         type: string
-  workflow_call:,
+  workflow_call:
     inputs:
-      version:,
+      version:
         description: '版本号'
-        required: true,
-        type: string,
+        required: true
+        type: string
       release-id:
         description: 'Release ID'
         required: true
@@ -27,7 +27,7 @@ on:
     outputs:
       ai_optimized:
         description: "是否完成AI优化"
-        value: ${{ jobs.a,-changelog-generation.outputs.ai_optimized }}
+        value: ${{ jobs.ai-changelog-generation.outputs.ai_optimized }}
 
 jobs:
   ai-changelog-generation:
@@ -45,7 +45,8 @@ jobs:
 
     - name: 验证输入参数
       id: validate-params
-      run: |,
+      run: |
+        echo "🔍 验证输入参数..."
         if [ "${{ github.event_name }}" == "workflow_call" ]; then
           echo "RUN_MODE=workflow_call" >> $GITHUB_ENV
           echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
