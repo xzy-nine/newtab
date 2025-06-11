@@ -102,41 +102,40 @@ jobs:
         echo "🔍 检查变更日志优化状态..."
         
         if [ "${{ env.RUN_MODE }}" == "manual_optimize" ]; then
-          echo "📝 手动优化模式：强制重新生成，清空原有AI信息"
+          echo "📝 手动优化模式：强制重新生成，提取原始内容"
           echo "NEED_OPTIMIZE=true" >> $GITHUB_ENV
           echo "FORCE_REGENERATE=true" >> $GITHUB_ENV
           
-          # 清理原始变更日志中的AI生成内容，只保留纯净的提交记录
-          echo "🧹 清理原有AI生成的变更日志内容..."
+          # 提取原始的提交记录
+          echo "🔍 提取原始提交记录..."
           
-          # 提取原始的非AI内容（移除AI生成的标记和内容）
-          CLEAN_ORIGINAL=""
-          if [[ "$ORIGINAL_CHANGELOG" != *"AI生成的变更日志摘要"* ]]; then
-            # 如果没有AI标记，保持原样
-            CLEAN_ORIGINAL="$ORIGINAL_CHANGELOG"
-            echo "ℹ️ 原始变更日志未包含AI内容，保持原样"
-          else
-            # 如果包含AI标记，尝试提取折叠区域中的原始内容
-            echo "🔍 检测到AI生成内容，尝试提取原始提交记录..."
+          if [[ "$ORIGINAL_CHANGELOG" == *"<details>"*"查看原始提交记录"*"</details>"* ]]; then
+            echo "📋 发现折叠区域，提取原始提交记录..."
             
-            # 查找折叠区域中的原始内容
-            if [[ "$ORIGINAL_CHANGELOG" == *"<details>"*"查看原始提交记录"*"</details>"* ]]; then
-              # 提取 <details> 和 </details> 之间的内容
-              CLEAN_ORIGINAL=$(echo "$ORIGINAL_CHANGELOG" | sed -n '/<details>/,/<\/details>/p' | sed '1d;$d' | sed '/^<summary>.*<\/summary>$/d' | sed '/^$/d')
-              echo "✅ 成功提取折叠区域中的原始内容"
-            else
-              # 如果找不到折叠区域，清空变更日志，完全依赖Git历史
+            # 提取 <details> 标签内的内容
+            EXTRACTED_CONTENT=$(echo "$ORIGINAL_CHANGELOG" | sed -n '/<details>/,/<\/details>/p')
+            
+            # 移除 <details>, <summary>, </summary>, </details> 标签
+            CLEAN_ORIGINAL=$(echo "$EXTRACTED_CONTENT" | sed '/<details>/d' | sed '/<\/details>/d' | sed '/<summary>.*<\/summary>/d' | sed '/^$/d')
+            
+            # 如果提取的内容为空或只有空白，则从Git历史获取
+            if [[ -z "$(echo "$CLEAN_ORIGINAL" | sed '/^[[:space:]]*$/d')" ]]; then
+              echo "⚠️ 折叠区域内容为空，将从Git历史重新获取"
               CLEAN_ORIGINAL=""
-              echo "⚠️ 未找到原始提交记录折叠区域，将完全依赖Git历史重新生成"
+            else
+              echo "✅ 成功提取到原始提交记录"
             fi
+          else
+            echo "ℹ️ 未发现AI优化标记，使用原始内容"
+            CLEAN_ORIGINAL="$ORIGINAL_CHANGELOG"
           fi
           
-          # 更新环境变量为清理后的内容
+          # 更新环境变量
           echo "ORIGINAL_CHANGELOG<<EOF" >> $GITHUB_ENV
           echo "$CLEAN_ORIGINAL" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
           
-          echo "✅ 手动模式准备完成，将基于纯净的原始数据重新生成"
+          echo "✅ 手动模式准备完成"
           
         else
           # 自动模式的原有逻辑
@@ -156,68 +155,44 @@ jobs:
       run: |
         echo "📊 获取详细的提交信息..."
         
-        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ]; then
-          echo "📝 手动优化模式，获取指定版本的提交记录..."
-          
-          # 获取当前标签的上一个版本标签
-          CURRENT_TAG="${{ env.VERSION }}"
-          echo "🎯 当前版本: $CURRENT_TAG"
-          
-          # 获取所有标签并排序，找到当前标签的上一个版本
-          LAST_TAG=$(git tag --sort=-version:refname | grep -A1 "^$CURRENT_TAG$" | tail -1)
-          
-          # 如果找不到上一个标签或者找到的是自己，则使用更安全的方法
-          if [ -z "$LAST_TAG" ] || [ "$LAST_TAG" == "$CURRENT_TAG" ]; then
-            # 使用更精确的方法：排除当前标签后获取最新的标签
-            LAST_TAG=$(git tag --sort=-version:refname | grep -v "^$CURRENT_TAG$" | head -1)
-          fi
-          
-          if [ -z "$LAST_TAG" ]; then
-            echo "📋 未找到上一个版本，获取到当前版本的所有提交记录"
-            COMMIT_RANGE="$CURRENT_TAG"
-            COMMITS=$(git log $CURRENT_TAG --pretty=format:'%h|%s|%b' --no-merges)
-          else
-            echo "📋 获取 $LAST_TAG 到 $CURRENT_TAG 之间的提交记录"
-            COMMIT_RANGE="$LAST_TAG..$CURRENT_TAG"
-            COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
-          fi
-          
-          echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
-          echo "$COMMITS" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          
-          COMMIT_COUNT=$(echo "$COMMITS" | wc -l)
-          echo "✅ 获取到 $COMMIT_COUNT 个提交记录（范围: ${LAST_TAG:-首次发布} -> $CURRENT_TAG）"
-          
+        # 获取Git提交历史
+        CURRENT_TAG="${{ env.VERSION }}"
+        echo "🎯 当前版本: $CURRENT_TAG"
+        
+        # 获取上一个版本标签
+        LAST_TAG=$(git tag --sort=-version:refname | grep -v "^$CURRENT_TAG$" | head -1)
+        
+        if [ -z "$LAST_TAG" ]; then
+          echo "📋 首次发布，获取到当前版本的所有提交记录"
+          COMMIT_RANGE="$CURRENT_TAG"
+          COMMITS=$(git log $CURRENT_TAG --pretty=format:'%h|%s|%b' --no-merges)
         else
-          echo "🆕 首次生成，从Git历史获取提交记录..."
-          
-          # 获取上一个版本的标签
-          LAST_TAG=$(git tag --sort=-version:refname | grep -v "^${{ env.VERSION }}$" | head -1)
-          
-          if [ -z "$LAST_TAG" ]; then
-            echo "📋 首次发布，获取所有提交记录"
-            COMMIT_RANGE=""
-          else
-            echo "📋 获取自 $LAST_TAG 以来的提交记录"
-            COMMIT_RANGE="$LAST_TAG..${{ env.VERSION }}"
-          fi
-          
-          # 获取详细的提交信息
-          if [ -z "$COMMIT_RANGE" ]; then
-            COMMITS=$(git log --pretty=format:'%h|%s|%b' --no-merges)
-          else
-            COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
-          fi
-          
-          # 保存提交信息到环境变量
-          echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
-          echo "$COMMITS" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          
-          COMMIT_COUNT=$(echo "$COMMITS" | wc -l)
-          echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
+          echo "📋 获取 $LAST_TAG 到 $CURRENT_TAG 之间的提交记录"
+          COMMIT_RANGE="$LAST_TAG..$CURRENT_TAG"
+          COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
         fi
+        
+        echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
+        echo "$COMMITS" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        
+        COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" || echo "0")
+        echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
+        
+        # 保存原始变更日志用于折叠显示
+        echo "RAW_ORIGINAL_FOR_COLLAPSE<<EOF" >> $GITHUB_ENV
+        if [[ -n "$ORIGINAL_CHANGELOG" && "$ORIGINAL_CHANGELOG" != "null" ]]; then
+          echo "$ORIGINAL_CHANGELOG" >> $GITHUB_ENV
+        else
+          echo "## 提交记录" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "$COMMITS" | while IFS='|' read -r hash message body; do
+            if [[ -n "$hash" ]]; then
+              echo "- **$message** \`$hash\`" >> $GITHUB_ENV
+            fi
+          done
+        fi
+        echo "EOF" >> $GITHUB_ENV
 
     - name: 分析并生成AI变更日志
       id: generate-ai-changelog
@@ -237,7 +212,7 @@ jobs:
         
         echo "🆕 处理Git历史提交记录..."
         
-        # 统一处理Git历史记录（无论是手动还是自动模式）
+        # 统一处理Git历史记录
         while IFS='|' read -r hash message body; do
           if [[ -n "$hash" ]]; then
             # 清理消息内容
@@ -274,6 +249,7 @@ jobs:
         echo "  - 文档更新: ${#DOCS_COMMITS[@]}"
         echo "  - 构建相关: ${#BUILD_COMMITS[@]}"
         echo "  - 其他改进: ${#OTHER_COMMITS[@]}"
+        
         # 准备所有提交信息给DeepSeek API分析
         ALL_COMMITS_FOR_AI=""
         for commit in "${FEATURE_COMMITS[@]}" "${FIX_COMMITS[@]}" "${STYLE_COMMITS[@]}" "${REFACTOR_COMMITS[@]}" "${PERF_COMMITS[@]}" "${DOCS_COMMITS[@]}" "${BUILD_COMMITS[@]}" "${OTHER_COMMITS[@]}"; do
@@ -331,14 +307,14 @@ jobs:
             # 开始生成优化后的变更日志
             AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
-            ## 📋 更新概览
-            $AI_SUMMARY"
+             ## 📋 更新概览
+             $AI_SUMMARY"
             
             # 添加主要亮点
             if [[ -n "$AI_HIGHLIGHTS" ]]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-            ### ✨ 主要亮点"
+             ### ✨ 主要亮点"
               while IFS= read -r highlight; do
                 if [[ -n "$highlight" ]]; then
                   AI_CHANGELOG="$AI_CHANGELOG
@@ -349,7 +325,7 @@ jobs:
             
             AI_CHANGELOG="$AI_CHANGELOG
 
-            ---"
+              ---"
             
             # 按优先级生成各个分类
             declare -a CATEGORIES=("FEATURE" "FIX" "PERF" "STYLE" "REFACTOR" "DOCS" "BUILD" "OTHER")
@@ -371,7 +347,7 @@ jobs:
               if [[ -n "$CATEGORY_COMMITS" ]]; then
                 AI_CHANGELOG="$AI_CHANGELOG
 
-            #### ${CATEGORY_TITLES[$category]}"
+             #### ${CATEGORY_TITLES[$category]}"
                 
                 # 按重要性排序并添加提交
                 echo "$AI_CONTENT" | jq -r ".categories.$category | sort_by(-.importance) | .[] | \"\\(.hash)|\\(.message)|\\(.importance)\"" | while IFS='|' read -r hash message importance; do
@@ -387,8 +363,8 @@ jobs:
                     esac
                     
                     AI_CHANGELOG="$AI_CHANGELOG
-            - $icon **$message**  
-              \`$hash\`"
+                   - $icon **$message**  
+                     \`$hash\`"
                   fi
                 done
               fi
@@ -398,29 +374,27 @@ jobs:
             
           else
             echo "⚠️ DeepSeek API返回格式异常，使用基础分析结果"
-            # 使用原有的基础分析逻辑作为后备
-            AI_SUMMARY="基于智能分析的版本更新"
             
             # 生成基础变更日志
             AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
             ## 📋 更新概览
-            $AI_SUMMARY
+            基于智能分析的版本更新
 
-            ---"
+         ---"
             
             # 功能新增部分
             if [ ${#FEATURE_COMMITS[@]} -gt 0 ]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-            #### 🚀 功能新增"
+             #### 🚀 功能新增"
               
               for commit in "${FEATURE_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 title=$(echo "$message" | sed 's/^feat[[:space:]]*:[[:space:]]*//' | sed 's/^feature[[:space:]]*:[[:space:]]*//' | sed 's/新增[[:space:]]*//' | sed 's/添加[[:space:]]*//')
                 AI_CHANGELOG="$AI_CHANGELOG
-            - **${title}**  
-              \`$hash\`"
+              - **${title}**  
+                 \`$hash\`"
               done
             fi
             
@@ -428,27 +402,87 @@ jobs:
             if [ ${#FIX_COMMITS[@]} -gt 0 ]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-            #### 🐛 问题修复"
+             #### 🐛 问题修复"
               
               for commit in "${FIX_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 title=$(echo "$message" | sed 's/^fix[[:space:]]*:[[:space:]]*//' | sed 's/^bug[[:space:]]*:[[:space:]]*//' | sed 's/修复[[:space:]]*//' | sed 's/解决[[:space:]]*//')
                 AI_CHANGELOG="$AI_CHANGELOG
-            - **${title}**  
+              - **${title}**  
               \`$hash\`"
               done
             fi
             
-            # 其他分类的处理...
+            # 其他分类的处理
             if [ ${#PERF_COMMITS[@]} -gt 0 ]; then
               AI_CHANGELOG="$AI_CHANGELOG
 
-            #### ⚡ 性能优化"
+               #### ⚡ 性能优化"
               for commit in "${PERF_COMMITS[@]}"; do
                 IFS='|' read -r hash message <<< "$commit"
                 AI_CHANGELOG="$AI_CHANGELOG
-            - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+                 - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+             \`$hash\`"
+              done
+            fi
+            
+            if [ ${#STYLE_COMMITS[@]} -gt 0 ]; then
+              AI_CHANGELOG="$AI_CHANGELOG
+
+             #### 💄 样式优化"
+              for commit in "${STYLE_COMMITS[@]}"; do
+                IFS='|' read -r hash message <<< "$commit"
+                AI_CHANGELOG="$AI_CHANGELOG
+             - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
               \`$hash\`"
+              done
+            fi
+            
+            if [ ${#REFACTOR_COMMITS[@]} -gt 0 ]; then
+              AI_CHANGELOG="$AI_CHANGELOG
+
+            #### ♻️ 代码重构"
+              for commit in "${REFACTOR_COMMITS[@]}"; do
+                IFS='|' read -r hash message <<< "$commit"
+                AI_CHANGELOG="$AI_CHANGELOG
+              - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+              \`$hash\`"
+              done
+            fi
+            
+            if [ ${#DOCS_COMMITS[@]} -gt 0 ]; then
+              AI_CHANGELOG="$AI_CHANGELOG
+
+            #### 📝 文档更新"
+              for commit in "${DOCS_COMMITS[@]}"; do
+                IFS='|' read -r hash message <<< "$commit"
+                AI_CHANGELOG="$AI_CHANGELOG
+               - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+                  \`$hash\`"
+              done
+            fi
+            
+            if [ ${#BUILD_COMMITS[@]} -gt 0 ]; then
+              AI_CHANGELOG="$AI_CHANGELOG
+
+              #### 🏗️ 构建相关"
+              for commit in "${BUILD_COMMITS[@]}"; do
+                IFS='|' read -r hash message <<< "$commit"
+                AI_CHANGELOG="$AI_CHANGELOG
+         - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+            \`$hash\`"
+              done
+            fi
+            
+            if [ ${#OTHER_COMMITS[@]} -gt 0 ]; then
+              AI_CHANGELOG="$AI_CHANGELOG
+
+             #### 🔧 其他改进"
+              for commit in "${OTHER_COMMITS[@]}"; do
+                IFS='|' read -r hash message <<< "$commit"
+                AI_CHANGELOG="$AI_CHANGELOG
+               - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+               \`$hash\`"
               done
             fi
           fi
@@ -460,53 +494,47 @@ jobs:
           # 使用原有逻辑作为后备
           AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
 
-          ---"
+                 ---"
           
           # 原有的基础分析逻辑...
           if [ ${#FEATURE_COMMITS[@]} -gt 0 ]; then
             AI_CHANGELOG="$AI_CHANGELOG
 
-          #### 🚀 功能新增"
+                   #### 🚀 功能新增"
             
             for commit in "${FEATURE_COMMITS[@]}"; do
               IFS='|' read -r hash message <<< "$commit"
               title=$(echo "$message" | sed 's/^feat[[:space:]]*:[[:space:]]*//' | sed 's/^feature[[:space:]]*:[[:space:]]*//' | sed 's/新增[[:space:]]*//' | sed 's/添加[[:space:]]*//')
               AI_CHANGELOG="$AI_CHANGELOG
-          - **${title}**  
-            \`$hash\`"
+             - **${title}**  
+               \`$hash\`"
             done
           fi
           
           if [ ${#FIX_COMMITS[@]} -gt 0 ]; then
             AI_CHANGELOG="$AI_CHANGELOG
 
-          #### 🐛 问题修复"
+                  #### 🐛 问题修复"
             
             for commit in "${FIX_COMMITS[@]}"; do
               IFS='|' read -r hash message <<< "$commit"
               title=$(echo "$message" | sed 's/^fix[[:space:]]*:[[:space:]]*//' | sed 's/^bug[[:space:]]*:[[:space:]]*//' | sed 's/修复[[:space:]]*//' | sed 's/解决[[:space:]]*//')
               AI_CHANGELOG="$AI_CHANGELOG
-          - **${title}**  
-            \`$hash\`"
+             - **${title}**  
+              \`$hash\`"
             done
           fi
         fi
         
-        # 保存原始变更记录到折叠区域
-        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ] && [ "${{ env.FORCE_REGENERATE }}" == "true" ]; then
-          ORIGINAL_FOR_COLLAPSE="$ORIGINAL_CHANGELOG"
-        else
-          ORIGINAL_FOR_COLLAPSE="$ORIGINAL_CHANGELOG"
-        fi
-        
+        # 添加原始变更记录到折叠区域
         AI_CHANGELOG="$AI_CHANGELOG
 
-        <details>
-        <summary>查看原始提交记录</summary>
+          <details>
+          <summary>查看原始提交记录</summary>
 
-        $ORIGINAL_FOR_COLLAPSE
+          $RAW_ORIGINAL_FOR_COLLAPSE
 
-        </details>"
+           </details>"
         
         # 保存生成的变更日志
         echo "AI_CHANGELOG<<EOF" >> $GITHUB_ENV
@@ -518,6 +546,7 @@ jobs:
         
         # 清理临时文件
         rm -f deepseek_request.json ai_analysis.json 2>/dev/null || true
+
     - name: 更新Release变更日志
       id: update-release-changelog
       if: env.NEED_OPTIMIZE == 'true'
