@@ -6,7 +6,7 @@ on:
         description: '版本号(如v1.0.0）'
         required: true
         type: string
-      release-id:,
+      release-id:
         description: 'Release ID（自动发布时填写）'
         required: false
         type: string
