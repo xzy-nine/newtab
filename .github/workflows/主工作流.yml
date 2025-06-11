@@ -13,10 +13,11 @@ jobs:
   release-management:
     name: 发布管理
     needs: version-check-and-build
-    # 明确条件：只有在新版本且标签不存在时才执行
+    # 修改条件判断，确保字符串比较正确
     if: |
       needs.version-check-and-build.outputs.is_new_version == 'true' && 
-      needs.version-check-and-build.outputs.tag_exists == 'false'
+      needs.version-check-and-build.outputs.tag_exists == 'false' &&
+      needs.version-check-and-build.result == 'success'
     uses: ./.github/workflows/发布管理.yml
     with:
       version: ${{ needs.version-check-and-build.outputs.version }}
@@ -27,7 +28,6 @@ jobs:
   ai-changelog-generation:
     name: AI变更日志生成
     needs: [version-check-and-build, release-management]
-    # 修复条件判断 - 只有在发布成功时才执行
     if: |
       needs.version-check-and-build.outputs.is_new_version == 'true' && 
       needs.version-check-and-build.outputs.tag_exists == 'false' &&
@@ -92,3 +92,20 @@ jobs:
           echo "ℹ️ **无需发布**" >> $GITHUB_STEP_SUMMARY
           echo "- 版本未更新或标签已存在" >> $GITHUB_STEP_SUMMARY
         fi
+
+  debug-outputs:
+    name: 调试输出
+    needs: version-check-and-build
+    runs-on: ubuntu-latest
+    steps:
+    - name: 输出调试信息
+      run: |
+        echo "版本检查结果:"
+        echo "- version: ${{ needs.version-check-and-build.outputs.version }}"
+        echo "- is_new_version: ${{ needs.version-check-and-build.outputs.is_new_version }}"
+        echo "- tag_exists: ${{ needs.version-check-and-build.outputs.tag_exists }}"
+        echo "- result: ${{ needs.version-check-and-build.result }}"
+        echo ""
+        echo "条件判断:"
+        echo "- is_new_version == 'true': ${{ needs.version-check-and-build.outputs.is_new_version == 'true' }}"
+        echo "- tag_exists == 'false': ${{ needs.version-check-and-build.outputs.tag_exists == 'false' }}"

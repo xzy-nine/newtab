@@ -32,7 +32,7 @@ jobs:
   release-management:
     name: 发布管理
     runs-on: ubuntu-latest
-    # 修复条件判断 - 只有workflow_call时才执行，不再处理workflow_run
+    # 确保在 workflow_call 时执行
     if: github.event_name == 'workflow_call'
     outputs:
       release-id: ${{ steps.create-release.outputs.id }}
