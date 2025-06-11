@@ -95,7 +95,7 @@ jobs:
         echo "✅ 获取到Release信息，ID: $RELEASE_ID"
         echo "📋 原始变更日志长度: $(echo "$ORIGINAL_CHANGELOG" | wc -c) 字符"    
 
-    - name: 检查是否已优化
+    - name: 检查是否已优(
       id: check-optimization-status
       run: |
         echo "🔍 检查变更日志优化状态..."
@@ -123,31 +123,76 @@ jobs:
       run: |
         echo "📊 获取详细的提交信息..."
         
-        # 获取上一个版本的标签
-        LAST_TAG=$(git tag --sort=-version:refname | grep -v "^${{ env.VERSION }}$" | head -1)
-        
-        if [ -z "$LAST_TAG" ]; then
-          echo "📋 首次发布，获取所有提交记录"
-          COMMIT_RANGE=""
+        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ] && [ "${{ env.FORCE_REGENERATE }}" == "true" ]; then
+          echo "🔄 手动优化模式，从折叠区域提取原始提交记录..."
+          
+          # 从变更日志中提取原始提交记录
+          ORIGINAL_COMMITS=$(echo "$ORIGINAL_CHANGELOG" | sed -n '/<details>/,/<\/details>/p' | sed '1d;$d' | sed '/^<summary>/d' | sed '/^<\/summary>/d' | sed '/^$/d')
+          
+          if [ -n "$ORIGINAL_COMMITS" ]; then
+            echo "✅ 从折叠区域提取到原始提交记录"
+            echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
+            echo "$ORIGINAL_COMMITS" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+            
+            COMMIT_COUNT=$(echo "$ORIGINAL_COMMITS" | wc -l)
+            echo "📋 使用折叠区域中的 $COMMIT_COUNT 行提交记录"
+          else
+            echo "⚠️ 无法从折叠区域提取原始记录，使用Git历史"
+            # 获取上一个版本的标签
+            LAST_TAG=$(git tag --sort=-version:refname | grep -v "^${{ env.VERSION }}$" | head -1)
+            
+            if [ -z "$LAST_TAG" ]; then
+              echo "📋 首次发布，获取所有提交记录"
+              COMMIT_RANGE=""
+            else
+              echo "📋 获取自 $LAST_TAG 以来的提交记录"
+              COMMIT_RANGE="$LAST_TAG..${{ env.VERSION }}"
+            fi
+            
+            # 获取详细的提交信息
+            if [ -z "$COMMIT_RANGE" ]; then
+              COMMITS=$(git log --pretty=format:'%h|%s|%b' --no-merges)
+            else
+              COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
+            fi
+            
+            echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
+            echo "$COMMITS" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+            
+            COMMIT_COUNT=$(echo "$COMMITS" | wc -l)
+            echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
+          fi
         else
-          echo "📋 获取自 $LAST_TAG 以来的提交记录"
-          COMMIT_RANGE="$LAST_TAG..${{ env.VERSION }}"
+          echo "🆕 首次生成，从Git历史获取提交记录..."
+          
+          # 获取上一个版本的标签
+          LAST_TAG=$(git tag --sort=-version:refname | grep -v "^${{ env.VERSION }}$" | head -1)
+          
+          if [ -z "$LAST_TAG" ]; then
+            echo "📋 首次发布，获取所有提交记录"
+            COMMIT_RANGE=""
+          else
+            echo "📋 获取自 $LAST_TAG 以来的提交记录"
+            COMMIT_RANGE="$LAST_TAG..${{ env.VERSION }}"
+          fi
+          
+          # 获取详细的提交信息
+          if [ -z "$COMMIT_RANGE" ]; then
+            COMMITS=$(git log --pretty=format:'%h|%s|%b' --no-merges)
+          else
+            COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
+          fi
+          
+          # 保存提交信息到环境变量
+          echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
+          echo "$COMMITS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
+          COMMIT_COUNT=$(echo "$COMMITS" | wc -l)
+          echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
         fi
-        
-        # 获取详细的提交信息
-        if [ -z "$COMMIT_RANGE" ]; then
-          COMMITS=$(git log --pretty=format:'%h|%s|%b' --no-merges)
-        else
-          COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
-        fi
-        
-        # 保存提交信息到环境变量
-        echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
-        echo "$COMMITS" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
-        
-        COMMIT_COUNT=$(echo "$COMMITS" | wc -l)
-        echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
 
     - name: 分析并生成AI变更日志
       id: generate-ai-changelog
@@ -165,32 +210,104 @@ jobs:
         declare -a BUILD_COMMITS=()
         declare -a OTHER_COMMITS=()
         
-        # 解析提交记录
-        while IFS='|' read -r hash message body; do
-          if [[ -n "$hash" ]]; then
-            # 清理消息内容
-            clean_message=$(echo "$message" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-            
-            # 分类提交
-            if [[ "$clean_message" =~ ^(feat|feature|新增|添加) ]]; then
-              FEATURE_COMMITS+=("$hash|$clean_message")
-            elif [[ "$clean_message" =~ ^(fix|bug|修复|解决) ]]; then
-              FIX_COMMITS+=("$hash|$clean_message")
-            elif [[ "$clean_message" =~ ^(style|ui|样式|界面) ]]; then
-              STYLE_COMMITS+=("$hash|$clean_message")
-            elif [[ "$clean_message" =~ ^(refactor|重构) ]]; then
-              REFACTOR_COMMITS+=("$hash|$clean_message")
-            elif [[ "$clean_message" =~ ^(perf|performance|优化|性能) ]]; then
-              PERF_COMMITS+=("$hash|$clean_message")
-            elif [[ "$clean_message" =~ ^(docs|doc|文档) ]]; then
-              DOCS_COMMITS+=("$hash|$clean_message")
-            elif [[ "$clean_message" =~ ^(build|版本|构建) ]]; then
-              BUILD_COMMITS+=("$hash|$clean_message")
-            else
-              OTHER_COMMITS+=("$hash|$clean_message")
+        # 处理从折叠区域提取的原始记录或Git历史记录
+        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ] && [ "${{ env.FORCE_REGENERATE }}" == "true" ]; then
+          echo "🔄 处理从折叠区域提取的原始提交记录..."
+          
+          # 解析原始记录（可能是多种格式）
+          while IFS= read -r line; do
+            if [[ -n "$line" && "$line" != *"<details>"* && "$line" != *"</details>"* && "$line" != *"<summary>"* && "$line" != *"</summary>"* ]]; then
+              # 尝试从不同格式中提取信息
+              if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*([a-f0-9]{7,})[[:space:]]*(.+)$ ]]; then
+                # 格式: - hash message
+                hash="${BASH_REMATCH[1]}"
+                message="${BASH_REMATCH[2]}"
+              elif [[ "$line" =~ ^[[:space:]]*([a-f0-9]{7,})[[:space:]]+(.+)$ ]]; then
+                # 格式: hash message
+                hash="${BASH_REMATCH[1]}"
+                message="${BASH_REMATCH[2]}"
+              elif [[ "$line" =~ ^[[:space:]]*\*[[:space:]]*([a-f0-9]{7,})[[:space:]]*(.+)$ ]]; then
+                # 格式: * hash message
+                hash="${BASH_REMATCH[1]}"
+                message="${BASH_REMATCH[2]}"
+              else
+                # 跳过无法解析的行
+                continue
+              fi
+              
+              # 清理消息内容
+              clean_message=$(echo "$message" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+              
+              # 分类提交
+              if [[ "$clean_message" =~ ^(feat|feature|新增|添加) ]]; then
+                FEATURE_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(fix|bug|修复|解决) ]]; then
+                FIX_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(style|ui|样式|界面) ]]; then
+                STYLE_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(refactor|重构) ]]; then
+                REFACTOR_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(perf|performance|优化|性能) ]]; then
+                PERF_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(docs|doc|文档) ]]; then
+                DOCS_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(build|版本|构建) ]]; then
+                BUILD_COMMITS+=("$hash|$clean_message")
+              else
+                OTHER_COMMITS+=("$hash|$clean_message")
+              fi
             fi
-          fi
-        done <<< "$COMMITS_RAW"
+          done <<< "$COMMITS_RAW"
+        else
+          echo "🆕 处理Git历史提交记录..."
+          
+          # 解析Git历史记录
+          while IFS='|' read -r hash message body; do
+            if [[ -n "$hash" ]]; then
+              # 清理消息内容
+              clean_message=$(echo "$message" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+              
+              # 分类提交
+              if [[ "$clean_message" =~ ^(feat|feature|新增|添加) ]]; then
+                FEATURE_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(fix|bug|修复|解决) ]]; then
+                FIX_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(style|ui|样式|界面) ]]; then
+                STYLE_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(refactor|重构) ]]; then
+                REFACTOR_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(perf|performance|优化|性能) ]]; then
+                PERF_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(docs|doc|文档) ]]; then
+                DOCS_COMMITS+=("$hash|$clean_message")
+              elif [[ "$clean_message" =~ ^(build|版本|构建) ]]; then
+                BUILD_COMMITS+=("$hash|$clean_message")
+              else
+                OTHER_COMMITS+=("$hash|$clean_message")
+              fi
+            fi
+          done <<< "$COMMITS_RAW"
+        fi
+        
+        # 生成统计信息
+        echo "📊 提交分类统计:"
+        echo "  - 功能新增: ${#FEATURE_COMMITS[@]}"
+        echo "  - 问题修复: ${#FIX_COMMITS[@]}"
+        echo "  - 样式优化: ${#STYLE_COMMITS[@]}"
+        echo "  - 代码重构: ${#REFACTOR_COMMITS[@]}"
+        echo "  - 性能优化: ${#PERF_COMMITS[@]}"
+        echo "  - 文档更新: ${#DOCS_COMMITS[@]}"
+        echo "  - 构建相关: ${#BUILD_COMMITS[@]}"
+        echo "  - 其他改进: ${#OTHER_COMMITS[@]}"
+        
+        # 保存原始记录用于折叠区域
+        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ] && [ "${{ env.FORCE_REGENERATE }}" == "true" ]; then
+          # 使用已有的原始记录
+          ORIGINAL_FOR_COLLAPSE="$ORIGINAL_CHANGELOG"
+        else
+          # 使用当前的原始记录
+          ORIGINAL_FOR_COLLAPSE="$ORIGINAL_CHANGELOG"
+        fi
         
         # 开始生成变更日志
         AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
@@ -309,13 +426,13 @@ jobs:
           done
         fi
         
-        # 添加原始变更记录
+        # 添加原始变更记录到折叠区域
         AI_CHANGELOG="$AI_CHANGELOG
 
         <details>
         <summary>查看原始提交记录</summary>
 
-        $ORIGINAL_CHANGELOG
+        $ORIGINAL_FOR_COLLAPSE
 
         </details>"
         
@@ -326,7 +443,13 @@ jobs:
         
         echo "✅ AI变更日志生成完成"
         echo "📝 变更日志长度: $(echo "$AI_CHANGELOG" | wc -c) 字符"
-
+        
+        # 输出模式说明
+        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ] && [ "${{ env.FORCE_REGENERATE }}" == "true" ]; then
+          echo "🔄 使用折叠区域中的原始提交记录重新生成"
+        else
+          echo "🆕 使用Git历史记录首次生成"
+        fi
     - name: 更新Release变更日志
       id: update-release-changelog
       if: env.NEED_OPTIMIZE == 'true'
