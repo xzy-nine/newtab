@@ -190,17 +190,43 @@ jobs:
             exit 1
           fi
           
-          # 方法2：如果有上一个标签，检查标签顺序
+          # 方法2：如果有上一个标签，检查标签版本顺序（修复版本比较逻辑）
           if [ -n "$LAST_TAG" ]; then
-            echo "🔍 验证标签时间顺序..."
-            CURRENT_DATE=$(git log -1 --format="%ct" "$CURRENT_TAG" 2>/dev/null || echo "0")
-            LAST_DATE=$(git log -1 --format="%ct" "$LAST_TAG" 2>/dev/null || echo "0")
+            echo "🔍 验证标签版本顺序..."
             
-            if [ "$CURRENT_DATE" -le "$LAST_DATE" ]; then
-              echo "⚠️ 检测到版本时间顺序异常，尝试获取最新的提交"
-              # 获取最近的提交记录（不依赖标签）
-              COMMITS=$(git log --since="1 month ago" --pretty=format:'%h|%s|%b' --no-merges | head -50)
-              COMMIT_RANGE="最近一个月的提交"
+            # 使用版本号比较而不是时间比较
+            # 检查当前版本是否确实比上一版本新
+            CURRENT_VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//')
+            LAST_VERSION=$(echo "$LAST_TAG" | sed 's/^v//')
+            
+            # 使用sort进行版本号比较
+            NEWER_VERSION=$(printf "%s\n%s\n" "$CURRENT_VERSION" "$LAST_VERSION" | sort -V | tail -1)
+            
+            if [ "$NEWER_VERSION" != "$CURRENT_VERSION" ]; then
+              echo "⚠️ 检测到版本顺序异常: 当前版本($CURRENT_TAG)不是最新版本，上一版本是($LAST_TAG)"
+              echo "🔄 重新查找正确的版本范围..."
+              
+              # 重新获取版本标签，找到比当前版本更旧的最新标签
+              OLDER_TAG=$(git tag --sort=-version:refname | grep -E '^v?[0-9]+\.[0-9]+(\.[0-9]+)?.*$' | while read tag; do
+                TAG_VERSION=$(echo "$tag" | sed 's/^v//')
+                COMPARE_RESULT=$(printf "%s\n%s\n" "$TAG_VERSION" "$CURRENT_VERSION" | sort -V | tail -1)
+                if [ "$COMPARE_RESULT" = "$CURRENT_VERSION" ] && [ "$tag" != "$CURRENT_TAG" ]; then
+                  echo "$tag"
+                  break
+                fi
+              done)
+              
+              if [ -n "$OLDER_TAG" ]; then
+                echo "✅ 找到正确的比较版本: $OLDER_TAG"
+                LAST_TAG="$OLDER_TAG"
+                COMMIT_RANGE="$LAST_TAG..$CURRENT_TAG"
+                COMMITS=$(git log "$COMMIT_RANGE" --pretty=format:'%h|%s|%b' --no-merges)
+              else
+                echo "📋 未找到合适的比较版本，获取当前版本的所有提交"
+                COMMITS=$(git log "$CURRENT_TAG" --pretty=format:'%h|%s|%b' --no-merges | head -20)
+                COMMIT_RANGE="当前版本的所有提交"
+                LAST_TAG=""
+              fi
             else
               echo "🔄 重新尝试获取提交记录..."
               COMMITS=$(git log "$LAST_TAG..$CURRENT_TAG" --pretty=format:'%h|%s|%b' --no-merges)
@@ -224,16 +250,37 @@ jobs:
           RECENT_TAGS=$(git tag --sort=-version:refname | head -10)
           echo "最近的标签: $RECENT_TAGS"
           
-          # 重新尝试找到正确的上一版本
-          LAST_TAG=$(echo "$RECENT_TAGS" | grep -E '^v?[0-9]+\.[0-9]+(\.[0-9]+)?$' | grep -v "^$CURRENT_TAG$" | head -1)
+          # 重新尝试找到正确的上一版本（确保是比当前版本旧的版本）
+          CURRENT_VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//')
+          CORRECT_LAST_TAG=""
           
-          if [ -n "$LAST_TAG" ]; then
-            echo "🔄 重新计算提交范围: $LAST_TAG..$CURRENT_TAG"
-            COMMIT_RANGE="$LAST_TAG..$CURRENT_TAG"
+          echo "$RECENT_TAGS" | while read tag; do
+            if [ "$tag" != "$CURRENT_TAG" ]; then
+              TAG_VERSION=$(echo "$tag" | sed 's/^v//')
+              COMPARE_RESULT=$(printf "%s\n%s\n" "$TAG_VERSION" "$CURRENT_VERSION" | sort -V | tail -1)
+              if [ "$COMPARE_RESULT" = "$CURRENT_VERSION" ]; then
+                CORRECT_LAST_TAG="$tag"
+                break
+              fi
+            fi
+          done
+          
+          if [ -n "$CORRECT_LAST_TAG" ]; then
+            echo "🔄 重新计算提交范围: $CORRECT_LAST_TAG..$CURRENT_TAG"
+            COMMIT_RANGE="$CORRECT_LAST_TAG..$CURRENT_TAG"
             COMMITS=$(git log "$COMMIT_RANGE" --pretty=format:'%h|%s|%b' --no-merges)
             COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
             COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
+            LAST_TAG="$CORRECT_LAST_TAG"
             echo "✅ 重新获取到 $COMMIT_COUNT 个提交记录"
+          else
+            echo "⚠️ 无法找到合适的比较版本，使用当前版本的最近提交"
+            COMMITS=$(git log "$CURRENT_TAG" --pretty=format:'%h|%s|%b' --no-merges | head -30)
+            COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
+            COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
+            COMMIT_RANGE="当前版本的最近30个提交"
+            LAST_TAG=""
+            echo "📋 获取到 $COMMIT_COUNT 个提交记录"
           fi
         fi
         
@@ -246,7 +293,71 @@ jobs:
           echo "  - 提交范围: $COMMIT_RANGE"
           echo "  - Git 仓库状态："
           git status --porcelain
-          echo "  - 最近的标签："
+          echo "  - 最近的标签（按版本排序）："
+          git tag --sort=-version:refname | head -5
+          echo "  - 当前分支："
+          git branch --show-current
+          
+          # 作为最后的备选方案，获取最近的一些提交
+          echo "🚨 使用备选方案：获取最近的提交记录"
+          COMMITS=$(git log --oneline -n 10 --pretty=format:'%h|%s|%b')
+          COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
+          COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
+          COMMIT_RANGE="最近10个提交"
+          echo "📋 备选方案获取到 $COMMIT_COUNT 个提交记录"
+        fi
+        
+        # 如果提交数量异常多（超过100个），可能是版本识别有问题
+        if [ "$COMMIT_COUNT" -gt 100 ]; then
+          echo "⚠️ 提交数量异常($COMMIT_COUNT个)，重新尝试获取最近的版本标签"
+          # 尝试获取最近的10个标签，手动筛选
+          RECENT_TAGS=$(git tag --sort=-version:refname | head -10)
+          echo "最近的标签: $RECENT_TAGS"
+          
+          # 重新尝试找到正确的上一版本（确保是比当前版本旧的版本）
+          CURRENT_VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//')
+          CORRECT_LAST_TAG=""
+          
+          echo "$RECENT_TAGS" | while read tag; do
+            if [ "$tag" != "$CURRENT_TAG" ]; then
+              TAG_VERSION=$(echo "$tag" | sed 's/^v//')
+              COMPARE_RESULT=$(printf "%s\n%s\n" "$TAG_VERSION" "$CURRENT_VERSION" | sort -V | tail -1)
+              if [ "$COMPARE_RESULT" = "$CURRENT_VERSION" ]; then
+                CORRECT_LAST_TAG="$tag"
+                break
+              fi
+            fi
+          done
+          
+          if [ -n "$CORRECT_LAST_TAG" ]; then
+            echo "🔄 重新计算提交范围: $CORRECT_LAST_TAG..$CURRENT_TAG"
+            COMMIT_RANGE="$CORRECT_LAST_TAG..$CURRENT_TAG"
+            COMMITS=$(git log "$COMMIT_RANGE" --pretty=format:'%h|%s|%b' --no-merges)
+            COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
+            COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
+            LAST_TAG="$CORRECT_LAST_TAG"
+            echo "✅ 重新获取到 $COMMIT_COUNT 个提交记录"
+          else
+            echo "⚠️ 无法找到合适的比较版本，使用当前版本的最近提交"
+            COMMITS=$(git log "$CURRENT_TAG" --pretty=format:'%h|%s|%b' --no-merges | head -30)
+            COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" 2>/dev/null || echo "0")
+            COMMIT_COUNT=$(echo "$COMMIT_COUNT" | tr -d '\n\r' | head -1)
+            COMMIT_RANGE="当前版本的最近30个提交"
+            LAST_TAG=""
+            echo "📋 获取到 $COMMIT_COUNT 个提交记录"
+          fi
+        fi
+        
+        # 最终检查
+        if [ "$COMMIT_COUNT" -eq 0 ]; then
+          echo "❌ 仍然无法获取到有效的提交记录"
+          echo "🔍 调试信息："
+          echo "  - 当前标签: $CURRENT_TAG"
+          echo "  - 上一标签: $LAST_TAG"
+          echo "  - 提交范围: $COMMIT_RANGE"
+          echo "  - Git 仓库状态："
+          git status --porcelain
+          echo "  - 最近的标签（按版本排序）："
           git tag --sort=-version:refname | head -5
           echo "  - 当前分支："
           git branch --show-current
