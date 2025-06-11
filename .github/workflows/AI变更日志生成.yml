@@ -121,7 +121,7 @@ jobs:
       id: get-detailed-commits
       if: env.NEED_OPTIMIZE == 'true'
       run: |
-        echo "📊 获取详细的提交信息..."
+        echo "📊 获取详细的提交信息...",////
         
         if [ "${{ env.RUN_MODE }}" == "manual_optimize" ] && [ "${{ env.FORCE_REGENERATE }}" == "true" ]; then
           echo "🔄 手动优化模式，从折叠区域提取原始提交记录..."
@@ -149,7 +149,7 @@ jobs:
               echo "📋 获取自 $LAST_TAG 以来的提交记录"
               COMMIT_RANGE="$LAST_TAG..${{ env.VERSION }}"
             fi
-            
+            ,
             # 获取详细的提交信息
             if [ -z "$COMMIT_RANGE" ]; then
               COMMITS=$(git log --pretty=format:'%h|%s|%b' --no-merges)
@@ -290,7 +290,7 @@ jobs:
         fi
         
         # 生成统计信息
-        echo "📊 提交分类统计:"
+        echo "📊 初步分类统计:"
         echo "  - 功能新增: ${#FEATURE_COMMITS[@]}"
         echo "  - 问题修复: ${#FIX_COMMITS[@]}"
         echo "  - 样式优化: ${#STYLE_COMMITS[@]}"
@@ -299,134 +299,231 @@ jobs:
         echo "  - 文档更新: ${#DOCS_COMMITS[@]}"
         echo "  - 构建相关: ${#BUILD_COMMITS[@]}"
         echo "  - 其他改进: ${#OTHER_COMMITS[@]}"
+        # 准备所有提交信息给DeepSeek API分析
+        ALL_COMMITS_FOR_AI=""
+        for commit in "${FEATURE_COMMITS[@]}" "${FIX_COMMITS[@]}" "${STYLE_COMMITS[@]}" "${REFACTOR_COMMITS[@]}" "${PERF_COMMITS[@]}" "${DOCS_COMMITS[@]}" "${BUILD_COMMITS[@]}" "${OTHER_COMMITS[@]}"; do
+          if [[ -n "$commit" ]]; then
+            ALL_COMMITS_FOR_AI="$ALL_COMMITS_FOR_AI$commit\n"
+          fi
+        done
+
+        echo "🧠 调用DeepSeek API进行智能分析和优化..."
         
-        # 保存原始记录用于折叠区域
+        # 创建DeepSeek API请求
+        cat > deepseek_request.json << EOF
+        {
+          "model": "deepseek-chat",
+          "messages": [
+            {
+              "role": "system",
+              "content": "你是一个专业的软件开发变更日志生成专家。请分析以下Git提交记录，对每个提交进行正确分类，并生成专业的变更日志。\n\n分类规则：\n- FEATURE: 新功能、新特性\n- FIX: Bug修复、问题解决\n- STYLE: UI/UX改进、样式调整\n- REFACTOR: 代码重构、结构优化\n- PERF: 性能优化\n- DOCS: 文档更新\n- BUILD: 构建、版本、CI/CD相关\n- OTHER: 其他类型\n\n要求：\n1. 保留原始的Git哈希值\n2. 如果初步分类不正确，请纠正\n3. 生成简洁专业的描述\n4. 按重要性排序\n5. 使用中文输出"
+            },
+            {
+              "role": "user",
+              "content": "请分析以下提交记录并生成优化的变更日志：\n\n$(echo -e "$ALL_COMMITS_FOR_AI")\n\n请按照JSON格式返回分析结果：\n{\n  \"categories\": {\n    \"FEATURE\": [{\"hash\": \"commit_hash\", \"message\": \"优化后的描述\", \"importance\": 1-5}],\n    \"FIX\": [...],\n    \"STYLE\": [...],\n    \"REFACTOR\": [...],\n    \"PERF\": [...],\n    \"DOCS\": [...],\n    \"BUILD\": [...],\n    \"OTHER\": [...]\n  },\n  \"summary\": \"版本整体改进摘要\",\n  \"highlights\": [\"主要亮点1\", \"主要亮点2\"]\n}"
+            }
+          ],
+          "temperature": 0.3,
+          "max_tokens": 4000
+        }
+        EOF
+
+        # 调用DeepSeek API
+        DEEPSEEK_RESPONSE=$(curl -s -X POST \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ secrets.DEEPSEEK_API_KEY }}" \
+          "https://api.deepseek.com/v1/chat/completions" \
+          -d @deepseek_request.json)
+
+        # 检查API调用是否成功
+        if [[ $(echo "$DEEPSEEK_RESPONSE" | jq -r 'has("choices")') == "true" ]]; then
+          echo "✅ DeepSeek API调用成功"
+          
+          # 提取AI分析结果
+          AI_CONTENT=$(echo "$DEEPSEEK_RESPONSE" | jq -r '.choices[0].message.content')
+          
+          # 尝试解析JSON结果
+          if echo "$AI_CONTENT" | jq . > /dev/null 2>&1; then
+            echo "📊 AI智能分析完成，开始生成优化变更日志..."
+            
+            # 保存AI分析结果
+            echo "$AI_CONTENT" > ai_analysis.json
+            
+            # 提取摘要和亮点
+            AI_SUMMARY=$(echo "$AI_CONTENT" | jq -r '.summary // "AI智能分析的版本更新"')
+            AI_HIGHLIGHTS=$(echo "$AI_CONTENT" | jq -r '.highlights[]?' 2>/dev/null || echo "")
+            
+            # 开始生成优化后的变更日志
+            AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
+
+            ## 📋 更新概览
+            $AI_SUMMARY"
+            
+            # 添加主要亮点
+            if [[ -n "$AI_HIGHLIGHTS" ]]; then
+              AI_CHANGELOG="$AI_CHANGELOG
+
+            ### ✨ 主要亮点"
+              while IFS= read -r highlight; do
+                if [[ -n "$highlight" ]]; then
+                  AI_CHANGELOG="$AI_CHANGELOG
+            - $highlight"
+                fi
+              done <<< "$AI_HIGHLIGHTS"
+            fi
+            
+            AI_CHANGELOG="$AI_CHANGELOG
+
+            ---"
+            
+            # 按优先级生成各个分类
+            declare -a CATEGORIES=("FEATURE" "FIX" "PERF" "STYLE" "REFACTOR" "DOCS" "BUILD" "OTHER")
+            declare -A CATEGORY_TITLES=(
+              ["FEATURE"]="🚀 功能新增"
+              ["FIX"]="🐛 问题修复"
+              ["PERF"]="⚡ 性能优化"
+              ["STYLE"]="💄 样式优化"
+              ["REFACTOR"]="♻️ 代码重构"
+              ["DOCS"]="📝 文档更新"
+              ["BUILD"]="🏗️ 构建相关"
+              ["OTHER"]="🔧 其他改进"
+            )
+            
+            for category in "${CATEGORIES[@]}"; do
+              # 检查该分类是否有提交
+              CATEGORY_COMMITS=$(echo "$AI_CONTENT" | jq -r ".categories.$category[]?" 2>/dev/null)
+              
+              if [[ -n "$CATEGORY_COMMITS" ]]; then
+                AI_CHANGELOG="$AI_CHANGELOG
+
+            #### ${CATEGORY_TITLES[$category]}"
+                
+                # 按重要性排序并添加提交
+                echo "$AI_CONTENT" | jq -r ".categories.$category | sort_by(-.importance) | .[] | \"\\(.hash)|\\(.message)|\\(.importance)\"" | while IFS='|' read -r hash message importance; do
+                  if [[ -n "$hash" && -n "$message" ]]; then
+                    # 根据重要性添加不同的图标
+                    case $importance in
+                      5) icon="🔥" ;;
+                      4) icon="⭐" ;;
+                      3) icon="✨" ;;
+                      2) icon="📌" ;;
+                      1) icon="📍" ;;
+                      *) icon="•" ;;
+                    esac
+                    
+                    AI_CHANGELOG="$AI_CHANGELOG
+            - $icon **$message**  
+              \`$hash\`"
+                  fi
+                done
+              fi
+            done
+            
+            echo "✅ AI优化变更日志生成完成"
+            
+          else
+            echo "⚠️ DeepSeek API返回格式异常，使用基础分析结果"
+            # 使用原有的基础分析逻辑作为后备
+            AI_SUMMARY="基于智能分析的版本更新"
+            
+            # 生成基础变更日志
+            AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
+
+            ## 📋 更新概览
+            $AI_SUMMARY
+
+            ---"
+            
+            # 功能新增部分
+            if [ ${#FEATURE_COMMITS[@]} -gt 0 ]; then
+              AI_CHANGELOG="$AI_CHANGELOG
+
+            #### 🚀 功能新增"
+              
+              for commit in "${FEATURE_COMMITS[@]}"; do
+                IFS='|' read -r hash message <<< "$commit"
+                title=$(echo "$message" | sed 's/^feat[[:space:]]*:[[:space:]]*//' | sed 's/^feature[[:space:]]*:[[:space:]]*//' | sed 's/新增[[:space:]]*//' | sed 's/添加[[:space:]]*//')
+                AI_CHANGELOG="$AI_CHANGELOG
+            - **${title}**  
+              \`$hash\`"
+              done
+            fi
+            
+            # 问题修复部分
+            if [ ${#FIX_COMMITS[@]} -gt 0 ]; then
+              AI_CHANGELOG="$AI_CHANGELOG
+
+            #### 🐛 问题修复"
+              
+              for commit in "${FIX_COMMITS[@]}"; do
+                IFS='|' read -r hash message <<< "$commit"
+                title=$(echo "$message" | sed 's/^fix[[:space:]]*:[[:space:]]*//' | sed 's/^bug[[:space:]]*:[[:space:]]*//' | sed 's/修复[[:space:]]*//' | sed 's/解决[[:space:]]*//')
+                AI_CHANGELOG="$AI_CHANGELOG
+            - **${title}**  
+              \`$hash\`"
+              done
+            fi
+            
+            # 其他分类的处理...
+            if [ ${#PERF_COMMITS[@]} -gt 0 ]; then
+              AI_CHANGELOG="$AI_CHANGELOG
+
+            #### ⚡ 性能优化"
+              for commit in "${PERF_COMMITS[@]}"; do
+                IFS='|' read -r hash message <<< "$commit"
+                AI_CHANGELOG="$AI_CHANGELOG
+            - **$(echo "$message" | sed 's/^[^:]*:[[:space:]]*//')**  
+              \`$hash\`"
+              done
+            fi
+          fi
+          
+        else
+          echo "❌ DeepSeek API调用失败，使用基础分析"
+          echo "错误信息: $(echo "$DEEPSEEK_RESPONSE" | jq -r '.error.message // "未知错误"')"
+          
+          # 使用原有逻辑作为后备
+          AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
+
+          ---"
+          
+          # 原有的基础分析逻辑...
+          if [ ${#FEATURE_COMMITS[@]} -gt 0 ]; then
+            AI_CHANGELOG="$AI_CHANGELOG
+
+          #### 🚀 功能新增"
+            
+            for commit in "${FEATURE_COMMITS[@]}"; do
+              IFS='|' read -r hash message <<< "$commit"
+              title=$(echo "$message" | sed 's/^feat[[:space:]]*:[[:space:]]*//' | sed 's/^feature[[:space:]]*:[[:space:]]*//' | sed 's/新增[[:space:]]*//' | sed 's/添加[[:space:]]*//')
+              AI_CHANGELOG="$AI_CHANGELOG
+          - **${title}**  
+            \`$hash\`"
+            done
+          fi
+          
+          if [ ${#FIX_COMMITS[@]} -gt 0 ]; then
+            AI_CHANGELOG="$AI_CHANGELOG
+
+          #### 🐛 问题修复"
+            
+            for commit in "${FIX_COMMITS[@]}"; do
+              IFS='|' read -r hash message <<< "$commit"
+              title=$(echo "$message" | sed 's/^fix[[:space:]]*:[[:space:]]*//' | sed 's/^bug[[:space:]]*:[[:space:]]*//' | sed 's/修复[[:space:]]*//' | sed 's/解决[[:space:]]*//')
+              AI_CHANGELOG="$AI_CHANGELOG
+          - **${title}**  
+            \`$hash\`"
+            done
+          fi
+        fi
+        
+        # 保存原始变更记录到折叠区域
         if [ "${{ env.RUN_MODE }}" == "manual_optimize" ] && [ "${{ env.FORCE_REGENERATE }}" == "true" ]; then
-          # 使用已有的原始记录
           ORIGINAL_FOR_COLLAPSE="$ORIGINAL_CHANGELOG"
         else
-          # 使用当前的原始记录
           ORIGINAL_FOR_COLLAPSE="$ORIGINAL_CHANGELOG"
         fi
         
-        # 开始生成变更日志
-        AI_CHANGELOG="# 版本 ${{ env.VERSION }} 更新摘要 [AI生成的变更日志摘要]
-
-        ---"
-        
-        # 功能新增部分
-        if [ ${#FEATURE_COMMITS[@]} -gt 0 ]; then
-          AI_CHANGELOG="$AI_CHANGELOG
-
-        #### 功能新增"
-          
-          for commit in "${FEATURE_COMMITS[@]}"; do
-            IFS='|' read -r hash message <<< "$commit"
-            # 提取关键词作为标题
-            title=$(echo "$message" | sed 's/^feat[[:space:]]*:[[:space:]]*//' | sed 's/^feature[[:space:]]*:[[:space:]]*//' | sed 's/新增[[:space:]]*//' | sed 's/添加[[:space:]]*//')
-            AI_CHANGELOG="$AI_CHANGELOG
-        - **${title}**  
-          \`$hash\`  
-          $message"
-          done
-        fi
-        
-        # 问题修复部分
-        if [ ${#FIX_COMMITS[@]} -gt 0 ]; then
-          AI_CHANGELOG="$AI_CHANGELOG
-
-        ---
-
-        ####  问题修复"
-          
-          for commit in "${FIX_COMMITS[@]}"; do
-            IFS='|' read -r hash message <<< "$commit"
-            title=$(echo "$message" | sed 's/^fix[[:space:]]*:[[:space:]]*//' | sed 's/^bug[[:space:]]*:[[:space:]]*//' | sed 's/修复[[:space:]]*//' | sed 's/解决[[:space:]]*//')
-            AI_CHANGELOG="$AI_CHANGELOG
-        - **${title}**  
-          \`$hash\`  
-          $message"
-          done
-        fi
-        
-        # 改进优化部分
-        improvement_sections=""
-        
-        # 样式优化
-        if [ ${#STYLE_COMMITS[@]} -gt 0 ]; then
-          improvement_sections="$improvement_sections
-        - **界面样式优化**  "
-          for commit in "${STYLE_COMMITS[@]}"; do
-            IFS='|' read -r hash message <<< "$commit"
-            improvement_sections="$improvement_sections
-          \`$hash\` "
-          done
-          improvement_sections="$improvement_sections 
-          界面样式和视觉效果优化"
-        fi
-        
-        # 性能优化
-        if [ ${#PERF_COMMITS[@]} -gt 0 ]; then
-          improvement_sections="$improvement_sections
-        - **性能优化**  "
-          for commit in "${PERF_COMMITS[@]}"; do
-            IFS='|' read -r hash message <<< "$commit"
-            improvement_sections="$improvement_sections
-          \`$hash\` "
-          done
-          improvement_sections="$improvement_sections 
-          系统性能和响应速度优化"
-        fi
-        
-        # 重构
-        if [ ${#REFACTOR_COMMITS[@]} -gt 0 ]; then
-          improvement_sections="$improvement_sections
-        - **代码重构**  "
-          for commit in "${REFACTOR_COMMITS[@]}"; do
-            IFS='|' read -r hash message <<< "$commit"
-            improvement_sections="$improvement_sections
-          \`$hash\` "
-          done
-          improvement_sections="$improvement_sections 
-          代码结构优化和重构"
-        fi
-        
-        # 其他改进
-        if [ ${#OTHER_COMMITS[@]} -gt 0 ]; then
-          improvement_sections="$improvement_sections
-        - **其他改进**  "
-          for commit in "${OTHER_COMMITS[@]}"; do
-            IFS='|' read -r hash message <<< "$commit"
-            improvement_sections="$improvement_sections
-          \`$hash\` "
-          done
-          improvement_sections="$improvement_sections 
-          其他功能改进和优化"
-        fi
-        
-        if [ -n "$improvement_sections" ]; then
-          AI_CHANGELOG="$AI_CHANGELOG
-
-        ---
-
-        #### 改进优化$improvement_sections"
-        fi
-        
-        # 版本构建部分
-        if [ ${#BUILD_COMMITS[@]} -gt 0 ]; then
-          AI_CHANGELOG="$AI_CHANGELOG
-
-        ---
-
-        **版本构建**  "
-          for commit in "${BUILD_COMMITS[@]}"; do
-            IFS='|' read -r hash message <<< "$commit"
-            AI_CHANGELOG="$AI_CHANGELOG
-        \`$hash\` $message"
-          done
-        fi
-        
-        # 添加原始变更记录到折叠区域
         AI_CHANGELOG="$AI_CHANGELOG
 
         <details>
@@ -444,12 +541,8 @@ jobs:
         echo "✅ AI变更日志生成完成"
         echo "📝 变更日志长度: $(echo "$AI_CHANGELOG" | wc -c) 字符"
         
-        # 输出模式说明
-        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ] && [ "${{ env.FORCE_REGENERATE }}" == "true" ]; then
-          echo "🔄 使用折叠区域中的原始提交记录重新生成"
-        else
-          echo "🆕 使用Git历史记录首次生成"
-        fi
+        # 清理临时文件
+        rm -f deepseek_request.json ai_analysis.json 2>/dev/null || true
     - name: 更新Release变更日志
       id: update-release-changelog
       if: env.NEED_OPTIMIZE == 'true'
