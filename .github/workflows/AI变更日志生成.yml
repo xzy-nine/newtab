@@ -143,25 +143,46 @@ jobs:
           COMMIT_RANGE="$LAST_TAG..${{ env.VERSION }}"
         fi
         
-        # 获取详细的提交信息
+        # 获取详细的提交信息，处理特殊字符
         if [ -z "$COMMIT_RANGE" ]; then
-          COMMITS_JSON=$(git log --pretty=format:'{"hash":"%H","short_hash":"%h","author":"%an","date":"%ad","message":"%s","body":"%b"}' --date=iso | jq -s '.')
+          git log --pretty=format:'%H|%h|%an|%ad|%s|%b' --date=iso | while IFS='|' read -r hash short_hash author date message body; do
+            # 清理和转义特殊字符
+            message=$(echo "$message" | sed 's/"/\\"/g' | tr -d '\n\r\t' | tr -cd '[:print:][:space:]')
+            body=$(echo "$body" | sed 's/"/\\"/g' | tr -d '\n\r\t' | tr -cd '[:print:][:space:]')
+            author=$(echo "$author" | sed 's/"/\\"/g' | tr -d '\n\r\t')
+            
+            echo "{\"hash\":\"$hash\",\"short_hash\":\"$short_hash\",\"author\":\"$author\",\"date\":\"$date\",\"message\":\"$message\",\"body\":\"$body\"}"
+          done | jq -s '.' > commits_temp.json
         else
-          COMMITS_JSON=$(git log $COMMIT_RANGE --pretty=format:'{"hash":"%H","short_hash":"%h","author":"%an","date":"%ad","message":"%s","body":"%b"}' --date=iso | jq -s '.')
+          git log $COMMIT_RANGE --pretty=format:'%H|%h|%an|%ad|%s|%b' --date=iso | while IFS='|' read -r hash short_hash author date message body; do
+            # 清理和转义特殊字符
+            message=$(echo "$message" | sed 's/"/\\"/g' | tr -d '\n\r\t' | tr -cd '[:print:][:space:]')
+            body=$(echo "$body" | sed 's/"/\\"/g' | tr -d '\n\r\t' | tr -cd '[:print:][:space:]')
+            author=$(echo "$author" | sed 's/"/\\"/g' | tr -d '\n\r\t')
+            
+            echo "{\"hash\":\"$hash\",\"short_hash\":\"$short_hash\",\"author\":\"$author\",\"date\":\"$date\",\"message\":\"$message\",\"body\":\"$body\"}"
+          done | jq -s '.' > commits_temp.json
+        fi
+        
+        # 读取生成的JSON文件
+        if [ -f commits_temp.json ]; then
+          COMMITS_JSON=$(cat commits_temp.json)
+        else
+          COMMITS_JSON='[]'
         fi
         
         # 获取文件变更统计
         if [ -z "$COMMIT_RANGE" ]; then
-          FILES_CHANGED=$(git diff --name-only --diff-filter=A HEAD | wc -l)
-          FILES_MODIFIED=$(git diff --name-only --diff-filter=M HEAD | wc -l)
-          FILES_DELETED=$(git diff --name-only --diff-filter=D HEAD | wc -l)
+          FILES_CHANGED=$(git diff --name-only --diff-filter=A HEAD 2>/dev/null | wc -l || echo "0")
+          FILES_MODIFIED=$(git diff --name-only --diff-filter=M HEAD 2>/dev/null | wc -l || echo "0")
+          FILES_DELETED=$(git diff --name-only --diff-filter=D HEAD 2>/dev/null | wc -l || echo "0")
         else
-          FILES_CHANGED=$(git diff --name-only --diff-filter=A $COMMIT_RANGE | wc -l)
-          FILES_MODIFIED=$(git diff --name-only --diff-filter=M $COMMIT_RANGE | wc -l)
-          FILES_DELETED=$(git diff --name-only --diff-filter=D $COMMIT_RANGE | wc -l)
+          FILES_CHANGED=$(git diff --name-only --diff-filter=A $COMMIT_RANGE 2>/dev/null | wc -l || echo "0")
+          FILES_MODIFIED=$(git diff --name-only --diff-filter=M $COMMIT_RANGE 2>/dev/null | wc -l || echo "0")
+          FILES_DELETED=$(git diff --name-only --diff-filter=D $COMMIT_RANGE 2>/dev/null | wc -l || echo "0")
         fi
         
-        # 保存提交信息
+        # 保存提交信息到环境变量
         echo "COMMITS_JSON<<EOF" >> $GITHUB_ENV
         echo "$COMMITS_JSON" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
@@ -172,7 +193,10 @@ jobs:
         
         COMMIT_COUNT=$(echo "$COMMITS_JSON" | jq length)
         echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
-        echo "📁 文件变更: 新增 $FILES_CHANGED, 修改 $FILES_MODIFIED, 删除 $FILES_DELETED"    
+        echo "📁 文件变更: 新增 $FILES_CHANGED, 修改 $FILES_MODIFIED, 删除 $FILES_DELETED"
+        
+        # 清理临时文件
+        rm -f commits_temp.json   
     - name: 分析提交类型
       id: analyze-commit-types
       if: env.NEED_OPTIMIZE == 'true' && (env.CAN_EXECUTE == 'true' || env.RUN_MODE == 'manual_optimize')
