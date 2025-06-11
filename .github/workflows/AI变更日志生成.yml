@@ -69,11 +69,11 @@ jobs:
     - name: 获取Release信息
       id: get-release-info
       run: |
-        if [ "${{ env.RUN_MODE }}")== "auto_release" ]; then
+        if [ "${{ env.RUN_MODE }}" == "auto_release" ]; then
           # 通过Release ID获取信息
           RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/${{ env.RELEASE_ID }}")
-        else,
+        else
           # 通过标签获取信息
           RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ env.VERSION }}")
