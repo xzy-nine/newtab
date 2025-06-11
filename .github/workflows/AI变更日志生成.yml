@@ -26,7 +26,7 @@ on:
         type: string
     outputs:
       ai_optimized:
-        description( "是否完成AI优化"
+        description: "是否完成AI优化"
         value: ${{ jobs.ai-changelog-generation.outputs.ai_optimized }}
 
 jobs:
