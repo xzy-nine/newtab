@@ -69,11 +69,11 @@ jobs:
     - name: 获取Release信息
       id: get-release-info
       run: |
-        if [ "${{ env.RUN_MODE }}" == "auto_release" ]; then
+        if [ "${{ env.RUN_MODE }}")== "auto_release" ]; then
           # 通过Release ID获取信息
           RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/${{ env.RELEASE_ID }}")
-        else
+        else,
           # 通过标签获取信息
           RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ env.VERSION }}")
@@ -164,8 +164,9 @@ jobs:
         
         if [ -z "$LAST_TAG" ]; then
           echo "📋 首次发布，获取到当前版本的所有提交记录"
-          COMMIT_RANGE="$CURRENT_TAG"
-          COMMITS=$(git log $CURRENT_TAG --pretty=format:'%h|%s|%b' --no-merges)
+          # 修复：使用正确的Git命令获取从HEAD到指定标签的提交
+          COMMITS=$(git log HEAD --pretty=format:'%h|%s|%b' --no-merges)
+          COMMIT_RANGE="HEAD"
         else
           echo "📋 获取 $LAST_TAG 到 $CURRENT_TAG 之间的提交记录"
           COMMIT_RANGE="$LAST_TAG..$CURRENT_TAG"
@@ -179,20 +180,29 @@ jobs:
         COMMIT_COUNT=$(echo "$COMMITS" | grep -c "^[a-f0-9]" || echo "0")
         echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
         
-        # 保存原始变更日志用于折叠显示
+        # 保存原始变更日志用于折叠显示 - 修复这里的逻辑
         echo "RAW_ORIGINAL_FOR_COLLAPSE<<EOF" >> $GITHUB_ENV
-        if [[ -n "$ORIGINAL_CHANGELOG" && "$ORIGINAL_CHANGELOG" != "null" ]]; then
+        if [[ -n "$ORIGINAL_CHANGELOG" && "$ORIGINAL_CHANGELOG" != "null" && "$ORIGINAL_CHANGELOG" != "" ]]; then
           echo "$ORIGINAL_CHANGELOG" >> $GITHUB_ENV
         else
           echo "## 提交记录" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          echo "$COMMITS" | while IFS='|' read -r hash message body; do
-            if [[ -n "$hash" ]]; then
-              echo "- **$message** \`$hash\`" >> $GITHUB_ENV
-            fi
-          done
+          # 修复：正确处理提交记录的格式化
+          if [[ -n "$COMMITS" ]]; then
+            echo "$COMMITS" | while IFS='|' read -r hash message body; do
+              if [[ -n "$hash" ]]; then
+                echo "- **$message** \`$hash\`"
+              fi
+            done >> $GITHUB_ENV
+          else
+            echo "暂无提交记录" >> $GITHUB_ENV
+          fi
         fi
         echo "EOF" >> $GITHUB_ENV
+        
+        # 保存 LAST_TAG 到环境变量供后续使用
+        echo "LAST_TAG=$LAST_TAG" >> $GITHUB_ENV
+        echo "COMMIT_RANGE=$COMMIT_RANGE" >> $GITHUB_ENV
 
     - name: 分析并生成AI变更日志
       id: generate-ai-changelog
@@ -553,6 +563,17 @@ jobs:
       run: |
         echo "📝 更新Release变更日志..."
         
+        # 重新计算提交统计（因为变量作用域问题）
+        FEATURE_COUNT=$(echo "$COMMITS_RAW" | grep -c "^[a-f0-9].*|.*\(feat\|feature\|新增\|添加\)" || echo "0")
+        FIX_COUNT=$(echo "$COMMITS_RAW" | grep -c "^[a-f0-9].*|.*\(fix\|bug\|修复\|解决\)" || echo "0")
+        STYLE_COUNT=$(echo "$COMMITS_RAW" | grep -c "^[a-f0-9].*|.*\(style\|ui\|样式\|界面\)" || echo "0")
+        REFACTOR_COUNT=$(echo "$COMMITS_RAW" | grep -c "^[a-f0-9].*|.*\(refactor\|重构\)" || echo "0")
+        PERF_COUNT=$(echo "$COMMITS_RAW" | grep -c "^[a-f0-9].*|.*\(perf\|performance\|优化\|性能\)" || echo "0")
+        DOCS_COUNT=$(echo "$COMMITS_RAW" | grep -c "^[a-f0-9].*|.*\(docs\|doc\|文档\)" || echo "0")
+        BUILD_COUNT=$(echo "$COMMITS_RAW" | grep -c "^[a-f0-9].*|.*\(build\|版本\|构建\)" || echo "0")
+        TOTAL_COMMITS=$(echo "$COMMITS_RAW" | grep -c "^[a-f0-9]" || echo "0")
+        OTHER_COUNT=$((TOTAL_COMMITS - FEATURE_COUNT - FIX_COUNT - STYLE_COUNT - REFACTOR_COUNT - PERF_COUNT - DOCS_COUNT - BUILD_COUNT))
+        
         # 使用GitHub API更新Release
         UPDATE_RESPONSE=$(curl -s -X PATCH \
           -H "Authorization: token ${{ secrets.PAT }}" \
@@ -585,16 +606,14 @@ jobs:
           echo "### 📊 提交统计" >> $GITHUB_STEP_SUMMARY
           echo "| 分类 | 数量 |" >> $GITHUB_STEP_SUMMARY
           echo "|------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🚀 功能新增 | ${#FEATURE_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🐛 问题修复 | ${#FIX_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 💄 样式优化 | ${#STYLE_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
-          echo "| ♻️ 代码重构 | ${#REFACTOR_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
-          echo "| ⚡ 性能优化 | ${#PERF_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📝 文档更新 | ${#DOCS_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🏗️ 构建相关 | ${#BUILD_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🔧 其他改进 | ${#OTHER_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
-          
-          TOTAL_COMMITS=$((${#FEATURE_COMMITS[@]} + ${#FIX_COMMITS[@]} + ${#STYLE_COMMITS[@]} + ${#REFACTOR_COMMITS[@]} + ${#PERF_COMMITS[@]} + ${#DOCS_COMMITS[@]} + ${#BUILD_COMMITS[@]} + ${#OTHER_COMMITS[@]}))
+          echo "| 🚀 功能新增 | $FEATURE_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐛 问题修复 | $FIX_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| 💄 样式优化 | $STYLE_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| ♻️ 代码重构 | $REFACTOR_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| ⚡ 性能优化 | $PERF_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📝 文档更新 | $DOCS_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏗️ 构建相关 | $BUILD_COUNT |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔧 其他改进 | $OTHER_COUNT |" >> $GITHUB_STEP_SUMMARY
           echo "| **总计** | **$TOTAL_COMMITS** |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
@@ -606,7 +625,11 @@ jobs:
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 原始变更日志 | $ORIGINAL_LENGTH |" >> $GITHUB_STEP_SUMMARY
           echo "| AI优化后 | $AI_LENGTH |" >> $GITHUB_STEP_SUMMARY
-          echo "| 增长率 | $(( (AI_LENGTH - ORIGINAL_LENGTH) * 100 / ORIGINAL_LENGTH ))% |" >> $GITHUB_STEP_SUMMARY
+          if [ $ORIGINAL_LENGTH -gt 0 ]; then
+            echo "| 增长率 | $(( (AI_LENGTH - ORIGINAL_LENGTH) * 100 / ORIGINAL_LENGTH ))% |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 增长率 | N/A（原始为空） |" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # 如果AI分析结果存在，显示AI分析的亮点
@@ -630,18 +653,16 @@ jobs:
             fi
           fi
           
-          # 显示处理的提交范围（仅在手动模式）
-          if [ "${{ env.RUN_MODE }}" == "manual_optimize" ]; then
-            echo "### 🎯 处理范围" >> $GITHUB_STEP_SUMMARY
-            echo "- **当前版本**: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-            if [[ -n "$LAST_TAG" ]]; then
-              echo "- **上一版本**: $LAST_TAG" >> $GITHUB_STEP_SUMMARY
-              echo "- **提交范围**: $LAST_TAG..${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "- **提交范围**: 从首次提交到当前版本" >> $GITHUB_STEP_SUMMARY
-            fi
-            echo "" >> $GITHUB_STEP_SUMMARY
+          # 显示处理的提交范围
+          echo "### 🎯 处理范围" >> $GITHUB_STEP_SUMMARY
+          echo "- **当前版本**: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${{ env.LAST_TAG }}" ]]; then
+            echo "- **上一版本**: ${{ env.LAST_TAG }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **提交范围**: ${{ env.COMMIT_RANGE }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **提交范围**: 从首次提交到当前版本" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "" >> $GITHUB_STEP_SUMMARY
           
           # 运行时间信息
           echo "### ⏱️ 执行信息" >> $GITHUB_STEP_SUMMARY
