@@ -4,7 +4,7 @@ on:
     inputs:
       version:
         description: '版本号(如v1.0.0）'
-        required: true
+        required: true:,
         type: string
       release-id:
         description: 'Release ID（自动发布时填写）'
@@ -14,12 +14,12 @@ on:
         description: '要优化变更日志的标签（手动优化时填写）'
         required: false
         type: string
-  workflow_call:
+  workflow_call:,
     inputs:
-      version:
+      version:,
         description: '版本号'
-        required: true
-        type: string
+        required: true,
+        type: string,
       release-id:
         description: 'Release ID'
         required: true
@@ -27,7 +27,7 @@ on:
     outputs:
       ai_optimized:
         description: "是否完成AI优化"
-        value: ${{ jobs.ai-changelog-generation.outputs.ai_optimized }}
+        value: ${{ jobs.a,-changelog-generation.outputs.ai_optimized }}
 
 jobs:
   ai-changelog-generation:
@@ -45,7 +45,7 @@ jobs:
 
     - name: 验证输入参数
       id: validate-params
-      run: |
+      run: |,
         if [ "${{ github.event_name }}" == "workflow_call" ]; then
           echo "RUN_MODE=workflow_call" >> $GITHUB_ENV
           echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
@@ -86,7 +86,7 @@ jobs:
         
         RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r '.id')
         ORIGINAL_CHANGELOG=$(echo "$RELEASE_INFO" | jq -r '.body')
-        
+        )
         echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
         echo "ORIGINAL_CHANGELOG<<EOF" >> $GITHUB_ENV
         echo "$ORIGINAL_CHANGELOG" >> $GITHUB_ENV
@@ -95,75 +95,99 @@ jobs:
         echo "✅ 获取到Release信息，ID: $RELEASE_ID"
         echo "📋 原始变更日志长度: $(echo "$ORIGINAL_CHANGELOG" | wc -c) 字符"    
 
-    - name: 检查是否已优(
+    - name: 检查是否已优化
       id: check-optimization-status
       run: |
         echo "🔍 检查变更日志优化状态..."
         
-        # 更严格的AI优化检查
-        if [[ "$ORIGINAL_CHANGELOG" == *"AI生成的变更日志摘要"* ]]; then
-          echo "⚠️ 此Release已包含AI生成的变更日志"
+        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ]; then
+          echo "📝 手动优化模式：强制重新生成，清空原有AI信息"
+          echo "NEED_OPTIMIZE=true" >> $GITHUB_ENV
+          echo "FORCE_REGENERATE=true" >> $GITHUB_ENV
           
-          if [ "${{ env.RUN_MODE }}" == "manual_optimize" ]; then
-            echo "📝 手动模式，强制重新生成AI变更日志"
-            echo "NEED_OPTIMIZE=true" >> $GITHUB_ENV
-            echo "FORCE_REGENERATE=true" >> $GITHUB_ENV
+          # 清理原始变更日志中的AI生成内容，只保留纯净的提交记录
+          echo "🧹 清理原有AI生成的变更日志内容..."
+          
+          # 提取原始的非AI内容（移除AI生成的标记和内容）
+          CLEAN_ORIGINAL=""
+          if [[ "$ORIGINAL_CHANGELOG" != *"AI生成的变更日志摘要"* ]]; then
+            # 如果没有AI标记，保持原样
+            CLEAN_ORIGINAL="$ORIGINAL_CHANGELOG"
+            echo "ℹ️ 原始变更日志未包含AI内容，保持原样"
           else
+            # 如果包含AI标记，尝试提取折叠区域中的原始内容
+            echo "🔍 检测到AI生成内容，尝试提取原始提交记录..."
+            
+            # 查找折叠区域中的原始内容
+            if [[ "$ORIGINAL_CHANGELOG" == *"<details>"*"查看原始提交记录"*"</details>"* ]]; then
+              # 提取 <details> 和 </details> 之间的内容
+              CLEAN_ORIGINAL=$(echo "$ORIGINAL_CHANGELOG" | sed -n '/<details>/,/<\/details>/p' | sed '1d;$d' | sed '/^<summary>.*<\/summary>$/d' | sed '/^$/d')
+              echo "✅ 成功提取折叠区域中的原始内容"
+            else
+              # 如果找不到折叠区域，清空变更日志，完全依赖Git历史
+              CLEAN_ORIGINAL=""
+              echo "⚠️ 未找到原始提交记录折叠区域，将完全依赖Git历史重新生成"
+            fi
+          fi
+          
+          # 更新环境变量为清理后的内容
+          echo "ORIGINAL_CHANGELOG<<EOF" >> $GITHUB_ENV
+          echo "$CLEAN_ORIGINAL" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
+          echo "✅ 手动模式准备完成，将基于纯净的原始数据重新生成"
+          
+        else
+          # 自动模式的原有逻辑
+          if [[ "$ORIGINAL_CHANGELOG" == *"AI生成的变更日志摘要"* ]]; then
+            echo "⚠️ 此Release已包含AI生成的变更日志"
             echo "🤖 自动模式，跳过重复优化"
             echo "NEED_OPTIMIZE=false" >> $GITHUB_ENV
+          else
+            echo "✅ 变更日志未经AI优化，可以进行优化"
+            echo "NEED_OPTIMIZE=true" >> $GITHUB_ENV
           fi
-        else
-          echo "✅ 变更日志未经AI优化，可以进行优化"
-          echo "NEED_OPTIMIZE=true" >> $GITHUB_ENV
         fi
 
     - name: 获取详细提交信息
       id: get-detailed-commits
       if: env.NEED_OPTIMIZE == 'true'
       run: |
-        echo "📊 获取详细的提交信息...",////
+        echo "📊 获取详细的提交信息..."
         
-        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ] && [ "${{ env.FORCE_REGENERATE }}" == "true" ]; then
-          echo "🔄 手动优化模式，从折叠区域提取原始提交记录..."
+        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ]; then
+          echo "📝 手动优化模式，获取指定版本的提交记录..."
           
-          # 从变更日志中提取原始提交记录
-          ORIGINAL_COMMITS=$(echo "$ORIGINAL_CHANGELOG" | sed -n '/<details>/,/<\/details>/p' | sed '1d;$d' | sed '/^<summary>/d' | sed '/^<\/summary>/d' | sed '/^$/d')
+          # 获取当前标签的上一个版本标签
+          CURRENT_TAG="${{ env.VERSION }}"
+          echo "🎯 当前版本: $CURRENT_TAG"
           
-          if [ -n "$ORIGINAL_COMMITS" ]; then
-            echo "✅ 从折叠区域提取到原始提交记录"
-            echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
-            echo "$ORIGINAL_COMMITS" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
-            
-            COMMIT_COUNT=$(echo "$ORIGINAL_COMMITS" | wc -l)
-            echo "📋 使用折叠区域中的 $COMMIT_COUNT 行提交记录"
-          else
-            echo "⚠️ 无法从折叠区域提取原始记录，使用Git历史"
-            # 获取上一个版本的标签
-            LAST_TAG=$(git tag --sort=-version:refname | grep -v "^${{ env.VERSION }}$" | head -1)
-            
-            if [ -z "$LAST_TAG" ]; then
-              echo "📋 首次发布，获取所有提交记录"
-              COMMIT_RANGE=""
-            else
-              echo "📋 获取自 $LAST_TAG 以来的提交记录"
-              COMMIT_RANGE="$LAST_TAG..${{ env.VERSION }}"
-            fi
-            ,
-            # 获取详细的提交信息
-            if [ -z "$COMMIT_RANGE" ]; then
-              COMMITS=$(git log --pretty=format:'%h|%s|%b' --no-merges)
-            else
-              COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
-            fi
-            
-            echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
-            echo "$COMMITS" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
-            
-            COMMIT_COUNT=$(echo "$COMMITS" | wc -l)
-            echo "✅ 获取到 $COMMIT_COUNT 个提交记录"
+          # 获取所有标签并排序，找到当前标签的上一个版本
+          LAST_TAG=$(git tag --sort=-version:refname | grep -A1 "^$CURRENT_TAG$" | tail -1)
+          
+          # 如果找不到上一个标签或者找到的是自己，则使用更安全的方法
+          if [ -z "$LAST_TAG" ] || [ "$LAST_TAG" == "$CURRENT_TAG" ]; then
+            # 使用更精确的方法：排除当前标签后获取最新的标签
+            LAST_TAG=$(git tag --sort=-version:refname | grep -v "^$CURRENT_TAG$" | head -1)
           fi
+          
+          if [ -z "$LAST_TAG" ]; then
+            echo "📋 未找到上一个版本，获取到当前版本的所有提交记录"
+            COMMIT_RANGE="$CURRENT_TAG"
+            COMMITS=$(git log $CURRENT_TAG --pretty=format:'%h|%s|%b' --no-merges)
+          else
+            echo "📋 获取 $LAST_TAG 到 $CURRENT_TAG 之间的提交记录"
+            COMMIT_RANGE="$LAST_TAG..$CURRENT_TAG"
+            COMMITS=$(git log $COMMIT_RANGE --pretty=format:'%h|%s|%b' --no-merges)
+          fi
+          
+          echo "COMMITS_RAW<<EOF" >> $GITHUB_ENV
+          echo "$COMMITS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
+          COMMIT_COUNT=$(echo "$COMMITS" | wc -l)
+          echo "✅ 获取到 $COMMIT_COUNT 个提交记录（范围: ${LAST_TAG:-首次发布} -> $CURRENT_TAG）"
+          
         else
           echo "🆕 首次生成，从Git历史获取提交记录..."
           
@@ -210,84 +234,34 @@ jobs:
         declare -a BUILD_COMMITS=()
         declare -a OTHER_COMMITS=()
         
-        # 处理从折叠区域提取的原始记录或Git历史记录
-        if [ "${{ env.RUN_MODE }}" == "manual_optimize" ] && [ "${{ env.FORCE_REGENERATE }}" == "true" ]; then
-          echo "🔄 处理从折叠区域提取的原始提交记录..."
-          
-          # 解析原始记录（可能是多种格式）
-          while IFS= read -r line; do
-            if [[ -n "$line" && "$line" != *"<details>"* && "$line" != *"</details>"* && "$line" != *"<summary>"* && "$line" != *"</summary>"* ]]; then
-              # 尝试从不同格式中提取信息
-              if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*([a-f0-9]{7,})[[:space:]]*(.+)$ ]]; then
-                # 格式: - hash message
-                hash="${BASH_REMATCH[1]}"
-                message="${BASH_REMATCH[2]}"
-              elif [[ "$line" =~ ^[[:space:]]*([a-f0-9]{7,})[[:space:]]+(.+)$ ]]; then
-                # 格式: hash message
-                hash="${BASH_REMATCH[1]}"
-                message="${BASH_REMATCH[2]}"
-              elif [[ "$line" =~ ^[[:space:]]*\*[[:space:]]*([a-f0-9]{7,})[[:space:]]*(.+)$ ]]; then
-                # 格式: * hash message
-                hash="${BASH_REMATCH[1]}"
-                message="${BASH_REMATCH[2]}"
-              else
-                # 跳过无法解析的行
-                continue
-              fi
-              
-              # 清理消息内容
-              clean_message=$(echo "$message" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-              
-              # 分类提交
-              if [[ "$clean_message" =~ ^(feat|feature|新增|添加) ]]; then
-                FEATURE_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(fix|bug|修复|解决) ]]; then
-                FIX_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(style|ui|样式|界面) ]]; then
-                STYLE_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(refactor|重构) ]]; then
-                REFACTOR_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(perf|performance|优化|性能) ]]; then
-                PERF_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(docs|doc|文档) ]]; then
-                DOCS_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(build|版本|构建) ]]; then
-                BUILD_COMMITS+=("$hash|$clean_message")
-              else
-                OTHER_COMMITS+=("$hash|$clean_message")
-              fi
+        echo "🆕 处理Git历史提交记录..."
+        
+        # 统一处理Git历史记录（无论是手动还是自动模式）
+        while IFS='|' read -r hash message body; do
+          if [[ -n "$hash" ]]; then
+            # 清理消息内容
+            clean_message=$(echo "$message" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+            
+            # 分类提交
+            if [[ "$clean_message" =~ ^(feat|feature|新增|添加) ]]; then
+              FEATURE_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(fix|bug|修复|解决) ]]; then
+              FIX_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(style|ui|样式|界面) ]]; then
+              STYLE_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(refactor|重构) ]]; then
+              REFACTOR_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(perf|performance|优化|性能) ]]; then
+              PERF_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(docs|doc|文档) ]]; then
+              DOCS_COMMITS+=("$hash|$clean_message")
+            elif [[ "$clean_message" =~ ^(build|版本|构建) ]]; then
+              BUILD_COMMITS+=("$hash|$clean_message")
+            else
+              OTHER_COMMITS+=("$hash|$clean_message")
             fi
-          done <<< "$COMMITS_RAW"
-        else
-          echo "🆕 处理Git历史提交记录..."
-          
-          # 解析Git历史记录
-          while IFS='|' read -r hash message body; do
-            if [[ -n "$hash" ]]; then
-              # 清理消息内容
-              clean_message=$(echo "$message" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-              
-              # 分类提交
-              if [[ "$clean_message" =~ ^(feat|feature|新增|添加) ]]; then
-                FEATURE_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(fix|bug|修复|解决) ]]; then
-                FIX_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(style|ui|样式|界面) ]]; then
-                STYLE_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(refactor|重构) ]]; then
-                REFACTOR_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(perf|performance|优化|性能) ]]; then
-                PERF_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(docs|doc|文档) ]]; then
-                DOCS_COMMITS+=("$hash|$clean_message")
-              elif [[ "$clean_message" =~ ^(build|版本|构建) ]]; then
-                BUILD_COMMITS+=("$hash|$clean_message")
-              else
-                OTHER_COMMITS+=("$hash|$clean_message")
-              fi
-            fi
-          done <<< "$COMMITS_RAW"
-        fi
+          fi
+        done <<< "$COMMITS_RAW"
         
         # 生成统计信息
         echo "📊 初步分类统计:"
@@ -562,17 +536,113 @@ jobs:
           echo "🔗 Release URL: $(echo "$UPDATE_RESPONSE" | jq -r '.html_url')"
           echo "ai_optimized=true" >> $GITHUB_OUTPUT
           
-          # 添加到作业摘要
+          # 详细的作业摘要
           echo "## 🤖 AI变更日志生成完成" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 基本信息表格
+          echo "### 📋 基本信息" >> $GITHUB_STEP_SUMMARY
           echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| 版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 运行模式 | \`${{ env.RUN_MODE }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 版本号 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Release ID | \`${{ env.RELEASE_ID }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 是否强制重新生成 | \`${{ env.FORCE_REGENERATE }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Release URL | [查看发布]($(echo "$UPDATE_RESPONSE" | jq -r '.html_url')) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 提交统计信息
+          echo "### 📊 提交统计" >> $GITHUB_STEP_SUMMARY
+          echo "| 分类 | 数量 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 功能新增 | ${#FEATURE_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐛 问题修复 | ${#FIX_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 💄 样式优化 | ${#STYLE_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ♻️ 代码重构 | ${#REFACTOR_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ⚡ 性能优化 | ${#PERF_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📝 文档更新 | ${#DOCS_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏗️ 构建相关 | ${#BUILD_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔧 其他改进 | ${#OTHER_COMMITS[@]} |" >> $GITHUB_STEP_SUMMARY
+          
+          TOTAL_COMMITS=$((${#FEATURE_COMMITS[@]} + ${#FIX_COMMITS[@]} + ${#STYLE_COMMITS[@]} + ${#REFACTOR_COMMITS[@]} + ${#PERF_COMMITS[@]} + ${#DOCS_COMMITS[@]} + ${#BUILD_COMMITS[@]} + ${#OTHER_COMMITS[@]}))
+          echo "| **总计** | **$TOTAL_COMMITS** |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 变更日志长度对比
+          ORIGINAL_LENGTH=$(echo "$ORIGINAL_CHANGELOG" | wc -c)
+          AI_LENGTH=$(echo "$AI_CHANGELOG" | wc -c)
+          echo "### 📏 变更日志优化" >> $GITHUB_STEP_SUMMARY
+          echo "| 项目 | 字符数 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 原始变更日志 | $ORIGINAL_LENGTH |" >> $GITHUB_STEP_SUMMARY
+          echo "| AI优化后 | $AI_LENGTH |" >> $GITHUB_STEP_SUMMARY
+          echo "| 增长率 | $(( (AI_LENGTH - ORIGINAL_LENGTH) * 100 / ORIGINAL_LENGTH ))% |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 如果AI分析结果存在，显示AI分析的亮点
+          if [[ -f "ai_analysis.json" ]]; then
+            AI_HIGHLIGHTS=$(cat ai_analysis.json | jq -r '.highlights[]?' 2>/dev/null || echo "")
+            if [[ -n "$AI_HIGHLIGHTS" ]]; then
+              echo "### ✨ AI识别的主要亮点" >> $GITHUB_STEP_SUMMARY
+              while IFS= read -r highlight; do
+                if [[ -n "$highlight" ]]; then
+                  echo "- $highlight" >> $GITHUB_STEP_SUMMARY
+                fi
+              done <<< "$AI_HIGHLIGHTS"
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            AI_SUMMARY=$(cat ai_analysis.json | jq -r '.summary // ""' 2>/dev/null)
+            if [[ -n "$AI_SUMMARY" && "$AI_SUMMARY" != "null" ]]; then
+              echo "### 🧠 AI生成的版本摘要" >> $GITHUB_STEP_SUMMARY
+              echo "> $AI_SUMMARY" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          # 显示处理的提交范围（仅在手动模式）
+          if [ "${{ env.RUN_MODE }}" == "manual_optimize" ]; then
+            echo "### 🎯 处理范围" >> $GITHUB_STEP_SUMMARY
+            echo "- **当前版本**: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
+            if [[ -n "$LAST_TAG" ]]; then
+              echo "- **上一版本**: $LAST_TAG" >> $GITHUB_STEP_SUMMARY
+              echo "- **提交范围**: $LAST_TAG..${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- **提交范围**: 从首次提交到当前版本" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # 运行时间信息
+          echo "### ⏱️ 执行信息" >> $GITHUB_STEP_SUMMARY
+          echo "- **执行时间**: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **工作流**: [\`${{ github.workflow }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **提交SHA**: [\`${{ github.sha }}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+          
+          # 成功状态
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **状态**: AI变更日志生成并更新成功" >> $GITHUB_STEP_SUMMARY
+          
         else
           echo "❌ Release变更日志更新失败"
           echo "错误信息: $(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')"
           echo "ai_optimized=false" >> $GITHUB_OUTPUT
+          
+          # 失败时的摘要
+          echo "## ❌ AI变更日志生成失败" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 错误信息" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "$(echo "$UPDATE_RESPONSE" | jq -r '.message // "未知错误"')" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 基本信息" >> $GITHUB_STEP_SUMMARY
+          echo "- **版本**: ${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release ID**: ${{ env.RELEASE_ID }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **运行模式**: ${{ env.RUN_MODE }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **执行时间**: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          
           exit 1
         fi
 
