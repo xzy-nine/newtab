@@ -32,7 +32,8 @@ jobs:
           RELEASE_TAG="${{ github.event.release.tag_name }}"
           IS_PRERELEASE="${{ github.event.release.prerelease }}"
           
-          # 对于编辑事件，需要检查是否从预发布改为正式发布          if [ "${{ github.event.action }}" == "edited" ]; then
+          # 对于编辑事件，需要检查是否从预发布改为正式发布
+          if [ "${{ github.event.action }}" == "edited" ]; then
             echo "🔄 检测到Release编辑事件"
             # 获取当前release的最新状态
             CURRENT_RELEASE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
