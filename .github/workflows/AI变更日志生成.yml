@@ -3,18 +3,11 @@ name: AI变更日志生成
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: '版本号(如v1.0.0）'
+      target:
+        description: '目标版本或标签（如：v1.0.0 或 latest）'
         required: true
         type: string
-      release-id:
-        description: 'Release ID（自动发布时填写）'
-        required: false
-        type: string
-      tag:
-        description: '要优化变更日志的标签（手动优化时填写）'
-        required: false
-        type: string
+        default: 'latest'
   workflow_call:
     inputs:
       version:
@@ -68,19 +61,33 @@ jobs:
         cd .github/workflows/ai-log-work-py
         
         echo "🚀 开始执行AI变更日志生成..."
-        echo "📋 版本: ${{ inputs.version }}"
-        echo "🏷️ Release ID: ${{ inputs.release-id }}"
-        echo "🔖 标签: ${{ inputs.tag }}"
-        echo "🎯 事件类型: ${{ github.event_name }}"
         
-        python changelog.py \
-          --version "${{ inputs.version }}" \
-          ${{ inputs.release-id && format('--release-id "{0}"', inputs.release-id) || '' }} \
-          ${{ inputs.tag && format('--tag "{0}"', inputs.tag) || '' }} \
-          --event-name "${{ github.event_name }}" \
-          --repo "${{ github.repository }}" \
-          --github-token "${{ secrets.PAT }}" \
-          --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
+        # 根据触发方式设置参数
+        if [ "${{ github.event_name }}" = "workflow_call" ]; then
+          # 自动触发模式
+          echo "🤖 自动触发模式"
+          echo "📋 版本: ${{ inputs.version }}"
+          echo "🏷️ Release ID: ${{ inputs.release-id }}"
+          
+          python changelog.py \
+            --version "${{ inputs.version }}" \
+            --release-id "${{ inputs.release-id }}" \
+            --event-name "${{ github.event_name }}" \
+            --repo "${{ github.repository }}" \
+            --github-token "${{ secrets.PAT }}" \
+            --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
+        else
+          # 手动触发模式
+          echo "📝 手动触发模式"
+          echo "🎯 目标: ${{ inputs.target }}"
+          
+          python changelog.py \
+            --target "${{ inputs.target }}" \
+            --event-name "${{ github.event_name }}" \
+            --repo "${{ github.repository }}" \
+            --github-token "${{ secrets.PAT }}" \
+            --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
+        fi
         
         # 设置输出变量
         exit_code=$?
@@ -100,7 +107,15 @@ jobs:
         echo "## 🎯 执行结果摘要" >> $GITHUB_STEP_SUMMARY
         echo "| 项目 | 结果 |" >> $GITHUB_STEP_SUMMARY
         echo "|------|------|" >> $GITHUB_STEP_SUMMARY
-        echo "| 版本号 | \`${{ inputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ github.event_name }}" = "workflow_call" ]; then
+          echo "| 执行模式 | 🤖 自动触发 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 版本号 | \`${{ inputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| 执行模式 | 📝 手动触发 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 目标版本 | \`${{ inputs.target }}\` |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
         echo "| 执行状态 | ${{ steps.run-generator.outcome == 'success' && '✅ 成功' || '❌ 失败' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| AI优化 | ${{ steps.run-generator.outputs.ai_optimized == 'true' && '✅ 已完成' || '❌ 未完成' }} |" >> $GITHUB_STEP_SUMMARY
         

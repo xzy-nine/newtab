@@ -122,15 +122,17 @@ class AIChangelogGenerator:
         
         return logger
     
-    def validate_params(self, version: str, release_id: Optional[str] = None, 
-                       tag: Optional[str] = None, event_name: str = "workflow_dispatch") -> Tuple[RunMode, str, Optional[str]]:
+    def validate_params(self, version: Optional[str] = None, release_id: Optional[str] = None, 
+                       tag: Optional[str] = None, target: Optional[str] = None,
+                       event_name: str = "workflow_dispatch") -> Tuple[RunMode, str, Optional[str]]:
         """
         验证输入参数并确定运行模式
         
         Args:
-            version: 版本号
-            release_id: Release ID (可选)
-            tag: 标签 (可选)
+            version: 版本号 (自动触发时使用)
+            release_id: Release ID (自动触发时使用)
+            tag: 标签 (旧版手动触发兼容)
+            target: 目标版本或标签 (新版手动触发使用)
             event_name: 事件名称
             
         Returns:
@@ -139,25 +141,72 @@ class AIChangelogGenerator:
         self.logger.info("🔍 验证输入参数...")
         
         if event_name == "workflow_call":
-            if not release_id:
-                raise ValueError("工作流调用模式需要提供Release ID")
+            # 自动触发模式：需要version和release_id
+            if not version or not release_id:
+                raise ValueError("工作流调用模式需要提供版本号和Release ID")
             mode = RunMode.WORKFLOW_CALL
             self.logger.info(f"🔗 工作流调用模式: 版本 {version}, Release ID {release_id}")
             return mode, version, release_id
             
-        elif release_id:
-            mode = RunMode.AUTO_RELEASE
-            self.logger.info(f"🤖 自动发布模式: 版本 {version}, Release ID {release_id}")
-            return mode, version, release_id
-            
-        elif tag:
-            mode = RunMode.MANUAL_OPTIMIZE
-            self.logger.info(f"📝 手动优化模式: 标签 {tag}")
-            return mode, tag, None
-            
         else:
-            raise ValueError("必须提供发布ID或标签参数之一")
+            # 手动触发模式
+            if target:
+                # 新版手动触发：使用target参数
+                if target.lower() == 'latest':
+                    # 获取最新的release
+                    self.logger.info("🎯 目标为latest，获取最新Release...")
+                    latest_version, latest_release_id = self._get_latest_release()
+                    mode = RunMode.MANUAL_OPTIMIZE
+                    self.logger.info(f"📝 手动优化模式: 最新版本 {latest_version}")
+                    return mode, latest_version, latest_release_id
+                else:
+                    # 指定版本的手动触发
+                    mode = RunMode.MANUAL_OPTIMIZE
+                    self.logger.info(f"📝 手动优化模式: 指定版本 {target}")
+                    return mode, target, None
+                    
+            elif tag:
+                # 旧版手动触发兼容：使用tag参数
+                mode = RunMode.MANUAL_OPTIMIZE
+                self.logger.info(f"📝 手动优化模式(兼容): 标签 {tag}")
+                return mode, tag, None
+                
+            elif release_id:
+                # 旧版自动触发兼容：有release_id但没有version
+                if not version:
+                    raise ValueError("自动发布模式需要提供版本号")
+                mode = RunMode.AUTO_RELEASE
+                self.logger.info(f"🤖 自动发布模式(兼容): 版本 {version}, Release ID {release_id}")
+                return mode, version, release_id
+                
+            else:
+                raise ValueError("手动模式需要提供target参数，或使用兼容的tag参数")
     
+    def _get_latest_release(self) -> Tuple[str, str]:
+        """
+        获取最新的Release信息
+        
+        Returns:
+            Tuple[版本标签, Release ID]
+        """
+        self.logger.info("🔍 获取最新Release信息...")
+        
+        url = f"{self.github_api_base}/repos/{self.repo}/releases/latest"
+        response = requests.get(url, headers=self.github_headers)
+        
+        if response.status_code != 200:
+            error_msg = f"无法获取最新Release信息: {response.json().get('message', '未知错误')}"
+            self.logger.error(f"❌ {error_msg}")
+            raise Exception(error_msg)
+        
+        release_data = response.json()
+        tag_name = release_data['tag_name']
+        release_id = str(release_data['id'])
+        
+        self.logger.info(f"✅ 获取到最新Release: {tag_name} (ID: {release_id})")
+        
+        return tag_name, release_id
+
     def get_release_info(self, mode: RunMode, version: str, release_id: Optional[str] = None) -> Tuple[str, str]:
         """
         获取Release信息
@@ -839,15 +888,17 @@ class AIChangelogGenerator:
             except Exception as e:
                 self.logger.warning(f"⚠️ 设置GitHub Actions输出变量失败: {e}")
 
-    def run(self, version: str, release_id: Optional[str] = None, 
-           tag: Optional[str] = None, event_name: str = "workflow_dispatch") -> bool:
+    def run(self, version: Optional[str] = None, release_id: Optional[str] = None, 
+           tag: Optional[str] = None, target: Optional[str] = None,
+           event_name: str = "workflow_dispatch") -> bool:
         """
         运行AI变更日志生成流程
         
         Args:
-            version: 版本号
-            release_id: Release ID (可选)
-            tag: 标签 (可选)
+            version: 版本号 (自动触发时使用)
+            release_id: Release ID (自动触发时使用)
+            tag: 标签 (旧版兼容)
+            target: 目标版本或标签 (新版手动触发使用)
             event_name: 事件名称
             
         Returns:
@@ -855,7 +906,9 @@ class AIChangelogGenerator:
         """
         try:
             # 1. 验证参数
-            mode, final_version, final_release_id = self.validate_params(version, release_id, tag, event_name)
+            mode, final_version, final_release_id = self.validate_params(
+                version, release_id, tag, target, event_name
+            )
             
             # 2. 获取Release信息
             final_release_id, original_changelog = self.get_release_info(mode, final_version, final_release_id)
@@ -908,9 +961,16 @@ class AIChangelogGenerator:
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="AI变更日志生成器")
-    parser.add_argument("--version", required=True, help="版本号")
-    parser.add_argument("--release-id", help="Release ID")
-    parser.add_argument("--tag", help="标签")
+    
+    # 新版参数
+    parser.add_argument("--target", help="目标版本或标签（手动触发使用，如：v1.0.0 或 latest）")
+    
+    # 兼容旧版参数
+    parser.add_argument("--version", help="版本号（自动触发使用）")
+    parser.add_argument("--release-id", help="Release ID（自动触发使用）")
+    parser.add_argument("--tag", help="标签（旧版兼容）")
+    
+    # 其他参数
     parser.add_argument("--event-name", default="workflow_dispatch", help="事件名称")
     parser.add_argument("--repo", help="GitHub仓库名(owner/repo)")
     parser.add_argument("--github-token", help="GitHub Token")
@@ -942,6 +1002,7 @@ def main():
         version=args.version,
         release_id=args.release_id,
         tag=args.tag,
+        target=args.target,
         event_name=args.event_name
     )
     
