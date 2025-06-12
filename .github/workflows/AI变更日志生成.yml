@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: '目标版本或标签（如：v1.0.0 或 latest）'
+        description: '目标版本或标签（如：v1.0.0、latest 或 all）'
         required: true
         type: string
         default: 'latest'
@@ -28,17 +28,21 @@ on:
       total_commits:
         description: "处理的提交总数"
         value: ${{ jobs.ai-changelog-generation.outputs.total_commits }}
+      processed_releases:
+        description: "处理的发布数量"
+        value: ${{ jobs.ai-changelog-generation.outputs.processed_releases }}
 
 jobs:
   ai-changelog-generation:
     name: AI变更日志生成
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     outputs:
       ai_optimized: ${{ steps.run-generator.outputs.ai_optimized }}
       ai_success: ${{ steps.run-generator.outputs.ai_success }}
       total_commits: ${{ steps.run-generator.outputs.total_commits }}
       generation_mode: ${{ steps.run-generator.outputs.generation_mode }}
+      processed_releases: ${{ steps.run-generator.outputs.processed_releases }}
 
     steps:
     - name: 检出代码
@@ -80,6 +84,12 @@ jobs:
           # 手动触发模式
           echo "📝 手动触发模式"
           echo "🎯 目标: ${{ inputs.target }}"
+          
+          # 如果是批量处理模式，增加超时时间
+          if [ "${{ inputs.target }}" = "all" ]; then
+            echo "🔄 批量处理模式：将处理所有Release"
+            echo "⏱️ 预计需要较长时间，请耐心等待..."
+          fi
           
           python changelog.py \
             --target "${{ inputs.target }}" \
@@ -127,6 +137,10 @@ jobs:
         
         if [ "${{ steps.run-generator.outputs.total_commits }}" != "" ]; then
           echo "| 处理提交数 | ${{ steps.run-generator.outputs.total_commits }} |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ steps.run-generator.outputs.processed_releases }}" != "" ]; then
+          echo "| 处理发布数 | ${{ steps.run-generator.outputs.processed_releases }} |" >> $GITHUB_STEP_SUMMARY
         fi
 
     - name: 清理临时文件

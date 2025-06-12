@@ -7,6 +7,7 @@
 1. workflow_call: 工作流调用模式
 2. auto_release: 自动发布模式
 3. manual_optimize: 手动优化模式
+4. batch_all: 批量处理所有模式
 
 依赖: requests, gitpython
 """
@@ -24,12 +25,14 @@ import requests
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+import time
 
 
 class RunMode(Enum):
     WORKFLOW_CALL = "workflow_call"
     AUTO_RELEASE = "auto_release"
     MANUAL_OPTIMIZE = "manual_optimize"
+    BATCH_ALL = "batch_all"
 
 
 @dataclass
@@ -48,6 +51,22 @@ class AnalysisResult:
     highlights: List[str]
 
 
+@dataclass
+class BatchStats:
+    """批量处理统计信息"""
+    total_releases: int = 0
+    processed_releases: int = 0
+    success_count: int = 0
+    ai_success_count: int = 0
+    skipped_count: int = 0
+    error_count: int = 0
+    total_commits: int = 0
+    start_time: float = 0
+    
+    def __post_init__(self):
+        self.start_time = time.time()
+
+
 class AIChangelogGenerator:
     """AI变更日志生成器主类"""
     
@@ -64,6 +83,9 @@ class AIChangelogGenerator:
         self.deepseek_api_key = deepseek_api_key
         self.repo = repo
         self.logger = self._setup_logger()
+        
+        # 批量处理统计
+        self.batch_stats = BatchStats()
         
         # 加载外部配置文件
         self._load_configs()
@@ -159,6 +181,12 @@ class AIChangelogGenerator:
                     mode = RunMode.MANUAL_OPTIMIZE
                     self.logger.info(f"📝 手动优化模式: 最新版本 {latest_version}")
                     return mode, latest_version, latest_release_id
+                elif target.lower() == 'all':
+                    # 批量处理所有release
+                    self.logger.info("🔄 目标为all，批量处理所有Release...")
+                    mode = RunMode.BATCH_ALL
+                    self.logger.info("📦 批量处理模式: 处理所有Release")
+                    return mode, "all", None
                 else:
                     # 指定版本的手动触发
                     mode = RunMode.MANUAL_OPTIMIZE
@@ -167,10 +195,15 @@ class AIChangelogGenerator:
                     
             elif tag:
                 # 旧版手动触发兼容：使用tag参数
-                mode = RunMode.MANUAL_OPTIMIZE
-                self.logger.info(f"📝 手动优化模式(兼容): 标签 {tag}")
-                return mode, tag, None
-                
+                if tag.lower() == 'all':
+                    mode = RunMode.BATCH_ALL
+                    self.logger.info("📦 批量处理模式(兼容): 处理所有Release")
+                    return mode, "all", None
+                else:
+                    mode = RunMode.MANUAL_OPTIMIZE
+                    self.logger.info(f"📝 手动优化模式(兼容): 标签 {tag}")
+                    return mode, tag, None
+                    
             elif release_id:
                 # 旧版自动触发兼容：有release_id但没有version
                 if not version:
@@ -784,46 +817,6 @@ class AIChangelogGenerator:
 {'='*60}
 """
         
-        # Markdown格式的报告（用于可能的其他用途）
-        markdown_report = f"""
-## 🤖 AI变更日志生成完成
-
-### 📋 基本信息
-| 项目 | 值 |
-|------|-----|
-| 运行模式 | `{mode.value}` |
-| 版本号 | `{version}` |
-| Release ID | `{release_id}` |
-
-### 🤖 AI分析状态
-| 项目 | 状态 |
-|------|------|
-| DeepSeek API | {'✅ 调用成功' if ai_success else '❌ 调用失败'} |
-| 生成方式 | {'🧠 AI智能生成' if ai_success else '📝 基础规则生成'} |
-"""
-        
-        if not ai_success and ai_error:
-            markdown_report += f"| 失败原因 | {ai_error} |\n"
-        
-        markdown_report += f"""
-### 📊 提交统计
-| 分类 | 数量 |
-|------|------|
-"""
-        
-        for category, commits_list in classified_commits.items():
-            title, _ = self.templates["categories"][category]
-            markdown_report += f"| {title} | {len(commits_list)} |\n"
-        
-        markdown_report += f"| **总计** | **{total_commits}** |\n"
-        
-        markdown_report += f"""
-### ⏱️ 执行信息
-- **执行时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-- **状态**: {'✅ AI变更日志生成并更新成功' if ai_success else '⚠️ 变更日志生成并更新成功（使用基础规则）'}
-"""
-        
-        # 返回控制台友好的格式
         return console_report
     
     def output_github_actions_summary(self, mode: RunMode, version: str, release_id: str,
@@ -887,6 +880,290 @@ class AIChangelogGenerator:
                     f.write(f"generation_mode={'ai' if ai_success else 'basic'}\n")
             except Exception as e:
                 self.logger.warning(f"⚠️ 设置GitHub Actions输出变量失败: {e}")
+    
+    def get_all_releases(self) -> List[Dict[str, Any]]:
+        """
+        获取所有Release信息
+        
+        Returns:
+            Release列表
+        """
+        self.logger.info("📋 获取所有Release信息...")
+        
+        all_releases = []
+        page = 1
+        per_page = 30
+        
+        while True:
+            url = f"{self.github_api_base}/repos/{self.repo}/releases"
+            params = {
+                'page': page,
+                'per_page': per_page
+            }
+            
+            response = requests.get(url, headers=self.github_headers, params=params)
+            
+            if response.status_code != 200:
+                error_msg = f"无法获取Release列表: {response.json().get('message', '未知错误')}"
+                self.logger.error(f"❌ {error_msg}")
+                raise Exception(error_msg)
+            
+            releases = response.json()
+            
+            if not releases:
+                break
+            
+            all_releases.extend(releases)
+            page += 1
+            
+            # 显示获取进度
+            self.logger.info(f"📄 已获取 {len(all_releases)} 个Release...")
+        
+        self.logger.info(f"✅ 总共获取到 {len(all_releases)} 个Release")
+        
+        return all_releases
+    
+    def print_realtime_summary(self, release_tag: str, current: int, total: int, 
+                              success: bool, ai_success: bool, error_msg: Optional[str] = None):
+        """
+        实时输出处理摘要
+        
+        Args:
+            release_tag: Release标签
+            current: 当前处理的序号
+            total: 总数
+            success: 是否成功
+            ai_success: AI是否成功
+            error_msg: 错误信息
+        """
+        elapsed_time = time.time() - self.batch_stats.start_time
+        
+        # 更新统计
+        if success:
+            self.batch_stats.success_count += 1
+            if ai_success:
+                self.batch_stats.ai_success_count += 1
+        else:
+            self.batch_stats.error_count += 1
+        
+        # 计算进度
+        progress = (current / total) * 100
+        
+        # 估算剩余时间
+        if current > 0:
+            avg_time = elapsed_time / current
+            remaining_time = avg_time * (total - current)
+            remaining_str = f"{remaining_time/60:.1f}分钟" if remaining_time > 60 else f"{remaining_time:.0f}秒"
+        else:
+            remaining_str = "计算中..."
+        
+        # 实时摘要输出
+        print(f"\n{'='*80}")
+        print(f"🔄 批量处理进度: {current}/{total} ({progress:.1f}%)")
+        print(f"📦 当前处理: {release_tag}")
+        print(f"{'='*80}")
+        
+        print(f"📊 当前统计:")
+        print(f"  ✅ 成功: {self.batch_stats.success_count}")
+        print(f"  🧠 AI成功: {self.batch_stats.ai_success_count}")
+        print(f"  ❌ 失败: {self.batch_stats.error_count}")
+        print(f"  ⏩ 跳过: {self.batch_stats.skipped_count}")
+        
+        print(f"⏱️  时间信息:")
+        print(f"  已用时: {elapsed_time/60:.1f}分钟")
+        print(f"  预计剩余: {remaining_str}")
+        
+        if success:
+            status = "🧠 AI智能生成" if ai_success else "📝 基础规则生成"
+            print(f"✅ {release_tag} 处理完成 - {status}")
+        elif error_msg == "SKIPPED":
+            print(f"⏩ {release_tag} 已跳过 - 无需优化")
+            self.batch_stats.skipped_count += 1
+        else:
+            print(f"❌ {release_tag} 处理失败")
+            if error_msg:
+                print(f"   错误: {error_msg}")
+        
+        print(f"{'='*80}\n")
+        
+        # 刷新输出确保实时显示
+        sys.stdout.flush()
+    
+    def process_single_release(self, release_data: Dict[str, Any]) -> Tuple[bool, bool, Optional[str]]:
+        """
+        处理单个Release
+        
+        Args:
+            release_data: Release数据
+            
+        Returns:
+            Tuple[是否成功, AI是否成功, 错误信息]
+        """
+        tag_name = release_data['tag_name']
+        release_id = str(release_data['id'])
+        original_changelog = release_data.get('body', '')
+        
+        try:
+            # 检查是否需要优化
+            need_optimize, processed_changelog = self.check_optimization_status(
+                RunMode.MANUAL_OPTIMIZE, original_changelog
+            )
+            
+            if not need_optimize:
+                return True, False, "SKIPPED"
+            
+            # 获取Git提交信息
+            commits, commit_range, commit_count = self.get_git_commits(tag_name)
+            self.batch_stats.total_commits += commit_count
+            
+            # 分类提交
+            classified_commits = self.classify_commits(commits)
+            
+            # 尝试AI分析
+            ai_analysis = self.call_deepseek_api(commits)
+            ai_success = ai_analysis is not None
+            
+            # 生成变更日志
+            if ai_success:
+                changelog = self.generate_changelog_with_ai(tag_name, ai_analysis, processed_changelog, commits)
+            else:
+                changelog = self.generate_changelog_basic(tag_name, classified_commits, processed_changelog)
+            
+            # 更新Release
+            success = self.update_release_changelog(release_id, changelog)
+            
+            return success, ai_success, None
+            
+        except Exception as e:
+            return False, False, str(e)
+    
+    def run_batch_processing(self) -> bool:
+        """
+        运行批量处理所有Release
+        
+        Returns:
+            是否整体执行成功
+        """
+        self.logger.info("🔄 开始批量处理所有Release...")
+        
+        try:
+            # 获取所有Release
+            all_releases = self.get_all_releases()
+            
+            if not all_releases:
+                self.logger.warning("⚠️ 未找到任何Release")
+                return True
+            
+            self.batch_stats.total_releases = len(all_releases)
+            
+            print(f"\n🚀 开始批量处理 {len(all_releases)} 个Release")
+            print(f"⏱️ 开始时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print("="*80)
+            
+            # 逐个处理Release
+            for i, release_data in enumerate(all_releases, 1):
+                tag_name = release_data['tag_name']
+                
+                try:
+                    success, ai_success, error_msg = self.process_single_release(release_data)
+                    self.print_realtime_summary(tag_name, i, len(all_releases), success, ai_success, error_msg)
+                    
+                    # 添加适当的延迟，避免API限制
+                    if i < len(all_releases):
+                        time.sleep(2)
+                        
+                except Exception as e:
+                    self.logger.error(f"❌ 处理 {tag_name} 时发生异常: {e}")
+                    self.print_realtime_summary(tag_name, i, len(all_releases), False, False, str(e))
+                
+                self.batch_stats.processed_releases = i
+            
+            # 输出最终统计
+            self.print_final_batch_summary()
+            
+            # 输出GitHub Actions变量
+            self._output_batch_github_actions()
+            
+            # 判断整体是否成功（成功率超过80%）
+            success_rate = self.batch_stats.success_count / len(all_releases)
+            return success_rate >= 0.8
+            
+        except Exception as e:
+            self.logger.error(f"❌ 批量处理失败: {e}")
+            return False
+    
+    def print_final_batch_summary(self):
+        """输出最终批量处理摘要"""
+        elapsed_time = time.time() - self.batch_stats.start_time
+        success_rate = (self.batch_stats.success_count / self.batch_stats.total_releases) * 100
+        ai_rate = (self.batch_stats.ai_success_count / max(1, self.batch_stats.success_count)) * 100
+        
+        print(f"\n{'='*80}")
+        print(f"🎉 批量处理完成！")
+        print(f"{'='*80}")
+        
+        print(f"📊 最终统计:")
+        print(f"  📦 总Release数: {self.batch_stats.total_releases}")
+        print(f"  ✅ 成功处理: {self.batch_stats.success_count}")
+        print(f"  🧠 AI成功: {self.batch_stats.ai_success_count}")
+        print(f"  ⏩ 跳过: {self.batch_stats.skipped_count}")
+        print(f"  ❌ 失败: {self.batch_stats.error_count}")
+        print(f"  📝 总提交数: {self.batch_stats.total_commits}")
+        
+        print(f"📈 成功率:")
+        print(f"  📦 处理成功率: {success_rate:.1f}%")
+        print(f"  🧠 AI成功率: {ai_rate:.1f}%")
+        
+        print(f"⏱️  时间统计:")
+        print(f"  总用时: {elapsed_time/60:.1f}分钟")
+        print(f"  平均每个: {elapsed_time/self.batch_stats.total_releases:.1f}秒")
+        print(f"  完成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        print(f"{'='*80}")
+    
+    def _output_batch_github_actions(self):
+        """输出批量处理的GitHub Actions变量"""
+        github_output_file = os.getenv('GITHUB_OUTPUT')
+        if github_output_file:
+            try:
+                with open(github_output_file, 'a', encoding='utf-8') as f:
+                    f.write(f"ai_success={self.batch_stats.ai_success_count > 0}\n")
+                    f.write(f"total_commits={self.batch_stats.total_commits}\n")
+                    f.write(f"generation_mode=batch\n")
+                    f.write(f"processed_releases={self.batch_stats.processed_releases}\n")
+            except Exception as e:
+                self.logger.warning(f"⚠️ 设置GitHub Actions输出变量失败: {e}")
+        
+        # GitHub Actions Step Summary
+        step_summary_file = os.getenv('GITHUB_STEP_SUMMARY')
+        if step_summary_file:
+            try:
+                elapsed_time = time.time() - self.batch_stats.start_time
+                success_rate = (self.batch_stats.success_count / self.batch_stats.total_releases) * 100
+                
+                summary_content = f"""# 🔄 批量AI变更日志生成报告
+
+## 📊 处理统计
+- **总Release数**: `{self.batch_stats.total_releases}`
+- **成功处理**: `{self.batch_stats.success_count}`
+- **AI智能生成**: `{self.batch_stats.ai_success_count}`
+- **跳过**: `{self.batch_stats.skipped_count}`
+- **失败**: `{self.batch_stats.error_count}`
+
+## 📈 性能指标
+- **处理成功率**: `{success_rate:.1f}%`
+- **总处理时间**: `{elapsed_time/60:.1f}分钟`
+- **总提交数**: `{self.batch_stats.total_commits}`
+
+## ✅ 执行结果
+{'✅ 批量处理成功完成' if success_rate >= 80 else '⚠️ 批量处理部分失败'}
+"""
+                
+                with open(step_summary_file, 'w', encoding='utf-8') as f:
+                    f.write(summary_content)
+                
+            except Exception as e:
+                self.logger.warning(f"⚠️ 生成GitHub Actions摘要失败: {e}")
 
     def run(self, version: Optional[str] = None, release_id: Optional[str] = None, 
            tag: Optional[str] = None, target: Optional[str] = None,
@@ -910,37 +1187,42 @@ class AIChangelogGenerator:
                 version, release_id, tag, target, event_name
             )
             
-            # 2. 获取Release信息
+            # 2. 批量处理模式
+            if mode == RunMode.BATCH_ALL:
+                return self.run_batch_processing()
+            
+            # 3. 单个Release处理模式（原有逻辑）
+            # 获取Release信息
             final_release_id, original_changelog = self.get_release_info(mode, final_version, final_release_id)
             
-            # 3. 检查是否需要优化
+            # 检查是否需要优化
             need_optimize, processed_changelog = self.check_optimization_status(mode, original_changelog)
             
             if not need_optimize:
                 self.logger.info("🚫 无需优化，流程结束")
                 return True
             
-            # 4. 获取Git提交信息
+            # 获取Git提交信息
             commits, commit_range, commit_count = self.get_git_commits(final_version)
             
-            # 5. 分类提交
+            # 分类提交
             classified_commits = self.classify_commits(commits)
             
-            # 6. 尝试AI分析
+            # 尝试AI分析
             ai_analysis = self.call_deepseek_api(commits)
             ai_success = ai_analysis is not None
             ai_error = None if ai_success else "API调用失败"
             
-            # 7. 生成变更日志
+            # 生成变更日志
             if ai_success:
                 changelog = self.generate_changelog_with_ai(final_version, ai_analysis, processed_changelog, commits)
             else:
                 changelog = self.generate_changelog_basic(final_version, classified_commits, processed_changelog)
             
-            # 8. 更新Release
+            # 更新Release
             success = self.update_release_changelog(final_release_id, changelog)
             
-            # 9. 生成和输出摘要报告
+            # 生成和输出摘要报告
             report = self.generate_summary_report(mode, final_version, final_release_id, 
                                                  classified_commits, ai_success, ai_error)
             
