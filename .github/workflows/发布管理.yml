@@ -124,8 +124,7 @@ jobs:
         
         FILE_SIZE=$(ls -lh "$BUILD_FILE" | awk '{print $5}')
         echo "✅ 构建包验证成功: $BUILD_FILE (大小: $FILE_SIZE)"
-        echo "BUILD_FILE=$BUILD_FILE" >> $GITHUB_ENV
-
+        echo "BUILD_FILE=$BUILD_FILE" >> $GITHUB_ENV    
     - name: 创建Release
       id: create-release
       uses: softprops/action-gh-release@v1
@@ -135,7 +134,7 @@ jobs:
         body: ${{ fromJson(env.CHANGELOG) }}
         files: ${{ env.BUILD_FILE }}
         draft: false
-        prerelease: false
+        prerelease: true
         generate_release_notes: false
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
