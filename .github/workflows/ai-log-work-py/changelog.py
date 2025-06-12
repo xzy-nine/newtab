@@ -221,14 +221,18 @@ class AIChangelogGenerator:
                 
                 if match:
                     extracted_content = match.group(1).strip()
-                    if extracted_content:
-                        self.logger.info("✅ 成功提取到原始提交记录")
+                    # 移除可能的HTML标签和空白字符
+                    extracted_content = re.sub(r'^\s*\n+', '', extracted_content)
+                    extracted_content = re.sub(r'\n+\s*$', '', extracted_content)
+                    
+                    if extracted_content and extracted_content != "暂无原始记录":
+                        self.logger.info(f"✅ 成功提取到原始提交记录，内容长度: {len(extracted_content)} 字符")
                         return True, extracted_content
                     else:
-                        self.logger.warning("⚠️ 折叠区域内容为空，将从Git历史重新获取")
+                        self.logger.warning("⚠️ 折叠区域内容为空或无效，将从Git历史重新获取")
                         return True, ""
                 else:
-                    self.logger.info("ℹ️ 未发现AI优化标记，使用原始内容")
+                    self.logger.info("ℹ️ 未发现有效的折叠区域格式，使用原始内容")
                     return True, original_changelog
             else:
                 self.logger.info("ℹ️ 未发现折叠区域，使用原始内容")
@@ -503,7 +507,7 @@ class AIChangelogGenerator:
             return None
 
     def generate_changelog_with_ai(self, version: str, ai_analysis: AnalysisResult, 
-                                  original_changelog: str) -> str:
+                                  original_changelog: str, commits: List[CommitInfo]) -> str:
         """
         使用AI分析结果生成变更日志
         
@@ -511,6 +515,7 @@ class AIChangelogGenerator:
             version: 版本号
             ai_analysis: AI分析结果
             original_changelog: 原始变更日志
+            commits: 原始提交列表
             
         Returns:
             生成的变更日志
@@ -555,9 +560,18 @@ class AIChangelogGenerator:
                     )
         
         # 添加原始变更记录到折叠区域
-        changelog += template["collapse_start"]
-        changelog += original_changelog if original_changelog else "暂无原始记录"
-        changelog += template["collapse_end"]
+        changelog += "\n\n<details>\n<summary>查看原始提交记录</summary>\n\n"
+        
+        # 如果原始变更日志为空，则生成基础的提交记录
+        if not original_changelog or original_changelog.strip() == "":
+            self.logger.info("📝 原始变更日志为空，生成基础提交记录作为原始内容")
+            basic_commits = []
+            for commit in commits:
+                basic_commits.append(f"- {commit.message} ({commit.hash})")
+            original_changelog = "\n".join(basic_commits) if basic_commits else "暂无提交记录"
+        
+        changelog += original_changelog
+        changelog += "\n\n</details>"
         
         return changelog
     
@@ -614,12 +628,22 @@ class AIChangelogGenerator:
                     )
         
         # 添加原始变更记录到折叠区域
-        changelog += template["collapse_start"]
-        changelog += original_changelog if original_changelog else "暂无原始记录"
-        changelog += template["collapse_end"]
+        changelog += "\n\n<details>\n<summary>查看原始提交记录</summary>\n\n"
+        
+        # 如果原始变更日志为空，则生成基础的提交记录
+        if not original_changelog or original_changelog.strip() == "":
+            self.logger.info("📝 原始变更日志为空，生成基础提交记录作为原始内容")
+            all_commits = []
+            for category, commits_list in classified_commits.items():
+                for commit in commits_list:
+                    all_commits.append(f"- {commit.message} ({commit.hash})")
+            original_changelog = "\n".join(all_commits) if all_commits else "暂无提交记录"
+        
+        changelog += original_changelog
+        changelog += "\n\n</details>"
         
         return changelog
-    
+
     def update_release_changelog(self, release_id: str, changelog: str) -> bool:
         """
         更新Release的变更日志
@@ -856,7 +880,7 @@ class AIChangelogGenerator:
             
             # 7. 生成变更日志
             if ai_success:
-                changelog = self.generate_changelog_with_ai(final_version, ai_analysis, processed_changelog)
+                changelog = self.generate_changelog_with_ai(final_version, ai_analysis, processed_changelog, commits)
             else:
                 changelog = self.generate_changelog_basic(final_version, classified_commits, processed_changelog)
             
