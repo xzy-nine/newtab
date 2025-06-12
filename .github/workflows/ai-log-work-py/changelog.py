@@ -675,7 +675,44 @@ class AIChangelogGenerator:
         """
         total_commits = sum(len(commits) for commits in classified_commits.values())
         
-        report = f"""
+        # 控制台友好的报告格式
+        console_report = f"""
+{'='*60}
+🤖 AI变更日志生成完成
+{'='*60}
+
+📋 基本信息:
+  • 运行模式: {mode.value}
+  • 版本号: {version}
+  • Release ID: {release_id}
+
+🤖 AI分析状态:
+  • DeepSeek API: {'✅ 调用成功' if ai_success else '❌ 调用失败'}
+  • 生成方式: {'🧠 AI智能生成' if ai_success else '📝 基础规则生成'}
+"""
+        
+        if not ai_success and ai_error:
+            console_report += f"  • 失败原因: {ai_error}\n"
+        
+        console_report += "\n📊 提交统计:\n"
+        
+        for category, commits_list in classified_commits.items():
+            if commits_list:  # 只显示有内容的分类
+                title, _ = self.templates["categories"][category]
+                console_report += f"  • {title}: {len(commits_list)}\n"
+        
+        console_report += f"  • 总计: {total_commits}\n"
+        
+        console_report += f"""
+⏱️ 执行信息:
+  • 执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+  • 状态: {'✅ AI变更日志生成并更新成功' if ai_success else '⚠️ 变更日志生成并更新成功（使用基础规则）'}
+
+{'='*60}
+"""
+        
+        # Markdown格式的报告（用于可能的其他用途）
+        markdown_report = f"""
 ## 🤖 AI变更日志生成完成
 
 ### 📋 基本信息
@@ -693,9 +730,9 @@ class AIChangelogGenerator:
 """
         
         if not ai_success and ai_error:
-            report += f"| 失败原因 | {ai_error} |\n"
+            markdown_report += f"| 失败原因 | {ai_error} |\n"
         
-        report += f"""
+        markdown_report += f"""
 ### 📊 提交统计
 | 分类 | 数量 |
 |------|------|
@@ -703,18 +740,81 @@ class AIChangelogGenerator:
         
         for category, commits_list in classified_commits.items():
             title, _ = self.templates["categories"][category]
-            report += f"| {title} | {len(commits_list)} |\n"
+            markdown_report += f"| {title} | {len(commits_list)} |\n"
         
-        report += f"| **总计** | **{total_commits}** |\n"
+        markdown_report += f"| **总计** | **{total_commits}** |\n"
         
-        report += f"""
+        markdown_report += f"""
 ### ⏱️ 执行信息
 - **执行时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 - **状态**: {'✅ AI变更日志生成并更新成功' if ai_success else '⚠️ 变更日志生成并更新成功（使用基础规则）'}
 """
         
-        return report
+        # 返回控制台友好的格式
+        return console_report
     
+    def output_github_actions_summary(self, mode: RunMode, version: str, release_id: str,
+                                    classified_commits: Dict[str, List[CommitInfo]],
+                                    ai_success: bool, ai_error: Optional[str] = None):
+        """
+        输出GitHub Actions摘要信息
+        
+        Args:
+            mode: 运行模式
+            version: 版本号
+            release_id: Release ID
+            classified_commits: 分类后的提交
+            ai_success: AI是否成功
+            ai_error: AI错误信息
+        """
+        # 输出到GitHub Actions Step Summary
+        step_summary_file = os.getenv('GITHUB_STEP_SUMMARY')
+        if step_summary_file:
+            try:
+                total_commits = sum(len(commits) for commits in classified_commits.values())
+                
+                summary_content = f"""# 🤖 AI变更日志生成报告
+
+## 📋 执行概览
+- **版本号**: `{version}`
+- **运行模式**: `{mode.value}`
+- **Release ID**: `{release_id}`
+- **AI状态**: {'✅ 成功' if ai_success else '❌ 失败'}
+- **生成方式**: {'🧠 AI智能生成' if ai_success else '📝 基础规则生成'}
+- **处理提交数**: `{total_commits}`
+
+## 📊 提交分类统计
+"""
+                
+                for category, commits_list in classified_commits.items():
+                    if commits_list:
+                        title, _ = self.templates["categories"][category]
+                        summary_content += f"- **{title}**: {len(commits_list)} 个提交\n"
+                
+                if not ai_success and ai_error:
+                    summary_content += f"\n## ⚠️ 注意事项\n- AI API调用失败: {ai_error}\n- 已使用基础规则生成变更日志\n"
+                
+                summary_content += f"\n## ✅ 执行结果\n变更日志已成功更新到 Release 页面\n"
+                
+                with open(step_summary_file, 'w', encoding='utf-8') as f:
+                    f.write(summary_content)
+                
+                self.logger.info("✅ GitHub Actions摘要已生成")
+                
+            except Exception as e:
+                self.logger.warning(f"⚠️ 生成GitHub Actions摘要失败: {e}")
+        
+        # 输出GitHub Actions变量
+        github_output_file = os.getenv('GITHUB_OUTPUT')
+        if github_output_file:
+            try:
+                with open(github_output_file, 'a', encoding='utf-8') as f:
+                    f.write(f"ai_success={str(ai_success).lower()}\n")
+                    f.write(f"total_commits={sum(len(commits) for commits in classified_commits.values())}\n")
+                    f.write(f"generation_mode={'ai' if ai_success else 'basic'}\n")
+            except Exception as e:
+                self.logger.warning(f"⚠️ 设置GitHub Actions输出变量失败: {e}")
+
     def run(self, version: str, release_id: Optional[str] = None, 
            tag: Optional[str] = None, event_name: str = "workflow_dispatch") -> bool:
         """
@@ -763,10 +863,16 @@ class AIChangelogGenerator:
             # 8. 更新Release
             success = self.update_release_changelog(final_release_id, changelog)
             
-            # 9. 生成摘要报告
+            # 9. 生成和输出摘要报告
             report = self.generate_summary_report(mode, final_version, final_release_id, 
                                                  classified_commits, ai_success, ai_error)
+            
+            # 输出到控制台
             print(report)
+            
+            # 输出到GitHub Actions
+            self.output_github_actions_summary(mode, final_version, final_release_id, 
+                                             classified_commits, ai_success, ai_error)
             
             return success
             
