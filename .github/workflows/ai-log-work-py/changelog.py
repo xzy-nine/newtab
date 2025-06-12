@@ -392,60 +392,26 @@ class AIChangelogGenerator:
         Returns:
             Tuple[是否需要优化, 处理后的原始内容]
         """
-        self._print_step_summary("检查优化状态", "进行中", ["分析变更日志状态..."])
+        self._print_step_summary("检查优化状态", "进行中", ["强制从Git历史获取提交信息..."])
         
+        # 强制所有模式都从Git历史重新获取，不使用发布页内容
         if mode == RunMode.MANUAL_OPTIMIZE:
-            # 检查是否包含AI优化标记和折叠区域
-            if "<details>" in original_changelog and "查看原始提交记录" in original_changelog:
-                # 提取折叠区域内容
-                details_pattern = r'<details>.*?<summary>.*?</summary>(.*?)</details>'
-                match = re.search(details_pattern, original_changelog, re.DOTALL)
-                
-                if match:
-                    extracted_content = match.group(1).strip()
-                    # 移除可能的HTML标签和空白字符
-                    extracted_content = re.sub(r'^\s*\n+', '', extracted_content)
-                    extracted_content = re.sub(r'\n+\s*$', '', extracted_content)
-                    
-                    if extracted_content and extracted_content != "暂无原始记录":
-                        self._print_step_summary("检查优化状态", "完成", [
-                            "✓ 手动优化模式: 强制重新生成",
-                            f"✓ 提取到原始内容: {len(extracted_content)} 字符",
-                            "✓ 需要优化"
-                        ])
-                        return True, extracted_content
-                    else:
-                        self._print_step_summary("检查优化状态", "警告", [
-                            "⚠️ 折叠区域内容为空",
-                            "将从Git历史重新获取"
-                        ])
-                        return True, ""
-                else:
-                    self._print_step_summary("检查优化状态", "完成", [
-                        "✓ 未发现有效的折叠区域格式",
-                        "✓ 使用原始内容"
-                    ])
-                    return True, original_changelog
-            else:
-                self._print_step_summary("检查优化状态", "完成", [
-                    "✓ 未发现折叠区域",
-                    "✓ 使用原始内容"
-                ])
-                return True, original_changelog
+            self._print_step_summary("检查优化状态", "完成", [
+                "✓ 手动优化模式: 强制重新生成",
+                "✓ 将从Git历史重新获取所有提交信息",
+                "✓ 需要优化"
+            ])
+            # 返回空字符串，强制从Git获取
+            return True, ""
         else:
-            # 自动模式检查
-            if "AI生成的变更日志摘要" in original_changelog:
-                self._print_step_summary("检查优化状态", "跳过", [
-                    "⚠️ 已包含AI生成的变更日志",
-                    "✓ 跳过重复优化"
-                ])
-                return False, original_changelog
-            else:
-                self._print_step_summary("检查优化状态", "完成", [
-                    "✓ 变更日志未经AI优化",
-                    "✓ 可以进行优化"
-                ])
-                return True, original_changelog
+            # 自动模式也强制从Git获取，不检查已有内容
+            self._print_step_summary("检查优化状态", "完成", [
+                "✓ 自动模式: 强制从Git历史获取",
+                "✓ 忽略原有变更日志内容",
+                "✓ 需要优化"
+            ])
+            # 返回空字符串，强制从Git获取
+            return True, ""
     
     def get_git_commits(self, version: str) -> Tuple[List[CommitInfo], str, int]:
         """
@@ -696,7 +662,7 @@ class AIChangelogGenerator:
                     "✅ DeepSeek API调用成功",
                     "✅ JSON格式解析成功",
                     f"✓ 分析摘要: {ai_data.get('summary', 'AI智能分析')[:50]}..."
-                )
+                ])
                 
                 return AnalysisResult(
                     categories=ai_data.get('categories', {}),
@@ -725,7 +691,7 @@ class AIChangelogGenerator:
                             "✅ DeepSeek API调用成功",
                             "✅ 代码块JSON格式解析成功",
                             f"✓ 分析摘要: {ai_data.get('summary', 'AI智能分析')[:50]}..."
-                        )
+                        ])
                         
                         return AnalysisResult(
                             categories=ai_data.get('categories', {}),
@@ -758,7 +724,7 @@ class AIChangelogGenerator:
         Args:
             version: 版本号
             ai_analysis: AI分析结果
-            original_changelog: 原始变更日志
+            original_changelog: 原始变更日志（将被忽略，强制使用Git提交）
             commits: 原始提交列表
             
         Returns:
@@ -810,22 +776,22 @@ class AIChangelogGenerator:
                 
                 generated_categories.append(f"{title}: {len(items)} 项")
         
-        # 添加原始变更记录到折叠区域
+        # 添加原始变更记录到折叠区域 - 强制使用Git提交信息
         changelog += "\n\n<details>\n<summary>查看原始提交记录</summary>\n\n"
         
-        # 如果原始变更日志为空，则生成基础的提交记录
-        if not original_changelog or original_changelog.strip() == "":
-            basic_commits = []
-            for commit in commits:
-                basic_commits.append(f"- {commit.message} ({commit.hash})")
-            original_changelog = "\n".join(basic_commits) if basic_commits else "暂无提交记录"
+        # 忽略original_changelog参数，强制生成基于Git提交的记录
+        git_based_commits = []
+        for commit in commits:
+            git_based_commits.append(f"- {commit.message} ({commit.hash})")
         
-        changelog += original_changelog
+        git_commits_text = "\n".join(git_based_commits) if git_based_commits else "暂无提交记录"
+        changelog += git_commits_text
         changelog += "\n\n</details>"
         
         self._print_step_summary("生成AI变更日志", "完成", [
             f"✓ 变更日志长度: {len(changelog)} 字符",
-            f"✓ 生成分类: {', '.join(generated_categories) if generated_categories else '无'}"
+            f"✓ 生成分类: {', '.join(generated_categories) if generated_categories else '无'}",
+            f"✓ 折叠区域使用Git提交: {len(git_based_commits)} 条"
         ])
         
         return changelog
@@ -838,7 +804,7 @@ class AIChangelogGenerator:
         Args:
             version: 版本号
             classified_commits: 分类后的提交
-            original_changelog: 原始变更日志
+            original_changelog: 原始变更日志（将被忽略，强制使用Git提交）
             
         Returns:
             生成的变更日志
@@ -888,23 +854,23 @@ class AIChangelogGenerator:
                 
                 generated_categories.append(f"{title}: {len(classified_commits[category])} 项")
         
-        # 添加原始变更记录到折叠区域
+        # 添加原始变更记录到折叠区域 - 强制使用Git提交信息
         changelog += "\n\n<details>\n<summary>查看原始提交记录</summary>\n\n"
         
-        # 如果原始变更日志为空，则生成基础的提交记录
-        if not original_changelog or original_changelog.strip() == "":
-            all_commits = []
-            for category, commits_list in classified_commits.items():
-                for commit in commits_list:
-                    all_commits.append(f"- {commit.message} ({commit.hash})")
-            original_changelog = "\n".join(all_commits) if all_commits else "暂无提交记录"
+        # 忽略original_changelog参数，强制生成基于Git提交的记录
+        all_git_commits = []
+        for category, commits_list in classified_commits.items():
+            for commit in commits_list:
+                all_git_commits.append(f"- {commit.message} ({commit.hash})")
         
-        changelog += original_changelog
+        git_commits_text = "\n".join(all_git_commits) if all_git_commits else "暂无提交记录"
+        changelog += git_commits_text
         changelog += "\n\n</details>"
         
         self._print_step_summary("生成基础变更日志", "完成", [
             f"✓ 变更日志长度: {len(changelog)} 字符",
-            f"✓ 生成分类: {', '.join(generated_categories) if generated_categories else '无'}"
+            f"✓ 生成分类: {', '.join(generated_categories) if generated_categories else '无'}",
+            f"✓ 折叠区域使用Git提交: {len(all_git_commits)} 条"
         ])
         
         return changelog
@@ -1058,7 +1024,10 @@ class AIChangelogGenerator:
                 self.logger.info("✅ GitHub Actions摘要已生成")
                 
             except Exception as e:
-                self.logger.warning(f"⚠️ 生成GitHub Actions摘要失败: {e}")
+                    self.logger.warning(f"⚠️ 生成GitHub Actions摘要失败: {e}")
+            except Exception as e:
+                    self.logger.warning(f"⚠️ 获取Git提交信息失败: {e}")
+                    return [], f"Git错误-{version}", 0
         
         # 输出GitHub Actions变量
         github_output_file = os.getenv('GITHUB_OUTPUT')
