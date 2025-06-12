@@ -183,11 +183,10 @@ jobs:
           echo "📋 版本号: ${{ inputs.version }}"
           echo "🏷️ Release ID: ${{ inputs.release-id }}"
           echo "============================================​========================="
-          
-          python changelog.py \
+            python changelog.py \
             --version "${{ inputs.version }}" \
             --release-id "${{ inputs.release-id }}" \
-            --event-name "${{ github.event_name }}" \
+            --event-name "workflow_call" \
             --repo "${{ github.repository }}" \
             --github-token "${{ secrets.PAT }}" \
             --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
@@ -208,10 +207,9 @@ jobs:
           fi
           
           echo "============================================​========================="
-          
-          python changelog.py \
+            python changelog.py \
             --target "${{ inputs.target }}" \
-            --event-name "${{ github.event_name }}" \
+            --event-name "workflow_dispatch" \
             --repo "${{ github.repository }}" \
             --github-token "${{ secrets.PAT }}" \
             --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
