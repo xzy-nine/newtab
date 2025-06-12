@@ -151,8 +151,7 @@ jobs:
         echo "- 扩展名称: $NAME"
         echo "- 版本号: $VERSION"
         echo "- Release标签: ${{ needs.check-release-status.outputs.release-tag }}"
-        
-        # 清理临时文件
+          # 清理临时文件
         rm -rf temp_extract/
 
     - name: 获取Edge商店访问令牌
@@ -160,28 +159,19 @@ jobs:
       run: |
         echo "🔑 获取Edge商店访问令牌..."
         
-        # 准备认证数据
-        AUTH_DATA=$(cat << EOF
-        {
-          "client_id": "${{ secrets.EDGE_STORE_ID }}",
-          "client_secret": "${{ secrets.EDGE_STORE_KEY }}",
-          "scope": "https://api.addons.microsoftedge.microsoft.com/.default",
-          "grant_type": "client_credentials"
-        }
-        EOF
-        )
-        
-        # 获取访问令牌
+        # 获取访问令牌 - 使用表单编码格式
         TOKEN_RESPONSE=$(curl -s -X POST \
-          -H "Content-Type: application/json" \
-          -d "$AUTH_DATA" \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          -d "client_id=${{ secrets.EDGE_STORE_ID }}&client_secret=${{ secrets.EDGE_STORE_KEY }}&scope=https://api.addons.microsoftedge.microsoft.com/.default&grant_type=client_credentials" \
           "https://login.microsoftonline.com/5c9eedce-81bc-42f3-8823-48ba6258b391/oauth2/v2.0/token")
+        
+        echo "认证响应: $TOKEN_RESPONSE"
         
         ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
         
         if [ "$ACCESS_TOKEN" == "null" ] || [ -z "$ACCESS_TOKEN" ]; then
           echo "❌ 获取访问令牌失败:"
-          echo "$TOKEN_RESPONSE" | jq -r '.error_description // .error'
+          echo "$TOKEN_RESPONSE" | jq -r '.error_description // .error // "未知错误"'
           exit 1
         fi
         
