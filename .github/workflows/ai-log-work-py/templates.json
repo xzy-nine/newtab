@@ -1,0 +1,67 @@
+{
+  "changelog_templates": {
+    "ai_generated": {
+      "header": "# 版本 {version} 更新摘要 [AI生成的变更日志摘要]",
+      "overview": "## 📋 更新概览\n{summary}",
+      "highlights": "### ✨ 主要亮点\n{highlights}",
+      "divider": "\n---\n",
+      "category_header": "#### {title}",
+      "item_format": "- {icon} **{message}**  \n  `{hash}`\n",
+      "collapse_start": "\n<details>\n<summary>查看原始提交记录</summary>\n\n",
+      "collapse_end": "\n\n</details>\n"
+    },
+    
+    "basic_generated": {
+      "header": "# 版本 {version} 更新摘要 [AI生成的变更日志摘要]",
+      "overview": "## 📋 更新概览\n基于规则分析的版本更新",
+      "divider": "\n---\n",
+      "category_header": "#### {title}",
+      "item_format": "- **{message}**  \n  `{hash}`\n",
+      "collapse_start": "\n<details>\n<summary>查看原始提交记录</summary>\n\n",
+      "collapse_end": "\n\n</details>\n"
+    }
+  },
+  
+  "categories": {
+    "FEATURE": ["🚀 功能新增", 1],
+    "FIX": ["🐛 问题修复", 2],
+    "STYLE": ["💄 样式优化", 3],
+    "REFACTOR": ["♻️ 代码重构", 4],
+    "PERF": ["⚡ 性能优化", 2],
+    "DOCS": ["📝 文档更新", 5],
+    "BUILD": ["🏗️ 构建相关", 6],
+    "OTHER": ["🔧 其他改进", 7]
+  },
+  
+  "importance_icons": {
+    "5": "🔥",
+    "4": "⭐",
+    "3": "✨",
+    "2": "📌",
+    "1": "📍"
+  },
+  
+  "commit_patterns": {
+    "FEATURE": "^(feat|feature|新增|添加)",
+    "FIX": "^(fix|bug|修复|解决)",
+    "STYLE": "^(style|ui|样式|界面)",
+    "REFACTOR": "^(refactor|重构)",
+    "PERF": "^(perf|performance|优化|性能)",
+    "DOCS": "^(docs|doc|文档)",
+    "BUILD": "^(build|版本|构建)",
+    "OTHER": ".*"
+  },
+  
+  "cleanup_patterns": [
+    "^feat[:\\s]*",
+    "^fix[:\\s]*", 
+    "^style[:\\s]*",
+    "^refactor[:\\s]*",
+    "^perf[:\\s]*",
+    "^docs?[:\\s]*",
+    "^build[:\\s]*",
+    "^新增\\s*",
+    "^修复\\s*",
+    "^优化\\s*"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "deepseek_api": {
+    "model": "deepseek-chat",
+    "temperature": 0.3,
+    "max_tokens": 4000,
+    "timeout": 60
+  },
+  
+  "response_schema": {
+    "type": "object",
+    "properties": {
+      "categories": {
+        "type": "object",
+        "properties": {
+          "FEATURE": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "hash": {"type": "string"},
+                "message": {"type": "string"},
+                "importance": {"type": "integer", "minimum": 1, "maximum": 5}
+              },
+              "required": ["hash", "message", "importance"]
+            }
+          },
+          "FIX": {"$ref": "#/properties/categories/properties/FEATURE"},
+          "STYLE": {"$ref": "#/properties/categories/properties/FEATURE"},
+          "REFACTOR": {"$ref": "#/properties/categories/properties/FEATURE"},
+          "PERF": {"$ref": "#/properties/categories/properties/FEATURE"},
+          "DOCS": {"$ref": "#/properties/categories/properties/FEATURE"},
+          "BUILD": {"$ref": "#/properties/categories/properties/FEATURE"},
+          "OTHER": {"$ref": "#/properties/categories/properties/FEATURE"}
+        }
+      },
+      "summary": {"type": "string"},
+      "highlights": {
+        "type": "array",
+        "items": {"type": "string"}
+      }
+    },
+    "required": ["categories", "summary", "highlights"]
+  }
+}

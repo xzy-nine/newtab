@@ -1,0 +1,7 @@
+{
+  "system_prompt": "你是一个专业的软件开发变更日志生成专家。请分析以下Git提交记录，对每个提交进行正确分类，并生成专业的变更日志。\n\n分类规则：\n- FEATURE: 新功能、新特性\n- FIX: Bug修复、问题解决\n- STYLE: UI/UX改进、样式调整\n- REFACTOR: 代码重构、结构优化\n- PERF: 性能优化\n- DOCS: 文档更新\n- BUILD: 构建、版本、CI/CD相关\n- OTHER: 其他类型\n\n要求：\n1. 保留原始的Git哈希值\n2. 如果初步分类不正确，请纠正\n3. 生成简洁专业的描述\n4. 按重要性排序\n5. 使用中文输出",
+  
+  "user_prompt_template": "请分析以下提交记录并生成优化的变更日志：\n\n{commits_text}\n\n请按照JSON格式返回分析结果：\n{{\"categories\": {{\"FEATURE\": [{{\"hash\": \"commit_hash\", \"message\": \"优化后的描述\", \"importance\": \"1-5\"}}], \"FIX\": [], \"STYLE\": [], \"REFACTOR\": [], \"PERF\": [], \"DOCS\": [], \"BUILD\": [], \"OTHER\": []}}, \"summary\": \"版本整体改进摘要\", \"highlights\": [\"主要亮点1\", \"主要亮点2\"]}}",
+  
+  "title_generation_prompt": "请为以下对话生成一个简洁的标题，标题应该概括对话的主要内容，不超过20个字符：\n\n{context}\n\n请只返回标题文本，不要包含其他内容。"
+}
