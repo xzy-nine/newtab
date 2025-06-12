@@ -445,8 +445,9 @@ class AIChangelogGenerator:
             
             # 尝试解析JSON结果
             try:
+                # 首先尝试直接解析
                 ai_data = json.loads(ai_content)
-                self.logger.info("✅ DeepSeek API调用成功")
+                self.logger.info("✅ DeepSeek API调用成功 - 直接JSON格式")
                 
                 return AnalysisResult(
                     categories=ai_data.get('categories', {}),
@@ -455,8 +456,43 @@ class AIChangelogGenerator:
                 )
                 
             except json.JSONDecodeError:
-                self.logger.warning("⚠️ AI返回内容不是有效的JSON格式，使用基础分析结果")
-                self.logger.info(f"🔍 AI原始返回内容前100字符: {ai_content[:100]}...")
+                # 如果直接解析失败，尝试提取代码块中的JSON
+                self.logger.info("🔄 直接JSON解析失败，尝试提取代码块中的JSON...")
+                
+                # 查找代码块模式: ```json ... ``` 或 ``` ... ```
+                code_block_patterns = [
+                    r'```json\s*(.*?)\s*```',
+                    r'```\s*(.*?)\s*```'
+                ]
+                
+                extracted_json = None
+                for pattern in code_block_patterns:
+                    match = re.search(pattern, ai_content, re.DOTALL)
+                    if match:
+                        extracted_json = match.group(1).strip()
+                        self.logger.info(f"🔍 找到代码块，提取内容长度: {len(extracted_json)} 字符")
+                        break
+                
+                if extracted_json:
+                    try:
+                        ai_data = json.loads(extracted_json)
+                        self.logger.info("✅ DeepSeek API调用成功 - 代码块JSON格式")
+                        
+                        return AnalysisResult(
+                            categories=ai_data.get('categories', {}),
+                            summary=ai_data.get('summary', 'AI智能分析的版本更新'),
+                            highlights=ai_data.get('highlights', [])
+                        )
+                        
+                    except json.JSONDecodeError as e:
+                        self.logger.warning(f"⚠️ 代码块中的JSON解析也失败: {e}")
+                        self.logger.info(f"🔍 提取的内容前200字符: {extracted_json[:200]}...")
+                else:
+                    self.logger.warning("⚠️ 未找到有效的代码块格式")
+                
+                # 所有解析方法都失败
+                self.logger.warning("⚠️ AI返回内容无法解析为有效JSON，使用基础分析结果")
+                self.logger.info(f"🔍 AI原始返回内容前200字符: {ai_content[:200]}...")
                 return None
                 
         except requests.RequestException as e:
