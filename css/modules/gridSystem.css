@@ -11,7 +11,13 @@
   --grid-rows: 20;             /* 网格行数 */
   --grid-snap-threshold: 15px; /* 网格吸附阈值 */
   --page-zoom: 1;              /* 页面缩放比例 */
+  --zoom-compensation: 1;      /* 缩放补偿 */
+  --inverse-zoom: 1;           /* 反向缩放 */
 }
+
+/* ===========================================
+   网格辅助线样式
+   =========================================== */
 
 /* 添加网格辅助线样式 */
 .show-grid::before {
@@ -91,6 +97,16 @@
   background-color: rgba(58, 159, 255, 0.25);
 }
 
+/* 当页面缩放时的网格调整 */
+.debug-grid .grid-line {
+  transform: scale(var(--zoom-compensation, 1));
+  transform-origin: top left;
+}
+
+/* ===========================================
+   元素网格吸附样式
+   =========================================== */
+
 /* 元素在网格中移动时的过渡效果 */
 .grid-snapping {
   transition: left 0.15s ease-out, top 0.15s ease-out, 
@@ -100,4 +116,614 @@
 /* 小部件在网格中移动时的过渡效果 */
 .widget-container.grid-snapping {
   transition: left 0.15s ease-out, top 0.15s ease-out;
+}
+
+/* ===========================================
+   模态框网格支持样式
+   =========================================== */
+
+/* 启用网格的模态框容器 */
+.modal-grid-enabled {
+  position: fixed;
+}
+
+.modal-grid-enabled .modal-content {
+  position: absolute;
+  margin: 0 !important;
+}
+
+/* 模态框拖动状态样式 */
+.modal-content.dragging {
+  box-shadow: var(--box-shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.2));
+  opacity: 0.95;
+  cursor: move;
+  transform: scale(1.02);
+  z-index: 2001;
+}
+
+/* 模态框网格吸附状态样式 */
+.modal-content.grid-snapping {
+  border: 2px solid var(--color-primary, #007bff);
+  box-shadow: 
+    var(--box-shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.2)),
+    0 0 0 4px rgba(0, 123, 255, 0.2);
+  transition: left 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              top 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 拖动中的body样式 */
+body.modal-dragging {
+  cursor: move;
+  user-select: none;
+}
+
+/* 可拖动标题样式增强 */
+.modal-header.draggable::before,
+.modal-content h2.draggable::before {
+  content: "⋮⋮";
+  position: absolute;
+  right: 25px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--color-text-secondary, #666);
+  opacity: 0.6;
+  transition: opacity var(--transition-fast, 0.15s);
+}
+
+.modal-header.draggable:hover::before,
+.modal-content h2.draggable:hover::before {
+  opacity: 1;
+  color: var(--color-primary, #007bff);
+}
+
+/* 显示网格时模态框的辅助边框 */
+.show-grid .modal-content {
+  outline: 1px dashed rgba(0, 120, 255, 0.4);
+  outline-offset: 2px;
+}
+
+.show-grid .modal-content.dragging {
+  outline: 2px dashed rgba(0, 120, 255, 0.8);
+  outline-offset: 4px;
+}
+
+.show-grid .modal-content.grid-snapping {
+  outline: 2px solid rgba(0, 120, 255, 0.9);
+  outline-offset: 2px;
+}
+
+/* 网格对齐指示器 */
+.modal-content[data-grid-aligned="true"]::after {
+  content: "⊞";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  background: var(--color-primary, #007bff);
+  color: white;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 50%;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* ===========================================
+   网格提示样式
+   =========================================== */
+
+/* 通用网格提示样式 */
+.grid-hint,
+.modal-grid-hint {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 123, 255, 0.95);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 10000;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.grid-hint.visible,
+.modal-grid-hint.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.grid-hint.snapping,
+.modal-grid-hint.snapping {
+  background: rgba(40, 167, 69, 0.95);
+  animation: gridPulse 1.5s ease-in-out infinite;
+}
+
+.grid-hint-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grid-hint-icon {
+  font-size: 14px;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+}
+
+.grid-hint-icon.active {
+  opacity: 1;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+.grid-hint-text {
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.grid-hint-text.active {
+  font-weight: 600;
+}
+
+/* 脉冲动画 */
+@keyframes gridPulse {
+  0%, 100% { 
+    transform: scale(1) translateY(0);
+    opacity: 0.9;
+  }
+  50% { 
+    transform: scale(1.05) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ===========================================
+   拖拽相关的全局样式
+   =========================================== */
+
+.grid-dragging {
+  cursor: move;
+  user-select: none;
+}
+
+/* 拖拽中的元素样式 */
+.dragging {
+  opacity: 0.9;
+  z-index: 1000;
+}
+
+/* 小部件拖拽样式 */
+.widget-container.widget-dragging {
+  opacity: 0.8;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  cursor: move;
+  transition: none;
+}
+
+/* ===========================================
+   小部件网格位置属性
+   =========================================== */
+
+.widget-container {
+  /* 添加网格位置属性 */
+  --grid-x: 0;
+  --grid-y: 0;
+  --grid-columns: 1;
+  --grid-rows: 1;
+  /* 应用缩放补偿 */
+  transform-origin: top left !important;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: subpixel-antialiased;
+}
+
+/* ===========================================
+   深色模式样式
+   =========================================== */
+
+/* 深色模式下的网格模态框样式 */
+[data-theme="dark"] .show-grid .modal-content {
+  outline-color: rgba(58, 159, 255, 0.4);
+}
+
+[data-theme="dark"] .show-grid .modal-content.dragging {
+  outline-color: rgba(58, 159, 255, 0.8);
+}
+
+[data-theme="dark"] .show-grid .modal-content.grid-snapping {
+  outline-color: rgba(58, 159, 255, 0.9);
+}
+
+[data-theme="dark"] .modal-content.grid-snapping {
+  border-color: #3aa0ff;
+  box-shadow: 
+    var(--box-shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.2)),
+    0 0 0 4px rgba(58, 160, 255, 0.2);
+}
+
+/* 深色模式下的网格提示 */
+[data-theme="dark"] .grid-hint,
+[data-theme="dark"] .modal-grid-hint {
+  background: rgba(40, 40, 40, 0.9);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .grid-hint.snapping,
+[data-theme="dark"] .modal-grid-hint.snapping {
+  background: rgba(58, 160, 255, 0.9);
+}
+
+/* ===========================================
+   响应式调整
+   =========================================== */
+
+@media (max-width: 768px) {
+  .modal-grid-enabled .modal-content {
+    /* 在小屏幕上减少网格吸附的严格性 */
+    position: relative;
+  }
+  
+  .show-grid .modal-content {
+    outline-width: 1px;
+    outline-offset: 1px;
+  }
+  
+  .grid-hint,
+  .modal-grid-hint {
+    top: 10px;
+    right: 10px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  .grid-hint-content {
+    gap: 4px;
+  }
+  
+  .grid-hint-icon {
+    font-size: 12px;
+  }
+}
+
+/* ===========================================
+   高对比度模式支持
+   =========================================== */
+
+@media (prefers-contrast: high) {
+  .show-grid .modal-content {
+    outline-width: 2px;
+    outline-color: rgba(0, 120, 255, 0.8);
+  }
+  
+  .show-grid .modal-content.grid-snapping {
+    outline-width: 3px;
+    outline-color: rgba(0, 120, 255, 1);
+  }
+  
+  .grid-hint,
+  .modal-grid-hint {
+    background: rgba(0, 123, 255, 1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .grid-hint.snapping,
+  .modal-grid-hint.snapping {
+    background: rgba(40, 167, 69, 1);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .modal-content.grid-snapping {
+    border-width: 3px;
+    box-shadow: 
+      var(--box-shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.2)),
+      0 0 0 6px rgba(0, 123, 255, 0.3);
+  }
+}
+
+/* ===========================================
+   动画优化
+   =========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-content.grid-snapping,
+  .grid-snapping {
+    transition: none;
+  }
+  
+  .grid-hint,
+  .modal-grid-hint {
+    transition: none;
+  }
+  
+  .grid-hint.snapping,
+  .modal-grid-hint.snapping {
+    animation: none;
+  }
+}
+
+/* 深色模式下的网格样式 */
+[data-theme="dark"] .show-grid::after {
+  background-image: 
+    linear-gradient(to right, rgba(58, 159, 255, 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(58, 159, 255, 0.35) 1px, transparent 1px);
+}
+
+/* 网格调试线样式 */
+.debug-grid {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9997;
+  pointer-events: none;
+}
+
+.grid-line {
+  position: absolute;
+  background-color: rgba(0, 120, 255, 0.2);
+}
+
+.grid-line.vertical {
+  width: 1px;
+  top: 0;
+}
+
+.grid-line.horizontal {
+  height: 1px;
+  left: 0;
+}
+
+/* 在深色模式中调整网格调试线颜色 */
+[data-theme="dark"] .grid-line {
+  background-color: rgba(58, 159, 255, 0.25);
+}
+
+/* 元素在网格中移动时的过渡效果 */
+.grid-snapping {
+  transition: left 0.15s ease-out, top 0.15s ease-out, 
+              width 0.15s ease-out, height 0.15s ease-out;
+}
+
+/* 小部件在网格中移动时的过渡效果 */
+.widget-container.grid-snapping {
+  transition: left 0.15s ease-out, top 0.15s ease-out;
+}
+
+/* ===========================================
+   模态框网格支持样式
+   =========================================== */
+
+/* 启用网格的模态框容器 */
+.modal-grid-enabled {
+  position: fixed;
+}
+
+.modal-grid-enabled .modal-content {
+  position: absolute;
+  margin: 0 !important;
+}
+
+/* 模态框网格吸附过渡 */
+.modal-content.grid-snapping {
+  transition: left 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              top 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 显示网格时模态框的辅助边框 */
+.show-grid .modal-content {
+  outline: 1px dashed rgba(0, 120, 255, 0.4);
+  outline-offset: 2px;
+}
+
+.show-grid .modal-content.dragging {
+  outline: 2px dashed rgba(0, 120, 255, 0.8);
+  outline-offset: 4px;
+}
+
+.show-grid .modal-content.grid-snapping {
+  outline: 2px solid rgba(0, 120, 255, 0.9);
+  outline-offset: 2px;
+}
+
+/* 深色模式下的网格模态框样式 */
+[data-theme="dark"] .show-grid .modal-content {
+  outline-color: rgba(58, 159, 255, 0.4);
+}
+
+[data-theme="dark"] .show-grid .modal-content.dragging {
+  outline-color: rgba(58, 159, 255, 0.8);
+}
+
+[data-theme="dark"] .show-grid .modal-content.grid-snapping {
+  outline-color: rgba(58, 159, 255, 0.9);
+}
+
+/* 网格对齐指示器 */
+.modal-content[data-grid-aligned="true"]::after {
+  content: "⊞";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  background: var(--color-primary, #007bff);
+  color: white;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 50%;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* 通用网格提示样式 */
+.grid-hint {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 123, 255, 0.95);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 10000;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.grid-hint.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.grid-hint.snapping {
+  background: rgba(40, 167, 69, 0.95);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.grid-hint-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grid-hint-icon {
+  font-size: 14px;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+}
+
+.grid-hint-icon.active {
+  opacity: 1;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+.grid-hint-text {
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.grid-hint-text.active {
+  font-weight: 600;
+}
+
+/* 脉冲动画 */
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1) translateY(0);
+    opacity: 0.9;
+  }
+  50% { 
+    transform: scale(1.05) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 拖拽相关的全局样式 */
+.grid-dragging {
+  cursor: move;
+  user-select: none;
+}
+
+.grid-snapping {
+  transition: left 0.15s ease-out, top 0.15s ease-out;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .modal-grid-enabled .modal-content {
+    /* 在小屏幕上减少网格吸附的严格性 */
+    position: relative;
+  }
+  
+  .show-grid .modal-content {
+    outline-width: 1px;
+    outline-offset: 1px;
+  }
+  
+  .grid-hint {
+    top: 10px;
+    right: 10px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  .grid-hint-content {
+    gap: 4px;
+  }
+  
+  .grid-hint-icon {
+    font-size: 12px;
+  }
+}
+
+/* 高对比度模式下的网格模态框 */
+@media (prefers-contrast: high) {
+  .show-grid .modal-content {
+    outline-width: 2px;
+    outline-color: rgba(0, 120, 255, 0.8);
+  }
+  
+  .show-grid .modal-content.grid-snapping {
+    outline-width: 3px;
+    outline-color: rgba(0, 120, 255, 1);
+  }
+}
+
+/* 动画优化 */
+@media (prefers-reduced-motion: reduce) {
+  .modal-content.grid-snapping {
+    transition: none;
+  }
+  
+  .grid-hint,
+  .grid-snapping {
+    transition: none;
+  }
+  
+  .grid-hint.snapping {
+    animation: none;
+  }
+}
+
+/* 深色模式下的网格提示 */
+[data-theme="dark"] .grid-hint {
+  background: rgba(40, 40, 40, 0.9);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .grid-hint.snapping {
+  background: rgba(58, 160, 255, 0.9);
+}
+
+/* 高对比度模式下的网格提示 */
+@media (prefers-contrast: high) {
+  .grid-hint {
+    background: rgba(0, 123, 255, 1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .grid-hint.snapping {
+    background: rgba(40, 167, 69, 1);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
 }

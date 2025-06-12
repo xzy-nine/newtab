@@ -69,6 +69,8 @@
   box-shadow: var(--box-shadow-lg);
   opacity: 0.95;
   cursor: move;
+  transform: scale(1.02);
+  z-index: 2001;
 }
 
 /* 3. 模态框头部和标题 */
@@ -127,6 +129,7 @@
   display: block;
   margin-bottom: var(--spacing-xs);
   font-weight: bold;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .form-group input, 
@@ -135,6 +138,14 @@
   padding: var(--spacing-sm);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-sm);
+  background-color: #333;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.form-group input:focus, 
+.form-group textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(58, 160, 255, 0.3);
 }
 
 .form-error {
@@ -182,6 +193,7 @@
   grid-template-columns: repeat(4, 1fr);
   gap: var(--spacing-md);
   margin-top: var(--spacing-lg);
+  background-color: #333;
 }
 
 #icon-selector-modal .icon-option {

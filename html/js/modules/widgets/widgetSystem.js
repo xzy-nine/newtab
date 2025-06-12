@@ -67,13 +67,69 @@ function getI18nMessage(key, defaultText) {
 /**
  * 事件处理器集合
  */
-const EventHandlers = {
-    /**
+const EventHandlers = {    /**
      * 设置拖拽事件处理
      * @param {HTMLElement} handle - 拖拽手柄元素
      * @param {HTMLElement} container - 小部件容器元素
+     */    setupDragHandlers(handle, container) {
+        // 使用网格系统的统一拖拽功能
+        if (window.GridSystem && typeof window.GridSystem.registerDraggable === 'function') {
+            const dragController = window.GridSystem.registerDraggable(container, {
+                gridSnapEnabled: true,
+                showGridHint: true,
+                dragHandle: handle,
+                onDragStart: (e, dragState) => {
+                    // 如果容器是固定的，不允许拖动
+                    if (container.dataset.fixed === 'true') {
+                        const fixedTitle = getI18nMessage('widgetFixed', '小部件已固定');
+                        const fixedMessage = getI18nMessage('unfixWidgetToMove', '请先取消固定再移动');
+                        
+                        Notification.notify({
+                            title: fixedTitle,
+                            message: fixedMessage,
+                            type: 'info',
+                            duration: 2000
+                        });
+                        
+                        // 阻止拖拽
+                        dragState.isDragging = false;
+                        window.GridSystem.currentDragElement = null;
+                        return;
+                    }
+                    
+                    container.classList.add('widget-dragging');
+                },
+                onDragMove: (e, dragState, position) => {
+                    // 确保小部件在视口内
+                    WidgetSystem.ensureElementInViewport(container);
+                },
+                onDragEnd: (e, dragState) => {
+                    container.classList.remove('widget-dragging');
+                    
+                    // 自动网格吸附（无论是否按住 Shift）
+                    if (GridSystem.gridEnabled) {
+                        GridSystem.snapElementToGrid(container, true);
+                    }
+                    
+                    // 触发数据更改事件
+                    document.dispatchEvent(new CustomEvent('widget-data-changed'));
+                }
+            });
+            
+            // 存储拖拽控制器引用，便于后续操作
+            container._dragController = dragController;
+        } else {
+            // 降级到原始拖拽实现
+            this.setupDragHandlersFallback(handle, container);
+        }
+    },
+
+    /**
+     * 降级的拖拽事件处理（当网格系统不可用时使用）
+     * @param {HTMLElement} handle - 拖拽手柄元素
+     * @param {HTMLElement} container - 小部件容器元素
      */
-    setupDragHandlers(handle, container) {
+    setupDragHandlersFallback(handle, container) {
         let isDragging = false;
         
         handle.addEventListener('mousedown', (e) => {
@@ -1355,9 +1411,7 @@ export const WidgetSystem = {
      */
     handleGridEnabledZoom(zoomCompensation, gridInfo) {
         this.repositionWidgetsOnGridChange(zoomCompensation, gridInfo.columnCount, gridInfo.rowCount);
-    },
-
-    /**
+    },    /**
      * 处理网格禁用时的缩放
      * @param {number} zoomCompensation - 缩放补偿
      */
@@ -1365,11 +1419,11 @@ export const WidgetSystem = {
         // 使用requestAnimationFrame优化性能
         requestAnimationFrame(() => {
             state.widgetContainers.forEach(container => {
-                this.applyZoomCompensationToContainer(container, zoomCompensation);
+                WidgetSystem.applyZoomCompensationToContainer(container, zoomCompensation);
             });
             
             // 保存新的位置
-            this.saveWidgets();
+            WidgetSystem.saveWidgets();
         });
     },
 
@@ -1985,5 +2039,52 @@ export const WidgetSystem = {
         };
     },
 
+    /**
+     * 确保元素在视口内
+     * @param {HTMLElement} element - 要检查的元素
+     */
+    ensureElementInViewport(element) {
+        if (!element) return;
+        
+        const rect = element.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        let left = parseInt(element.style.left) || 0;
+        let top = parseInt(element.style.top) || 0;
+        const width = parseInt(element.style.width) || element.offsetWidth;
+        const height = parseInt(element.style.height) || element.offsetHeight;
+        
+        let changed = false;
+        
+        // 确保不超出右边界
+        if (left + width > viewportWidth) {
+            left = Math.max(0, viewportWidth - width);
+            changed = true;
+        }
+        
+        // 确保不超出下边界
+        if (top + height > viewportHeight) {
+            top = Math.max(0, viewportHeight - height);
+            changed = true;
+        }
+        
+        // 确保不超出左边界
+        if (left < 0) {
+            left = 0;
+            changed = true;
+        }
+        
+        // 确保不超出上边界
+        if (top < 0) {
+            top = 0;
+            changed = true;
+        }
+        
+        // 如果位置发生了变化，更新元素位置
+        if (changed) {
+            element.style.left = `${left}px`;
+            element.style.top = `${top}px`;
+        }    },
 };
 

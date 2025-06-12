@@ -11,19 +11,24 @@ import { I18n } from './i18n.js';
 /**
  * 菜单系统命名空间
  */
-export const Menu = {
-  /**
+export const Menu = {  /**
    * 显示表单模态框
    * @param {string} title 模态框标题
    * @param {Array} formItems 表单项配置数组
    * @param {Function} onConfirm 确认回调函数
    * @param {string} confirmText 确认按钮文本
    * @param {string} cancelText 取消按钮文本
-   * @returns {Object} 模态框控制对象: {close}
+   * @param {Object} options 额外选项：{gridSnap: boolean, draggable: boolean}
+   * @returns {Object} 模态框控制对象: {close, enableGridSnap, disableGridSnap}
    */
-  showFormModal: (title, formItems, onConfirm, confirmText, cancelText) => {
+  showFormModal: (title, formItems, onConfirm, confirmText, cancelText, options = {}) => {
     const modalId = 'form-modal-' + Date.now();
     const modal = Utils.createElement('div', 'modal', { id: modalId });
+    
+    // 如果启用网格功能，添加相应类名
+    if (options.gridSnap !== false && window.GridSystem && window.GridSystem.gridEnabled) {
+      modal.classList.add('modal-grid-enabled');
+    }
     
     const modalContent = Utils.createElement('div', 'modal-content', {}, 
       `<span class="modal-close">&times;</span><h2 class="modal-header">${title}</h2>`);
@@ -141,18 +146,82 @@ export const Menu = {
     document.body.appendChild(modal);
     
     modal.style.display = 'block';
-    
-    // 添加拖动功能
-    Menu._makeModalDraggable(modal, modalContent);
+      // 添加拖动功能
+    Menu._makeModalDraggable(modal, modalContent, options);
     
     // 将模态框居中显示
     Menu._centerModal(modal, modalContent);
     
     const close = () => {
       modal.style.display = 'none';
+      Menu._hideGridHint(); // 隐藏网格提示
       setTimeout(() => {
         if (document.body.contains(modal)) document.body.removeChild(modal);
       }, 300);
+    };
+    
+    // 创建控制对象
+    const modalControls = {
+      close,
+      
+      // 启用网格吸附
+      enableGridSnap: () => {
+        if (modalContent._dragState) {
+          modalContent._dragState.setGridSnap(true);
+          modal.classList.add('modal-grid-enabled');
+        }
+      },
+      
+      // 禁用网格吸附
+      disableGridSnap: () => {
+        if (modalContent._dragState) {
+          modalContent._dragState.setGridSnap(false);
+          modal.classList.remove('modal-grid-enabled');
+        }
+      },
+      
+      // 手动吸附到网格
+      snapToGrid: () => {
+        if (window.GridSystem && window.GridSystem.gridEnabled) {
+          const currentLeft = parseInt(modalContent.style.left) || 0;
+          const currentTop = parseInt(modalContent.style.top) || 0;
+          const snappedPos = Menu._snapToGrid(
+            currentLeft, 
+            currentTop, 
+            modalContent.offsetWidth, 
+            modalContent.offsetHeight
+          );
+          
+          modalContent.style.transition = 'left 0.3s ease-out, top 0.3s ease-out';
+          modalContent.style.left = `${snappedPos.x}px`;
+          modalContent.style.top = `${snappedPos.y}px`;
+          
+          setTimeout(() => {
+            modalContent.style.transition = '';
+          }, 300);
+        }
+      },
+      
+      // 获取当前位置
+      getPosition: () => ({
+        left: parseInt(modalContent.style.left) || 0,
+        top: parseInt(modalContent.style.top) || 0,
+        width: modalContent.offsetWidth,
+        height: modalContent.offsetHeight
+      }),
+      
+      // 设置位置
+      setPosition: (left, top, animate = false) => {
+        if (animate) {
+          modalContent.style.transition = 'left 0.3s ease-out, top 0.3s ease-out';
+          setTimeout(() => {
+            modalContent.style.transition = '';
+          }, 300);
+        }
+        modalContent.style.left = `${left}px`;
+        modalContent.style.top = `${top}px`;
+        Menu._keepModalInViewport(modalContent);
+      }
     };
     
     confirmButton.addEventListener('click', () => {
@@ -214,11 +283,10 @@ export const Menu = {
     });
     
     cancelButton.addEventListener('click', close);
-    
-    modal.querySelector('.modal-close').addEventListener('click', close);
+      modal.querySelector('.modal-close').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
     
-    return { close };
+    return modalControls;
   },
 
   /**
@@ -238,11 +306,10 @@ export const Menu = {
             modal.classList.remove('visible');
           }
         });
-        
-        // 为已有的模态框添加拖动功能
+          // 为已有的模态框添加拖动功能
         const modalContent = modal.querySelector('.modal-content');
         if (modalContent) {
-          Menu._makeModalDraggable(modal, modalContent);
+          Menu._makeModalDraggable(modal, modalContent, { gridSnap: true });
         }
       });
     },
@@ -618,10 +685,16 @@ export const Menu = {
           Menu.Modal.hide(modalId);
           onReset();
         });
-      }
-      
-      // 显示模态框
+      }      // 显示模态框
       Menu.Modal.show(modalId);
+      
+      // 添加拖动和网格支持
+      const imageModalContent = modal.querySelector('.modal-content');
+      if (imageModalContent) {
+        Menu._makeModalDraggable(modal, imageModalContent, { 
+          gridSnap: options.gridSnap !== false 
+        });
+      }
       
       // 如果存在onShow回调，执行它
       if (typeof options.onShow === 'function') {
@@ -632,17 +705,13 @@ export const Menu = {
       
       return modal;
     }
-  },
-
-  /**
+  },  /**
    * 使模态框可拖动
    * @param {HTMLElement} modal - 模态框元素
    * @param {HTMLElement} modalContent - 模态框内容元素
+   * @param {Object} options - 拖动选项
    */
-  _makeModalDraggable: function(modal, modalContent) {
-    let isDragging = false;
-    let offsetX, offsetY;
-    
+  _makeModalDraggable: function(modal, modalContent, options = {}) {
     // 查找模态框标题元素作为拖动区域
     const dragHandle = modalContent.querySelector('.modal-header, h2');
     
@@ -651,57 +720,51 @@ export const Menu = {
     // 添加指示可拖动的样式
     dragHandle.classList.add('draggable');
     
-    // 开始拖动
-    dragHandle.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return; // 只响应左键点击
-      
-      isDragging = true;
-      
-      // 计算鼠标在模态框内容中的位置偏移
-      const rect = modalContent.getBoundingClientRect();
-      offsetX = e.clientX - rect.left;
-      offsetY = e.clientY - rect.top;
-      
-      // 防止文本选择
-      e.preventDefault();
-      
-      // 添加拖动中样式
-      modalContent.classList.add('dragging');
-    });
+    // 添加拖动提示
+    dragHandle.title = I18n.getMessage('modalDragHint', '拖拽移动窗口，按住Shift键进行网格吸附');
     
-    // 拖动过程
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
+    // 使用网格系统的统一拖拽功能
+    if (window.GridSystem && typeof window.GridSystem.registerDraggable === 'function') {
+      const dragController = window.GridSystem.registerDraggable(modalContent, {
+        gridSnapEnabled: options.gridSnap !== false,
+        showGridHint: true,
+        dragHandle: dragHandle,
+        onDragStart: (e, dragState) => {
+          modalContent.classList.add('dragging');
+          document.body.classList.add('modal-dragging');
+        },
+        onDragMove: (e, dragState, position) => {
+          // 确保模态框不会被拖出屏幕
+          Menu._keepModalInViewport(modalContent);
+        },
+        onDragEnd: (e, dragState) => {
+          modalContent.classList.remove('dragging');
+          document.body.classList.remove('modal-dragging');
+        }
+      });
       
-      // 计算新位置
-      const x = e.clientX - offsetX;
-      const y = e.clientY - offsetY;
-      
-      // 更新模态框位置
-      modalContent.style.left = `${x}px`;
-      modalContent.style.top = `${y}px`;
-      
-      // 确保模态框不会被拖出屏幕
-      Menu._keepModalInViewport(modalContent);
-    });
-    
-    // 结束拖动
-    document.addEventListener('mouseup', () => {
-      if (isDragging) {
-        isDragging = false;
-        modalContent.classList.remove('dragging');
-      }
-    });
-    
-    // 防止拖动过程中触发内部点击事件
-    modalContent.addEventListener('click', (e) => {
-      if (isDragging) {
-        e.stopPropagation();
-      }
-    });
+      // 保存拖动状态到modalContent以便其他方法访问
+      modalContent._dragState = {
+        isDragging: () => {
+          const state = window.GridSystem.dragStates.get(modalContent);
+          return state ? state.isDragging : false;
+        },
+        gridSnapEnabled: () => {
+          const state = window.GridSystem.dragStates.get(modalContent);
+          return state ? state.gridSnapEnabled : false;
+        },
+        setGridSnap: (enabled) => {
+          if (dragController) {
+            dragController.setGridSnapEnabled(enabled);
+          }
+        }
+      };
+    } else {
+      // 降级到原始拖拽实现
+      this._makeModalDraggableFallback(modal, modalContent, options);
+    }
   },
-  
-  /**
+    /**
    * 使模态框保持在视窗内
    * @param {HTMLElement} modalContent - 模态框内容元素
    */
@@ -722,6 +785,97 @@ export const Menu = {
       modalContent.style.top = '0px';
     } else if (rect.bottom > viewportHeight) {
       modalContent.style.top = `${viewportHeight - rect.height}px`;
+    }
+  },
+  
+  /**
+   * 网格吸附功能
+   * @param {number} x - X坐标
+   * @param {number} y - Y坐标
+   * @param {number} width - 元素宽度
+   * @param {number} height - 元素高度
+   * @returns {Object} 吸附后的位置 {x, y}
+   */
+  _snapToGrid: function(x, y, width, height) {
+    if (!window.GridSystem || !window.GridSystem.gridEnabled) {
+      return { x, y };
+    }
+    
+    try {
+      // 使用网格系统的吸附功能
+      const gridPosition = window.GridSystem.pixelToGridPosition(x, y, width, height);
+      const snappedPosition = window.GridSystem.gridToPixelPosition(gridPosition);
+      
+      return {
+        x: snappedPosition.left,
+        y: snappedPosition.top
+      };
+    } catch (error) {
+      console.warn('网格吸附失败:', error);
+      return { x, y };
+    }
+  },
+  
+  /**
+   * 显示网格提示
+   * @param {HTMLElement} modalContent - 模态框内容元素
+   */
+  _showGridHint: function(modalContent) {
+    let hint = document.getElementById('modal-grid-hint');
+    if (!hint) {
+      hint = Utils.createElement('div', 'modal-grid-hint', { id: 'modal-grid-hint' });
+      document.body.appendChild(hint);
+    }
+    
+    hint.innerHTML = `
+      <div class="grid-hint-content">
+        <span class="grid-hint-icon">⊞</span>
+        <span class="grid-hint-text">${I18n.getMessage('gridSnapHint', '按住 Shift 键进行网格吸附')}</span>
+      </div>
+    `;
+    
+    hint.classList.add('visible');
+  },
+  
+  /**
+   * 更新网格提示状态
+   * @param {HTMLElement} modalContent - 模态框内容元素
+   * @param {boolean} isSnapping - 是否正在吸附
+   */
+  _updateGridHint: function(modalContent, isSnapping) {
+    const hint = document.getElementById('modal-grid-hint');
+    if (!hint) return;
+    
+    const content = hint.querySelector('.grid-hint-content');
+    if (!content) return;
+    
+    if (isSnapping) {
+      content.innerHTML = `
+        <span class="grid-hint-icon active">⊞</span>
+        <span class="grid-hint-text active">${I18n.getMessage('gridSnapping', '网格吸附已启用')}</span>
+      `;
+      hint.classList.add('snapping');
+    } else {
+      content.innerHTML = `
+        <span class="grid-hint-icon">⊞</span>
+        <span class="grid-hint-text">${I18n.getMessage('gridSnapHint', '按住 Shift 键进行网格吸附')}</span>
+      `;
+      hint.classList.remove('snapping');
+    }
+  },
+  
+  /**
+   * 隐藏网格提示
+   */
+  _hideGridHint: function() {
+    const hint = document.getElementById('modal-grid-hint');
+    if (hint) {
+      hint.classList.remove('visible', 'snapping');
+      setTimeout(() => {
+        if (hint.parentNode) {
+          hint.parentNode.removeChild(hint);
+        }
+      }, 300);
     }
   },
   
@@ -751,7 +905,134 @@ export const Menu = {
       modalContent.style.left = `${x}px`;
       modalContent.style.top = `${y}px`;
       modalContent.style.margin = '0';    }, 0);
-  }
+  },
+
+  /**
+   * 降级的模态框拖拽实现（当网格系统不可用时使用）
+   * @param {HTMLElement} modal - 模态框元素
+   * @param {HTMLElement} modalContent - 模态框内容元素
+   * @param {Object} options - 拖动选项
+   */
+  _makeModalDraggableFallback: function(modal, modalContent, options = {}) {
+    let isDragging = false;
+    let dragStartX, dragStartY;
+    let offsetX, offsetY;
+    let gridSnapEnabled = options.gridSnap !== false;
+    let gridSnapKeyPressed = false;
+    
+    const dragHandle = modalContent.querySelector('.modal-header, h2');
+    if (!dragHandle) return;
+    
+    // 开始拖动
+    const startDrag = (e) => {
+      if (e.button !== 0) return;
+      
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      
+      const rect = modalContent.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      modalContent.classList.add('dragging');
+      document.body.classList.add('modal-dragging');
+      
+      if (window.GridSystem && window.GridSystem.gridEnabled) {
+        Menu._showGridHint(modalContent);
+      }
+    };
+    
+    // 拖动过程
+    const handleDrag = (e) => {
+      if (!isDragging) return;
+      
+      gridSnapKeyPressed = e.shiftKey;
+      
+      let x = e.clientX - offsetX;
+      let y = e.clientY - offsetY;
+      
+      if (gridSnapEnabled && gridSnapKeyPressed && window.GridSystem && window.GridSystem.gridEnabled) {
+        const snappedPos = Menu._snapToGrid(x, y, modalContent.offsetWidth, modalContent.offsetHeight);
+        x = snappedPos.x;
+        y = snappedPos.y;
+        modalContent.classList.add('grid-snapping');
+      } else {
+        modalContent.classList.remove('grid-snapping');
+      }
+      
+      modalContent.style.left = `${x}px`;
+      modalContent.style.top = `${y}px`;
+      
+      Menu._keepModalInViewport(modalContent);
+      
+      if (window.GridSystem && window.GridSystem.gridEnabled) {
+        Menu._updateGridHint(modalContent, gridSnapKeyPressed);
+      }
+    };
+    
+    // 结束拖动
+    const endDrag = (e) => {
+      if (!isDragging) return;
+      
+      isDragging = false;
+      modalContent.classList.remove('dragging', 'grid-snapping');
+      document.body.classList.remove('modal-dragging');
+      
+      if (gridSnapEnabled && gridSnapKeyPressed && window.GridSystem && window.GridSystem.gridEnabled) {
+        const currentLeft = parseInt(modalContent.style.left) || 0;
+        const currentTop = parseInt(modalContent.style.top) || 0;
+        const snappedPos = Menu._snapToGrid(currentLeft, currentTop, modalContent.offsetWidth, modalContent.offsetHeight);
+        
+        modalContent.style.transition = 'left 0.2s ease-out, top 0.2s ease-out';
+        modalContent.style.left = `${snappedPos.x}px`;
+        modalContent.style.top = `${snappedPos.y}px`;
+        
+        setTimeout(() => {
+          modalContent.style.transition = '';
+        }, 200);
+      }
+      
+      Menu._hideGridHint();
+    };
+    
+    // 绑定事件
+    dragHandle.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', handleDrag);
+    document.addEventListener('mouseup', endDrag);
+    
+    // 键盘事件监听
+    document.addEventListener('keydown', (e) => {
+      if (isDragging && e.key === 'Shift') {
+        gridSnapKeyPressed = true;
+        if (window.GridSystem && window.GridSystem.gridEnabled) {
+          Menu._updateGridHint(modalContent, true);
+        }
+      }
+    });
+    
+    document.addEventListener('keyup', (e) => {
+      if (isDragging && e.key === 'Shift') {
+        gridSnapKeyPressed = false;
+        modalContent.classList.remove('grid-snapping');
+        if (window.GridSystem && window.GridSystem.gridEnabled) {
+          Menu._updateGridHint(modalContent, false);
+        }
+      }
+    });
+    
+    // 保存拖动状态
+    modalContent._dragState = {
+      isDragging: () => isDragging,
+      gridSnapEnabled: () => gridSnapEnabled,
+      setGridSnap: (enabled) => { gridSnapEnabled = enabled; }
+    };
+  },
+
+  // ...existing code...
 };
 
 // 只在 DOM 环境中执行初始化代码

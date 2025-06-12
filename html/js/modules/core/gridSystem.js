@@ -32,6 +32,11 @@ export const GridSystem = {
     minCellSize: 10,         // 最小单元格大小（从40减小到20）
     minGridGap: 2,           // 最小网格间隙（从4减小到2）
 
+    // Shift 键吸附功能相关状态
+    dragStates: new Map(),   // 存储每个元素的拖拽状态
+    isShiftPressed: false,   // 全局 Shift 键状态
+    currentDragElement: null, // 当前正在拖拽的元素
+    
     /**
      * 初始化网格系统
      * @returns {Promise<void>}
@@ -40,7 +45,13 @@ export const GridSystem = {
         try {
             // 将GridSystem暴露到全局作用域
             window.GridSystem = this;
-              // 加载网格系统设置
+              // 初始化键盘监听
+            this._initKeyboardListeners();
+            
+            // 初始化全局拖拽事件
+            this._initGlobalDragEvents();
+            
+            // 加载网格系统设置
             const gridSettings = await chrome.storage.local.get([
                 'widgetGridDebug'
             ]);
@@ -581,6 +592,368 @@ export const GridSystem = {
                 }
             }
         ];
+    },
+
+    /**
+     * 初始化键盘监听器
+     * @private
+     */
+    _initKeyboardListeners() {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') {
+                this.isShiftPressed = true;
+                this._updateDragStates();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                this.isShiftPressed = false;
+                this._updateDragStates();
+            }
+        });
+
+        // 当页面失去焦点时重置键盘状态
+        window.addEventListener('blur', () => {
+            this.isShiftPressed = false;
+            this._updateDragStates();
+        });
+    },
+
+    /**
+     * 更新所有拖拽状态
+     * @private
+     */
+    _updateDragStates() {
+        this.dragStates.forEach((dragState, element) => {
+            if (dragState.isDragging) {
+                dragState.shiftPressed = this.isShiftPressed;
+                this._updateElementDragState(element, dragState);
+            }
+        });
+    },
+
+    /**
+     * 更新单个元素的拖拽状态
+     * @private
+     * @param {HTMLElement} element - 目标元素
+     * @param {Object} dragState - 拖拽状态对象
+     */
+    _updateElementDragState(element, dragState) {
+        const shouldSnap = dragState.gridSnapEnabled && this.isShiftPressed;
+        
+        // 更新视觉反馈
+        if (shouldSnap) {
+            element.classList.add('grid-snapping');
+        } else {
+            element.classList.remove('grid-snapping');
+        }
+
+        // 更新网格提示
+        if (dragState.showGridHint) {
+            this._updateGridHint(element, shouldSnap);
+        }
+
+        // 触发自定义回调
+        if (typeof dragState.onShiftStateChange === 'function') {
+            dragState.onShiftStateChange(this.isShiftPressed, shouldSnap);
+        }
+    },
+
+    /**
+     * 注册元素的拖拽功能，支持 Shift 键网格吸附
+     * @param {HTMLElement} element - 要注册的元素
+     * @param {Object} options - 拖拽选项
+     * @param {boolean} options.gridSnapEnabled - 是否启用网格吸附（默认 true）
+     * @param {boolean} options.showGridHint - 是否显示网格提示（默认 true）
+     * @param {Function} options.onDragStart - 拖拽开始回调
+     * @param {Function} options.onDragMove - 拖拽移动回调
+     * @param {Function} options.onDragEnd - 拖拽结束回调
+     * @param {Function} options.onShiftStateChange - Shift 状态变化回调
+     * @param {HTMLElement} options.dragHandle - 拖拽手柄元素（默认为 element）
+     * @returns {Object} 拖拽状态对象
+     */
+    registerDraggable(element, options = {}) {
+        const dragState = {
+            isDragging: false,
+            shiftPressed: false,
+            gridSnapEnabled: options.gridSnapEnabled !== false,
+            showGridHint: options.showGridHint !== false,
+            onDragStart: options.onDragStart,
+            onDragMove: options.onDragMove,
+            onDragEnd: options.onDragEnd,
+            onShiftStateChange: options.onShiftStateChange,
+            startX: 0,
+            startY: 0,
+            offsetX: 0,
+            offsetY: 0
+        };
+
+        this.dragStates.set(element, dragState);
+
+        const dragHandle = options.dragHandle || element;
+        
+        // 添加拖拽开始事件
+        const startDrag = (e) => {
+            if (e.button !== 0) return; // 只响应左键点击
+            
+            dragState.isDragging = true;
+            dragState.shiftPressed = this.isShiftPressed;
+            dragState.startX = e.clientX;
+            dragState.startY = e.clientY;
+            
+            // 计算偏移量
+            const rect = element.getBoundingClientRect();
+            dragState.offsetX = e.clientX - rect.left;
+            dragState.offsetY = e.clientY - rect.top;
+            
+            this.currentDragElement = element;
+            
+            // 防止文本选择
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // 添加拖拽样式
+            element.classList.add('dragging');
+            document.body.classList.add('grid-dragging');
+            
+            // 显示网格提示
+            if (dragState.showGridHint && this.gridEnabled) {
+                this._showGridHint(element);
+            }
+            
+            // 触发开始回调
+            if (typeof dragState.onDragStart === 'function') {
+                dragState.onDragStart(e, dragState);
+            }
+        };
+
+        dragHandle.addEventListener('mousedown', startDrag);
+
+        // 返回控制对象
+        return {
+            setGridSnapEnabled: (enabled) => {
+                dragState.gridSnapEnabled = enabled;
+            },
+            setShowGridHint: (show) => {
+                dragState.showGridHint = show;
+            },
+            destroy: () => {
+                this.dragStates.delete(element);
+                dragHandle.removeEventListener('mousedown', startDrag);
+            }
+        };
+    },
+
+    /**
+     * 初始化全局拖拽移动和结束事件
+     * @private
+     */
+    _initGlobalDragEvents() {
+        let lastMoveEvent = null;
+        
+        document.addEventListener('mousemove', (e) => {
+            lastMoveEvent = e;
+            if (this.currentDragElement) {
+                const dragState = this.dragStates.get(this.currentDragElement);
+                if (dragState && dragState.isDragging) {
+                    this._handleDragMove(this.currentDragElement, dragState, e);
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (this.currentDragElement) {
+                const dragState = this.dragStates.get(this.currentDragElement);
+                if (dragState && dragState.isDragging) {
+                    this._handleDragEnd(this.currentDragElement, dragState, e);
+                }
+            }
+        });
+
+        // 防止页面拖拽时选择文本
+        document.addEventListener('selectstart', (e) => {
+            if (this.currentDragElement) {
+                e.preventDefault();
+            }
+        });
+    },
+
+    /**
+     * 处理拖拽移动
+     * @private
+     * @param {HTMLElement} element - 拖拽元素
+     * @param {Object} dragState - 拖拽状态
+     * @param {MouseEvent} e - 鼠标事件
+     */
+    _handleDragMove(element, dragState, e) {
+        // 更新 Shift 键状态
+        dragState.shiftPressed = this.isShiftPressed;
+        
+        // 计算新位置
+        let x = e.clientX - dragState.offsetX;
+        let y = e.clientY - dragState.offsetY;
+        
+        // 应用网格吸附
+        if (dragState.gridSnapEnabled && this.isShiftPressed && this.gridEnabled) {
+            const snappedPos = this.snapToGrid(x, y, element.offsetWidth, element.offsetHeight);
+            x = snappedPos.x;
+            y = snappedPos.y;
+            
+            element.classList.add('grid-snapping');
+        } else {
+            element.classList.remove('grid-snapping');
+        }
+        
+        // 更新位置
+        element.style.left = `${x}px`;
+        element.style.top = `${y}px`;
+        
+        // 更新网格提示
+        if (dragState.showGridHint) {
+            this._updateGridHint(element, dragState.gridSnapEnabled && this.isShiftPressed);
+        }
+        
+        // 触发移动回调
+        if (typeof dragState.onDragMove === 'function') {
+            dragState.onDragMove(e, dragState, { x, y });
+        }
+    },
+
+    /**
+     * 处理拖拽结束
+     * @private
+     * @param {HTMLElement} element - 拖拽元素
+     * @param {Object} dragState - 拖拽状态
+     * @param {MouseEvent} e - 鼠标事件
+     */
+    _handleDragEnd(element, dragState, e) {
+        dragState.isDragging = false;
+        this.currentDragElement = null;
+        
+        // 移除拖拽样式
+        element.classList.remove('dragging', 'grid-snapping');
+        document.body.classList.remove('grid-dragging');
+        
+        // 最终网格吸附
+        if (dragState.gridSnapEnabled && this.isShiftPressed && this.gridEnabled) {
+            const currentLeft = parseInt(element.style.left) || 0;
+            const currentTop = parseInt(element.style.top) || 0;
+            const snappedPos = this.snapToGrid(currentLeft, currentTop, element.offsetWidth, element.offsetHeight);
+            
+            // 平滑过渡到吸附位置
+            element.style.transition = 'left 0.2s ease-out, top 0.2s ease-out';
+            element.style.left = `${snappedPos.x}px`;
+            element.style.top = `${snappedPos.y}px`;
+            
+            setTimeout(() => {
+                element.style.transition = '';
+            }, 200);
+        }
+        
+        // 隐藏网格提示
+        if (dragState.showGridHint) {
+            this._hideGridHint();
+        }
+        
+        // 触发结束回调
+        if (typeof dragState.onDragEnd === 'function') {
+            dragState.onDragEnd(e, dragState);
+        }
+    },
+
+    /**
+     * 显示网格提示
+     * @private
+     * @param {HTMLElement} element - 目标元素
+     */
+    _showGridHint(element) {
+        let hint = document.getElementById('grid-hint');
+        if (!hint) {
+            hint = Utils.createElement('div', 'grid-hint', { id: 'grid-hint' });
+            document.body.appendChild(hint);
+        }
+        
+        hint.innerHTML = `
+            <div class="grid-hint-content">
+                <span class="grid-hint-icon">⊞</span>
+                <span class="grid-hint-text">${getI18nMessage('gridSnapHint', '按住 Shift 键进行网格吸附')}</span>
+            </div>
+        `;
+        
+        hint.classList.add('visible');
+    },
+
+    /**
+     * 更新网格提示状态
+     * @private
+     * @param {HTMLElement} element - 目标元素
+     * @param {boolean} isSnapping - 是否正在吸附
+     */
+    _updateGridHint(element, isSnapping) {
+        const hint = document.getElementById('grid-hint');
+        if (!hint) return;
+        
+        const content = hint.querySelector('.grid-hint-content');
+        if (!content) return;
+        
+        if (isSnapping) {
+            content.innerHTML = `
+                <span class="grid-hint-icon active">⊞</span>
+                <span class="grid-hint-text active">${getI18nMessage('gridSnapping', '网格吸附已启用')}</span>
+            `;
+            hint.classList.add('snapping');
+        } else {
+            content.innerHTML = `
+                <span class="grid-hint-icon">⊞</span>
+                <span class="grid-hint-text">${getI18nMessage('gridSnapHint', '按住 Shift 键进行网格吸附')}</span>
+            `;
+            hint.classList.remove('snapping');
+        }
+    },
+
+    /**
+     * 隐藏网格提示
+     * @private
+     */
+    _hideGridHint() {
+        const hint = document.getElementById('grid-hint');
+        if (hint) {
+            hint.classList.remove('visible', 'snapping');
+            setTimeout(() => {
+                if (hint.parentNode) {
+                    hint.parentNode.removeChild(hint);
+                }
+            }, 300);
+        }
+    },
+
+    /**
+     * 网格吸附位置计算（不依赖元素）
+     * @param {number} x - X 坐标
+     * @param {number} y - Y 坐标  
+     * @param {number} width - 宽度
+     * @param {number} height - 高度
+     * @returns {Object} 吸附后的位置 {x, y}
+     */
+    snapToGrid(x, y, width, height) {
+        if (!this.gridEnabled) {
+            return { x, y };
+        }
+        
+        try {
+            // 使用网格系统的吸附功能
+            const gridPosition = this.pixelToGridPosition(x, y, width, height);
+            const snappedPosition = this.gridToPixelPosition(gridPosition);
+            
+            return {
+                x: snappedPosition.left,
+                y: snappedPosition.top
+            };
+        } catch (error) {
+            console.warn('网格吸附失败:', error);
+            return { x, y };
+        }
     },
 };
 
