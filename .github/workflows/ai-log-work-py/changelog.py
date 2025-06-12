@@ -108,6 +108,10 @@ class AIChangelogGenerator:
             "Authorization": f"Bearer {deepseek_api_key}",
             "Content-Type": "application/json"
         }
+        
+        # 实时摘要管理
+        self.step_summary_file = os.getenv('GITHUB_STEP_SUMMARY')
+        self.summary_sections = {}
     
     def _print_step_summary(self, step_name: str, status: str = "进行中", details: List[str] = None, 
                            progress: Optional[Tuple[int, int]] = None):
@@ -150,6 +154,13 @@ class AIChangelogGenerator:
         
         # 刷新输出
         sys.stdout.flush()
+        
+        # 更新GitHub Actions摘要
+        detail_text = ""
+        if details:
+            detail_text = "; ".join(details[:2])  # 只取前两条详细信息避免过长
+        
+        self._update_github_summary(step_name, detail_text, status)
     
     def _update_progress(self, current: int, total: int, description: str = ""):
         """
@@ -685,7 +696,7 @@ class AIChangelogGenerator:
                     "✅ DeepSeek API调用成功",
                     "✅ JSON格式解析成功",
                     f"✓ 分析摘要: {ai_data.get('summary', 'AI智能分析')[:50]}..."
-                ])
+                )
                 
                 return AnalysisResult(
                     categories=ai_data.get('categories', {}),
@@ -714,7 +725,7 @@ class AIChangelogGenerator:
                             "✅ DeepSeek API调用成功",
                             "✅ 代码块JSON格式解析成功",
                             f"✓ 分析摘要: {ai_data.get('summary', 'AI智能分析')[:50]}..."
-                        ])
+                        )
                         
                         return AnalysisResult(
                             categories=ai_data.get('categories', {}),
@@ -1102,6 +1113,97 @@ class AIChangelogGenerator:
         
         return all_releases
     
+    def _update_github_summary(self, section: str, content: str, status: str = "进行中"):
+        """
+        更新GitHub Actions摘要
+        
+        Args:
+            section: 章节名称
+            content: 内容
+            status: 状态 (进行中、完成、失败)
+        """
+        if not self.step_summary_file:
+            return
+        
+        try:
+            # 状态图标映射
+            status_icons = {
+                "进行中": "⏳",
+                "完成": "✅", 
+                "失败": "❌",
+                "跳过": "⏩",
+                "警告": "⚠️"
+            }
+            
+            icon = status_icons.get(status, "ℹ️")
+            current_time = datetime.now().strftime('%H:%M:%S')
+            
+            # 更新或添加章节
+            self.summary_sections[section] = {
+                "icon": icon,
+                "status": status,
+                "content": content,
+                "time": current_time
+            }
+            
+            # 重新生成完整摘要
+            self._regenerate_full_summary()
+            
+        except Exception as e:
+            self.logger.warning(f"⚠️ 更新GitHub摘要失败: {e}")
+    
+    def _regenerate_full_summary(self):
+        """重新生成完整的GitHub Actions摘要"""
+        if not self.step_summary_file:
+            return
+        
+        try:
+            summary_content = "# 🤖 AI变更日志生成 - 实时状态\n\n"
+            
+            # 按预定义顺序显示章节
+            section_order = [
+                "初始化", "参数验证", "获取Release信息", 
+                "检查优化状态", "获取提交信息", "提交分类",
+                "AI智能分析", "生成变更日志", "更新Release",
+                "批量处理进度", "执行完成"
+            ]
+            
+            summary_content += "## 📊 执行进度\n\n"
+            
+            for section in section_order:
+                if section in self.summary_sections:
+                    info = self.summary_sections[section]
+                    summary_content += f"- {info['icon']} **{section}** ({info['time']}) - {info['status']}\n"
+                    if info['content'] and info['status'] in ["完成", "失败", "警告"]:
+                        # 为完成、失败或警告状态添加详细信息
+                        summary_content += f"  - {info['content']}\n"
+            
+            # 添加实时统计信息
+            if hasattr(self, 'batch_stats') and self.batch_stats.total_releases > 0:
+                elapsed_time = time.time() - self.batch_stats.start_time
+                progress = (self.batch_stats.processed_releases / self.batch_stats.total_releases) * 100
+                
+                summary_content += f"\n## 📈 批量处理统计\n\n"
+                summary_content += f"| 指标 | 数值 |\n"
+                summary_content += f"|------|------|\n"
+                summary_content += f"| 总Release数 | {self.batch_stats.total_releases} |\n"
+                summary_content += f"| 已处理 | {self.batch_stats.processed_releases} |\n"
+                summary_content += f"| 进度 | {progress:.1f}% |\n"
+                summary_content += f"| 成功 | {self.batch_stats.success_count} |\n"
+                summary_content += f"| AI成功 | {self.batch_stats.ai_success_count} |\n"
+                summary_content += f"| 跳过 | {self.batch_stats.skipped_count} |\n"
+                summary_content += f"| 失败 | {self.batch_stats.error_count} |\n"
+                summary_content += f"| 已用时 | {elapsed_time/60:.1f}分钟 |\n"
+            
+            summary_content += f"\n---\n*最后更新: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n"
+            
+            # 写入摘要文件
+            with open(self.step_summary_file, 'w', encoding='utf-8') as f:
+                f.write(summary_content)
+                
+        except Exception as e:
+            self.logger.warning(f"⚠️ 重新生成摘要失败: {e}")
+    
     def print_realtime_summary(self, release_tag: str, current: int, total: int, 
                               success: bool, ai_success: bool, error_msg: Optional[str] = None):
         """
@@ -1172,6 +1274,12 @@ class AIChangelogGenerator:
         ] + details
         
         self._print_step_summary(f"批量处理进度", status, summary_details, (current, total))
+        
+        # 更新GitHub Actions实时进度
+        progress_info = f"{release_tag} - {current}/{total} ({progress:.1f}%)"
+        batch_status = "进行中" if current < total else ("完成" if self.batch_stats.error_count == 0 else "警告")
+        
+        self._update_github_summary("批量处理进度", progress_info, batch_status)
         
         # 刷新输出确保实时显示
         sys.stdout.flush()
@@ -1381,46 +1489,81 @@ class AIChangelogGenerator:
             "正在初始化..."
         ])
         
+        # 初始化摘要
+        self._update_github_summary("初始化", f"仓库: {self.repo}, 事件: {event_name}", "完成")
+        
         try:
             # 1. 验证参数
+            self._update_github_summary("参数验证", "正在验证输入参数...", "进行中")
             mode, final_version, final_release_id = self.validate_params(
                 version, release_id, tag, target, event_name
             )
+            self._update_github_summary("参数验证", f"模式: {mode.value}, 版本: {final_version}", "完成")
             
             # 2. 批量处理模式
             if mode == RunMode.BATCH_ALL:
-                return self.run_batch_processing()
+                self._update_github_summary("批量处理进度", "开始批量处理所有Release", "进行中")
+                result = self.run_batch_processing()
+                final_status = "完成" if result else "失败"
+                self._update_github_summary("执行完成", f"批量处理{final_status}", final_status)
+                return result
             
-            # 3. 单个Release处理模式（原有逻辑）
+            # 3. 单个Release处理模式
             # 获取Release信息
+            self._update_github_summary("获取Release信息", f"版本: {final_version}", "进行中")
             final_release_id, original_changelog = self.get_release_info(mode, final_version, final_release_id)
+            self._update_github_summary("获取Release信息", f"Release ID: {final_release_id}", "完成")
             
             # 检查是否需要优化
+            self._update_github_summary("检查优化状态", "分析变更日志状态...", "进行中")
             need_optimize, processed_changelog = self.check_optimization_status(mode, original_changelog)
             
             if not need_optimize:
-                self._print_step_summary("执行完成", "跳过", ["🚫 无需优化，流程结束"])
+                self._update_github_summary("检查优化状态", "无需优化", "跳过")
+                self._update_github_summary("执行完成", "流程跳过", "跳过")
                 return True
+            else:
+                self._update_github_summary("检查优化状态", "需要优化", "完成")
             
             # 获取Git提交信息
+            self._update_github_summary("获取提交信息", f"版本: {final_version}", "进行中")
             commits, commit_range, commit_count = self.get_git_commits(final_version)
+            self._update_github_summary("获取提交信息", f"获取到 {commit_count} 个提交", "完成")
             
             # 分类提交
+            self._update_github_summary("提交分类", f"分类 {commit_count} 个提交", "进行中")
             classified_commits = self.classify_commits(commits)
+            self._update_github_summary("提交分类", "提交分类完成", "完成")
             
             # 尝试AI分析
+            self._update_github_summary("AI智能分析", "调用DeepSeek API...", "进行中")
             ai_analysis = self.call_deepseek_api(commits)
             ai_success = ai_analysis is not None
             ai_error = None if ai_success else "API调用失败"
             
+            if ai_success:
+                self._update_github_summary("AI智能分析", "AI分析成功", "完成")
+            else:
+                self._update_github_summary("AI智能分析", "AI调用失败，使用基础规则", "警告")
+            
             # 生成变更日志
+            self._update_github_summary("生成变更日志", "正在生成变更日志...", "进行中")
             if ai_success:
                 changelog = self.generate_changelog_with_ai(final_version, ai_analysis, processed_changelog, commits)
             else:
                 changelog = self.generate_changelog_basic(final_version, classified_commits, processed_changelog)
+            self._update_github_summary("生成变更日志", f"变更日志生成完成 ({len(changelog)} 字符)", "完成")
             
             # 更新Release
+            self._update_github_summary("更新Release", f"更新Release {final_release_id}...", "进行中")
             success = self.update_release_changelog(final_release_id, changelog)
+            
+            if success:
+                self._update_github_summary("更新Release", "Release更新成功", "完成")
+                self._update_github_summary("执行完成", f"变更日志生成成功 ({'AI智能' if ai_success else '基础规则'})", "完成")
+            else:
+                self._update_github_summary("更新Release", "Release更新失败", "失败")
+                self._update_github_summary("执行完成", "执行失败", "失败")
             
             # 最终摘要
             if success:
@@ -1452,7 +1595,7 @@ class AIChangelogGenerator:
             return success
             
         except Exception as e:
-            self._print_step_summary("执行完成", "失败", [f"❌ 执行异常: {e}"])
+            self._update_github_summary("执行完成", f"执行异常: {str(e)[:100]}", "失败")
             return False
 
 
