@@ -32,8 +32,7 @@ jobs:
           RELEASE_TAG="${{ github.event.release.tag_name }}"
           IS_PRERELEASE="${{ github.event.release.prerelease }}"
           
-          # 对于编辑事件，需要检查是否从预发布改为正式发布
-          if [ "${{ github.event.action }}" == "edited" ]; then
+          # 对于编辑事件，需要检查是否从预发布改为正式发布          if [ "${{ github.event.action }}" == "edited" ]; then
             echo "🔄 检测到Release编辑事件"
             # 获取当前release的最新状态
             CURRENT_RELEASE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
@@ -41,7 +40,7 @@ jobs:
             IS_PRERELEASE=$(echo "$CURRENT_RELEASE" | jq -r '.prerelease')
             DOWNLOAD_URL=$(echo "$CURRENT_RELEASE" | jq -r '.assets[0].browser_download_url')
           else
-            DOWNLOAD_URL="${{ github.event.release.assets[0].browser_download_url }}"
+            DOWNLOAD_URL=$(echo '${{ toJson(github.event.release.assets) }}' | jq -r '.[0].browser_download_url')
           fi
         else
           # 手动触发时，获取指定或最新的release
@@ -146,81 +145,105 @@ jobs:
         # 读取版本信息
         VERSION=$(jq -r '.version' temp_extract/manifest.json)
         NAME=$(jq -r '.name' temp_extract/manifest.json)
-        
-        echo "✅ 扩展包验证成功:"
+          echo "✅ 扩展包验证成功:"
         echo "- 扩展名称: $NAME"
         echo "- 版本号: $VERSION"
         echo "- Release标签: ${{ needs.check-release-status.outputs.release-tag }}"
-          # 清理临时文件
+        
+        # 清理临时文件
         rm -rf temp_extract/
-
-    - name: 获取Edge商店访问令牌
-      id: get-access-token
+        
+    - name: 验证Edge商店API密钥
+      id: validate-api-keys
       run: |
-        echo "🔑 获取Edge商店访问令牌..."
+        echo "🔑 验证Edge商店API密钥..."
         
-        # 获取访问令牌 - 使用表单编码格式
-        TOKEN_RESPONSE=$(curl -s -X POST \
-          -H "Content-Type: application/x-www-form-urlencoded" \
-          -d "client_id=${{ secrets.EDGE_STORE_ID }}&client_secret=${{ secrets.EDGE_STORE_KEY }}&scope=https://api.addons.microsoftedge.microsoft.com/.default&grant_type=client_credentials" \
-          "https://login.microsoftonline.com/5c9eedce-81bc-42f3-8823-48ba6258b391/oauth2/v2.0/token")
-        
-        echo "认证响应: $TOKEN_RESPONSE"
-        
-        ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
-        
-        if [ "$ACCESS_TOKEN" == "null" ] || [ -z "$ACCESS_TOKEN" ]; then
-          echo "❌ 获取访问令牌失败:"
-          echo "$TOKEN_RESPONSE" | jq -r '.error_description // .error // "未知错误"'
+        # Edge Add-ons API 使用 API Key 而不是 OAuth2
+        # 直接验证密钥是否存在
+        if [ -z "${{ secrets.EDGE_STORE_ID }}" ]; then
+          echo "❌ EDGE_STORE_ID (Client ID) 未配置"
           exit 1
         fi
         
-        echo "✅ 访问令牌获取成功"
-        echo "access-token=$ACCESS_TOKEN" >> $GITHUB_OUTPUT
-
+        if [ -z "${{ secrets.EDGE_STORE_KEY }}" ]; then
+          echo "❌ EDGE_STORE_KEY (API Key) 未配置"
+          exit 1
+        fi
+        
+        echo "✅ API密钥验证成功"
+        echo "api-key=${{ secrets.EDGE_STORE_KEY }}" >> $GITHUB_OUTPUT
+        echo "client-id=${{ secrets.EDGE_STORE_ID }}" >> $GITHUB_OUTPUT    
     - name: 上传扩展包到Edge商店
       id: upload-package
       run: |
         echo "📤 上传扩展包到Edge商店..."
         
-        ACCESS_TOKEN="${{ steps.get-access-token.outputs.access-token }}"
+        API_KEY="${{ steps.validate-api-keys.outputs.api-key }}"
+        CLIENT_ID="${{ steps.validate-api-keys.outputs.client-id }}"
         PRODUCT_ID="lpdhbhkcbnhldcpcbocplhgeooabhbme"
         
-        # 上传扩展包
+        # 使用 Edge Add-ons API Key 认证方式上传扩展包
         UPLOAD_RESPONSE=$(curl -s -X POST \
-          -H "Authorization: Bearer $ACCESS_TOKEN" \
+          -H "Authorization: ApiKey $API_KEY" \
+          -H "X-ClientID: $CLIENT_ID" \
           -H "Content-Type: application/zip" \
           --data-binary @extension.zip \
+          -w "HTTP_CODE:%{http_code}\n" \
           "https://api.addons.microsoftedge.microsoft.com/v1/products/$PRODUCT_ID/submissions/draft/package")
         
         echo "上传响应: $UPLOAD_RESPONSE"
         
-        # 检查上传结果
-        UPLOAD_STATUS=$(echo "$UPLOAD_RESPONSE" | jq -r '.status // "error"')
+        # 提取 HTTP 状态码
+        HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+        RESPONSE_BODY=$(echo "$UPLOAD_RESPONSE" | grep -v "HTTP_CODE:")
         
-        if [ "$UPLOAD_STATUS" == "Succeeded" ] || [ "$UPLOAD_STATUS" == "InProgress" ]; then
-          echo "✅ 扩展包上传成功"
-          OPERATION_ID=$(echo "$UPLOAD_RESPONSE" | jq -r '.id')
+        echo "HTTP状态码: $HTTP_CODE"
+          if [ "$HTTP_CODE" == "202" ]; then
+          echo "✅ 扩展包上传成功，开始处理"
+          # 从完整响应中提取 operation ID
+          OPERATION_ID=$(echo "$UPLOAD_RESPONSE" | grep -v "HTTP_CODE:" | jq -r '.operationId // empty')
+          
+          if [ -z "$OPERATION_ID" ]; then
+            # 如果响应中没有 operationId，尝试从 Location 头获取
+            echo "尝试从 Location 头获取 operation ID..."
+            LOCATION_HEADER=$(curl -s -I -X POST \
+              -H "Authorization: ApiKey $API_KEY" \
+              -H "X-ClientID: $CLIENT_ID" \
+              -H "Content-Type: application/zip" \
+              --data-binary @extension.zip \
+              "https://api.addons.microsoftedge.microsoft.com/v1/products/$PRODUCT_ID/submissions/draft/package" \
+              | grep -i "location:" | sed 's/.*operations\///I' | tr -d '\r\n')
+            OPERATION_ID="$LOCATION_HEADER"
+          fi
+          
+          echo "Operation ID: $OPERATION_ID"
           echo "operation-id=$OPERATION_ID" >> $GITHUB_OUTPUT
         else
-          echo "❌ 扩展包上传失败:"
-          echo "$UPLOAD_RESPONSE" | jq -r '.message // .error_description // "未知错误"'
+          echo "❌ 扩展包上传失败 (HTTP $HTTP_CODE):"
+          echo "$RESPONSE_BODY"
           exit 1
-        fi
-
+        fi    
     - name: 等待上传处理完成
       run: |
         echo "⏳ 等待上传处理完成..."
         
-        ACCESS_TOKEN="${{ steps.get-access-token.outputs.access-token }}"
+        API_KEY="${{ steps.validate-api-keys.outputs.api-key }}"
+        CLIENT_ID="${{ steps.validate-api-keys.outputs.client-id }}"
         PRODUCT_ID="lpdhbhkcbnhldcpcbocplhgeooabhbme"
         OPERATION_ID="${{ steps.upload-package.outputs.operation-id }}"
+        
+        if [ -z "$OPERATION_ID" ]; then
+          echo "⚠️ 没有获取到 Operation ID，跳过状态检查"
+          exit 0
+        fi
         
         # 最多等待5分钟
         for i in {1..30}; do
           echo "检查进度 ($i/30)..."
           
-          STATUS_RESPONSE=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+          STATUS_RESPONSE=$(curl -s \
+            -H "Authorization: ApiKey $API_KEY" \
+            -H "X-ClientID: $CLIENT_ID" \
             "https://api.addons.microsoftedge.microsoft.com/v1/products/$PRODUCT_ID/submissions/draft/package/operations/$OPERATION_ID")
           
           STATUS=$(echo "$STATUS_RESPONSE" | jq -r '.status // "unknown"')
@@ -243,8 +266,7 @@ jobs:
               echo "⚠️ 未知状态: $STATUS"
               sleep 10
               ;;
-          esac
-        done
+          esac        done
         
         echo "⏰ 处理超时，但不一定失败"
 
@@ -252,12 +274,14 @@ jobs:
       run: |
         echo "📋 提交扩展包审核..."
         
-        ACCESS_TOKEN="${{ steps.get-access-token.outputs.access-token }}"
+        API_KEY="${{ steps.validate-api-keys.outputs.api-key }}"
+        CLIENT_ID="${{ steps.validate-api-keys.outputs.client-id }}"
         PRODUCT_ID="lpdhbhkcbnhldcpcbocplhgeooabhbme"
         
         # 提交审核
         SUBMIT_RESPONSE=$(curl -s -X POST \
-          -H "Authorization: Bearer $ACCESS_TOKEN" \
+          -H "Authorization: ApiKey $API_KEY" \
+          -H "X-ClientID: $CLIENT_ID" \
           -H "Content-Type: application/json" \
           -d '{"notes": "自动提交 - Release ${{ needs.check-release-status.outputs.release-tag }}"}' \
           "https://api.addons.microsoftedge.microsoft.com/v1/products/$PRODUCT_ID/submissions")
