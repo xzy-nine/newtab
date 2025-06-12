@@ -65,13 +65,15 @@ jobs:
         cd .github/workflows/ai-log-work-py
         
         echo "🚀 开始执行AI变更日志生成..."
+        echo "==========================================​============================="
         
         # 根据触发方式设置参数
         if [ "${{ github.event_name }}" = "workflow_call" ]; then
           # 自动触发模式
-          echo "🤖 自动触发模式"
-          echo "📋 版本: ${{ inputs.version }}"
+          echo "🤖 执行模式: 自动触发 (workflow_call)"
+          echo "📋 版本号: ${{ inputs.version }}"
           echo "🏷️ Release ID: ${{ inputs.release-id }}"
+          echo "============================================​========================="
           
           python changelog.py \
             --version "${{ inputs.version }}" \
@@ -82,14 +84,21 @@ jobs:
             --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
         else
           # 手动触发模式
-          echo "📝 手动触发模式"
-          echo "🎯 目标: ${{ inputs.target }}"
+          echo "📝 执行模式: 手动触发 (workflow_dispatch)"
+          echo "🎯 目标参数: ${{ inputs.target }}"
           
-          # 如果是批量处理模式，增加超时时间
+          # 根据目标类型输出不同提示
           if [ "${{ inputs.target }}" = "all" ]; then
             echo "🔄 批量处理模式：将处理所有Release"
             echo "⏱️ 预计需要较长时间，请耐心等待..."
+            echo "📊 实时进度将在下方显示"
+          elif [ "${{ inputs.target }}" = "latest" ]; then
+            echo "🎯 单个处理模式：处理最新Release"
+          else
+            echo "🎯 单个处理模式：处理指定版本 ${{ inputs.target }}"
           fi
+          
+          echo "============================================​========================="
           
           python changelog.py \
             --target "${{ inputs.target }}" \
@@ -99,48 +108,93 @@ jobs:
             --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
         fi
         
-        # 设置输出变量
+        # 捕获退出码
         exit_code=$?
+        
+        echo ""
+        echo "============================================​========================="
+        
+        # 设置输出变量和最终状态
         if [ $exit_code -eq 0 ]; then
           echo "ai_optimized=true" >> $GITHUB_OUTPUT
-          echo "✅ AI变更日志生成完成"
+          echo "🎉 AI变更日志生成流程完成!"
+          echo "✅ 状态: 成功"
         else
           echo "ai_optimized=false" >> $GITHUB_OUTPUT
-          echo "❌ AI变更日志生成失败"
+          echo "💥 AI变更日志生成流程失败!"
+          echo "❌ 状态: 失败 (退出码: $exit_code)"
         fi
+        
+        echo "============================================​========================="
         
         exit $exit_code
 
     - name: 输出执行结果
       if: always()
       run: |
-        echo "## 🎯 执行结果摘要" >> $GITHUB_STEP_SUMMARY
+        echo "## 🎯 AI变更日志生成结果" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 执行信息" >> $GITHUB_STEP_SUMMARY
         echo "| 项目 | 结果 |" >> $GITHUB_STEP_SUMMARY
         echo "|------|------|" >> $GITHUB_STEP_SUMMARY
         
+        # 执行模式信息
         if [ "${{ github.event_name }}" = "workflow_call" ]; then
-          echo "| 执行模式 | 🤖 自动触发 |" >> $GITHUB_STEP_SUMMARY
-          echo "| 版本号 | \`${{ inputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 执行模式 | 🤖 自动触发 (workflow_call) |" >> $GITHUB_STEP_SUMMARY
+          echo "| 触发版本 | \`${{ inputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release ID | \`${{ inputs.release-id }}\` |" >> $GITHUB_STEP_SUMMARY
         else
-          echo "| 执行模式 | 📝 手动触发 |" >> $GITHUB_STEP_SUMMARY
-          echo "| 目标版本 | \`${{ inputs.target }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 执行模式 | 📝 手动触发 (workflow_dispatch) |" >> $GITHUB_STEP_SUMMARY
+          echo "| 目标参数 | \`${{ inputs.target }}\` |" >> $GITHUB_STEP_SUMMARY
+          
+          # 根据目标类型添加说明
+          if [ "${{ inputs.target }}" = "all" ]; then
+            echo "| 处理类型 | 🔄 批量处理所有Release |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ inputs.target }}" = "latest" ]; then
+            echo "| 处理类型 | 🎯 处理最新Release |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 处理类型 | 🎯 处理指定版本 |" >> $GITHUB_STEP_SUMMARY
+          fi
         fi
         
+        # 执行结果
         echo "| 执行状态 | ${{ steps.run-generator.outcome == 'success' && '✅ 成功' || '❌ 失败' }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| AI优化 | ${{ steps.run-generator.outputs.ai_optimized == 'true' && '✅ 已完成' || '❌ 未完成' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| AI优化状态 | ${{ steps.run-generator.outputs.ai_optimized == 'true' && '✅ 已完成' || '❌ 未完成' }} |" >> $GITHUB_STEP_SUMMARY
         
+        # AI调用结果
         if [ "${{ steps.run-generator.outputs.ai_success }}" = "true" ]; then
-          echo "| AI状态 | 🧠 AI智能生成 |" >> $GITHUB_STEP_SUMMARY
+          echo "| AI生成方式 | 🧠 AI智能生成 |" >> $GITHUB_STEP_SUMMARY
         else
-          echo "| AI状态 | 📝 基础规则生成 |" >> $GITHUB_STEP_SUMMARY
+          echo "| AI生成方式 | 📝 基础规则生成 |" >> $GITHUB_STEP_SUMMARY
         fi
         
+        # 统计信息
         if [ "${{ steps.run-generator.outputs.total_commits }}" != "" ]; then
-          echo "| 处理提交数 | ${{ steps.run-generator.outputs.total_commits }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 处理提交数 | ${{ steps.run-generator.outputs.total_commits }} 个 |" >> $GITHUB_STEP_SUMMARY
         fi
         
         if [ "${{ steps.run-generator.outputs.processed_releases }}" != "" ]; then
-          echo "| 处理发布数 | ${{ steps.run-generator.outputs.processed_releases }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 处理发布数 | ${{ steps.run-generator.outputs.processed_releases }} 个 |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # 执行时间
+        echo "| 执行时间 | $(date '+%Y-%m-%d %H:%M:%S') |" >> $GITHUB_STEP_SUMMARY
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # 根据结果添加不同的说明
+        if [ "${{ steps.run-generator.outcome }}" = "success" ]; then
+          echo "### ✅ 执行成功" >> $GITHUB_STEP_SUMMARY
+          echo "变更日志已成功生成并更新到对应的Release页面。" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.run-generator.outputs.ai_success }}" = "true" ]; then
+            echo "🧠 **AI智能分析**: 使用DeepSeek API成功分析提交记录，生成了智能化的变更日志。" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "📝 **基础规则生成**: AI调用失败，使用基础规则生成了变更日志。" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "### ❌ 执行失败" >> $GITHUB_STEP_SUMMARY
+          echo "变更日志生成过程中遇到错误，请检查执行日志获取详细信息。" >> $GITHUB_STEP_SUMMARY
         fi
 
     - name: 清理临时文件

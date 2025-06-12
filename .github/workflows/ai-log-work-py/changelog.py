@@ -87,6 +87,10 @@ class AIChangelogGenerator:
         # 批量处理统计
         self.batch_stats = BatchStats()
         
+        # 步骤计数器
+        self.current_step = 0
+        self.total_steps = 0
+        
         # 加载外部配置文件
         self._load_configs()
         
@@ -104,6 +108,69 @@ class AIChangelogGenerator:
             "Authorization": f"Bearer {deepseek_api_key}",
             "Content-Type": "application/json"
         }
+    
+    def _print_step_summary(self, step_name: str, status: str = "进行中", details: List[str] = None, 
+                           progress: Optional[Tuple[int, int]] = None):
+        """
+        输出步骤摘要
+        
+        Args:
+            step_name: 步骤名称
+            status: 状态（进行中、完成、失败）
+            details: 详细信息列表
+            progress: 进度信息 (当前, 总数)
+        """
+        # 状态图标映射
+        status_icons = {
+            "进行中": "🔄",
+            "完成": "✅", 
+            "失败": "❌",
+            "跳过": "⏩",
+            "警告": "⚠️"
+        }
+        
+        icon = status_icons.get(status, "ℹ️")
+        
+        # 输出标题
+        print(f"\n{'='*60}")
+        if progress:
+            print(f"{icon} [{progress[0]}/{progress[1]}] {step_name} - {status}")
+        else:
+            print(f"{icon} {step_name} - {status}")
+        print(f"{'='*60}")
+        
+        # 输出详细信息
+        if details:
+            for detail in details:
+                print(f"  {detail}")
+        
+        # 添加时间戳
+        print(f"  ⏰ 时间: {datetime.now().strftime('%H:%M:%S')}")
+        print(f"{'='*60}")
+        
+        # 刷新输出
+        sys.stdout.flush()
+    
+    def _update_progress(self, current: int, total: int, description: str = ""):
+        """
+        更新进度显示
+        
+        Args:
+            current: 当前进度
+            total: 总数
+            description: 描述信息
+        """
+        if total > 0:
+            percentage = (current / total) * 100
+            bar_length = 30
+            filled_length = int(bar_length * current // total)
+            bar = '█' * filled_length + '░' * (bar_length - filled_length)
+            
+            print(f"\r📊 进度: [{bar}] {percentage:.1f}% ({current}/{total}) {description}", end='', flush=True)
+            
+            # 完成时换行
+            if current == total:
+                print()
     
     def _load_configs(self):
         """加载外部配置文件"""
@@ -160,14 +227,19 @@ class AIChangelogGenerator:
         Returns:
             Tuple[运行模式, 版本号, Release ID]
         """
-        self.logger.info("🔍 验证输入参数...")
+        self._print_step_summary("参数验证", "进行中", ["检查输入参数...", "确定运行模式..."])
         
         if event_name == "workflow_call":
             # 自动触发模式：需要version和release_id
             if not version or not release_id:
+                self._print_step_summary("参数验证", "失败", ["缺少必需的版本号或Release ID"])
                 raise ValueError("工作流调用模式需要提供版本号和Release ID")
             mode = RunMode.WORKFLOW_CALL
-            self.logger.info(f"🔗 工作流调用模式: 版本 {version}, Release ID {release_id}")
+            self._print_step_summary("参数验证", "完成", [
+                f"✓ 运行模式: 工作流调用",
+                f"✓ 版本号: {version}",
+                f"✓ Release ID: {release_id}"
+            ])
             return mode, version, release_id
             
         else:
@@ -176,43 +248,64 @@ class AIChangelogGenerator:
                 # 新版手动触发：使用target参数
                 if target.lower() == 'latest':
                     # 获取最新的release
-                    self.logger.info("🎯 目标为latest，获取最新Release...")
+                    self._print_step_summary("参数验证", "进行中", ["目标: latest", "正在获取最新Release..."])
                     latest_version, latest_release_id = self._get_latest_release()
                     mode = RunMode.MANUAL_OPTIMIZE
-                    self.logger.info(f"📝 手动优化模式: 最新版本 {latest_version}")
+                    self._print_step_summary("参数验证", "完成", [
+                        f"✓ 运行模式: 手动优化",
+                        f"✓ 最新版本: {latest_version}",
+                        f"✓ Release ID: {latest_release_id}"
+                    ])
                     return mode, latest_version, latest_release_id
                 elif target.lower() == 'all':
                     # 批量处理所有release
-                    self.logger.info("🔄 目标为all，批量处理所有Release...")
                     mode = RunMode.BATCH_ALL
-                    self.logger.info("📦 批量处理模式: 处理所有Release")
+                    self._print_step_summary("参数验证", "完成", [
+                        f"✓ 运行模式: 批量处理",
+                        f"✓ 处理范围: 所有Release"
+                    ])
                     return mode, "all", None
                 else:
                     # 指定版本的手动触发
                     mode = RunMode.MANUAL_OPTIMIZE
-                    self.logger.info(f"📝 手动优化模式: 指定版本 {target}")
+                    self._print_step_summary("参数验证", "完成", [
+                        f"✓ 运行模式: 手动优化",
+                        f"✓ 指定版本: {target}"
+                    ])
                     return mode, target, None
                     
             elif tag:
                 # 旧版手动触发兼容：使用tag参数
                 if tag.lower() == 'all':
                     mode = RunMode.BATCH_ALL
-                    self.logger.info("📦 批量处理模式(兼容): 处理所有Release")
+                    self._print_step_summary("参数验证", "完成", [
+                        f"✓ 运行模式: 批量处理(兼容模式)",
+                        f"✓ 处理范围: 所有Release"
+                    ])
                     return mode, "all", None
                 else:
                     mode = RunMode.MANUAL_OPTIMIZE
-                    self.logger.info(f"📝 手动优化模式(兼容): 标签 {tag}")
+                    self._print_step_summary("参数验证", "完成", [
+                        f"✓ 运行模式: 手动优化(兼容模式)",
+                        f"✓ 标签: {tag}"
+                    ])
                     return mode, tag, None
                     
             elif release_id:
                 # 旧版自动触发兼容：有release_id但没有version
                 if not version:
+                    self._print_step_summary("参数验证", "失败", ["兼容模式缺少版本号"])
                     raise ValueError("自动发布模式需要提供版本号")
                 mode = RunMode.AUTO_RELEASE
-                self.logger.info(f"🤖 自动发布模式(兼容): 版本 {version}, Release ID {release_id}")
+                self._print_step_summary("参数验证", "完成", [
+                    f"✓ 运行模式: 自动发布(兼容模式)",
+                    f"✓ 版本: {version}",
+                    f"✓ Release ID: {release_id}"
+                ])
                 return mode, version, release_id
                 
             else:
+                self._print_step_summary("参数验证", "失败", ["缺少必需的target参数"])
                 raise ValueError("手动模式需要提供target参数，或使用兼容的tag参数")
     
     def _get_latest_release(self) -> Tuple[str, str]:
@@ -222,21 +315,16 @@ class AIChangelogGenerator:
         Returns:
             Tuple[版本标签, Release ID]
         """
-        self.logger.info("🔍 获取最新Release信息...")
-        
         url = f"{self.github_api_base}/repos/{self.repo}/releases/latest"
         response = requests.get(url, headers=self.github_headers)
         
         if response.status_code != 200:
             error_msg = f"无法获取最新Release信息: {response.json().get('message', '未知错误')}"
-            self.logger.error(f"❌ {error_msg}")
             raise Exception(error_msg)
         
         release_data = response.json()
         tag_name = release_data['tag_name']
         release_id = str(release_data['id'])
-        
-        self.logger.info(f"✅ 获取到最新Release: {tag_name} (ID: {release_id})")
         
         return tag_name, release_id
 
@@ -252,7 +340,10 @@ class AIChangelogGenerator:
         Returns:
             Tuple[Release ID, 原始变更日志]
         """
-        self.logger.info("📋 获取Release信息...")
+        self._print_step_summary("获取Release信息", "进行中", [
+            f"版本: {version}",
+            f"Release ID: {release_id or '通过标签获取'}"
+        ])
         
         if mode == RunMode.AUTO_RELEASE and release_id:
             # 通过Release ID获取信息
@@ -265,15 +356,17 @@ class AIChangelogGenerator:
         
         if response.status_code != 200:
             error_msg = f"无法获取Release信息: {response.json().get('message', '未知错误')}"
-            self.logger.error(f"❌ {error_msg}")
+            self._print_step_summary("获取Release信息", "失败", [error_msg])
             raise Exception(error_msg)
         
         release_data = response.json()
         release_id = str(release_data['id'])
         original_changelog = release_data.get('body', '')
         
-        self.logger.info(f"✅ 获取到Release信息，ID: {release_id}")
-        self.logger.info(f"📋 原始变更日志长度: {len(original_changelog)} 字符")
+        self._print_step_summary("获取Release信息", "完成", [
+            f"✓ Release ID: {release_id}",
+            f"✓ 原始变更日志长度: {len(original_changelog)} 字符"
+        ])
         
         return release_id, original_changelog
     
@@ -288,15 +381,11 @@ class AIChangelogGenerator:
         Returns:
             Tuple[是否需要优化, 处理后的原始内容]
         """
-        self.logger.info("🔍 检查变更日志优化状态...")
+        self._print_step_summary("检查优化状态", "进行中", ["分析变更日志状态..."])
         
         if mode == RunMode.MANUAL_OPTIMIZE:
-            self.logger.info("📝 手动优化模式：强制重新生成，提取原始内容")
-            
             # 检查是否包含AI优化标记和折叠区域
             if "<details>" in original_changelog and "查看原始提交记录" in original_changelog:
-                self.logger.info("📋 发现折叠区域，提取原始提交记录...")
-                
                 # 提取折叠区域内容
                 details_pattern = r'<details>.*?<summary>.*?</summary>(.*?)</details>'
                 match = re.search(details_pattern, original_changelog, re.DOTALL)
@@ -308,25 +397,43 @@ class AIChangelogGenerator:
                     extracted_content = re.sub(r'\n+\s*$', '', extracted_content)
                     
                     if extracted_content and extracted_content != "暂无原始记录":
-                        self.logger.info(f"✅ 成功提取到原始提交记录，内容长度: {len(extracted_content)} 字符")
+                        self._print_step_summary("检查优化状态", "完成", [
+                            "✓ 手动优化模式: 强制重新生成",
+                            f"✓ 提取到原始内容: {len(extracted_content)} 字符",
+                            "✓ 需要优化"
+                        ])
                         return True, extracted_content
                     else:
-                        self.logger.warning("⚠️ 折叠区域内容为空或无效，将从Git历史重新获取")
+                        self._print_step_summary("检查优化状态", "警告", [
+                            "⚠️ 折叠区域内容为空",
+                            "将从Git历史重新获取"
+                        ])
                         return True, ""
                 else:
-                    self.logger.info("ℹ️ 未发现有效的折叠区域格式，使用原始内容")
+                    self._print_step_summary("检查优化状态", "完成", [
+                        "✓ 未发现有效的折叠区域格式",
+                        "✓ 使用原始内容"
+                    ])
                     return True, original_changelog
             else:
-                self.logger.info("ℹ️ 未发现折叠区域，使用原始内容")
+                self._print_step_summary("检查优化状态", "完成", [
+                    "✓ 未发现折叠区域",
+                    "✓ 使用原始内容"
+                ])
                 return True, original_changelog
         else:
             # 自动模式检查
             if "AI生成的变更日志摘要" in original_changelog:
-                self.logger.warning("⚠️ 此Release已包含AI生成的变更日志")
-                self.logger.info("🤖 自动模式，跳过重复优化")
+                self._print_step_summary("检查优化状态", "跳过", [
+                    "⚠️ 已包含AI生成的变更日志",
+                    "✓ 跳过重复优化"
+                ])
                 return False, original_changelog
             else:
-                self.logger.info("✅ 变更日志未经AI优化，可以进行优化")
+                self._print_step_summary("检查优化状态", "完成", [
+                    "✓ 变更日志未经AI优化",
+                    "✓ 可以进行优化"
+                ])
                 return True, original_changelog
     
     def get_git_commits(self, version: str) -> Tuple[List[CommitInfo], str, int]:
@@ -339,42 +446,63 @@ class AIChangelogGenerator:
         Returns:
             Tuple[提交列表, 提交范围描述, 提交数量]
         """
-        self.logger.info("📊 获取详细的提交信息...")
-        self.logger.info(f"🎯 当前版本: {version}")
+        self._print_step_summary("获取提交信息", "进行中", [
+            f"当前版本: {version}",
+            "正在分析Git历史..."
+        ])
         
         try:
-            # 获取所有标签并排序
+            # 获取所有标签并按版本号排序
             result = subprocess.run(
                 ["git", "tag", "--sort=-version:refname"],
                 capture_output=True, text=True, check=True
             )
             all_tags = [tag.strip() for tag in result.stdout.split('\n') if tag.strip()]
             
-            # 找到上一个版本标签
-            last_tag = None
+            # 找到当前版本在标签列表中的位置
+            current_index = -1
             version_pattern = re.compile(r'^v?[0-9]+\.[0-9]+(\.[0-9]+)?.*$')
             
-            for tag in all_tags:
-                if tag != version and version_pattern.match(tag):
-                    last_tag = tag
-                    break
+            # 过滤出有效的版本标签
+            valid_tags = [tag for tag in all_tags if version_pattern.match(tag)]
             
-            # 确定提交范围
+            # 找到当前版本的索引
+            try:
+                current_index = valid_tags.index(version)
+            except ValueError:
+                self.logger.warning(f"⚠️ 未在标签列表中找到版本 {version}")
+                current_index = -1
+            
+            # 确定上一个版本标签
+            last_tag = None
+            if current_index >= 0 and current_index < len(valid_tags) - 1:
+                last_tag = valid_tags[current_index + 1]
+            
+            # 确定提交范围和Git命令
             if not last_tag:
-                self.logger.info("📋 首次发布，获取到当前版本的所有提交记录")
                 git_cmd = ["git", "log", version, "--pretty=format:%h|%s|%b", "--no-merges"]
                 commit_range = f"初始版本到{version}"
+                range_desc = "首次发布或未找到上个版本"
             else:
-                self.logger.info(f"📋 获取 {last_tag} 到 {version} 之间的提交记录")
                 git_cmd = ["git", "log", f"{last_tag}..{version}", "--pretty=format:%h|%s|%b", "--no-merges"]
                 commit_range = f"{last_tag}..{version}"
+                range_desc = f"从 {last_tag} 到 {version}"
+            
+            self._print_step_summary("获取提交信息", "进行中", [
+                f"提交范围: {range_desc}",
+                "正在执行Git命令..."
+            ])
             
             # 执行Git命令获取提交
             result = subprocess.run(git_cmd, capture_output=True, text=True, check=True)
             commits_raw = result.stdout.strip()
             
             if not commits_raw:
-                self.logger.warning("⚠️ 未获取到提交记录，尝试其他方法...")
+                # 尝试其他方法获取提交
+                self._print_step_summary("获取提交信息", "警告", [
+                    "⚠️ 未获取到提交记录",
+                    "尝试其他方法..."
+                ])
                 
                 # 尝试包含合并提交
                 if last_tag:
@@ -382,18 +510,26 @@ class AIChangelogGenerator:
                     result = subprocess.run(git_cmd, capture_output=True, text=True, check=True)
                     commits_raw = result.stdout.strip()
                 
-                # 如果还是为空，获取最近的提交
+                # 如果还是为空，尝试获取该版本标签的提交
                 if not commits_raw:
-                    self.logger.info("🔄 获取最近的提交记录...")
-                    git_cmd = ["git", "log", "--pretty=format:%h|%s|%b", "-n", "20"]
+                    git_cmd = ["git", "log", "-1", version, "--pretty=format:%h|%s|%b"]
                     result = subprocess.run(git_cmd, capture_output=True, text=True, check=True)
                     commits_raw = result.stdout.strip()
-                    commit_range = "最近20个提交"
+                    commit_range = f"版本{version}的标签提交"
+                
+                # 最后尝试：如果仍为空，返回空结果
+                if not commits_raw:
+                    self._print_step_summary("获取提交信息", "警告", [
+                        f"⚠️ 版本 {version} 无法获取到任何提交记录",
+                        "可能是空发布"
+                    ])
+                    return [], f"空发布-{version}", 0
             
             # 解析提交信息
             commits = []
             if commits_raw:
-                for line in commits_raw.split('\n'):
+                lines = commits_raw.split('\n')
+                for i, line in enumerate(lines):
                     parts = line.split('|', 2)
                     if len(parts) >= 2 and parts[0]:
                         commit = CommitInfo(
@@ -402,22 +538,26 @@ class AIChangelogGenerator:
                             body=parts[2].strip() if len(parts) > 2 else ""
                         )
                         commits.append(commit)
+                    
+                    # 显示解析进度
+                    if i % 10 == 0 or i == len(lines) - 1:
+                        self._update_progress(i + 1, len(lines), "解析提交信息")
             
             commit_count = len(commits)
-            self.logger.info(f"✅ 获取到 {commit_count} 个提交记录")
-            
-            if commit_count == 0:
-                raise Exception("无法获取有效的提交记录")
+            self._print_step_summary("获取提交信息", "完成", [
+                f"✓ 提交范围: {commit_range}",
+                f"✓ 获取到 {commit_count} 个提交记录"
+            ])
             
             return commits, commit_range, commit_count
             
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"❌ Git命令执行失败: {e}")
-            raise Exception(f"Git命令执行失败: {e}")
+            self._print_step_summary("获取提交信息", "失败", [f"Git命令执行失败: {e}"])
+            return [], f"Git错误-{version}", 0
         except Exception as e:
-            self.logger.error(f"❌ 获取提交信息失败: {e}")
-            raise
-
+            self._print_step_summary("获取提交信息", "失败", [f"处理异常: {e}"])
+            return [], f"处理异常-{version}", 0
+    
     def classify_commits(self, commits: List[CommitInfo]) -> Dict[str, List[CommitInfo]]:
         """
         对提交进行分类
@@ -428,14 +568,17 @@ class AIChangelogGenerator:
         Returns:
             分类后的提交字典
         """
-        self.logger.info("🆕 处理Git历史提交记录...")
+        self._print_step_summary("提交分类", "进行中", [
+            f"待分类提交: {len(commits)} 个",
+            "正在应用分类规则..."
+        ])
         
         categories = self.templates["categories"]
         patterns = self.templates["commit_patterns"]
         
         classified = {category: [] for category in categories.keys()}
         
-        for commit in commits:
+        for i, commit in enumerate(commits):
             clean_message = commit.message.strip()
             categorized = False
             
@@ -453,13 +596,19 @@ class AIChangelogGenerator:
             if not categorized:
                 commit.category = "OTHER"
                 classified["OTHER"].append(commit)
+            
+            # 显示分类进度
+            if i % 5 == 0 or i == len(commits) - 1:
+                self._update_progress(i + 1, len(commits), "分类提交")
         
-        # 打印分类统计
-        self.logger.info("📊 初步分类统计:")
+        # 准备分类统计
+        classification_details = []
         for category, commits_list in classified.items():
             if commits_list:
                 title, _ = categories[category]
-                self.logger.info(f"  - {title}: {len(commits_list)}")
+                classification_details.append(f"✓ {title}: {len(commits_list)} 个")
+        
+        self._print_step_summary("提交分类", "完成", classification_details)
         
         return classified
     
@@ -473,18 +622,19 @@ class AIChangelogGenerator:
         Returns:
             AI分析结果，失败时返回None
         """
-        self.logger.info("🧠 调用DeepSeek API进行智能分析和优化...")
+        self._print_step_summary("AI智能分析", "进行中", [
+            f"准备数据: {len(commits)} 个提交",
+            "正在调用DeepSeek API..."
+        ])
         
         if not commits:
-            self.logger.error("❌ 没有可用的提交数据可发送给AI")
+            self._print_step_summary("AI智能分析", "失败", ["没有可用的提交数据"])
             return None
         
         # 准备提交数据
         commits_text = ""
         for commit in commits:
             commits_text += f"{commit.hash}|{commit.message}\n"
-        
-        self.logger.info(f"✅ 准备发送给AI的数据长度: {len(commits_text)} 字符")
         
         # 构建API请求
         system_prompt = self.prompts["system_prompt"]
@@ -502,7 +652,7 @@ class AIChangelogGenerator:
         }
         
         try:
-            self.logger.info("📡 发送API请求...")            
+            # 发送API请求
             response = requests.post(
                 f"{self.deepseek_api_base}/chat/completions",
                 headers=self.deepseek_headers,
@@ -510,30 +660,32 @@ class AIChangelogGenerator:
                 timeout=api_config["timeout"]
             )
             
-            self.logger.info(f"📊 API响应状态码: {response.status_code}")
-            
             if response.status_code != 200:
                 error_msg = f"HTTP错误 {response.status_code}: {response.json().get('error', {}).get('message', '未知HTTP错误')}"
-                self.logger.error(f"❌ API调用HTTP错误: {error_msg}")
+                self._print_step_summary("AI智能分析", "失败", [error_msg])
                 return None
             
             response_data = response.json()
             
             if 'choices' not in response_data or not response_data['choices']:
-                self.logger.error("❌ API响应格式异常: 缺少choices字段")
+                self._print_step_summary("AI智能分析", "失败", ["API响应格式异常: 缺少choices字段"])
                 return None
             
             ai_content = response_data['choices'][0]['message']['content']
             
             if not ai_content:
-                self.logger.error("❌ AI响应内容为空")
+                self._print_step_summary("AI智能分析", "失败", ["AI响应内容为空"])
                 return None
             
             # 尝试解析JSON结果
             try:
                 # 首先尝试直接解析
                 ai_data = json.loads(ai_content)
-                self.logger.info("✅ DeepSeek API调用成功 - 直接JSON格式")
+                self._print_step_summary("AI智能分析", "完成", [
+                    "✅ DeepSeek API调用成功",
+                    "✅ JSON格式解析成功",
+                    f"✓ 分析摘要: {ai_data.get('summary', 'AI智能分析')[:50]}..."
+                ])
                 
                 return AnalysisResult(
                     categories=ai_data.get('categories', {}),
@@ -543,9 +695,6 @@ class AIChangelogGenerator:
                 
             except json.JSONDecodeError:
                 # 如果直接解析失败，尝试提取代码块中的JSON
-                self.logger.info("🔄 直接JSON解析失败，尝试提取代码块中的JSON...")
-                
-                # 查找代码块模式: ```json ... ``` 或 ``` ... ```
                 code_block_patterns = [
                     r'```json\s*(.*?)\s*```',
                     r'```\s*(.*?)\s*```'
@@ -556,13 +705,16 @@ class AIChangelogGenerator:
                     match = re.search(pattern, ai_content, re.DOTALL)
                     if match:
                         extracted_json = match.group(1).strip()
-                        self.logger.info(f"🔍 找到代码块，提取内容长度: {len(extracted_json)} 字符")
                         break
                 
                 if extracted_json:
                     try:
                         ai_data = json.loads(extracted_json)
-                        self.logger.info("✅ DeepSeek API调用成功 - 代码块JSON格式")
+                        self._print_step_summary("AI智能分析", "完成", [
+                            "✅ DeepSeek API调用成功",
+                            "✅ 代码块JSON格式解析成功",
+                            f"✓ 分析摘要: {ai_data.get('summary', 'AI智能分析')[:50]}..."
+                        ])
                         
                         return AnalysisResult(
                             categories=ai_data.get('categories', {}),
@@ -570,22 +722,21 @@ class AIChangelogGenerator:
                             highlights=ai_data.get('highlights', [])
                         )
                         
-                    except json.JSONDecodeError as e:
-                        self.logger.warning(f"⚠️ 代码块中的JSON解析也失败: {e}")
-                        self.logger.info(f"🔍 提取的内容前200字符: {extracted_json[:200]}...")
-                else:
-                    self.logger.warning("⚠️ 未找到有效的代码块格式")
+                    except json.JSONDecodeError:
+                        pass
                 
                 # 所有解析方法都失败
-                self.logger.warning("⚠️ AI返回内容无法解析为有效JSON，使用基础分析结果")
-                self.logger.info(f"🔍 AI原始返回内容前200字符: {ai_content[:200]}...")
+                self._print_step_summary("AI智能分析", "失败", [
+                    "⚠️ AI返回内容无法解析为有效JSON",
+                    f"前200字符: {ai_content[:200]}..."
+                ])
                 return None
                 
         except requests.RequestException as e:
-            self.logger.error(f"❌ API请求失败: {e}")
+            self._print_step_summary("AI智能分析", "失败", [f"API请求失败: {e}"])
             return None
         except Exception as e:
-            self.logger.error(f"❌ DeepSeek API调用异常: {e}")
+            self._print_step_summary("AI智能分析", "失败", [f"调用异常: {e}"])
             return None
 
     def generate_changelog_with_ai(self, version: str, ai_analysis: AnalysisResult, 
@@ -602,7 +753,11 @@ class AIChangelogGenerator:
         Returns:
             生成的变更日志
         """
-        self.logger.info("📊 AI智能分析完成，开始生成优化变更日志...")
+        self._print_step_summary("生成AI变更日志", "进行中", [
+            f"版本: {version}",
+            f"亮点数量: {len(ai_analysis.highlights)}",
+            "正在构建变更日志..."
+        ])
         
         template = self.templates["changelog_templates"]["ai_generated"]
         categories = self.templates["categories"]
@@ -622,6 +777,7 @@ class AIChangelogGenerator:
         # 按优先级生成各个分类
         categories_order = ["FEATURE", "FIX", "PERF", "STYLE", "REFACTOR", "DOCS", "BUILD", "OTHER"]
         
+        generated_categories = []
         for category in categories_order:
             if category in ai_analysis.categories and ai_analysis.categories[category]:
                 title, _ = categories[category]
@@ -640,13 +796,14 @@ class AIChangelogGenerator:
                     changelog += template["item_format"].format(
                         icon=icon, message=message, hash=hash_val
                     )
+                
+                generated_categories.append(f"{title}: {len(items)} 项")
         
         # 添加原始变更记录到折叠区域
         changelog += "\n\n<details>\n<summary>查看原始提交记录</summary>\n\n"
         
         # 如果原始变更日志为空，则生成基础的提交记录
         if not original_changelog or original_changelog.strip() == "":
-            self.logger.info("📝 原始变更日志为空，生成基础提交记录作为原始内容")
             basic_commits = []
             for commit in commits:
                 basic_commits.append(f"- {commit.message} ({commit.hash})")
@@ -654,6 +811,11 @@ class AIChangelogGenerator:
         
         changelog += original_changelog
         changelog += "\n\n</details>"
+        
+        self._print_step_summary("生成AI变更日志", "完成", [
+            f"✓ 变更日志长度: {len(changelog)} 字符",
+            f"✓ 生成分类: {', '.join(generated_categories) if generated_categories else '无'}"
+        ])
         
         return changelog
     
@@ -670,7 +832,10 @@ class AIChangelogGenerator:
         Returns:
             生成的变更日志
         """
-        self.logger.info("🔄 使用基础逻辑生成变更日志...")
+        self._print_step_summary("生成基础变更日志", "进行中", [
+            f"版本: {version}",
+            "使用基础规则生成..."
+        ])
         
         template = self.templates["changelog_templates"]["basic_generated"]
         categories = self.templates["categories"]
@@ -682,6 +847,7 @@ class AIChangelogGenerator:
         # 按优先级生成各个分类
         categories_order = ["FEATURE", "FIX", "PERF", "STYLE", "REFACTOR", "DOCS", "BUILD", "OTHER"]
         
+        generated_categories = []
         for category in categories_order:
             if category in classified_commits and classified_commits[category]:
                 title, _ = categories[category]
@@ -708,13 +874,14 @@ class AIChangelogGenerator:
                     changelog += template["item_format"].format(
                         message=clean_message, hash=commit.hash
                     )
+                
+                generated_categories.append(f"{title}: {len(classified_commits[category])} 项")
         
         # 添加原始变更记录到折叠区域
         changelog += "\n\n<details>\n<summary>查看原始提交记录</summary>\n\n"
         
         # 如果原始变更日志为空，则生成基础的提交记录
         if not original_changelog or original_changelog.strip() == "":
-            self.logger.info("📝 原始变更日志为空，生成基础提交记录作为原始内容")
             all_commits = []
             for category, commits_list in classified_commits.items():
                 for commit in commits_list:
@@ -723,6 +890,11 @@ class AIChangelogGenerator:
         
         changelog += original_changelog
         changelog += "\n\n</details>"
+        
+        self._print_step_summary("生成基础变更日志", "完成", [
+            f"✓ 变更日志长度: {len(changelog)} 字符",
+            f"✓ 生成分类: {', '.join(generated_categories) if generated_categories else '无'}"
+        ])
         
         return changelog
 
@@ -737,7 +909,11 @@ class AIChangelogGenerator:
         Returns:
             是否更新成功
         """
-        self.logger.info("📝 更新Release变更日志...")
+        self._print_step_summary("更新Release", "进行中", [
+            f"Release ID: {release_id}",
+            f"变更日志长度: {len(changelog)} 字符",
+            "正在提交到GitHub..."
+        ])
         
         url = f"{self.github_api_base}/repos/{self.repo}/releases/{release_id}"
         
@@ -750,16 +926,19 @@ class AIChangelogGenerator:
             
             if response.status_code == 200:
                 release_data = response.json()
-                self.logger.info("✅ Release变更日志更新成功")
-                self.logger.info(f"🔗 Release URL: {release_data.get('html_url', '')}")
+                release_url = release_data.get('html_url', '')
+                self._print_step_summary("更新Release", "完成", [
+                    "✅ Release变更日志更新成功",
+                    f"🔗 Release URL: {release_url}"
+                ])
                 return True
             else:
                 error_msg = response.json().get('message', '未知错误')
-                self.logger.error(f"❌ Release变更日志更新失败: {error_msg}")
+                self._print_step_summary("更新Release", "失败", [f"更新失败: {error_msg}"])
                 return False
                 
         except Exception as e:
-            self.logger.error(f"❌ 更新Release失败: {e}")
+            self._print_step_summary("更新Release", "失败", [f"请求异常: {e}"])
             return False
     
     def generate_summary_report(self, mode: RunMode, version: str, release_id: str,
@@ -946,10 +1125,8 @@ class AIChangelogGenerator:
         else:
             self.batch_stats.error_count += 1
         
-        # 计算进度
+        # 计算进度和时间估算
         progress = (current / total) * 100
-        
-        # 估算剩余时间
         if current > 0:
             avg_time = elapsed_time / current
             remaining_time = avg_time * (total - current)
@@ -957,34 +1134,44 @@ class AIChangelogGenerator:
         else:
             remaining_str = "计算中..."
         
-        # 实时摘要输出
-        print(f"\n{'='*80}")
-        print(f"🔄 批量处理进度: {current}/{total} ({progress:.1f}%)")
-        print(f"📦 当前处理: {release_tag}")
-        print(f"{'='*80}")
-        
-        print(f"📊 当前统计:")
-        print(f"  ✅ 成功: {self.batch_stats.success_count}")
-        print(f"  🧠 AI成功: {self.batch_stats.ai_success_count}")
-        print(f"  ❌ 失败: {self.batch_stats.error_count}")
-        print(f"  ⏩ 跳过: {self.batch_stats.skipped_count}")
-        
-        print(f"⏱️  时间信息:")
-        print(f"  已用时: {elapsed_time/60:.1f}分钟")
-        print(f"  预计剩余: {remaining_str}")
-        
+        # 状态确定
         if success:
-            status = "🧠 AI智能生成" if ai_success else "📝 基础规则生成"
-            print(f"✅ {release_tag} 处理完成 - {status}")
+            if error_msg == "NO_COMMITS":
+                status = "跳过"
+                self.batch_stats.skipped_count += 1
+                details = [f"⚠️ {release_tag} 无提交记录 - 已跳过"]
+            else:
+                status = "完成"
+                mode_desc = "🧠 AI智能生成" if ai_success else "📝 基础规则生成"
+                details = [f"✅ {release_tag} 处理完成 - {mode_desc}"]
         elif error_msg == "SKIPPED":
-            print(f"⏩ {release_tag} 已跳过 - 无需优化")
+            status = "跳过"
             self.batch_stats.skipped_count += 1
+            details = [f"⏩ {release_tag} 已跳过 - 无需优化"]
         else:
-            print(f"❌ {release_tag} 处理失败")
+            status = "失败"
+            details = [f"❌ {release_tag} 处理失败"]
             if error_msg:
-                print(f"   错误: {error_msg}")
+                details.append(f"   错误: {error_msg}")
         
-        print(f"{'='*80}\n")
+        # 输出实时摘要
+        summary_details = [
+            f"📦 当前处理: {release_tag}",
+            f"📊 进度: {current}/{total} ({progress:.1f}%)",
+            "",
+            "📈 当前统计:",
+            f"  ✅ 成功: {self.batch_stats.success_count}",
+            f"  🧠 AI成功: {self.batch_stats.ai_success_count}",
+            f"  ❌ 失败: {self.batch_stats.error_count}",
+            f"  ⏩ 跳过: {self.batch_stats.skipped_count}",
+            "",
+            "⏱️ 时间信息:",
+            f"  已用时: {elapsed_time/60:.1f}分钟",
+            f"  预计剩余: {remaining_str}",
+            ""
+        ] + details
+        
+        self._print_step_summary(f"批量处理进度", status, summary_details, (current, total))
         
         # 刷新输出确保实时显示
         sys.stdout.flush()
@@ -1014,6 +1201,12 @@ class AIChangelogGenerator:
             
             # 获取Git提交信息
             commits, commit_range, commit_count = self.get_git_commits(tag_name)
+            
+            # 如果没有提交记录，跳过处理
+            if commit_count == 0:
+                self.logger.warning(f"⚠️ 版本 {tag_name} 没有提交记录，跳过处理")
+                return True, False, "NO_COMMITS"
+            
             self.batch_stats.total_commits += commit_count
             
             # 分类提交
@@ -1035,6 +1228,7 @@ class AIChangelogGenerator:
             return success, ai_success, None
             
         except Exception as e:
+            self.logger.error(f"❌ 处理版本 {tag_name} 时发生异常: {e}")
             return False, False, str(e)
     
     def run_batch_processing(self) -> bool:
@@ -1181,6 +1375,12 @@ class AIChangelogGenerator:
         Returns:
             是否执行成功
         """
+        self._print_step_summary("开始执行", "进行中", [
+            f"仓库: {self.repo}",
+            f"事件类型: {event_name}",
+            "正在初始化..."
+        ])
+        
         try:
             # 1. 验证参数
             mode, final_version, final_release_id = self.validate_params(
@@ -1199,7 +1399,7 @@ class AIChangelogGenerator:
             need_optimize, processed_changelog = self.check_optimization_status(mode, original_changelog)
             
             if not need_optimize:
-                self.logger.info("🚫 无需优化，流程结束")
+                self._print_step_summary("执行完成", "跳过", ["🚫 无需优化，流程结束"])
                 return True
             
             # 获取Git提交信息
@@ -1222,6 +1422,22 @@ class AIChangelogGenerator:
             # 更新Release
             success = self.update_release_changelog(final_release_id, changelog)
             
+            # 最终摘要
+            if success:
+                final_details = [
+                    f"✅ {final_version} 变更日志生成成功",
+                    f"🎯 生成方式: {'🧠 AI智能生成' if ai_success else '📝 基础规则生成'}",
+                    f"📊 处理提交: {commit_count} 个",
+                    f"⏰ 执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                ]
+                
+                if not ai_success and ai_error:
+                    final_details.append(f"⚠️ AI调用失败: {ai_error}")
+                
+                self._print_step_summary("执行完成", "完成", final_details)
+            else:
+                self._print_step_summary("执行完成", "失败", ["❌ Release更新失败"])
+            
             # 生成和输出摘要报告
             report = self.generate_summary_report(mode, final_version, final_release_id, 
                                                  classified_commits, ai_success, ai_error)
@@ -1236,7 +1452,7 @@ class AIChangelogGenerator:
             return success
             
         except Exception as e:
-            self.logger.error(f"❌ 执行失败: {e}")
+            self._print_step_summary("执行完成", "失败", [f"❌ 执行异常: {e}"])
             return False
 
 
