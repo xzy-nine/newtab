@@ -1,9 +1,6 @@
 /**
  * 网格系统模块
  * 提供网格定位、吸附和响应式布局功能
- * 
- * 注意：此模块依赖 Notification、I18n 和 Utils，但由于它们在 index.js 中的导出顺序，
- * 这里需要直接导入以避免循环依赖
  */
 
 import { Notification } from '../notifications/notification.js';
@@ -25,10 +22,10 @@ function getI18nMessage(key, defaultText) {
  */
 export const GridSystem = {
     // 网格系统配置
-    gridEnabled: true,       // 默认启用网格
+    gridEnabled: true,       // 网格系统总是启用
     gridSize: 20,            // 初始网格单元格大小（将被动态计算）
     gridGap: 10,             // 初始网格间隙（将被动态计算）
-    snapThreshold: 15,       // 网格吸附阈值
+    snapThreshold: 15,       // 网格吸附阈值（固定值，不可调整）
     isDebugMode: false,      // 是否显示网格辅助线
     gridColumnCount: 45,     // 列数，提供精细的水平网格
     gridRowCount: 30,        // 行数，提供精细的垂直网格
@@ -43,16 +40,14 @@ export const GridSystem = {
         try {
             // 将GridSystem暴露到全局作用域
             window.GridSystem = this;
-            
-            // 加载网格系统设置
+              // 加载网格系统设置
             const gridSettings = await chrome.storage.local.get([
-                'widgetGridEnabled', 
-                'widgetGridDebug', 
-                'widgetGridSnapThreshold'
+                'widgetGridDebug'
             ]);
-            this.gridEnabled = gridSettings.widgetGridEnabled !== undefined ? gridSettings.widgetGridEnabled : true;
+            // 网格系统默认启用，不再从存储中读取
+            this.gridEnabled = true;
             this.isDebugMode = gridSettings.widgetGridDebug || false;
-            this.snapThreshold = gridSettings.widgetGridSnapThreshold || 15;
+            // 吸附阈值保持当前默认值，不再从存储中读取
             
             // 计算当前视口的网格尺寸
             this.calculateGridDimensions();
@@ -322,41 +317,30 @@ export const GridSystem = {
                 resolve();
             }
         });
-    },
-
-    /**
+    },    /**
      * 切换网格系统
-     * @param {boolean} enable - 是否启用网格系统
+     * @param {boolean} enable - 是否启用网格系统（现在总是保持启用）
      * @returns {Promise<void>}
      */
     toggleGridSystem(enable) {
         return new Promise((resolve) => {
             try {
-                this.gridEnabled = enable;
+                // 网格系统现在总是启用
+                this.gridEnabled = true;
                 
-                if (enable) {
-                    // 计算并应用网格
-                    this.calculateGridDimensions();
-                    this.applyGridStyles();
-                    
-                    // 触发网格启用事件
-                    document.dispatchEvent(new CustomEvent('grid-system-toggled', {
-                        detail: { enabled: true }
-                    }));
-                } else {
-                    // 触发网格禁用事件
-                    document.dispatchEvent(new CustomEvent('grid-system-toggled', {
-                        detail: { enabled: false }
-                    }));
-                }
+                // 计算并应用网格
+                this.calculateGridDimensions();
+                this.applyGridStyles();
                 
-                // 保存设置
-                chrome.storage.local.set({ 'widgetGridEnabled': enable }, () => {
-                    console.log('网格系统设置已保存:', enable);
-                    resolve();
-                });
+                // 触发网格启用事件
+                document.dispatchEvent(new CustomEvent('grid-system-toggled', {
+                    detail: { enabled: true }
+                }));
+                
+                console.log('网格系统保持启用状态');
+                resolve();
             } catch (error) {
-                console.error('切换网格系统失败:', error);
+                console.error('网格系统操作失败:', error);
                 resolve();
             }
         });
@@ -371,12 +355,8 @@ export const GridSystem = {
         return new Promise((resolve) => {
             try {
                 this.snapThreshold = threshold;
-                
-                // 保存设置
-                chrome.storage.local.set({ 'widgetGridSnapThreshold': threshold }, () => {
-                    console.log('网格吸附阈值设置已保存:', threshold);
-                    resolve();
-                });
+                console.log('网格吸附阈值已更新:', threshold);
+                resolve();
             } catch (error) {
                 console.error('设置网格吸附阈值失败:', error);
                 resolve();
@@ -552,28 +532,21 @@ export const GridSystem = {
      */
     debounce(func, wait) {
         return Utils.debounce(func, wait);
-    },
-
-    /**
+    },    /**
      * 从localStorage初始化网格设置
      */
     initializeFromStorage() {
-        // 从localStorage恢复网格设置
-        const storedEnabled = localStorage.getItem('grid-enabled');
+        // 从localStorage恢复网格调试设置
         const storedDebug = localStorage.getItem('grid-debug');
-        const storedThreshold = localStorage.getItem('grid-snap-threshold');
         
-        if (storedEnabled !== null) {
-          this.gridEnabled = storedEnabled === 'true';
-        }
+        // 网格系统总是启用
+        this.gridEnabled = true;
         
         if (storedDebug !== null) {
           this.isDebugMode = storedDebug === 'true';
         }
         
-        if (storedThreshold !== null) {
-          this.snapThreshold = parseInt(storedThreshold) || 15;
-        }
+        // 吸附阈值保持默认值
         
         console.log('GridSystem从localStorage恢复设置:', {
           enabled: this.gridEnabled,
@@ -585,29 +558,8 @@ export const GridSystem = {
     /**
      * 创建网格系统设置项
      * @returns {Array} - 设置项配置数组
-     */
-    createSettingsItems() {
+     */    createSettingsItems() {
         return [
-            {
-                id: 'grid-enabled',
-                label: I18n.getMessage('settingsGridEnabled', '启用网格系统'),
-                type: 'checkbox',
-                getValue: () => this.gridEnabled,
-                description: I18n.getMessage('settingsGridEnabledDesc', '启用后元素将自动吸附到网格位置'),
-                onChange: async (value) => {
-                    await this.toggleGridSystem(value);
-                    Notification.notify({
-                        title: value 
-                            ? I18n.getMessage('gridSystemEnabled', '网格系统已启用')
-                            : I18n.getMessage('gridSystemDisabled', '网格系统已禁用'),
-                        message: value
-                            ? I18n.getMessage('gridSystemEnabledMessage', '元素将吸附到网格')
-                            : I18n.getMessage('gridSystemDisabledMessage', '元素将自由放置'),
-                        type: value ? 'success' : 'info',
-                        duration: 2000
-                    });
-                }
-            },
             {
                 id: 'grid-debug',
                 label: I18n.getMessage('settingsGridDebug', '显示网格线'),
@@ -626,20 +578,6 @@ export const GridSystem = {
                         type: 'info',
                         duration: 2000
                     });
-                }
-            },
-            {
-                id: 'grid-snap-threshold',
-                label: I18n.getMessage('settingsGridSnapThreshold', '吸附阈值'),
-                type: 'range',
-                min: 5,
-                max: 30,
-                step: 1,
-                getValue: () => this.snapThreshold,
-                unit: 'px',
-                description: I18n.getMessage('settingsGridSnapThresholdDesc', '元素吸附到网格的距离阈值'),
-                onChange: (value) => {
-                    this.setSnapThreshold(value);
                 }
             }
         ];
