@@ -186,14 +186,13 @@ jobs:
         echo "🔍 调试信息:"
         echo "- Client ID 长度: ${#CLIENT_ID}"
         echo "- API Key 长度: ${#API_KEY}"
-        echo "- Product ID: $PRODUCT_ID"
-          # 根据Microsoft Edge Add-ons API文档，使用正确的认证方式
-        # 参考: https://docs.microsoft.com/en-us/microsoft-edge/extensions-chromium/publish/api/using-addons-api
+        echo "- Product ID: $PRODUCT_ID"        # 根据Microsoft Edge Add-ons API文档，使用正确的认证方式
+        # 参考: https://learn.microsoft.com/en-us/microsoft-edge/extensions-chromium/update/api/using-addons-api
         UPLOAD_RESPONSE=$(curl -s -X POST \
           -H "Authorization: ApiKey $API_KEY" \
           -H "X-ClientID: $CLIENT_ID" \
           -H "Content-Type: application/zip" \
-          --data-binary @extension.zip \
+          -T extension.zip \
           -w "HTTP_CODE:%{http_code}\n" \
           "https://api.addons.microsoftedge.microsoft.com/v1/products/$PRODUCT_ID/submissions/draft/package")
         
@@ -210,13 +209,12 @@ jobs:
           OPERATION_ID=$(echo "$UPLOAD_RESPONSE" | grep -v "HTTP_CODE:" | jq -r '.operationId // empty')
           
           if [ -z "$OPERATION_ID" ]; then
-            # 如果响应中没有 operationId，尝试从 Location 头获取
-            echo "尝试从 Location 头获取 operation ID..."
+            # 如果响应中没有 operationId，尝试从 Location 头获取            echo "尝试从 Location 头获取 operation ID..."
             LOCATION_HEADER=$(curl -s -I -X POST \
               -H "Authorization: ApiKey $API_KEY" \
               -H "X-ClientID: $CLIENT_ID" \
               -H "Content-Type: application/zip" \
-              --data-binary @extension.zip \
+              -T extension.zip \
               "https://api.addons.microsoftedge.microsoft.com/v1/products/$PRODUCT_ID/submissions/draft/package" \
               | grep -i "location:" | sed 's/.*operations\///I' | tr -d '\r\n')
             OPERATION_ID="$LOCATION_HEADER"
