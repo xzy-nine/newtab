@@ -193,6 +193,70 @@ const EventHandlers = {    /**
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
         });
+
+// 添加对移动端触摸事件的支持
+handle.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // 如果容器是固定的，不允许拖动
+    if (container.dataset.fixed === 'true') {
+        const fixedTitle = getI18nMessage('widgetFixed', '小部件已固定');
+        const fixedMessage = getI18nMessage('unfixWidgetToMove', '请先取消固定再移动');
+
+        Notification.notify({
+            title: fixedTitle,
+            message: fixedMessage,
+            type: 'info',
+            duration: 2000
+        });
+        return;
+    }
+
+    isDragging = true;
+
+    const touch = e.touches[0];
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+    const startLeft = parseInt(container.style.left) || 0;
+    const startTop = parseInt(container.style.top) || 0;
+
+    container.classList.add('widget-dragging');
+
+    function handleTouchMove(moveEvent) {
+        if (!isDragging) return;
+        const touchMove = moveEvent.touches[0];
+        const dx = touchMove.clientX - startX;
+        const dy = touchMove.clientY - startY;
+
+        let newLeft = Math.max(0, startLeft + dx);
+        let newTop = Math.max(0, startTop + dy);
+
+        container.style.left = `${newLeft}px`;
+        container.style.top = `${newTop}px`;
+
+        moveEvent.preventDefault();
+    }
+
+    function handleTouchEnd() {
+        if (isDragging) {
+            isDragging = false;
+            container.classList.remove('widget-dragging');
+
+            if (GridSystem.gridEnabled) {
+                GridSystem.snapElementToGrid(container, true);
+            }
+
+            document.dispatchEvent(new CustomEvent('widget-data-changed'));
+        }
+
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+    }
+
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+}, { passive: false });
     },
 
     /**
@@ -2070,7 +2134,7 @@ export const WidgetSystem = {
         }
         
         // 确保不超出左边界
-        if (left < 0) {
+        if (left <  0) {
             left = 0;
             changed = true;
         }
