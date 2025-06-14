@@ -550,7 +550,7 @@ export const BookmarkManager = {
                         }
                     } catch (error) {
                         console.error('加载当前图标失败:', error);
-                        preview.innerHTML = `<img src="Icon.png" alt="Default Icon" class="preview-icon-img">`;
+                        preview.innerHTML = `<img src="../icons/default.png" alt="Default Icon" class="preview-icon-img">`;
                     }
                 }
             });

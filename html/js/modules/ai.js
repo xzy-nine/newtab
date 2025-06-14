@@ -635,7 +635,7 @@ export const AI = {    /**
                 }
                 
                 IconManager.setIconForElement(providerIcon, iconUrl);
-                providerIcon.onerror = () => IconManager.handleIconError(providerIcon, '../favicon.png');
+                providerIcon.onerror = () => IconManager.handleIconError(providerIcon, '../icons/icon128.png');
                 
                 // 供应商名称
                 const providerName = Utils.createElement('div', 'engine-name', {}, provider.name);

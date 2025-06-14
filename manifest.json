@@ -2,25 +2,29 @@
   "manifest_version": 3,
   "name": "__MSG_appName__",
   "version": "1.3.7",
-  "description": "__MSG_appDescription__",
+  "description": "__MSG_appDescription__",  
   "icons": {
-    "16": "/favicon.png",
-    "32": "/favicon.png",
-    "48": "/favicon.png",
-    "128": "/favicon.png"
+    "16": "./icons/icon16.png",
+    "19": "./icons/icon19.png",
+    "32": "./icons/icon32.png",
+    "38": "./icons/icon38.png",
+    "48": "./icons/icon48.png",
+    "128": "./icons/icon128.png"
   },
+
   "background": {
     "service_worker": "html/js/background.js",
     "type": "module"
   },
   "action": {
     "default_popup": "html/popup.html",
-    "default_title": "__MSG_extensionTitle__",
-    "default_icon": {
-      "16": "/favicon.png",
-      "32": "/favicon.png",
-      "48": "/favicon.png",
-      "128": "/favicon.png"
+    "default_title": "__MSG_extensionTitle__",    "default_icon": {
+    "16": "./icons/icon16.png",
+    "19": "./icons/icon19.png",
+    "32": "./icons/icon32.png",
+    "38": "./icons/icon38.png",
+    "48": "./icons/icon48.png",
+    "128": "./icons/icon128.png"
     }
   },
   "chrome_url_overrides": {
@@ -28,7 +32,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["html/*", "images/*", "css/*", "js/*", "favicon.png"],
+      "resources": ["html/*", "images/*", "css/*", "js/*", "icons/icon128.png"],
       "matches": ["<all_urls>"]
     }
   ],

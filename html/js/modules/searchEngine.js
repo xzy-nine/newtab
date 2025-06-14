@@ -313,7 +313,7 @@ export const SearchEngineAPI = {    /**
                 
                 // 使用 IconManager 设置图标
                 IconManager.setIconForElement(engineIcon, engine.url);
-                engineIcon.onerror = () => IconManager.handleIconError(engineIcon, '../favicon.png');
+                engineIcon.onerror = () => IconManager.handleIconError(engineIcon, '../icons/icon128.png');
                 
                 // 引擎名称
                 const engineName = Utils.createElement('div', 'engine-name', {}, engine.name);
@@ -638,7 +638,7 @@ export const SearchEngineAPI = {    /**
             const icon = Utils.createElement('img', '', { alt: engine.name });
             const siteUrl = Utils.getDomain(engine.url);
             IconManager.setIconForElement(icon, siteUrl);
-            icon.onerror = () => IconManager.handleIconError(icon, '../favicon.png');
+            icon.onerror = () => IconManager.handleIconError(icon, '../icons/icon128.png');
             
             const name = Utils.createElement('span', '', {}, engine.name);
             
@@ -702,7 +702,7 @@ export const SearchEngineAPI = {    /**
             
             // 设置图标
             IconManager.setIconForElement(newIcon, siteUrl);
-            newIcon.onerror = () => IconManager.handleIconError(newIcon, '../favicon.png');
+            newIcon.onerror = () => IconManager.handleIconError(newIcon, '../icons/icon128.png');
             
             // 添加点击事件
             newIcon.addEventListener('click', (e) => {

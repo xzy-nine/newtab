@@ -10,7 +10,7 @@ import { I18n } from './i18n.js';
 
 // 核心数据结构
 const iconCache = new Map();
-const DEFAULT_ICON = '../Icon.png';
+const DEFAULT_ICON = '../icons/default.png';
 const FETCH_TIMEOUT = 3000;
 // 添加替代图标标记前缀
 const FALLBACK_ICON_PREFIX = 'data:image/png;base64,FALLBACKICON:';
