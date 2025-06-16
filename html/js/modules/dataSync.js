@@ -238,29 +238,46 @@ export const DataSync = {
                 duration: 2000
             });
 
-            // TODO: 实现实际的同步逻辑
-            console.log(`执行${mode}同步`);
-            
-            // 模拟同步完成
-            setTimeout(() => {
-                localStorage.setItem('last-sync-time', Date.now().toString());
-                this.updateSyncStatusDisplay();
-                
-                Notification.notify({
-                    title: I18n.getMessage('syncComplete', '同步完成'),
-                    message: mode === 'upload' ? 
-                        I18n.getMessage('uploadComplete', '数据上传完成') : 
-                        I18n.getMessage('downloadComplete', '数据下载完成'),
-                    type: 'success',
-                    duration: 2000
+            if (mode === 'upload') {
+                // 上传到 chrome.storage.sync
+                const dataToSync = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    dataToSync[key] = localStorage.getItem(key);
+                }
+                await new Promise((resolve, reject) => {
+                    chrome.storage.sync.set(dataToSync, () => {
+                        chrome.runtime.lastError ? reject(chrome.runtime.lastError) : resolve();
+                    });
                 });
-            }, 2000);
-            
+            } else if (mode === 'download') {
+                // 从 chrome.storage.sync 获取并应用到 localStorage
+                const items = await new Promise((resolve, reject) => {
+                    chrome.storage.sync.get(null, (result) => {
+                        chrome.runtime.lastError ? reject(chrome.runtime.lastError) : resolve(result);
+                    });
+                });
+                Object.keys(items).forEach(key => {
+                    localStorage.setItem(key, items[key]);
+                });
+            }
+
+            // 更新最后同步时间并通知
+            localStorage.setItem('last-sync-time', Date.now().toString());
+            this.updateSyncStatusDisplay();
+            Notification.notify({
+                title: I18n.getMessage('syncComplete', '同步完成'),
+                message: mode === 'upload' ? 
+                    I18n.getMessage('uploadComplete', '数据上传完成') : 
+                    I18n.getMessage('downloadComplete', '数据下载完成'),
+                type: 'success',
+                duration: 2000
+            });
         } catch (error) {
             console.error('手动同步失败:', error);
             Notification.notify({
                 title: I18n.getMessage('syncFailed', '同步失败'),
-                message: error.message,
+                message: error.message || I18n.getMessage('syncFailed', '同步失败'),
                 type: 'error',
                 duration: 3000
             });
@@ -282,28 +299,41 @@ export const DataSync = {
                 duration: 2000
             });
 
-            // TODO: 实现实际的清除逻辑
-            console.log('清除云端数据');
-            
-            // 模拟清除完成
-            setTimeout(() => {
-                Notification.notify({
-                    title: I18n.getMessage('cloudDataCleared', '云端数据已清除'),
-                    message: I18n.getMessage('cloudDataClearComplete', '所有云端数据已清除'),
-                    type: 'success',
-                    duration: 2000
+            // 清除 chrome.storage.sync 中的数据
+            await new Promise((resolve, reject) => {
+                chrome.storage.sync.clear(() => {
+                    chrome.runtime.lastError ? reject(chrome.runtime.lastError) : resolve();
                 });
-            }, 1000);
-            
+            });
+
+            Notification.notify({
+                title: I18n.getMessage('cloudDataCleared', '云端数据已清除'),
+                message: I18n.getMessage('cloudDataClearComplete', '所有云端数据已清除'),
+                type: 'success',
+                duration: 2000
+            });
         } catch (error) {
             console.error('清除云端数据失败:', error);
             Notification.notify({
-                title: I18n.getMessage('clearCloudDataFailed', '清除失败'),
-                message: error.message,
+                title: I18n.getMessage('error', '错误'),
+                message: error.message || I18n.getMessage('error', '错误'),
                 type: 'error',
                 duration: 3000
             });
         }
+    },
+
+    /**
+     * 获取数据同步在设置中的分类配置
+     * @returns {Object} 分类配置对象
+     */
+    getSettingsCategory() {
+        return {
+            id: 'data-sync',
+            icon: '☁️',
+            title: I18n.getMessage('settingsDataSync', '数据同步'),
+            items: this.createSettingsItems()
+        };
     },
 
     /**

@@ -47,12 +47,7 @@ export const Settings = {
           title: I18n.getMessage('settingsSearchEngines', '搜索引擎'),
           items: SearchEngineAPI ? SearchEngineAPI.createSettingsItems() : []
         },
-        {
-          id: 'data-sync',
-          icon: '☁️',
-          title: I18n.getMessage('settingsDataSync', '数据同步'),
-          items: DataSync.createSettingsItems()
-        },
+        DataSync.getSettingsCategory(),
         // 关于页
         {
           id: 'about',
@@ -643,7 +638,7 @@ if (Settings.currentCategory === 'about') {
     }
     
     itemElement.append(itemHeader, itemControl);
-    return itemElement;  },  // AI供应商相关方法已移动到AI模块中
+    return itemElement;  },  
   // 改进设置同步方法
   syncSettingsWithSystem() {
     console.log('开始同步设置与系统状态');
@@ -756,13 +751,4 @@ if (Settings.currentCategory === 'about') {
     };
     document.addEventListener('keydown', handleEscKey);
   },
-  /**
-   * 优化的设置同步方法 - 使用模块的 getValue 方法
-   */
-  
-
-  /**
-   * 处理语言变化
-   * @param {string} selectedLanguage - 选择的语言
-   */
 };
