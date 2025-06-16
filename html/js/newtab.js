@@ -19,7 +19,8 @@ import {
 import { moduleConfigs, validateModuleConfigs } from './modules/core/init/moduleConfig.js';
 
 // 版本号
-let VERSION = '0.0.0'; 
+// 全局版本号
+window.VERSION = '0.0.0'; 
 // 全局状态标志
 let isInitialized = false;
 // 直接读取的翻译数据缓存
@@ -201,7 +202,7 @@ async function init() {
         Notification.showLoadingIndicator(loadingText);
         
         // 获取扩展版本
-        VERSION = await getExtensionVersion();
+        window.VERSION = await getExtensionVersion();
         
         // 验证模块配置
         const configValidation = validateModuleConfigs();
@@ -525,5 +526,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// 导出版本号和实用函数
-export { VERSION, showMobileInstruction };
+// 导出实用函数
+export { showMobileInstruction };

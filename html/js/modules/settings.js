@@ -11,7 +11,6 @@ import {
     ThemeManager, 
     NotificationManager 
 } from './core/index.js';
-import { VERSION } from '../../newtab.js';
 
 export const Settings = {
   // 设置配置 - 改为函数以支持动态翻译
@@ -77,13 +76,13 @@ export const Settings = {
           label: I18n.getMessage('settingsVersion', '版本号'),
           type: 'custom',
           async createControl() {
-            const span = Utils.createElement('span', 'setting-text', {}, VERSION);
+            const span = Utils.createElement('span', 'setting-text', {}, window.VERSION);
             return span;
           }
         },
         {
           id: 'openRepo',
-          label: I18n.getMessage('settingsOpenRepo', '开源地址'),
+          label: I18n.getMessage('settingsOpenRepo', 'github开源地址'),
           type: 'button',
           buttonText: 'GitHub',
           buttonClass: 'btn-secondary',
@@ -91,7 +90,7 @@ export const Settings = {
         },
         {
           id: 'openStore',
-          label: I18n.getMessage('settingsOpenStore', '商店地址'),
+          label: I18n.getMessage('settingsOpenStore', 'edge商店地址'),
           type: 'button',
           buttonText: '商店',
           buttonClass: 'btn-secondary',
@@ -99,7 +98,7 @@ export const Settings = {
         },
         {
           id: 'openDev',
-          label: I18n.getMessage('settingsOpenDev', '开发者页面'),
+          label: I18n.getMessage('settingsOpenDev', 'edge的开发者页面'),
           type: 'button',
           buttonText: '开发者',
           buttonClass: 'btn-secondary',
