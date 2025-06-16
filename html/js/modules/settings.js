@@ -11,6 +11,7 @@ import {
     ThemeManager, 
     NotificationManager 
 } from './core/index.js';
+import { VERSION } from '../../newtab.js';
 
 export const Settings = {
   // 设置配置 - 改为函数以支持动态翻译
@@ -64,6 +65,47 @@ export const Settings = {
       icon: '☁️',
       title: I18n.getMessage('settingsDataSync', '数据同步'),
       items: DataSync.createSettingsItems()
+    },
+    // 关于页
+    {
+      id: 'about',
+      icon: 'ℹ️',
+      title: I18n.getMessage('settingsAbout', '关于'),
+      items: [
+        {
+          id: 'version',
+          label: I18n.getMessage('settingsVersion', '版本号'),
+          type: 'custom',
+          async createControl() {
+            const span = Utils.createElement('span', 'setting-text', {}, VERSION);
+            return span;
+          }
+        },
+        {
+          id: 'openRepo',
+          label: I18n.getMessage('settingsOpenRepo', '开源地址'),
+          type: 'button',
+          buttonText: 'GitHub',
+          buttonClass: 'btn-secondary',
+          onClick: () => window.open('https://github.com/xzy-nine/newtab', '_blank')
+        },
+        {
+          id: 'openStore',
+          label: I18n.getMessage('settingsOpenStore', '商店地址'),
+          type: 'button',
+          buttonText: '商店',
+          buttonClass: 'btn-secondary',
+          onClick: () => window.open('https://microsoftedge.microsoft.com/addons/detail/lpdhbhkcbnhldcpcbocplhgeooabhbme', '_blank')
+        },
+        {
+          id: 'openDev',
+          label: I18n.getMessage('settingsOpenDev', '开发者页面'),
+          type: 'button',
+          buttonText: '开发者',
+          buttonClass: 'btn-secondary',
+          onClick: () => window.open('https://partner.microsoft.com/en-us/dashboard/microsoftedge/overview', '_blank')
+        }
+      ]
     }
   ],
 
