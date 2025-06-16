@@ -26,21 +26,8 @@ export const Settings = {
           id: 'general',
           icon: '⚙️',
           title: I18n.getMessage('settingsGeneral', '常规设置'),      items: [
-            {
-              id: 'language',
-              label: I18n.getMessage('settingsLanguage', '界面语言'),
-              type: 'select',
-              options: [
-                { value: 'zh', label: '简体中文' },
-                { value: 'en', label: 'English' }
-              ],
-              getValue: () => I18n.getCurrentLanguage(),
-              description: I18n.getMessage('settingsLanguageDesc', '选择界面显示语言'),
-              onChange: async (value) => {
-                await Settings.handleLanguageChange(value);
-              }
-            },
-            ...ThemeManager.createSettingsItems()
+             ...I18n.createSettingsItems(),
+             ...ThemeManager.createSettingsItems()
           ]
         },
         {
@@ -48,12 +35,6 @@ export const Settings = {
           icon: '🔔',
           title: I18n.getMessage('settingsNotifications', '通知设置'),
           items: NotificationManager.createSettingsItems()
-        },
-        {
-          id: 'grid-system',
-          icon: '📐',
-          title: I18n.getMessage('settingsGridSystem', '网格系统'),
-          items: []
         },
         {
           id: 'ai-assistant',
@@ -784,56 +765,4 @@ if (Settings.currentCategory === 'about') {
    * 处理语言变化
    * @param {string} selectedLanguage - 选择的语言
    */
-  async handleLanguageChange(selectedLanguage) {
-    const currentLanguage = I18n.getCurrentLanguage();
-    
-    console.log(`语言切换: ${currentLanguage} -> ${selectedLanguage}`);
-    
-    // 如果选择的语言与当前语言相同，不执行操作
-    if (selectedLanguage === currentLanguage) {
-      console.log('选择的语言与当前语言相同，跳过操作');
-      return;
-    }
-    
-    try {
-      // 显示切换中的通知
-      Notification.notify({
-        title: I18n.getMessage('switchingLanguage', '正在切换语言'),
-        message: I18n.getMessage('pleaseWait', '请稍候...'),
-        type: 'info',
-        duration: 1000
-      });
-      
-      await I18n.changeLanguage(selectedLanguage);
-        
-        // 显示成功通知
-        Notification.notify({
-          title: I18n.getMessage('success', '成功'),
-          message: I18n.getMessage('languageChanged', '语言设置已更改，正在刷新页面...'),
-          type: 'success',
-          duration: 2000
-        });
-        
-        // 延迟刷新页面以确保通知显示
-        setTimeout(() => {
-          location.reload();
-        }, 1000);
-      } catch (error) {
-        console.error('切换语言失败:', error);
-        
-        // 显示错误通知
-        Notification.notify({
-          title: I18n.getMessage('error', '错误'),
-          message: I18n.getMessage('languageChangeError', '语言设置更改失败'),
-          type: 'error',
-          duration: 3000
-        });
-        
-        // 恢复到原来的选择
-        const select = document.getElementById('language');
-        if (select) {
-          select.value = I18n.getCurrentLanguage();
-        }
-      }
-  },
 };

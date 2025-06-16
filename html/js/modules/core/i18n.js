@@ -193,6 +193,28 @@ export const I18n = {
    */
   getLoadedKeys: function() {
     return Object.keys(translations);
+  },
+  /**
+   * 生成语言设置项，与 Settings 模块配合使用
+   */
+  createSettingsItems: function() {
+    return [
+      {
+        id: 'language',
+        label: this.getMessage('settingsLanguage', '界面语言'),
+        type: 'select',
+        options: [
+          { value: 'zh', label: '简体中文' },
+          { value: 'en', label: 'English' }
+        ],
+        getValue: () => this.getCurrentLanguage(),
+        description: this.getMessage('settingsLanguageDesc', '选择界面显示语言'),
+        onChange: async (value) => {
+          await this.changeLanguage(value);
+          location.reload();
+        }
+      }
+    ];
   }
 };
 
