@@ -528,13 +528,10 @@ export const BookmarkManager = {
                 onShow: async () => {
                     const preview = document.getElementById('icon-selector-modal-preview');
                     if (!preview) return;
-                    
                     preview.innerHTML = `<div class="loading-spinner"></div>`;
-                    
                     try {
                         const customIcons = await this.getCustomIcons();
                         const customIcon = customIcons[shortcut.id];
-                        
                         if (customIcon) {
                             preview.innerHTML = `<img src="${customIcon}" alt="Current Icon" class="preview-icon-img">`;
                         } else {
@@ -542,7 +539,7 @@ export const BookmarkManager = {
                                 const iconUrl = await IconManager.getIconUrlAsync(shortcut.url);
                                 if (iconUrl) {
                                     preview.innerHTML = `<img src="${iconUrl}" alt="Current Icon" class="preview-icon-img">`;
-                                    return;
+                                    // 移除早期return，允许后续debug信息处理
                                 }
                             } catch (e) {
                                 console.log('通过IconManager获取图标失败');
@@ -552,6 +549,21 @@ export const BookmarkManager = {
                         console.error('加载当前图标失败:', error);
                         preview.innerHTML = `<img src="../icons/default.png" alt="Default Icon" class="preview-icon-img">`;
                     }
+                   // 如果开启调试模式，显示图标实际尺寸
+                   if (window.DEBUG_MODE) {
+                       const img = preview.querySelector('.preview-icon-img');
+                       if (img) {
+                           const appendSize = () => {
+                               const info = Utils.createElement('div', 'icon-size-info', {}, `${img.naturalWidth}x${img.naturalHeight}px`);
+                               preview.appendChild(info);
+                           };
+                           if (img.complete) {
+                               appendSize();
+                           } else {
+                               img.addEventListener('load', appendSize);
+                           }
+                       }
+                   }
                 }
             });
         } catch (error) {

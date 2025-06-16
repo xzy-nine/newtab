@@ -1,112 +1,197 @@
-import { 
-    Menu, 
-    Utils, 
-    GridSystem, 
-    I18n, 
-    SearchEngineAPI, 
-    Notification, 
-    IconManager, 
-    AI, 
-    DataSync, 
-    ThemeManager, 
-    NotificationManager 
+import {
+    Menu,
+    Utils,
+    GridSystem,
+    I18n,
+    SearchEngineAPI,
+    Notification,
+    IconManager,
+    AI,
+    DataSync,
+    ThemeManager,
+    NotificationManager
 } from './core/index.js';
 
+// 全局 modal ID 常量
+const SETTINGS_MODAL_ID = 'settings-modal';
+
 export const Settings = {
+  developerUnlocked: false,
+  unlockClicks: 0,
+  debugEnabled: false,
   // 设置配置 - 改为函数以支持动态翻译
-  getCategories: () => [
-    {
-      id: 'general',
-      icon: '⚙️',
-      title: I18n.getMessage('settingsGeneral', '常规设置'),      items: [
+  getCategories: () => {
+    const categories = [
         {
-          id: 'language',
-          label: I18n.getMessage('settingsLanguage', '界面语言'),
-          type: 'select',
-          options: [
-            { value: 'zh', label: '简体中文' },
-            { value: 'en', label: 'English' }
-          ],
-          getValue: () => I18n.getCurrentLanguage(),
-          description: I18n.getMessage('settingsLanguageDesc', '选择界面显示语言'),
-          onChange: async (value) => {
-            await Settings.handleLanguageChange(value);
-          }
-        },
-        ...ThemeManager.createSettingsItems()
-      ]
-    },
-    {
-      id: 'notifications',
-      icon: '🔔',
-      title: I18n.getMessage('settingsNotifications', '通知设置'),
-      items: NotificationManager.createSettingsItems()
-    },
-    {
-      id: 'grid-system',
-      icon: '📐',
-      title: I18n.getMessage('settingsGridSystem', '网格系统'),
-      items: window.GridSystem ? window.GridSystem.createSettingsItems() : []
-    },
-    {
-      id: 'ai-assistant',
-      icon: '🤖',
-      title: I18n.getMessage('settingsAI', 'AI助手'),
-      items: window.AI ? window.AI.createSettingsItems() : []    },
-    {
-      id: 'search-engines',
-      icon: '🔍',
-      title: I18n.getMessage('settingsSearchEngines', '搜索引擎'),
-      items: SearchEngineAPI ? SearchEngineAPI.createSettingsItems() : []
-    },
-    {
-      id: 'data-sync',
-      icon: '☁️',
-      title: I18n.getMessage('settingsDataSync', '数据同步'),
-      items: DataSync.createSettingsItems()
-    },
-    // 关于页
-    {
-      id: 'about',
-      icon: 'ℹ️',
-      title: I18n.getMessage('settingsAbout', '关于'),
-      items: [
-        {
-          id: 'version',
-          label: I18n.getMessage('settingsVersion', '版本号'),
-          type: 'custom',
-          async createControl() {
-            const span = Utils.createElement('span', 'setting-text', {}, window.VERSION);
-            return span;
-          }
+          id: 'general',
+          icon: '⚙️',
+          title: I18n.getMessage('settingsGeneral', '常规设置'),      items: [
+            {
+              id: 'language',
+              label: I18n.getMessage('settingsLanguage', '界面语言'),
+              type: 'select',
+              options: [
+                { value: 'zh', label: '简体中文' },
+                { value: 'en', label: 'English' }
+              ],
+              getValue: () => I18n.getCurrentLanguage(),
+              description: I18n.getMessage('settingsLanguageDesc', '选择界面显示语言'),
+              onChange: async (value) => {
+                await Settings.handleLanguageChange(value);
+              }
+            },
+            ...ThemeManager.createSettingsItems()
+          ]
         },
         {
-          id: 'openRepo',
-          label: I18n.getMessage('settingsOpenRepo', 'github开源地址'),
-          type: 'button',
-          buttonText: 'GitHub',
-          buttonClass: 'btn-secondary',
-          onClick: () => window.open('https://github.com/xzy-nine/newtab', '_blank')
+          id: 'notifications',
+          icon: '🔔',
+          title: I18n.getMessage('settingsNotifications', '通知设置'),
+          items: NotificationManager.createSettingsItems()
         },
         {
-          id: 'openStore',
-          label: I18n.getMessage('settingsOpenStore', 'edge商店地址'),
-          type: 'button',
-          buttonText: '商店',
-          buttonClass: 'btn-secondary',
-          onClick: () => window.open('https://microsoftedge.microsoft.com/addons/detail/lpdhbhkcbnhldcpcbocplhgeooabhbme', '_blank')
+          id: 'grid-system',
+          icon: '📐',
+          title: I18n.getMessage('settingsGridSystem', '网格系统'),
+          items: []
         },
         {
-          id: 'openDev',
-          label: I18n.getMessage('settingsOpenDev', 'edge的开发者页面'),
-          type: 'button',
-          buttonText: '开发者',
-          buttonClass: 'btn-secondary',
-          onClick: () => window.open('https://partner.microsoft.com/en-us/dashboard/microsoftedge/overview', '_blank')
+          id: 'ai-assistant',
+          icon: '🤖',
+          title: I18n.getMessage('settingsAI', 'AI助手'),
+          items: window.AI ? window.AI.createSettingsItems() : []    },
+        {
+          id: 'search-engines',
+          icon: '🔍',
+          title: I18n.getMessage('settingsSearchEngines', '搜索引擎'),
+          items: SearchEngineAPI ? SearchEngineAPI.createSettingsItems() : []
+        },
+        {
+          id: 'data-sync',
+          icon: '☁️',
+          title: I18n.getMessage('settingsDataSync', '数据同步'),
+          items: DataSync.createSettingsItems()
+        },
+        // 关于页
+        {
+          id: 'about',
+          icon: 'ℹ️',
+          title: I18n.getMessage('settingsAbout', '关于'),
+          items: [
+            {
+              id: 'version',
+              label: I18n.getMessage('settingsVersion', '版本号'),
+              type: 'custom',
+              async createControl() {
+                const span = Utils.createElement('span', 'setting-text', {}, window.VERSION);
+                return span;
+              }
+            },
+            {
+              id: 'openRepo',
+              label: I18n.getMessage('settingsOpenRepo', 'github开源地址'),
+              type: 'button',
+              buttonText: 'GitHub',
+              buttonClass: 'btn-secondary',
+              onClick: () => window.open('https://github.com/xzy-nine/newtab', '_blank')
+            },
+            {
+              id: 'openStore',
+              label: I18n.getMessage('settingsOpenStore', 'edge商店地址'),
+              type: 'button',
+              buttonText: '商店',
+              buttonClass: 'btn-secondary',
+              onClick: () => window.open('https://microsoftedge.microsoft.com/addons/detail/lpdhbhkcbnhldcpcbocplhgeooabhbme', '_blank')
+            },
+          ]
+        },
+        // 开发者选项，初始隐藏
+        {
+          id: 'developer',
+          icon: '🛠️',
+          title: I18n.getMessage('settingsDeveloper', '开发者选项'),
+          items: [
+            {
+              id: 'grid-debug',
+              label: I18n.getMessage('settingsGridDebug', '显示网格线'),
+              type: 'checkbox',
+              getValue: () => window.GridSystem.isDebugMode,
+              description: I18n.getMessage('settingsGridDebugDesc', '显示网格辅助线，帮助对齐元素'),
+              onChange: async (v) => { window.GridSystem.toggleGridDebug(v); }
+            },
+            {
+              id: 'openDev',
+              label: I18n.getMessage('settingsOpenDev', 'Microsoft 合作伙伴中心'),
+              type: 'button',
+              buttonText: '合作伙伴中心',
+              buttonClass: 'btn-secondary',
+              onClick: () => window.open('https://partner.microsoft.com/en-us/dashboard/microsoftedge/overview', '_blank')
+            },
+            {
+              id: 'debugMode',
+              label: I18n.getMessage('settingsDebugMode', '调试模式'),
+              type: 'checkbox',
+              getValue: () => Settings.debugEnabled,
+              description: I18n.getMessage('settingsDebugModeDesc', '其他模块将进入调试模式,增加信息显示和部分日志输出'),
+              onChange: async (value) => {
+                Settings.debugEnabled = value;
+                window.DEBUG_MODE = value;
+                // 持久化调试模式状态
+                localStorage.setItem('debugEnabled', value);
+              }
+            },
+            {
+              id: 'clearSearchData',
+              label: I18n.getMessage('settingsClearSearchData', '清除拓展全部数据'),
+              type: 'button',
+              buttonText: I18n.getMessage('settingsClearSearchDataBtn', '清除拓展全部数据'),
+              buttonClass: 'btn-warning',
+              onClick: () => {
+                Notification.notify({
+                  title: I18n.getMessage('confirm', '确认'),
+                  message: I18n.getMessage('clearStorageConfirm', '确定要清除所有存储数据吗？此操作不可恢复。'),
+                  duration: 0,
+                  type: 'confirm',
+                  buttons: [
+                    {
+                      text: I18n.getMessage('confirm', '确认'),
+                      class: 'btn-primary confirm-yes',
+                      callback: async () => {
+                         // 直接清除所有 localStorage，为后续功能保留清除入口
+                         localStorage.clear();
+                           const success = await SearchEngineAPI.clearStorage();
+                           if (success) {
+                             Notification.notify({
+                               title: I18n.getMessage('success', '成功'),
+                               message: I18n.getMessage('clearStorageSuccess', '存储已成功清除，页面将刷新。'),
+                               type: 'success',
+                               duration: 1500,
+                               onClose: () => window.location.reload()
+                             });
+                           } else {
+                             Notification.notify({
+                               title: I18n.getMessage('error', '错误'),
+                               message: I18n.getMessage('clearStorageError', '清除存储失败'),
+                               type: 'error',
+                               duration: 3000
+                             });
+                           }
+                        }
+                    },
+                    {
+                      text: I18n.getMessage('cancel', '取消'),
+                      class: 'confirm-no',
+                      callback: () => {}
+                    }
+                  ]
+                });
+              }
+            }
+          ]
         }
-      ]
-    }
-  ],
+      ];
+    return categories.filter(cat => cat.id !== 'developer' || Settings.developerUnlocked);
+  },
 
   currentCategory: 'general',
 
@@ -115,17 +200,23 @@ export const Settings = {
   },
 
   showSettingsModal: () => {
-    const modalId = 'settings-modal';
-    
-    // 删除旧的模态框
-    const oldModal = document.getElementById(modalId);
-    if (oldModal) {
-      oldModal.remove();
-    }
+    Settings.unlockClicks = 0;
+    // 从本地存储恢复开发者选项及调试模式状态
+    Settings.developerUnlocked = localStorage.getItem('developerUnlocked') === 'true';
+    Settings.debugEnabled = localStorage.getItem('debugEnabled') === 'true';
+    window.DEBUG_MODE = Settings.debugEnabled;
+     // 使用全局常量作为 modal ID
+     const modalId = SETTINGS_MODAL_ID;
+     // 删除旧的模态框
+     const oldModal = document.getElementById(SETTINGS_MODAL_ID);
+     if (oldModal) {
+       oldModal.remove();
+     }
 
-    // 创建模态框
-    const modal = Utils.createElement('div', 'modal settings-modal', { id: modalId });
-    const modalContent = Utils.createElement('div', 'modal-content settings-content');
+     // 创建模态框
+     const modal = Utils.createElement('div', 'modal settings-modal', { id: SETTINGS_MODAL_ID });
+     modal.style.userSelect = 'none';
+     const modalContent = Utils.createElement('div', 'modal-content settings-content');
     
     // 模态框头部
     const modalHeader = Utils.createElement('div', 'modal-header');
@@ -159,12 +250,11 @@ export const Settings = {
     modalContent.append(modalHeader, settingsBody);
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
-    
     // 渲染当前分类内容
     Settings.renderCategoryContent(Settings.currentCategory);
-    
+
     // 绑定事件
-    Settings.bindEvents(modalId);
+    Settings.bindEvents(SETTINGS_MODAL_ID);
     
     // 显示模态框后同步设置
     setTimeout(() => {
@@ -176,10 +266,10 @@ export const Settings = {
     window.addEventListener('dataSyncSettingsChanged', syncHandler);
     
     // 模态框关闭时移除监听器
-    const settingsModal = document.getElementById(modalId); // 重命名变量避免冲突
+    const modalElement = document.getElementById(SETTINGS_MODAL_ID);
     const originalHide = Menu.Modal.hide;
     Menu.Modal.hide = function(id) {
-      if (id === modalId) {
+      if (id === SETTINGS_MODAL_ID) {
         window.removeEventListener('gridSettingsChanged', syncHandler);
         window.removeEventListener('dataSyncSettingsChanged', syncHandler);
         Menu.Modal.hide = originalHide; // 恢复原方法
@@ -188,7 +278,7 @@ export const Settings = {
     };
     
     // 显示模态框
-    Menu.Modal.show(modalId);
+    Menu.Modal.show(SETTINGS_MODAL_ID);
   },
 
   renderCategoryContent: async (categoryId) => {
@@ -218,8 +308,10 @@ export const Settings = {
   },
 
   createSettingItem: async (item) => {
-    const itemElement = Utils.createElement('div', 'setting-item');
-    
+const itemElement = Utils.createElement('div', 'setting-item');
+if (Settings.currentCategory === 'about') {
+  itemElement.style.userSelect = 'none';
+}
     // 设置项头部
     const itemHeader = Utils.createElement('div', 'setting-item-header');
     const label = Utils.createElement('label', 'setting-label', { for: item.id }, item.label);
@@ -499,16 +591,55 @@ export const Settings = {
         itemControl.appendChild(textarea);
         break;
         
-      case 'custom':        // 优先使用模块提供的 createControl 方法
+      case 'custom':
         if (typeof item.createControl === 'function') {
           try {
             const customControl = await item.createControl();
+            if (item.id === 'version') {
+              customControl.id = 'versionText';
+              customControl.style.cursor = Settings.developerUnlocked ? 'default' : 'pointer';
+              customControl.addEventListener('click', () => {
+                if (Settings.developerUnlocked) return;  // 解锁后禁用点击
+                Settings.unlockClicks++;
+                if (Settings.unlockClicks >= 5) {
+                  Settings.developerUnlocked = true;
+                  // 持久化开发者选项解锁状态
+                  localStorage.setItem('developerUnlocked', 'true');
+                  
+                  Notification.notify({
+                    message: I18n.getMessage('developerUnlocked', '开发者选项已解锁'),
+                    type: 'success'
+                  });
+                  customControl.style.cursor = 'default'; // 取消可点击指针样式
+                  // 实时重建侧栏
+                  const sidebar = document.querySelector('#settings-modal .settings-sidebar');
+                  sidebar.innerHTML = '';
+                  Settings.getCategories().forEach(cat => {
+                    const catElem = Utils.createElement('div',
+                      `settings-category ${cat.id === 'developer' ? 'active' : ''}`,
+                      { 'data-category': cat.id }
+                    );
+                    catElem.append(
+                      Utils.createElement('span', 'category-icon', {}, cat.icon),
+                      Utils.createElement('span', 'category-text', {}, cat.title)
+                    );
+                    sidebar.appendChild(catElem);
+                  });
+                  // 切换到开发者分类并渲染内容
+                  Settings.currentCategory = 'developer';
+                  Settings.renderCategoryContent(Settings.currentCategory);
+                  // 重新绑定事件以确保侧栏可点击
+                  Settings.bindEvents();
+                }
+              });
+            }
             if (customControl) {
               itemControl.appendChild(customControl);
             }
           } catch (error) {
             console.error(`创建自定义控件 ${item.id} 失败:`, error);
-          }        }
+          }
+        }
         break;
         
       case 'button':
@@ -598,17 +729,17 @@ export const Settings = {
     }
   },
 
-  bindEvents: (modalId) => {
+  bindEvents: () => {
     // 绑定关闭按钮事件
-    const closeBtn = document.querySelector(`#${modalId} .modal-close`);
+    const closeBtn = document.querySelector(`#${SETTINGS_MODAL_ID} .modal-close`);
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
-        Menu.Modal.hide(modalId);
+        Menu.Modal.hide(SETTINGS_MODAL_ID);
       });
     }
 
-    // 绑定分类切换事件
-    const categoryItems = document.querySelectorAll(`#${modalId} .settings-category`);
+    // 分类切换
+    const categoryItems = document.querySelectorAll(`#${SETTINGS_MODAL_ID} .settings-category`);
     categoryItems.forEach(item => {
       item.addEventListener('click', () => {
         // 移除所有分类的激活状态
@@ -625,22 +756,25 @@ export const Settings = {
       });
     });
 
-    // 绑定模态框外部点击关闭事件
-    const modal = document.getElementById(modalId);
+    // 点击外部关闭
+    const modal = document.getElementById(SETTINGS_MODAL_ID);
     if (modal) {
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-          Menu.Modal.hide(modalId);
+          Menu.Modal.hide(SETTINGS_MODAL_ID);
         }
       });
-    }    // 绑定ESC键关闭事件
+    }
+
+    // 绑定 ESC 关闭
     const handleEscKey = (e) => {
       if (e.key === 'Escape') {
-        Menu.Modal.hide(modalId);
+        Menu.Modal.hide(SETTINGS_MODAL_ID);
         document.removeEventListener('keydown', handleEscKey);
       }
     };
-    document.addEventListener('keydown', handleEscKey);  },
+    document.addEventListener('keydown', handleEscKey);
+  },
   /**
    * 优化的设置同步方法 - 使用模块的 getValue 方法
    */

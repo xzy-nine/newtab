@@ -711,50 +711,7 @@ export const SearchEngineAPI = {    /**
                 showSearchEngineMenu(newIcon);
             });
             
-            // 添加右键菜单(清除存储功能)
-            newIcon.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                Notification.notify({
-                    title: I18n.getMessage('confirm', '确认'),
-                    message: I18n.getMessage('clearStorageConfirm', '确定要清除所有存储数据吗？此操作不可恢复。'),
-                    duration: 0,
-                    type: 'confirm',
-                    buttons: [
-                        {
-                            text: I18n.getMessage('confirm', '确认'),
-                            class: 'btn-primary confirm-yes',
-                            callback: async () => {
-                                const success = await SearchEngineAPI.clearStorage();
-                                if (success) {
-                                    Notification.notify({
-                                        title: I18n.getMessage('success', '成功'),
-                                        message: I18n.getMessage('clearStorageSuccess', '存储已成功清除，页面将刷新。'),
-                                        type: 'success',
-                                        duration: 1500,
-                                        onClose: () => {
-                                            window.location.reload();
-                                        }
-                                    });
-                                } else {
-                                    Notification.notify({
-                                        title: I18n.getMessage('error', '错误'),
-                                        message: I18n.getMessage('clearStorageError', '清除存储失败'),
-                                        type: 'error',
-                                        duration: 3000
-                                    });
-                                }
-                            }
-                        },
-                        {
-                            text: I18n.getMessage('cancel', '取消'),
-                            class: 'confirm-no',
-                            callback: () => {}
-                        }
-                    ]
-                });
-            });
+            // 移除右键清除存储功能，不再在搜索图标上绑定 contextmenu 事件
         }
         
         // 点击其他区域关闭菜单
