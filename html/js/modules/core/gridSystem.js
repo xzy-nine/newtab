@@ -317,10 +317,12 @@ export const GridSystem = {
                         debugGrid.remove();
                     }
                 }
-                
-                // 保存设置
-                chrome.storage.local.set({ 'widgetGridDebug': enable }, () => {
+                  // 保存设置
+                chrome.storage.local.set({ 'widgetGridDebug': enable }).then(() => {
                     console.log('网格调试设置已保存:', enable);
+                    resolve();
+                }).catch(error => {
+                    console.error('保存网格调试设置失败:', error);
                     resolve();
                 });
             } catch (error) {

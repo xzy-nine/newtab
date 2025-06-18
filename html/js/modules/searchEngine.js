@@ -196,23 +196,13 @@ export const SearchEngineAPI = {    /**
      */
     getCurrentEngine() {
         return searchEngines[currentEngineIndex];
-    },
-
-    /**
+    },    /**
      * 清除扩展存储的所有数据
      * @returns {Promise<boolean>} - 操作是否成功
      */
     async clearStorage() {
         try {
-            await new Promise((resolve, reject) => {
-                chrome.storage.local.clear(() => {
-                    if (chrome.runtime.lastError) {
-                        reject(new Error(chrome.runtime.lastError.message));
-                    } else {
-                        resolve();
-                    }
-                });
-            });
+            await chrome.storage.local.clear();
             
             // 重置内存中的搜索引擎数据
             searchEngines = [...defaultEngines];
@@ -241,13 +231,7 @@ export const SearchEngineAPI = {    /**
 
             searchInput.addEventListener('blur', () => {
                 searchInput.classList.remove('focused');
-            });
-
-            // 移除 click 自动全选
-            // searchInput.addEventListener('click', function() {
-            //     this.select();
-            // });
-        }
+            });        }
 
         // 确保每次页面交互后搜索框准备就绪
         document.addEventListener('visibilitychange', () => {
@@ -515,17 +499,8 @@ export const SearchEngineAPI = {    /**
      * @param {string|Array<string>} keys - 要读取的键或键数组
      * @returns {Promise<Object>} - 存储数据
      */
-    async getFromStorage(keys) {
-        try {
-            return await new Promise((resolve, reject) => {
-                chrome.storage.local.get(keys, (result) => {
-                    if (chrome.runtime.lastError) {
-                        reject(new Error(chrome.runtime.lastError.message));
-                    } else {
-                        resolve(result);
-                    }
-                });
-            });
+    async getFromStorage(keys) {        try {
+            return await chrome.storage.local.get(keys);
         } catch (error) {
             console.error('从存储中读取数据失败:', error);
             return {};

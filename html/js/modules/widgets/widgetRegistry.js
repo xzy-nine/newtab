@@ -159,6 +159,5 @@ export const WidgetRegistry = {
 WidgetRegistry.register('counter', '/html/js/modules/widgets/types/counterWidget.js');
 WidgetRegistry.register('timer', '/html/js/modules/widgets/types/timerWidget.js');
 
-// 在这里注册新的小部件类型
-// 例如:
+// 注册新的小部件类型示例:
 // WidgetRegistry.register('weather', '/html/js/modules/widgets/types/weatherWidget.js');

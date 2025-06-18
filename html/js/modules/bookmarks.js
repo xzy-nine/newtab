@@ -257,48 +257,42 @@ export const BookmarkManager = {
     /**
      * 应用选中的文件夹
      */
-    applySelectedFolder: function(root) {
-        chrome.storage.local.get("folder").then(data => {
-            let folder = data.folder || root.id;
+    applySelectedFolder: async function(root) {
+        try {
+            // 获取当前选中文件夹或使用根节点
+            const { folder = root.id } = await chrome.storage.local.get("folder");
             currentFolder = folder;
-            
+
+            // 查找并显示快捷方式
             const selectedFolder = this.findFolderById(root, folder);
             if (selectedFolder) {
                 this.showShortcuts(selectedFolder);
-                
+
                 // 清除所有选中状态
-                document.querySelectorAll('.folder-button.selected').forEach(btn => {
-                    btn.classList.remove('selected');
-                });
-                
+                document.querySelectorAll('.folder-button.selected').forEach(btn => btn.classList.remove('selected'));
+
                 // 获取固定文件夹列表
-                chrome.storage.local.get("pinnedFolders").then(pinnedData => {
-                    const pinnedFolders = pinnedData.pinnedFolders || [];
-                    const isPinnedFolder = pinnedFolders.includes(folder);
-                    
-                    // 如果是固定文件夹，优先选中固定版本，否则选中原始版本
-                    if (isPinnedFolder) {
-                        // 选中固定版本
-                        const pinnedButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
-                        if (pinnedButton) {
-                            pinnedButton.classList.add('selected');
-                        }
-                    } else {
-                        // 选中原始版本
-                        const regularButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
-                        if (regularButton) {
-                            regularButton.classList.add('selected');
-                        }
-                    }
-                }).catch(err => {
-                    // 如果获取固定文件夹列表失败，则选中所有匹配的按钮
-                    const selectedButtons = document.querySelectorAll(`[data-folder-id="${folder}"]`);
-                    selectedButtons.forEach(button => {
-                        button.classList.add('selected');
-                    });
-                });
+                let pinnedFolders = [];
+                try {
+                    const result = await chrome.storage.local.get("pinnedFolders");
+                    pinnedFolders = result.pinnedFolders || [];
+                } catch (err) {
+                    console.warn('获取固定文件夹失败:', err);
+                }
+
+                // 判断并选中对应按钮
+                const isPinned = pinnedFolders.includes(folder);
+                if (isPinned) {
+                    const pinBtn = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
+                    if (pinBtn) pinBtn.classList.add('selected');
+                } else {
+                    const regBtn = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
+                    if (regBtn) regBtn.classList.add('selected');
+                }
             }
-        }).catch(err => this.showError(err));
+        } catch (err) {
+            this.showError(err);
+        }
     },
 
     /**
@@ -385,7 +379,7 @@ export const BookmarkManager = {
             );
             
             // 添加事件
-            shortcutButton.addEventListener('click', () => window.open(shortcut.url, "_blank"));
+            shortcutButton.addEventListener('click', () => chrome.tabs.create({ url: shortcut.url }));
             shortcutButton.addEventListener('contextmenu', event => {
                 event.preventDefault();
                 this.showIconSelectorModal(shortcut);
@@ -462,48 +456,42 @@ export const BookmarkManager = {
     /**
      * 应用选中的文件夹
      */
-    applySelectedFolder: function(root) {
-        chrome.storage.local.get("folder").then(data => {
-            let folder = data.folder || root.id;
+    applySelectedFolder: async function(root) {
+        try {
+            // 获取当前选中文件夹或使用根节点
+            const { folder = root.id } = await chrome.storage.local.get("folder");
             currentFolder = folder;
-            
+
+            // 查找并显示快捷方式
             const selectedFolder = this.findFolderById(root, folder);
             if (selectedFolder) {
                 this.showShortcuts(selectedFolder);
-                
+
                 // 清除所有选中状态
-                document.querySelectorAll('.folder-button.selected').forEach(btn => {
-                    btn.classList.remove('selected');
-                });
-                
+                document.querySelectorAll('.folder-button.selected').forEach(btn => btn.classList.remove('selected'));
+
                 // 获取固定文件夹列表
-                chrome.storage.local.get("pinnedFolders").then(pinnedData => {
-                    const pinnedFolders = pinnedData.pinnedFolders || [];
-                    const isPinnedFolder = pinnedFolders.includes(folder);
-                    
-                    // 如果是固定文件夹，优先选中固定版本，否则选中原始版本
-                    if (isPinnedFolder) {
-                        // 选中固定版本
-                        const pinnedButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
-                        if (pinnedButton) {
-                            pinnedButton.classList.add('selected');
-                        }
-                    } else {
-                        // 选中原始版本
-                        const regularButton = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
-                        if (regularButton) {
-                            regularButton.classList.add('selected');
-                        }
-                    }
-                }).catch(err => {
-                    // 如果获取固定文件夹列表失败，则选中所有匹配的按钮
-                    const selectedButtons = document.querySelectorAll(`[data-folder-id="${folder}"]`);
-                    selectedButtons.forEach(button => {
-                        button.classList.add('selected');
-                    });
-                });
+                let pinnedFolders = [];
+                try {
+                    const result = await chrome.storage.local.get("pinnedFolders");
+                    pinnedFolders = result.pinnedFolders || [];
+                } catch (err) {
+                    console.warn('获取固定文件夹失败:', err);
+                }
+
+                // 判断并选中对应按钮
+                const isPinned = pinnedFolders.includes(folder);
+                if (isPinned) {
+                    const pinBtn = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
+                    if (pinBtn) pinBtn.classList.add('selected');
+                } else {
+                    const regBtn = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
+                    if (regBtn) regBtn.classList.add('selected');
+                }
             }
-        }).catch(err => this.showError(err));
+        } catch (err) {
+            this.showError(err);
+        }
     },
 
     /**
@@ -757,8 +745,10 @@ export const BookmarkManager = {
     /**
      * 显示文件夹上下文菜单
      */
-    showFolderContextMenu: function(event, folder) {
-        chrome.storage.local.get("pinnedFolders").then(data => {
+    showFolderContextMenu: async function(event, folder) {
+        try {
+            event.preventDefault();
+            const data = await chrome.storage.local.get("pinnedFolders");
             const pinnedFolders = data.pinnedFolders || [];
             const isPinned = pinnedFolders.includes(folder.id);
             
@@ -781,7 +771,7 @@ export const BookmarkManager = {
                         if (folder.children) {
                             const bookmarks = folder.children.filter(item => item.url);
                             bookmarks.forEach(bookmark => {
-                                window.open(bookmark.url, "_blank");
+                                chrome.tabs.create({ url: bookmark.url });
                             });
                         }
                     }
@@ -789,7 +779,9 @@ export const BookmarkManager = {
             ];
             
             Menu.ContextMenu.show(event, menuItems, {menuId: 'folder-context-menu'});
-        });
+        } catch (error) {
+            this.showError(error);
+        }
     },
 
     /**

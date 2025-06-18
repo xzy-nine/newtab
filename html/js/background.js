@@ -4,7 +4,7 @@
  */
 
 // 导入合并后的核心模块（Utils现在自动检测环境）
-import { Notification, I18n, Utils, BackgroundUtils } from './modules/core/index.js';
+import { Notification, I18n, Utils } from './modules/core/index.js';
 
 // 外部通知统计和管理
 const externalNotificationStats = {
@@ -66,14 +66,10 @@ function openNewTabWithNotification() {
       let title = '扩展已安装';
       let message = '新标签页扩展安装成功';
       
-      try {
-        // 安全地尝试获取国际化消息
-        if (I18n && typeof I18n.getMessage === 'function') {
-          title = I18n.getMessage('extensionInstalled') || title;
-          message = I18n.getMessage('extensionInstalledDesc') || message;
-        }
-      } catch (error) {
-        console.warn('I18n模块尚未准备好，使用默认消息');
+      // 安全地尝试获取国际化消息
+      if (I18n && typeof I18n.getMessage === 'function') {
+        title = I18n.getMessage('extensionInstalled') || title;
+        message = I18n.getMessage('extensionInstalledDesc') || message;
       }
       
       // 直接添加安装成功通知到弹出页面

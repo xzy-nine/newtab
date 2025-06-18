@@ -236,27 +236,17 @@ export const DataSync = {
                     I18n.getMessage('downloadingData', '正在下载数据...'),
                 type: 'info',
                 duration: 2000
-            });
-
-            if (mode === 'upload') {
+            });            if (mode === 'upload') {
                 // 上传到 chrome.storage.sync
                 const dataToSync = {};
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     dataToSync[key] = localStorage.getItem(key);
                 }
-                await new Promise((resolve, reject) => {
-                    chrome.storage.sync.set(dataToSync, () => {
-                        chrome.runtime.lastError ? reject(chrome.runtime.lastError) : resolve();
-                    });
-                });
+                await chrome.storage.sync.set(dataToSync);
             } else if (mode === 'download') {
                 // 从 chrome.storage.sync 获取并应用到 localStorage
-                const items = await new Promise((resolve, reject) => {
-                    chrome.storage.sync.get(null, (result) => {
-                        chrome.runtime.lastError ? reject(chrome.runtime.lastError) : resolve(result);
-                    });
-                });
+                const items = await chrome.storage.sync.get(null);
                 Object.keys(items).forEach(key => {
                     localStorage.setItem(key, items[key]);
                 });
@@ -297,14 +287,8 @@ export const DataSync = {
                 message: I18n.getMessage('pleaseWait', '请稍候...'),
                 type: 'info',
                 duration: 2000
-            });
-
-            // 清除 chrome.storage.sync 中的数据
-            await new Promise((resolve, reject) => {
-                chrome.storage.sync.clear(() => {
-                    chrome.runtime.lastError ? reject(chrome.runtime.lastError) : resolve();
-                });
-            });
+            });            // 清除 chrome.storage.sync 中的数据
+            await chrome.storage.sync.clear();
 
             Notification.notify({
                 title: I18n.getMessage('cloudDataCleared', '云端数据已清除'),
