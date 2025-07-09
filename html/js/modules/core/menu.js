@@ -1,25 +1,26 @@
 /**
  * 菜单系统模块
- * 包含上下文菜单、模态框、表单模态框等功能
- * 
- * 注意：此模块依赖 Utils 和 I18n，但由于它们在 index.js 中的导出顺序，
- * 这里需要直接导入以避免循环依赖
+ * 包含上下文菜单、模态框、表单模态框等功能，适配响应式与国际化。
+ * 依赖 Utils 和 I18n。
+ * @module Menu
  */
 import { Utils } from './utils.js';
 import { I18n } from './i18n.js';
 
 /**
- * 菜单系统命名空间
+ * Menu 命名空间，提供菜单、模态框、上下文菜单等功能。
+ * @namespace Menu
  */
-export const Menu = {  /**
+export const Menu = {
+  /**
    * 显示表单模态框
-   * @param {string} title 模态框标题
-   * @param {Array} formItems 表单项配置数组
-   * @param {Function} onConfirm 确认回调函数
-   * @param {string} confirmText 确认按钮文本
-   * @param {string} cancelText 取消按钮文本
-   * @param {Object} options 额外选项：{gridSnap: boolean, draggable: boolean}
-   * @returns {Object} 模态框控制对象: {close, enableGridSnap, disableGridSnap}
+   * @param {string} title - 模态框标题
+   * @param {Array} formItems - 表单项配置数组
+   * @param {Function} onConfirm - 确认回调函数
+   * @param {string} confirmText - 确认按钮文本
+   * @param {string} cancelText - 取消按钮文本
+   * @param {Object} options - 额外选项 {gridSnap, draggable}
+   * @returns {Object} 模态框控制对象 {close, enableGridSnap, disableGridSnap, ...}
    */
   showFormModal: (title, formItems, onConfirm, confirmText, cancelText, options = {}) => {
     const modalId = 'form-modal-' + Date.now();
@@ -288,11 +289,14 @@ export const Menu = {  /**
     
     return modalControls;
   },
-
   /**
-   * 模态框功能
+   * 模态框相关功能
+   * @namespace Menu.Modal
    */
   Modal: {
+    /**
+     * 初始化所有模态框事件
+     */
     initEvents: () => {
       document.querySelectorAll('.modal').forEach(modal => {
         modal.querySelectorAll('.modal-close').forEach(button => {
@@ -313,7 +317,10 @@ export const Menu = {  /**
         }
       });
     },
-
+    /**
+     * 显示指定模态框
+     * @param {string} modalId - 模态框ID
+     */
     show: modalId => {
       const modal = document.getElementById(modalId);
       if (!modal) {
@@ -352,15 +359,18 @@ export const Menu = {  /**
         }
       }
     },
-
+    /**
+     * 隐藏指定模态框
+     * @param {string} modalId - 模态框ID
+     */
     hide: modalId => {
       const modal = document.getElementById(modalId);
       if (modal) modal.classList.remove('visible');
     }
   },
-
   /**
    * 上下文菜单功能
+   * @namespace Menu.ContextMenu
    */
   ContextMenu: {
     /**
@@ -383,11 +393,10 @@ export const Menu = {  /**
         }
       });
     },
-
     /**
      * 显示自定义上下文菜单
      * @param {Event} event - 触发事件
-     * @param {Array} items - 菜单项数组，每项包含 {id, text, callback, disabled, divider} 属性
+     * @param {Array} items - 菜单项数组 {id, text, callback, disabled, divider}
      * @param {Object} options - 配置选项
      * @returns {HTMLElement} 菜单元素
      */
@@ -440,7 +449,6 @@ export const Menu = {  /**
       
       return contextMenu;
     },
-
     /**
      * 隐藏所有上下文菜单
      */
@@ -450,9 +458,9 @@ export const Menu = {  /**
       });
     }
   },
-
   /**
    * 图像选择器
+   * @namespace Menu.ImageSelector
    */
   ImageSelector: {
     /**
@@ -705,10 +713,11 @@ export const Menu = {  /**
       
       return modal;
     }
-  },  /**
-   * 使模态框可拖动
+  },
+  /**
+   * 使模态框可拖动（支持网格吸附/降级）
    * @param {HTMLElement} modal - 模态框元素
-   * @param {HTMLElement} modalContent - 模态框内容元素
+   * @param {HTMLElement} modalContent - 内容元素
    * @param {Object} options - 拖动选项
    */
   _makeModalDraggable: function(modal, modalContent, options = {}) {
@@ -764,9 +773,9 @@ export const Menu = {  /**
       this._makeModalDraggableFallback(modal, modalContent, options);
     }
   },
-    /**
+  /**
    * 使模态框保持在视窗内
-   * @param {HTMLElement} modalContent - 模态框内容元素
+   * @param {HTMLElement} modalContent - 内容元素
    */
   _keepModalInViewport: function(modalContent) {
     const rect = modalContent.getBoundingClientRect();
@@ -787,11 +796,10 @@ export const Menu = {  /**
       modalContent.style.top = `${viewportHeight - rect.height}px`;
     }
   },
-  
   /**
    * 网格吸附功能
-   * @param {number} x - X坐标
-   * @param {number} y - Y坐标
+   * @param {number} x - X 坐标
+   * @param {number} y - Y 坐标
    * @param {number} width - 元素宽度
    * @param {number} height - 元素高度
    * @returns {Object} 吸附后的位置 {x, y}
@@ -815,10 +823,9 @@ export const Menu = {  /**
       return { x, y };
     }
   },
-  
   /**
    * 显示网格提示
-   * @param {HTMLElement} modalContent - 模态框内容元素
+   * @param {HTMLElement} modalContent - 内容元素
    */
   _showGridHint: function(modalContent) {
     let hint = document.getElementById('modal-grid-hint');
@@ -836,10 +843,9 @@ export const Menu = {  /**
     
     hint.classList.add('visible');
   },
-  
   /**
    * 更新网格提示状态
-   * @param {HTMLElement} modalContent - 模态框内容元素
+   * @param {HTMLElement} modalContent - 内容元素
    * @param {boolean} isSnapping - 是否正在吸附
    */
   _updateGridHint: function(modalContent, isSnapping) {
@@ -863,7 +869,6 @@ export const Menu = {  /**
       hint.classList.remove('snapping');
     }
   },
-  
   /**
    * 隐藏网格提示
    */
@@ -878,11 +883,10 @@ export const Menu = {  /**
       }, 300);
     }
   },
-  
   /**
    * 使模态框居中显示
    * @param {HTMLElement} modal - 模态框元素
-   * @param {HTMLElement} modalContent - 模态框内容元素
+   * @param {HTMLElement} modalContent - 内容元素
    */
   _centerModal: function(modal, modalContent) {
     // 重置任何之前设置的位置
@@ -904,13 +908,13 @@ export const Menu = {  /**
       modalContent.style.position = 'absolute';
       modalContent.style.left = `${x}px`;
       modalContent.style.top = `${y}px`;
-      modalContent.style.margin = '0';    }, 0);
+      modalContent.style.margin = '0';
+    }, 0);
   },
-
   /**
    * 降级的模态框拖拽实现（当网格系统不可用时使用）
    * @param {HTMLElement} modal - 模态框元素
-   * @param {HTMLElement} modalContent - 模态框内容元素
+   * @param {HTMLElement} modalContent - 内容元素
    * @param {Object} options - 拖动选项
    */
   _makeModalDraggableFallback: function(modal, modalContent, options = {}) {
@@ -1030,9 +1034,7 @@ export const Menu = {  /**
       gridSnapEnabled: () => gridSnapEnabled,
       setGridSnap: (enabled) => { gridSnapEnabled = enabled; }
     };
-  },
-
-  // ...existing code...
+  }
 };
 
 // 只在 DOM 环境中执行初始化代码

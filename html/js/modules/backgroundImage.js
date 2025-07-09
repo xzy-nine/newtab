@@ -1,5 +1,7 @@
 /**
- * 背景图像处理模块
+ * 背景图片处理模块
+ * 提供背景图片的加载、切换、缓存、设置等功能
+ * @module BackgroundManager
  */
 
 import { Utils, Menu, I18n, Notification } from './core/index.js';
@@ -10,10 +12,12 @@ const CACHE_EXPIRATION = 24 * 60 * 60 * 1000; // 24小时缓存过期时间
 
 /**
  * 背景图片管理器类
+ * @class
  */
 class BackgroundManager {
     /**
      * 创建背景管理器实例
+     * @constructor
      */
     constructor() {
         // 背景图像默认设置
@@ -26,8 +30,8 @@ class BackgroundManager {
     }
 
     /**
-     * 初始化背景图像及控件
-     * @returns {Promise<void>}
+     * 初始化背景图片及控件
+     * @returns {Promise<void>} 无
      */
     async initialize() {        // 创建背景容器
         if (!document.querySelector('.bg-container')) {
@@ -157,7 +161,7 @@ class BackgroundManager {
 
     /**
      * 从存储中加载背景设置
-     * @returns {Promise<void>}
+     * @returns {Promise<void>} 无
      */
     async loadSettings() {
         try {

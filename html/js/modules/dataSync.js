@@ -1,10 +1,16 @@
+/**
+ * 数据同步模块
+ * 提供同步设置项、同步状态、手动/自动同步等功能
+ * @module DataSync
+ */
+
 // 数据同步模块
 import { Utils, I18n, Notification } from './core/index.js';
 
 export const DataSync = {
     /**
      * 创建同步设置项
-     * @returns {Array} - 设置项配置数组
+     * @returns {Array} 设置项配置数组
      */
     createSettingsItems() {
         return [
@@ -59,9 +65,10 @@ export const DataSync = {
                 }
             }
         ];
-    },    /**
+    },
+    /**
      * 处理同步模式变化
-     * @param {string} mode - 同步模式 ('disabled', 'upload', 'download')
+     * @param {string} mode 同步模式 ('disabled', 'upload', 'download')
      */
     handleSyncModeChange(mode) {
         try {
@@ -105,9 +112,10 @@ export const DataSync = {
                 duration: 3000
             });
         }
-    },    /**
+    },
+    /**
      * 处理同步间隔变化
-     * @param {string} interval - 同步间隔（秒）
+     * @param {string} interval 同步间隔（秒）
      */
     handleSyncIntervalChange(interval) {
         localStorage.setItem('sync-interval', interval);
@@ -132,10 +140,9 @@ export const DataSync = {
             detail: { type: 'syncInterval', value: interval } 
         }));
     },
-
     /**
-     * 创建同步状态显示
-     * @returns {HTMLElement} - 同步状态显示元素
+     * 创建同步状态显示元素
+     * @returns {HTMLElement} 同步状态显示元素
      */
     createSyncStatusDisplay() {
         const statusContainer = Utils.createElement('div', 'sync-status-container');
@@ -159,10 +166,9 @@ export const DataSync = {
         
         return statusContainer;
     },
-
     /**
      * 创建同步操作面板
-     * @returns {HTMLElement} - 同步操作面板
+     * @returns {HTMLElement} 同步操作面板
      */
     createSyncActionsPanel() {
         const actionsContainer = Utils.createElement('div', 'sync-actions-container');
@@ -186,7 +192,6 @@ export const DataSync = {
         
         return actionsContainer;
     },
-
     /**
      * 更新同步状态显示
      */
@@ -215,14 +220,12 @@ export const DataSync = {
             }
         }
     },
-
     /**
      * 刷新同步状态
      */
     refreshSyncStatus() {
         this.updateSyncStatusDisplay();
     },
-
     /**
      * 手动同步
      * @param {string} mode - 同步模式 ('upload' | 'download')
@@ -236,37 +239,43 @@ export const DataSync = {
                     I18n.getMessage('downloadingData', '正在下载数据...'),
                 type: 'info',
                 duration: 2000
-            });
-
-            // TODO: 实现实际的同步逻辑
-            console.log(`执行${mode}同步`);
-            
-            // 模拟同步完成
-            setTimeout(() => {
-                localStorage.setItem('last-sync-time', Date.now().toString());
-                this.updateSyncStatusDisplay();
-                
-                Notification.notify({
-                    title: I18n.getMessage('syncComplete', '同步完成'),
-                    message: mode === 'upload' ? 
-                        I18n.getMessage('uploadComplete', '数据上传完成') : 
-                        I18n.getMessage('downloadComplete', '数据下载完成'),
-                    type: 'success',
-                    duration: 2000
+            });            if (mode === 'upload') {
+                // 上传到 chrome.storage.sync
+                const dataToSync = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    dataToSync[key] = localStorage.getItem(key);
+                }
+                await chrome.storage.sync.set(dataToSync);
+            } else if (mode === 'download') {
+                // 从 chrome.storage.sync 获取并应用到 localStorage
+                const items = await chrome.storage.sync.get(null);
+                Object.keys(items).forEach(key => {
+                    localStorage.setItem(key, items[key]);
                 });
-            }, 2000);
-            
+            }
+
+            // 更新最后同步时间并通知
+            localStorage.setItem('last-sync-time', Date.now().toString());
+            this.updateSyncStatusDisplay();
+            Notification.notify({
+                title: I18n.getMessage('syncComplete', '同步完成'),
+                message: mode === 'upload' ? 
+                    I18n.getMessage('uploadComplete', '数据上传完成') : 
+                    I18n.getMessage('downloadComplete', '数据下载完成'),
+                type: 'success',
+                duration: 2000
+            });
         } catch (error) {
             console.error('手动同步失败:', error);
             Notification.notify({
                 title: I18n.getMessage('syncFailed', '同步失败'),
-                message: error.message,
+                message: error.message || I18n.getMessage('syncFailed', '同步失败'),
                 type: 'error',
                 duration: 3000
             });
         }
     },
-
     /**
      * 清除云端数据
      */
@@ -280,32 +289,37 @@ export const DataSync = {
                 message: I18n.getMessage('pleaseWait', '请稍候...'),
                 type: 'info',
                 duration: 2000
-            });
+            });            // 清除 chrome.storage.sync 中的数据
+            await chrome.storage.sync.clear();
 
-            // TODO: 实现实际的清除逻辑
-            console.log('清除云端数据');
-            
-            // 模拟清除完成
-            setTimeout(() => {
-                Notification.notify({
-                    title: I18n.getMessage('cloudDataCleared', '云端数据已清除'),
-                    message: I18n.getMessage('cloudDataClearComplete', '所有云端数据已清除'),
-                    type: 'success',
-                    duration: 2000
-                });
-            }, 1000);
-            
+            Notification.notify({
+                title: I18n.getMessage('cloudDataCleared', '云端数据已清除'),
+                message: I18n.getMessage('cloudDataClearComplete', '所有云端数据已清除'),
+                type: 'success',
+                duration: 2000
+            });
         } catch (error) {
             console.error('清除云端数据失败:', error);
             Notification.notify({
-                title: I18n.getMessage('clearCloudDataFailed', '清除失败'),
-                message: error.message,
+                title: I18n.getMessage('error', '错误'),
+                message: error.message || I18n.getMessage('error', '错误'),
                 type: 'error',
                 duration: 3000
             });
         }
     },
-
+    /**
+     * 获取数据同步在设置中的分类配置
+     * @returns {Object} 分类配置对象
+     */
+    getSettingsCategory() {
+        return {
+            id: 'data-sync',
+            icon: '☁️',
+            title: I18n.getMessage('settingsDataSync', '数据同步'),
+            items: this.createSettingsItems()
+        };
+    },
     /**
      * 启动自动同步
      */
@@ -323,7 +337,8 @@ export const DataSync = {
         }, interval * 1000);
         
         console.log(`自动同步已启动，间隔: ${interval}秒`);
-    },    /**
+    },
+    /**
      * 停止自动同步
      */
     stopAutoSync() {
@@ -333,7 +348,6 @@ export const DataSync = {
             console.log('自动同步已停止');
         }
     },
-
     /**
      * 同步数据同步设置UI
      * 用于同步设置界面与实际系统状态
@@ -368,7 +382,6 @@ export const DataSync = {
             console.error('同步数据同步设置UI失败:', error);
         }
     },
-
     /**
      * 初始化数据同步模块
      * 启动自动同步等

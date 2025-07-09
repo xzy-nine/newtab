@@ -1,6 +1,7 @@
 /**
  * AI助手模块
  * 负责AI功能的管理和交互
+ * @module AI
  */
 import { I18n, Utils, Menu, Notification, IconManager } from './core/index.js';
 // AI配置相关变量
@@ -38,9 +39,10 @@ const STORAGE_KEYS = {
  * AI模块API命名空间
  * @namespace
  */
-export const AI = {    /**
+export const AI = {
+    /**
      * 初始化AI模块
-     * @returns {Promise<void>}
+     * @returns {Promise<void>} 无
      */
     async initialize() {
         // 设置默认的国际化文本
@@ -62,7 +64,7 @@ export const AI = {    /**
 
     /**
      * 获取AI配置
-     * @returns {Object} - AI配置对象
+     * @returns {Object} AI配置对象
      */
     getConfig() {
         return { ...aiConfig };
@@ -70,8 +72,8 @@ export const AI = {    /**
 
     /**
      * 更新AI配置
-     * @param {Object} newConfig - 新的配置
-     * @returns {Promise<boolean>} - 操作是否成功
+     * @param {Object} newConfig 新的配置
+     * @returns {Promise<boolean>} 操作是否成功
      */
     async updateConfig(newConfig) {
         try {
@@ -90,9 +92,10 @@ export const AI = {    /**
 
     /**
      * 发送消息到AI（支持多轮对话）
-     * @param {string} message - 用户消息
-     * @param {string} conversationId - 对话ID（可选，不传则创建新对话）
-     * @returns {Promise<Object>} - 包含AI回复和对话ID的对象
+     * @param {string} message 用户消息
+     * @param {string} conversationId 对话ID（可选）
+     * @param {function} onChunk 流式回调（可选）
+     * @returns {Promise<Object>} 包含AI回复和对话ID的对象
      */
     async sendMessage(message, conversationId = null, onChunk = null) {
         // 检查网络连接

@@ -3,7 +3,10 @@
  * 使得其他网页或油猴脚本可以使用扩展的通知功能
  */
 
-// 检查外部通知API是否被用户启用
+/**
+ * 检查外部通知API是否启用
+ * @returns {Promise<boolean>} 是否启用
+ */
 async function isExternalNotificationEnabled() {
   try {
     // 通过storage API检查设置
@@ -15,6 +18,10 @@ async function isExternalNotificationEnabled() {
   }
 }
 
+/**
+ * 获取外部通知API设置（带缓存）
+ * @returns {Promise<boolean>} 是否启用
+ */
 // 缓存设置状态，避免重复查询
 let cachedSettings = null;
 let settingsLastChecked = 0;
@@ -29,7 +36,10 @@ async function getCachedNotificationSettings() {
   return cachedSettings;
 }
 
-// 注入的全局通知 API
+/**
+ * 全局通知API对象，供网页和油猴脚本调用
+ * @namespace ExtensionNotificationAPI
+ */
 const ExtensionNotificationAPI = {
   /**
    * 显示通知
@@ -180,6 +190,9 @@ ExtensionNotificationAPI.notify = async function(options) {
   };
 });
 
+/**
+ * 通过postMessage与页面脚本通信，支持API调用
+ */
 // 使用 postMessage 与页面脚本通信
 function setupPostMessageCommunication() {
   console.log('=== Content Script 设置 postMessage 通信 ===');

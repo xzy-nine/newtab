@@ -1,4 +1,8 @@
-//时钟组件模块
+/**
+ * 时钟组件模块
+ * 提供时钟显示、设置、保存与加载等功能
+ * @module ClockWidget
+ */
 
 import { Utils } from './core/index.js';
 
@@ -12,11 +16,12 @@ let clockConfig = {
 
 /**
  * 时钟模块API对象
+ * @namespace
  */
 export const ClockWidget = {
     /**
      * 初始化时钟组件
-     * @returns {Promise<void>}
+     * @returns {Promise<void>} 无
      */
     async init() {
         createClockElement();
@@ -120,6 +125,10 @@ function createClockElement() {
     document.body.appendChild(timeDiv);
 }
 
+/**
+ * 创建数字显示元素
+ * @returns {HTMLElement} 数字元素
+ */
 function createDigit() {
     const digit = Utils.createElement('div');
     digit.className = 'digit';
@@ -140,6 +149,10 @@ function createDigit() {
     return digit;
 }
 
+/**
+ * 创建冒号分隔符元素
+ * @returns {HTMLElement} 冒号元素
+ */
 function createColon() {
     const colon = Utils.createElement('div');
     colon.className = 'split';
