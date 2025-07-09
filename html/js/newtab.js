@@ -19,7 +19,8 @@ import {
 import { moduleConfigs, validateModuleConfigs } from './modules/core/init/moduleConfig.js';
 
 // 版本号
-let VERSION = '0.0.0'; 
+// 全局版本号
+window.VERSION = '0.0.0'; 
 // 全局状态标志
 let isInitialized = false;
 // 直接读取的翻译数据缓存
@@ -44,7 +45,7 @@ window.addEventListener('unhandledrejection', (event) => {
  * 直接从JSON文件获取翻译文本（不依赖I18n模块）
  * @param {string} key - 翻译键值
  * @param {string} defaultValue - 默认值（中文）
- * @returns {string} - 翻译后的文本
+ * @returns {Promise<string>} 翻译后的文本
  */
 async function getDirectMessage(key, defaultValue = '') {
     try {
@@ -83,92 +84,40 @@ async function getDirectMessage(key, defaultValue = '') {
  * @returns {Promise<void>}
  */
 async function loadDirectTranslations() {
-    try {
-        // 首先尝试获取用户设置的语言
-        try {
-            const result = await chrome.storage.sync.get('language');
-            if (result.language) {
-                currentLanguage = result.language;
-            } else {
-                // 默认使用中文，如果浏览器语言不是中文相关，则保持中文
-                const browserLang = navigator.language.slice(0, 2);
-                currentLanguage = ['zh', 'en'].includes(browserLang) ? browserLang : 'zh';
-            }
-        } catch (error) {
-            console.warn('无法获取存储的语言设置:', error);
-            currentLanguage = 'zh'; // 错误时默认中文
-        }
+    try {        // 获取用户设置的语言
+        const result = await chrome.storage.sync.get('language');
+        currentLanguage = result.language || 
+            (['zh', 'en'].includes(navigator.language.slice(0, 2)) ? 
+                navigator.language.slice(0, 2) : 'zh');
         
         // 根据语言确定文件路径
-        let locale = currentLanguage === 'zh' ? 'zh_CN' : 'en';
+        const locale = currentLanguage === 'zh' ? 'zh_CN' : 'en';
         
+        // 尝试加载语言文件，失败时使用默认中文
         try {
             const response = await fetch(`/_locales/${locale}/messages.json`);
-            if (!response.ok) {
-                console.warn('主语言文件加载失败，尝试回退');
-                // 如果当前语言文件加载失败，回退到中文版本
-                const fallbackResponse = await fetch('/_locales/zh_CN/messages.json');
-                if (fallbackResponse.ok) {
-                    directTranslations = await fallbackResponse.json();
-                } else {
-                    // 如果中文版本也失败，尝试英文版本
-                    const enResponse = await fetch('/_locales/en/messages.json');
-                    if (enResponse.ok) {
-                        directTranslations = await enResponse.json();
-                    }
-                }
-            } else {
-                directTranslations = await response.json();
-            }
-        } catch (error) {
-            console.error('文件加载失败:', error);
-            // 使用硬编码的中文翻译作为最后后备
-            directTranslations = {
-                loading: { message: "加载中..." },
-                loadingI18n: { message: "加载国际化资源..." },
-                welcomeTitle: { message: "欢迎使用" },
-                welcomeMessage: { message: "欢迎使用本扩展！" },
-                updateTitle: { message: "扩展已更新" },
-                updateMessage: { message: "扩展已从 {0} 升级到 {1}" },
-                settingsTitle: { message: "设置" },
-                setNewTab: { message: "设置新标签页" },
-                mobileInstructionMessage: { message: "请在浏览器设置中将新标签页设置为：{0}" },
-                desktopInstructionMessage: { message: "请在桌面浏览器设置中将本扩展设为新标签页" },
-                copyLink: { message: "复制链接" },
-                close: { message: "关闭" },
-                ok: { message: "确定" },
-                success: { message: "成功" },
-                linkCopied: { message: "链接已复制" },
-                copyError: { message: "复制失败:" },
-                copyLinkFailed: { message: "复制链接失败" },
-                error: { message: "错误" }
-            };
+            directTranslations = response.ok ? await response.json() : {};        } catch (error) {
+            console.warn('语言文件加载失败，使用空对象:', error);
+            directTranslations = {};
         }
-    } catch (error) {
-        console.error('翻译加载发生严重错误:', error);
+        
+    } catch (error) {        console.error('语言初始化失败:', error);
+        currentLanguage = 'zh';
+        directTranslations = {};
     }
 }
 
 /**
- * 从manifest.json获取扩展版本号
- * @returns {Promise<string>} 版本号
+ * 获取扩展版本号
+ * @returns {string} 版本号
  */
-async function getExtensionVersion() {
-    try {
-        const response = await fetch('/manifest.json');
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        const manifest = await response.json();
-        return manifest.version || '0.0.0';
-    } catch (error) {
-        console.error('版本获取失败:', error);
-        return '0.0.0';
-    }
+function getExtensionVersion() {
+    return chrome.runtime.getManifest().version;
 }
 
 /**
- * 初始化应用
+ * 初始化应用，负责主题、模块、通知等初始化
+ * @returns {Promise<void>}
  */
 async function init() {
     try {
@@ -201,7 +150,7 @@ async function init() {
         Notification.showLoadingIndicator(loadingText);
         
         // 获取扩展版本
-        VERSION = await getExtensionVersion();
+        window.VERSION = getExtensionVersion();
         
         // 验证模块配置
         const configValidation = validateModuleConfigs();
@@ -386,6 +335,7 @@ function setupEvents() {
 
 /**
  * 启动后执行的任务
+ * @returns {Promise<void>}
  */
 async function performPostInitTasks() {
     try {
@@ -397,6 +347,7 @@ async function performPostInitTasks() {
 
 /**
  * 检查更新或首次安装
+ * @returns {Promise<void>}
  */
 async function checkForUpdates() {
     try {
@@ -416,6 +367,7 @@ async function checkForUpdates() {
 
 /**
  * 显示欢迎消息
+ * @returns {Promise<void>}
  */
 async function showWelcomeMessage() {
     try {
@@ -439,6 +391,7 @@ async function showWelcomeMessage() {
  * 显示更新消息
  * @param {string} oldVersion - 旧版本号
  * @param {string} newVersion - 新版本号
+ * @returns {Promise<void>}
  */
 async function showUpdateMessage(oldVersion, newVersion) {
     try {
@@ -458,8 +411,9 @@ async function showUpdateMessage(oldVersion, newVersion) {
 }
 
 /**
- * 显示新标签页设置指导通知（根据设备类型显示不同内容）
+ * 显示新标签页设置指引通知（根据设备类型显示不同内容）
  * @param {string} url - 扩展页面URL
+ * @returns {Promise<void>}
  */
 async function showMobileInstruction(url) {
     try {
@@ -525,5 +479,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// 导出版本号和实用函数
-export { VERSION, showMobileInstruction };
+// 导出实用函数
+export { showMobileInstruction };

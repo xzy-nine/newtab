@@ -1,10 +1,15 @@
-// 主题管理模块
+/**
+ * 主题管理模块
+ * 提供主题切换、主题设置项生成、主题应用等功能
+ * @module ThemeManager
+ */
+
 import { I18n, Notification } from './core/index.js';
 
 export const ThemeManager = {
     /**
      * 创建主题设置项
-     * @returns {Array} - 设置项配置数组
+     * @returns {Array} 设置项配置数组
      */
     createSettingsItems() {
         return [
@@ -27,8 +32,8 @@ export const ThemeManager = {
     },
 
     /**
-     * 处理主题变化
-     * @param {string} theme - 主题值 ('auto', 'light', 'dark')
+     * 处理主题变更
+     * @param {string} theme 主题值 ('auto', 'light', 'dark')
      */
     handleThemeChange(theme) {
         try {
@@ -56,9 +61,10 @@ export const ThemeManager = {
                 duration: 3000
             });
         }
-    },    /**
+    },
+    /**
      * 应用主题
-     * @param {string} theme - 主题值
+     * @param {string} theme 主题值
      */
     applyTheme(theme) {
         const root = document.documentElement;
@@ -72,8 +78,10 @@ export const ThemeManager = {
         }
         
         console.log(`主题已应用: ${theme}`);
-    },    /**
+    },
+    /**
      * 检测系统主题
+     * 自动监听系统主题变化并同步到页面
      */
     detectSystemTheme() {
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
@@ -98,8 +106,10 @@ export const ThemeManager = {
         
         // 监听系统主题变化
         prefersDark.addEventListener('change', this._systemThemeListener);
-    },    /**
+    },
+    /**
      * 初始化主题
+     * 仅保证监听器正确设置
      */
     init() {
         // 由于主题初始化已经在 newtab.js 中完成，这里不需要重复初始化
@@ -109,18 +119,16 @@ export const ThemeManager = {
             this.detectSystemTheme();
         }
     },
-
     /**
      * 获取当前主题
-     * @returns {string} - 当前主题值
+     * @returns {string} 当前主题值
      */
     getCurrentTheme() {
         return localStorage.getItem('theme') || 'auto';
     },
-
     /**
      * 获取实际显示的主题（考虑系统主题）
-     * @returns {string} - 实际主题值 ('light' | 'dark')
+     * @returns {string} 实际主题值 ('light' | 'dark')
      */
     getActualTheme() {
         const theme = this.getCurrentTheme();

@@ -1,5 +1,7 @@
 /**
  * 搜索引擎处理模块
+ * 提供搜索引擎的增删改查、切换、UI渲染等功能
+ * @module SearchEngineAPI
  */
 
 import { I18n, IconManager, Utils, Menu, Notification } from './core/index.js';
@@ -33,9 +35,10 @@ const STORAGE_KEYS = {
  * 搜索引擎API命名空间
  * @namespace
  */
-export const SearchEngineAPI = {    /**
+export const SearchEngineAPI = {
+    /**
      * 初始化搜索引擎
-     * @returns {Promise<void>}
+     * @returns {Promise<void>} 无
      */
     async initialize() {
         // 创建搜索UI元素
@@ -53,8 +56,8 @@ export const SearchEngineAPI = {    /**
 
     /**
      * 设置当前使用的搜索引擎
-     * @param {number} index - 搜索引擎索引
-     * @returns {Promise<boolean>} - 操作是否成功
+     * @param {number} index 搜索引擎索引
+     * @returns {Promise<boolean>} 操作是否成功
      */
     async setCurrentEngine(index) {
         if (index < 0 || index >= searchEngines.length) return false;
@@ -79,7 +82,7 @@ export const SearchEngineAPI = {    /**
 
     /**
      * 执行搜索
-     * @param {string} query - 搜索查询
+     * @param {string} query 搜索查询
      */
     search(query) {
         if (!query) return;
@@ -92,8 +95,8 @@ export const SearchEngineAPI = {    /**
 
     /**
      * 删除搜索引擎
-     * @param {number} index - 搜索引擎索引
-     * @returns {Promise<boolean>} - 操作是否成功
+     * @param {number} index 搜索引擎索引
+     * @returns {Promise<boolean>} 操作是否成功
      */
     async deleteEngine(index) {
         if (index < 0 || index >= searchEngines.length || searchEngines.length <= 1) return false;
@@ -115,9 +118,9 @@ export const SearchEngineAPI = {    /**
 
     /**
      * 编辑搜索引擎
-     * @param {number} index - 搜索引擎索引
-     * @param {Object} engineData - 新的搜索引擎数据
-     * @returns {Promise<boolean>} - 操作是否成功
+     * @param {number} index 搜索引擎索引
+     * @param {Object} engineData 新的搜索引擎数据
+     * @returns {Promise<boolean>} 操作是否成功
      */
     async editEngine(index, engineData) {
         if (index < 0 || index >= searchEngines.length) return false;
@@ -130,8 +133,8 @@ export const SearchEngineAPI = {    /**
 
     /**
      * 添加自定义搜索引擎
-     * @param {Object} engineData - 搜索引擎数据 {name, url, icon?}
-     * @returns {Promise<boolean>} - 操作是否成功
+     * @param {Object} engineData 搜索引擎数据 {name, url, icon?}
+     * @returns {Promise<boolean>} 操作是否成功
      */
     async addCustomEngine(engineData) {
         let { name, url, icon } = engineData;
@@ -196,23 +199,13 @@ export const SearchEngineAPI = {    /**
      */
     getCurrentEngine() {
         return searchEngines[currentEngineIndex];
-    },
-
-    /**
+    },    /**
      * 清除扩展存储的所有数据
      * @returns {Promise<boolean>} - 操作是否成功
      */
     async clearStorage() {
         try {
-            await new Promise((resolve, reject) => {
-                chrome.storage.local.clear(() => {
-                    if (chrome.runtime.lastError) {
-                        reject(new Error(chrome.runtime.lastError.message));
-                    } else {
-                        resolve();
-                    }
-                });
-            });
+            await chrome.storage.local.clear();
             
             // 重置内存中的搜索引擎数据
             searchEngines = [...defaultEngines];
@@ -241,13 +234,7 @@ export const SearchEngineAPI = {    /**
 
             searchInput.addEventListener('blur', () => {
                 searchInput.classList.remove('focused');
-            });
-
-            // 移除 click 自动全选
-            // searchInput.addEventListener('click', function() {
-            //     this.select();
-            // });
-        }
+            });        }
 
         // 确保每次页面交互后搜索框准备就绪
         document.addEventListener('visibilitychange', () => {
@@ -515,17 +502,8 @@ export const SearchEngineAPI = {    /**
      * @param {string|Array<string>} keys - 要读取的键或键数组
      * @returns {Promise<Object>} - 存储数据
      */
-    async getFromStorage(keys) {
-        try {
-            return await new Promise((resolve, reject) => {
-                chrome.storage.local.get(keys, (result) => {
-                    if (chrome.runtime.lastError) {
-                        reject(new Error(chrome.runtime.lastError.message));
-                    } else {
-                        resolve(result);
-                    }
-                });
-            });
+    async getFromStorage(keys) {        try {
+            return await chrome.storage.local.get(keys);
         } catch (error) {
             console.error('从存储中读取数据失败:', error);
             return {};
@@ -711,50 +689,7 @@ export const SearchEngineAPI = {    /**
                 showSearchEngineMenu(newIcon);
             });
             
-            // 添加右键菜单(清除存储功能)
-            newIcon.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                Notification.notify({
-                    title: I18n.getMessage('confirm', '确认'),
-                    message: I18n.getMessage('clearStorageConfirm', '确定要清除所有存储数据吗？此操作不可恢复。'),
-                    duration: 0,
-                    type: 'confirm',
-                    buttons: [
-                        {
-                            text: I18n.getMessage('confirm', '确认'),
-                            class: 'btn-primary confirm-yes',
-                            callback: async () => {
-                                const success = await SearchEngineAPI.clearStorage();
-                                if (success) {
-                                    Notification.notify({
-                                        title: I18n.getMessage('success', '成功'),
-                                        message: I18n.getMessage('clearStorageSuccess', '存储已成功清除，页面将刷新。'),
-                                        type: 'success',
-                                        duration: 1500,
-                                        onClose: () => {
-                                            window.location.reload();
-                                        }
-                                    });
-                                } else {
-                                    Notification.notify({
-                                        title: I18n.getMessage('error', '错误'),
-                                        message: I18n.getMessage('clearStorageError', '清除存储失败'),
-                                        type: 'error',
-                                        duration: 3000
-                                    });
-                                }
-                            }
-                        },
-                        {
-                            text: I18n.getMessage('cancel', '取消'),
-                            class: 'confirm-no',
-                            callback: () => {}
-                        }
-                    ]
-                });
-            });
+            // 移除右键清除存储功能，不再在搜索图标上绑定 contextmenu 事件
         }
         
         // 点击其他区域关闭菜单

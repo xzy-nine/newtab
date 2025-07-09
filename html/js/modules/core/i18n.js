@@ -1,5 +1,6 @@
 /**
  * 国际化处理模块
+ * 提供多语言支持，自动加载翻译文件，适配 Chromium 扩展环境。
  * @module i18n
  */
 
@@ -10,7 +11,8 @@ let isInitialized = false;
 const TRANSLATION_FILE = 'messages';
 
 /**
- * 国际化API
+ * 国际化 API
+ * @namespace I18n
  */
 export const I18n = {
   /**
@@ -40,10 +42,10 @@ export const I18n = {
       throw error;
     }
   },  /**
-   * 获取指定key的翻译文本，支持默认值
+   * 获取指定 key 的翻译文本，支持默认值
    * @param {string} key - 翻译键值
-   * @param {string} defaultValue - 默认值，中文语言时直接使用此值
-   * @returns {string} - 翻译后的文本
+   * @param {string} defaultValue - 默认值，中文时直接使用
+   * @returns {string} 翻译后的文本
    */
   getMessage: function(key, defaultValue = '') {
     if (!key) return '';
@@ -132,14 +134,12 @@ export const I18n = {
 
   /**
    * 获取当前设置的语言
-   * @returns {string} - 当前语言代码
+   * @returns {string} 当前语言代码
    */
   getCurrentLanguage: function() {
     return currentLanguage;
   },
 
-  // ...existing code...
-  
   /**
    * 更改语言设置
    * @param {string} language - 新的语言代码
@@ -181,7 +181,7 @@ export const I18n = {
   
   /**
    * 确认国际化模块是否已初始化
-   * @returns {boolean} - 初始化状态
+   * @returns {boolean} 初始化状态
    */
   isInitialized: function() {
     return isInitialized;
@@ -189,10 +189,33 @@ export const I18n = {
   
   /**
    * 获取当前已加载的所有翻译键
-   * @returns {Array} - 翻译键列表
+   * @returns {Array} 翻译键列表
    */
   getLoadedKeys: function() {
     return Object.keys(translations);
+  },
+  /**
+   * 生成语言设置项，与 Settings 模块配合使用
+   * @returns {Array} 设置项配置数组
+   */
+  createSettingsItems: function() {
+    return [
+      {
+        id: 'language',
+        label: this.getMessage('settingsLanguage', '界面语言'),
+        type: 'select',
+        options: [
+          { value: 'zh', label: '简体中文' },
+          { value: 'en', label: 'English' }
+        ],
+        getValue: () => this.getCurrentLanguage(),
+        description: this.getMessage('settingsLanguageDesc', '选择界面显示语言'),
+        onChange: async (value) => {
+          await this.changeLanguage(value);
+          location.reload();
+        }
+      }
+    ];
   }
 };
 
@@ -217,7 +240,7 @@ async function setUserLanguage() {
 }
 
 /**
- * 从JSON文件加载翻译数据
+ * 从 JSON 文件加载翻译数据
  * @returns {Promise<void>}
  */
 async function loadTranslationsFromFiles() {

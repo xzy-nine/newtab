@@ -1,9 +1,8 @@
 /**
  * 工具函数模块
- * 包含通用处理功能
- * 
- * 自动检测环境（DOM/Service Worker）并提供相应功能
- * 减少了对单独 background.js 文件的需求
+ * 包含通用处理功能，自动检测环境（DOM/Service Worker）并提供相应功能。
+ * 适用于 Chromium 扩展环境。
+ * @module Utils
  */
 
 // 环境检测
@@ -35,15 +34,15 @@ async function loadDependencies() {
 }
 
 /**
- * 工具函数命名空间
- * 集成了原 background.js 中的功能，根据环境自动选择合适的实现
+ * Utils 命名空间。
+ * @namespace Utils
  */
 export const Utils = {
   /**
    * 防抖函数
    * @param {Function} func - 要执行的函数
-   * @param {number} wait - 等待时间(ms)
-   * @returns {Function} - 防抖后的函数
+   * @param {number} wait - 等待时间（毫秒）
+   * @returns {Function} 防抖处理后的函数
    */
   debounce: function(func, wait) {
     let timeout;
@@ -55,10 +54,10 @@ export const Utils = {
   },
 
   /**
-   * 节流函数（合并自background.js）
+   * 节流函数
    * @param {Function} func - 要执行的函数
-   * @param {number} limit - 节流间隔(ms)
-   * @returns {Function} - 节流后的函数
+   * @param {number} limit - 节流间隔（毫秒）
+   * @returns {Function} 节流处理后的函数
    */
   throttle: function(func, limit) {
     let inThrottle;
@@ -74,12 +73,16 @@ export const Utils = {
   },
 
   /**
-   * 延迟执行函数（来自background.js）
+   * 延迟执行函数
    * @param {number} ms - 延迟毫秒数
-   * @returns {Promise} - 延迟Promise
+   * @returns {Promise} 延迟 Promise
    */
   delay: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
-
+  /**
+   * 获取远程 JSON 数据
+   * @param {string} url - 请求地址
+   * @returns {Promise<Object>} 解析后的 JSON 数据
+   */
   fetchData: async url => {
     try {
       return await (await fetch(url)).json();
@@ -88,14 +91,22 @@ export const Utils = {
       throw error;
     }
   },
-
+  /**
+   * Blob 转 Base64
+   * @param {Blob} blob - 二进制数据
+   * @returns {Promise<string>} Base64 字符串
+   */
   blobToBase64: blob => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   }),
-
+  /**
+   * 获取 URL 域名（含协议）
+   * @param {string} url - 完整 URL
+   * @returns {string} 域名字符串
+   */
   getDomain: url => {
     try {
       const { protocol, hostname } = new URL(url);
@@ -105,6 +116,14 @@ export const Utils = {
       return '';
     }
   },
+  /**
+   * 创建 DOM 元素（仅限 DOM 环境）
+   * @param {string} tag - 标签名
+   * @param {string} className - 类名
+   * @param {Object} attributes - 属性对象
+   * @param {string} content - 内部 HTML
+   * @returns {HTMLElement|null} 创建的元素
+   */
   createElement: (tag, className, attributes = {}, content = '') => {
     // 只在 DOM 环境中执行
     if (typeof document === 'undefined') {
@@ -118,6 +137,11 @@ export const Utils = {
     if (content) element.innerHTML = content;
     return element;
   },
+  /**
+   * 判断元素是否在视口内（仅限 DOM 环境）
+   * @param {HTMLElement} el - 目标元素
+   * @returns {boolean} 是否在视口内
+   */
   isElementInViewport: el => {
     // 只在 DOM 环境中执行
     if (typeof document === 'undefined' || !el) {
@@ -132,7 +156,11 @@ export const Utils = {
       right <= (window.innerWidth || document.documentElement.clientWidth)
     );
   },
-
+  /**
+   * 计算元素总高度（仅限 DOM 环境）
+   * @param {HTMLElement} element - 目标元素
+   * @returns {number} 总高度
+   */
   calculateTotalHeight: element => {
     // 只在 DOM 环境中执行
     if (typeof document === 'undefined' || !element) {
@@ -145,6 +173,7 @@ export const Utils = {
    * @param {Error} error - 错误对象
    * @param {string} customMessage - 自定义错误消息
    * @param {boolean} throwError - 是否继续抛出错误
+   * @returns {Promise<void>}
    */
   handleError: async function(error, customMessage = '', throwError = false) {
     console.error(error);
@@ -169,10 +198,10 @@ export const Utils = {
   },
 
   /**
-   * 格式化日期（来自background.js）
+   * 格式化日期
    * @param {Date} date - 日期对象
    * @param {string} locale - 本地化设置
-   * @returns {string} - 格式化后的日期字符串
+   * @returns {string} 格式化后的日期字符串
    */
   formatDate: (date, locale = 'zh-CN') => {
     return new Intl.DateTimeFormat(locale).format(date);
@@ -181,7 +210,7 @@ export const Utils = {
    * 执行带有加载指示器的任务
    * @param {Function} task - 要执行的异步任务
    * @param {Object} options - 配置选项
-   * @returns {Promise<any>} - 任务结果
+   * @returns {Promise<any>} 任务结果
    */
   withLoading: async function(task, options = {}) {
     const {
@@ -222,22 +251,20 @@ export const Utils = {
 
   /**
    * 环境检测工具
-   * 合并原有的环境相关功能
+   * @namespace Utils.Environment
    */
   Environment: {
     isDOMEnvironment,
     isServiceWorker,
-    
     /**
      * 检查是否在主线程中
      * @returns {boolean}
      */
     isMainThread: () => isDOMEnvironment && typeof window !== 'undefined',
-    
     /**
-     * 安全地执行DOM操作
-     * @param {Function} operation - DOM操作函数
-     * @param {any} fallback - 非DOM环境下的返回值
+     * 安全地执行 DOM 操作
+     * @param {Function} operation - DOM 操作函数
+     * @param {any} fallback - 非 DOM 环境下的返回值
      * @returns {any}
      */
     safeDOMOperation: (operation, fallback = null) => {
@@ -253,7 +280,7 @@ export const Utils = {
     }
   },
   /**
-   * 安全地替换元素的事件处理器
+   * 安全地替换元素的事件处理器（仅限 DOM 环境）
    * @param {string} selector - 元素选择器
    * @param {string} event - 事件名称
    * @param {Function} handler - 事件处理函数
@@ -270,9 +297,16 @@ export const Utils = {
       newElement.addEventListener(event, handler);
     });
   },
-
+  /**
+   * UI 相关事件工具
+   * @namespace Utils.UI
+   */
   UI: {
     Events: {
+      /**
+       * 处理文档点击事件，关闭所有下拉菜单
+       * @param {Event} e - 事件对象
+       */
       handleDocumentClick: e => {
         // 只在 DOM 环境中执行
         if (typeof document === 'undefined') {
@@ -284,7 +318,11 @@ export const Utils = {
             dropdown.classList.remove('active');
           }
         });
-      },      handlePageLoad: () => {
+      },
+      /**
+       * 页面加载时聚焦搜索框
+       */
+      handlePageLoad: () => {
         // 只在 DOM 环境中执行
         if (typeof document === 'undefined') {
           return;
@@ -293,7 +331,10 @@ export const Utils = {
         const searchInput = document.getElementById('search-input');
         if (searchInput) setTimeout(() => searchInput.focus(), 100);
       },
-      
+      /**
+       * 处理键盘按下事件，ESC 关闭模态框
+       * @param {KeyboardEvent} e - 事件对象
+       */
       handleKeyDown: e => {
         // 只在 DOM 环境中执行
         if (typeof document === 'undefined') {
@@ -306,7 +347,9 @@ export const Utils = {
           });
         }
       },
-
+      /**
+       * 处理窗口大小变化，触发自定义事件
+       */
       handleWindowResize: function() {
         // 只在 DOM 环境中执行
         if (typeof document === 'undefined' || typeof window === 'undefined') {
@@ -322,7 +365,9 @@ export const Utils = {
           }
         }));
       },
-
+      /**
+       * 初始化 UI 相关事件监听
+       */
       initUIEvents: function() {
         // 只在 DOM 环境中执行
         if (typeof document === 'undefined' || typeof window === 'undefined') {
@@ -339,27 +384,27 @@ export const Utils = {
       }
     },
   },
-
   /**
    * 简化的模块初始化辅助工具
-   * 替代复杂的initManager，通过判断而不是单独文件减少维护成本
+   * @namespace Utils.ModuleInit
    */
   ModuleInit: {
     /**
      * 已初始化的模块记录
+     * @type {Set<string>}
      */
     _initialized: new Set(),
-    
     /**
      * 初始化状态
+     * @type {Map<string, string>}
      */
     _status: new Map(),
-    
     /**
      * 注册并初始化模块
      * @param {string} name - 模块名称
      * @param {Function} initFunction - 初始化函数
      * @param {Object} options - 选项
+     * @returns {Promise<boolean>} 是否初始化成功
      */
     async register(name, initFunction, options = {}) {
       const { 
@@ -417,11 +462,11 @@ export const Utils = {
         throw error;
       }
     },
-    
     /**
      * 等待模块初始化完成
      * @param {string} name - 模块名称
      * @param {number} timeout - 超时时间
+     * @returns {Promise<boolean>} 是否初始化成功
      */
     async waitFor(name, timeout = 10000) {
       if (this._initialized.has(name)) {
@@ -438,17 +483,17 @@ export const Utils = {
       
       throw new Error(`等待模块 ${name} 初始化超时`);
     },
-    
     /**
      * 检查模块是否已初始化
      * @param {string} name - 模块名称
+     * @returns {boolean}
      */
     isInitialized(name) {
       return this._initialized.has(name);
     },
-    
     /**
      * 获取所有模块状态
+     * @returns {Object} 状态对象
      */
     getStatus() {
       return {
@@ -456,10 +501,10 @@ export const Utils = {
         status: Object.fromEntries(this._status)
       };
     },
-    
     /**
      * 延迟函数
      * @param {number} ms - 延迟毫秒数
+     * @returns {Promise<void>}
      */
     delay: (ms) => new Promise(resolve => setTimeout(resolve, ms))
   }

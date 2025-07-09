@@ -1,11 +1,18 @@
 /**
  * 小部件系统模块
- * 提供小部件容器创建、管理和交互功能
+ * 提供小部件容器的创建、管理和交互功能，支持响应式布局、国际化、主题适配等。
+ * @author System
+ * @version 1.0.1
+ * @date 2025-07-09
  */
 
 import { Utils, Menu, GridSystem, I18n, Notification, WidgetRegistry } from '../core/index.js';
 
-// 小部件系统状态管理
+/**
+ * 小部件系统状态管理类
+ * @class WidgetSystemState
+ * @description 管理小部件容器、状态、观察者等运行时数据。
+ */
 class WidgetSystemState {
     constructor() {
         this.widgets = [];
@@ -66,12 +73,15 @@ function getI18nMessage(key, defaultText) {
 
 /**
  * 事件处理器集合
+ * @namespace EventHandlers
  */
-const EventHandlers = {    /**
+const EventHandlers = {
+    /**
      * 设置拖拽事件处理
      * @param {HTMLElement} handle - 拖拽手柄元素
      * @param {HTMLElement} container - 小部件容器元素
-     */    setupDragHandlers(handle, container) {
+     */
+    setupDragHandlers(handle, container) {
         // 使用网格系统的统一拖拽功能
         if (window.GridSystem && typeof window.GridSystem.registerDraggable === 'function') {
             const dragController = window.GridSystem.registerDraggable(container, {
@@ -358,6 +368,7 @@ const state = new WidgetSystemState();
 
 /**
  * 小部件系统API
+ * @namespace WidgetSystem
  */
 export const WidgetSystem = {
     /**
@@ -525,7 +536,7 @@ export const WidgetSystem = {
     
     /**
      * 处理右键菜单事件
-     * @param {MouseEvent} event - 右键事件对象 
+     * @param {MouseEvent} event - 右键事件对象
      */
     handleContextMenu(event) {        // 如果已经有特定元素处理了右键菜单，不再处理
         // 增加排除背景按钮和时钟元素
@@ -1140,7 +1151,7 @@ export const WidgetSystem = {
     
     /**
      * 添加"添加"按钮到容器
-     * @param {HTMLElement} container - 小部件容器 
+     * @param {HTMLElement} container - 小部件容器
      */
     addAddButton(container) {
         const contentArea = container.querySelector('.widget-content');
@@ -1381,8 +1392,9 @@ export const WidgetSystem = {
     
     /**
      * 删除小部件容器
-     * @param {HTMLElement} container - 小部件容器元素 
-     */    deleteWidgetContainer(container) {
+     * @param {HTMLElement} container - 小部件容器元素
+     */
+    deleteWidgetContainer(container) {
         // 从DOM中移除
         document.body.removeChild(container);
         
