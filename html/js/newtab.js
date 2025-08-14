@@ -45,7 +45,7 @@ window.addEventListener('unhandledrejection', (event) => {
  * 直接从JSON文件获取翻译文本（不依赖I18n模块）
  * @param {string} key - 翻译键值
  * @param {string} defaultValue - 默认值（中文）
- * @returns {string} - 翻译后的文本
+ * @returns {Promise<string>} 翻译后的文本
  */
 async function getDirectMessage(key, defaultValue = '') {
     try {
@@ -116,7 +116,8 @@ function getExtensionVersion() {
 }
 
 /**
- * 初始化应用
+ * 初始化应用，负责主题、模块、通知等初始化
+ * @returns {Promise<void>}
  */
 async function init() {
     try {
@@ -334,6 +335,7 @@ function setupEvents() {
 
 /**
  * 启动后执行的任务
+ * @returns {Promise<void>}
  */
 async function performPostInitTasks() {
     try {
@@ -345,6 +347,7 @@ async function performPostInitTasks() {
 
 /**
  * 检查更新或首次安装
+ * @returns {Promise<void>}
  */
 async function checkForUpdates() {
     try {
@@ -364,6 +367,7 @@ async function checkForUpdates() {
 
 /**
  * 显示欢迎消息
+ * @returns {Promise<void>}
  */
 async function showWelcomeMessage() {
     try {
@@ -387,6 +391,7 @@ async function showWelcomeMessage() {
  * 显示更新消息
  * @param {string} oldVersion - 旧版本号
  * @param {string} newVersion - 新版本号
+ * @returns {Promise<void>}
  */
 async function showUpdateMessage(oldVersion, newVersion) {
     try {
@@ -406,8 +411,9 @@ async function showUpdateMessage(oldVersion, newVersion) {
 }
 
 /**
- * 显示新标签页设置指导通知（根据设备类型显示不同内容）
+ * 显示新标签页设置指引通知（根据设备类型显示不同内容）
  * @param {string} url - 扩展页面URL
+ * @returns {Promise<void>}
  */
 async function showMobileInstruction(url) {
     try {

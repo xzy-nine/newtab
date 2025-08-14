@@ -1,5 +1,6 @@
 /**
- * 优化的扩展弹出页面脚本
+ * 优化的扩展弹出页面脚本，负责通知、国际化、标签切换等
+ * @class PopupManager
  */
 
 class PopupManager {
@@ -11,6 +12,10 @@ class PopupManager {
         this.init();
     }
 
+    /**
+     * 初始化弹窗页面
+     * @returns {Promise<void>}
+     */
     async init() {
         await this.loadI18n();
         this.applyI18n();
@@ -23,6 +28,7 @@ class PopupManager {
 
     /**
      * 加载国际化资源
+     * @returns {Promise<void>}
      */
     async loadI18n() {
         try {
@@ -57,6 +63,9 @@ class PopupManager {
 
     /**
      * 获取翻译文本
+     * @param {string} key - 翻译键
+     * @param {string} [defaultValue] - 默认值
+     * @returns {string} 翻译文本
      */
     getMessage(key, defaultValue = '') {
         return this.i18n[key]?.message || defaultValue;
@@ -142,6 +151,7 @@ class PopupManager {
 
     /**
      * 从存储中加载通知
+     * @returns {Promise<void>}
      */
     async loadNotifications() {
         try {
@@ -234,6 +244,8 @@ class PopupManager {
 
     /**
      * 获取通知类型图标
+     * @param {string} type - 通知类型
+     * @returns {string} 图标
      */
     getTypeIcon(type) {
         const icons = {
@@ -246,6 +258,8 @@ class PopupManager {
         return icons[type] || 'ℹ️';
     }    /**
      * 获取通知类型标签
+     * @param {string} type - 通知类型
+     * @returns {string} 标签
      */
     getTypeLabel(type) {
         const labels = {
@@ -260,6 +274,8 @@ class PopupManager {
 
     /**
      * 格式化时间显示
+     * @param {number} timestamp - 时间戳
+     * @returns {string} 格式化时间
      */
     formatTime(timestamp) {
         const now = Date.now();
@@ -306,6 +322,8 @@ class PopupManager {
 
     /**
      * 删除单个通知
+     * @param {string} notificationId - 通知ID
+     * @returns {Promise<void>}
      */
     async deleteNotification(notificationId) {
         try {
@@ -326,6 +344,8 @@ class PopupManager {
 
     /**
      * 标记通知为已读
+     * @param {string} notificationId - 通知ID
+     * @returns {Promise<void>}
      */
     async markAsRead(notificationId) {
         try {
@@ -349,6 +369,7 @@ class PopupManager {
 
     /**
      * 清除所有通知
+     * @returns {Promise<void>}
      */
     async clearAllNotifications() {
         try {
@@ -385,7 +406,9 @@ class PopupManager {
     }
 
     /**
-     * 添加新通知
+     * 添加新通知（静态方法）
+     * @param {Object} notification - 通知对象
+     * @returns {Promise<void>}
      */
     static async addNotification(notification) {
         try {
@@ -427,7 +450,8 @@ class PopupManager {
     }
 
     /**
-     * 标记所有通知为已读
+     * 标记所有通知为已读（静态方法）
+     * @returns {Promise<void>}
      */
     static async markAllAsRead() {
         try {

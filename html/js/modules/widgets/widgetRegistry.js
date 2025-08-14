@@ -1,16 +1,24 @@
 /**
- * 小部件注册中心
- * 用于集中管理所有可用的小部件类型和它们的元数据
+ * 小部件注册中心模块
+ * 负责管理所有可用小部件类型及其元数据，支持动态加载和元数据缓存。
+ * @author System
+ * @version 1.0.1
+ * @date 2025-07-09
  */
 
 // 存储所有已注册的小部件
 const registeredWidgets = new Map();
 
+/**
+ * 小部件注册中心API
+ * @namespace WidgetRegistry
+ */
 export const WidgetRegistry = {
     /**
      * 注册一个新的小部件类型
      * @param {string} type - 小部件类型标识符
      * @param {string} path - 小部件模块路径
+     * @throws {Error} 参数无效或类型已注册
      */
     register(type, path) {
         if (!type || typeof type !== 'string') {
@@ -46,7 +54,7 @@ export const WidgetRegistry = {
     },
     
     /**
-     * 获取所有已注册的小部件类型
+     * 获取所有已注册的小部件类型及其元数据
      * @param {boolean} forceLoad - 是否强制加载所有小部件元数据
      * @returns {Promise<Array>} 小部件类型数组，每个元素包含type和metadata
      */
@@ -84,7 +92,7 @@ export const WidgetRegistry = {
      * 异步加载指定小部件类型的模块
      * @param {string} type - 小部件类型
      * @returns {Promise<Object>} 小部件模块
-     * @throws {Error} 如果小部件类型未注册
+     * @throws {Error} 如果小部件类型未注册或模块无效
      */
     async loadWidget(type) {
         const widget = registeredWidgets.get(type);

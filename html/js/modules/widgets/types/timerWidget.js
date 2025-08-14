@@ -1,11 +1,19 @@
 /**
  * 计时器小部件模块
- * 提供秒表功能
+ * 提供秒表和倒计时功能，支持多种交互、国际化、响应式布局。
+ * @author System
+ * @version 1.2.1
+ * @date 2025-07-09
  */
 
 import { I18n, Utils } from '../../core/index.js';
 
-// 国际化辅助函数
+/**
+ * 获取国际化消息辅助函数
+ * @param {string} key - 国际化消息键
+ * @param {string} defaultText - 默认文本
+ * @returns {string} 国际化文本
+ */
 function getTimerI18nMessage(key, defaultText) {
     // 使用统一的国际化方法，通过导入的I18n模块
     if (typeof I18n !== 'undefined' && I18n.getMessage) {
@@ -22,7 +30,15 @@ function getTimerI18nMessage(key, defaultText) {
     return defaultText;
 }
 
-export default {    // 小部件元数据
+export default {
+    /**
+     * 小部件元数据
+     * @type {Object}
+     * @property {string} name - 小部件名称
+     * @property {string} description - 小部件描述
+     * @property {string} version - 版本号
+     * @property {string} author - 作者
+     */
     metadata: {
         name: I18n.getMessage('timerWidgetName', '计时器'),
         description: I18n.getMessage('timerWidgetDesc', '提供秒表功能'),
@@ -30,7 +46,13 @@ export default {    // 小部件元数据
         author: 'System'
     },
 
-    // 小部件尺寸配置
+    /**
+     * 小部件尺寸配置
+     * @type {Object}
+     * @property {Object} default - 默认尺寸
+     * @property {Object} min - 最小尺寸
+     * @property {Object} max - 最大尺寸
+     */
     config: {
         default: {
             width: 200,

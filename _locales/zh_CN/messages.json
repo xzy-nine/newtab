@@ -276,6 +276,182 @@
   "tokens": {
     "message": "tokens",
     "description": "Token数量单位"
+  },
+  "switchProvider": {
+    "message": "切换AI供应商",
+    "description": "供应商选择器标题"
+  },
+  "switchModel": {
+    "message": "切换AI模型",
+    "description": "模型选择器标题"
+  },
+  "refreshModels": {
+    "message": "刷新模型列表",
+    "description": "刷新模型按钮标题"
+  },
+  "loadingModels": {
+    "message": "正在加载模型列表...",
+    "description": "加载模型时的提示"
+  },
+  "noModelsAvailable": {
+    "message": "无可用模型",
+    "description": "没有可用模型时的提示"
+  },
+  "loadModelsError": {
+    "message": "加载模型失败",
+    "description": "加载模型失败时的提示"
+  },
+  "noValidProviders": {
+    "message": "无可用供应商",
+    "description": "没有有效供应商时的提示"
+  },
+  "providerNoApiKey": {
+    "message": "供应商无API密钥",
+    "description": "供应商缺少API密钥时的提示"
+  },
+  "currentModel": {
+    "message": "当前模型",
+    "description": "模型选择器标签"
+  },
+  "defaultPrompt5": {
+    "message": "帮我写代码实现这个功能",
+    "description": "AI默认快速提示词5"
+  },
+  "defaultPrompt6": {
+    "message": "解释这个数学/编程概念",
+    "description": "AI默认快速提示词6"
+  },
+  "quickPromptsManagement": {
+    "message": "快速提示词管理",
+    "description": "快速提示词管理标题"
+  },
+  "quickPromptsManageDesc": {
+    "message": "管理您的快速提示词，每个提示词可以设置不同的温度参数以适应不同场景",
+    "description": "快速提示词管理描述"
+  },
+  "addQuickPrompt": {
+    "message": "添加提示词",
+    "description": "添加快速提示词按钮"
+  },
+  "temperatureGuide": {
+    "message": "温度设置指南",
+    "description": "温度设置指南标题"
+  },
+  "tempCode": {
+    "message": "代码生成/数学解题",
+    "description": "温度设置：代码生成"
+  },
+  "tempAnalysis": {
+    "message": "数据抽取/分析",
+    "description": "温度设置：数据分析"
+  },
+  "tempGeneral": {
+    "message": "通用对话/翻译",
+    "description": "温度设置：通用对话"
+  },
+  "tempCreative": {
+    "message": "创意写作/诗歌创作",
+    "description": "温度设置：创意写作"
+  },
+  "temperature": {
+    "message": "温度",
+    "description": "温度标签"
+  },
+  "confirmDeletePrompt": {
+    "message": "确定要删除这个提示词吗？",
+    "description": "删除提示词确认"
+  },
+  "editQuickPrompt": {
+    "message": "编辑快速提示词",
+    "description": "编辑快速提示词标题"
+  },
+  "promptText": {
+    "message": "提示词内容",
+    "description": "提示词内容标签"
+  },
+  "promptTextPlaceholder": {
+    "message": "例如：帮我总结这段内容",
+    "description": "提示词内容占位符"
+  },
+  "promptTemperature": {
+    "message": "温度设置",
+    "description": "提示词温度设置标签"
+  },
+  "temperatureDesc": {
+    "message": "控制回答的创造性：0.0最保守，2.0最创新",
+    "description": "温度设置描述"
+  },
+  "promptCategory": {
+    "message": "场景分类",
+    "description": "提示词分类标签"
+  },
+  "categoryCode": {
+    "message": "代码",
+    "description": "分类：代码"
+  },
+  "categoryMath": {
+    "message": "数学",
+    "description": "分类：数学"
+  },
+  "categoryAnalysis": {
+    "message": "分析",
+    "description": "分类：分析"
+  },
+  "categoryGeneral": {
+    "message": "通用",
+    "description": "分类：通用"
+  },
+  "categoryTranslation": {
+    "message": "翻译",
+    "description": "分类：翻译"
+  },
+  "categoryCreative": {
+    "message": "创意",
+    "description": "分类：创意"
+  },
+  "categoryDesc": {
+    "message": "选择使用场景，会自动推荐合适的温度值",
+    "description": "分类描述"
+  },
+  "promptTextRequired": {
+    "message": "请输入提示词内容",
+    "description": "提示词内容必填提示"
+  },
+  "promptUpdated": {
+    "message": "提示词已更新",
+    "description": "提示词更新成功"
+  },
+  "promptAdded": {
+    "message": "提示词已添加",
+    "description": "提示词添加成功"
+  },
+  "recommendedTemp": {
+    "message": "推荐温度",
+    "description": "推荐温度标签"
+  },
+  "regenerateResponse": {
+    "message": "重新生成回答",
+    "description": "重新生成AI回答按钮提示"
+  },
+  "startNewChat": {
+    "message": "基于此消息另起新对话",
+    "description": "另起新对话按钮提示"
+  },
+  "regenerateFailed": {
+    "message": "重新生成失败",
+    "description": "重新生成失败提示"
+  },
+  "newChatStarted": {
+    "message": "新对话已开始",
+    "description": "新对话开始通知标题"
+  },
+  "newChatStartedDesc": {
+    "message": "已基于该消息开始新对话",
+    "description": "新对话开始通知描述"
+  },
+  "newChatStartedWithHistory": {
+    "message": "已复制从对话开始到该消息的所有内容",
+    "description": "新对话开始通知描述（包含历史）"
   }
 }
 

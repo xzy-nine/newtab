@@ -377,31 +377,46 @@ export const NotificationManager = {
             const clearBtn = Utils.createElement('button', 'btn btn-sm btn-danger');
             clearBtn.textContent = '清除统计';
             clearBtn.addEventListener('click', async () => {
-                if (confirm('确定要清除所有外部通知统计数据吗？')) {
-                    try {
-                        await chrome.runtime.sendMessage({
-                            action: 'clearExternalNotificationStats'
-                        });
-                        await this.renderExternalNotificationStats(container);
-                        Notification.notify({
-                            title: '统计数据已清除',
-                            message: '外部通知统计数据已成功清除',
-                            type: 'success',
-                            duration: 2000
-                        });
-                    } catch (error) {
-                        console.error('清除统计数据失败:', error);
-                        Notification.notify({
-                            title: '清除失败',
-                            message: '清除统计数据时发生错误',
-                            type: 'error',
-                            duration: 3000
-                        });
-                    }
-                }
-            });
-            
-            const testBtn = Utils.createElement('button', 'btn btn-sm btn-secondary');
+                Notification.notify({
+                    title: '确认清除',
+                    message: '确定要清除所有外部通知统计数据吗？',
+                    duration: 0,
+                    type: 'confirm',
+                    buttons: [
+                        {
+                            text: '确认',
+                            class: 'btn-primary confirm-yes',
+                            callback: async () => {
+                                try {
+                                    await chrome.runtime.sendMessage({
+                                        action: 'clearExternalNotificationStats'
+                                    });
+                                    await this.renderExternalNotificationStats(container);
+                                    Notification.notify({
+                                        title: '统计数据已清除',
+                                        message: '外部通知统计数据已成功清除',
+                                        type: 'success',
+                                        duration: 2000
+                                    });
+                                } catch (error) {
+                                    console.error('清除统计数据失败:', error);
+                                    Notification.notify({
+                                        title: '清除失败',
+                                        message: '清除统计数据时发生错误',
+                                        type: 'error',
+                                        duration: 3000
+                                    });
+                                }
+                            }
+                        },
+                        {
+                            text: '取消',
+                            class: 'confirm-no',
+                            callback: () => {}
+                        }
+                    ]
+                });
+            });            const testBtn = Utils.createElement('button', 'btn btn-sm btn-secondary');
             testBtn.textContent = '测试API';
             testBtn.addEventListener('click', () => {
                 // 打开测试页面

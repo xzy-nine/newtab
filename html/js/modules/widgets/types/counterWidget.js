@@ -1,18 +1,35 @@
 /**
  * 计数器小部件模块
+ * 提供简单的计数器功能，支持增减、重置、国际化、响应式布局。
+ * @author System
+ * @version 1.0.1
+ * @date 2025-07-09
  */
 
 import { I18n, Utils } from '../../core/index.js';
 
-export default {    // 小部件元数据
+export default {
+    /**
+     * 小部件元数据
+     * @type {Object}
+     * @property {string} name - 小部件名称
+     * @property {string} description - 小部件描述
+     * @property {string} version - 版本号
+     * @property {string} author - 作者
+     */
     metadata: {
         name: I18n.getMessage('counterWidgetName', '计数器'),
         description: I18n.getMessage('counterWidgetDesc', '简单的计数器小部件，可增加、减少和重置数值'),
         version: '1.0.0',
         author: 'System'
     },
-    
-    // 小部件尺寸配置
+    /**
+     * 小部件尺寸配置
+     * @type {Object}
+     * @property {Object} default - 默认尺寸
+     * @property {Object} min - 最小尺寸
+     * @property {Object} max - 最大尺寸
+     */
     config: {
         default: {
             width: 135,
@@ -27,7 +44,6 @@ export default {    // 小部件元数据
             height: 300
         }
     },
-    
     /**
      * 初始化计数器小部件
      * @param {HTMLElement} container - 小部件容器元素
@@ -99,7 +115,8 @@ export default {    // 小部件元数据
     /**
      * 小部件被销毁时调用
      * @param {HTMLElement} container - 小部件容器
-     */    destroy: function(container) {
+     */
+    destroy: function(container) {
         // 清除任何可能的resize observer
         if (container._resizeObserver) {
             container._resizeObserver.disconnect();
@@ -130,7 +147,8 @@ export default {    // 小部件元数据
     /**
      * 调整小部件大小和布局
      * @param {HTMLElement} container - 小部件容器
-     */    adjustSize: function(container) {
+     */
+    adjustSize: function(container) {
         // 避免在ResizeObserver回调期间进行可能导致循环的操作
         if (container._isAdjusting) {
             return;
@@ -260,7 +278,7 @@ export default {    // 小部件元数据
     },
     
     /**
-     * 添加事件监听
+     * 添加交互事件监听器
      * @param {HTMLElement} container - 小部件容器
      * @param {HTMLElement} content - 小部件内容元素
      */

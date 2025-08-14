@@ -1,3 +1,8 @@
+/**
+ * 设置面板主模块
+ * 负责生成各类设置项、处理设置逻辑、开发者选项等
+ * @module Settings
+ */
 import {
     Menu,
     Utils,
@@ -16,10 +21,25 @@ import {
 const SETTINGS_MODAL_ID = 'settings-modal';
 
 export const Settings = {
+  /**
+   * 是否已解锁开发者模式
+   * @type {boolean}
+   */
   developerUnlocked: false,
+  /**
+   * 解锁开发者模式所需点击次数
+   * @type {number}
+   */
   unlockClicks: 0,
+  /**
+   * 是否启用调试模式
+   * @type {boolean}
+   */
   debugEnabled: false,
-  // 设置配置 - 改为函数以支持动态翻译
+  /**
+   * 获取所有设置分类（支持国际化）
+   * @returns {Array} 设置分类数组
+   */
   getCategories: () => {
     const categories = [
         {
@@ -241,6 +261,17 @@ export const Settings = {
     window.addEventListener('gridSettingsChanged', syncHandler);
     window.addEventListener('dataSyncSettingsChanged', syncHandler);
     
+    // 监听同步状态更新事件
+    const syncStatusHandler = () => {
+      if (typeof DataSync !== 'undefined' && DataSync.updateSyncStatusDisplay) {
+        setTimeout(() => {
+          DataSync.updateSyncStatusDisplay();
+          console.log('响应同步状态更新事件');
+        }, 100);
+      }
+    };
+    window.addEventListener('syncStatusUpdated', syncStatusHandler);
+    
     // 模态框关闭时移除监听器
     const modalElement = document.getElementById(SETTINGS_MODAL_ID);
     const originalHide = Menu.Modal.hide;
@@ -248,6 +279,7 @@ export const Settings = {
       if (id === SETTINGS_MODAL_ID) {
         window.removeEventListener('gridSettingsChanged', syncHandler);
         window.removeEventListener('dataSyncSettingsChanged', syncHandler);
+        window.removeEventListener('syncStatusUpdated', syncStatusHandler);
         Menu.Modal.hide = originalHide; // 恢复原方法
       }
       return originalHide.call(this, id);
@@ -255,6 +287,14 @@ export const Settings = {
     
     // 显示模态框
     Menu.Modal.show(SETTINGS_MODAL_ID);
+    
+    // 延迟更新同步状态显示，确保模态框完全加载后再更新
+    setTimeout(() => {
+      if (typeof DataSync !== 'undefined' && DataSync.updateSyncStatusDisplay) {
+        DataSync.updateSyncStatusDisplay();
+        console.log('设置模态框打开后更新同步状态显示');
+      }
+    }, 300);
   },
 
   renderCategoryContent: async (categoryId) => {
@@ -281,6 +321,16 @@ export const Settings = {
     }
     
     contentArea.appendChild(itemsContainer);
+    
+    // 如果是数据同步分类，需要更新同步状态显示
+    if (categoryId === 'data-sync') {
+      setTimeout(() => {
+        if (typeof DataSync !== 'undefined' && DataSync.updateSyncStatusDisplay) {
+          DataSync.updateSyncStatusDisplay();
+          console.log('数据同步分类渲染后更新同步状态显示');
+        }
+      }, 200);
+    }
   },
 
   createSettingItem: async (item) => {

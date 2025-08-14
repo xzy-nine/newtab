@@ -1,10 +1,16 @@
+/**
+ * 数据同步模块
+ * 提供同步设置项、同步状态、手动/自动同步等功能
+ * @module DataSync
+ */
+
 // 数据同步模块
 import { Utils, I18n, Notification } from './core/index.js';
 
 export const DataSync = {
     /**
      * 创建同步设置项
-     * @returns {Array} - 设置项配置数组
+     * @returns {Array} 设置项配置数组
      */
     createSettingsItems() {
         return [
@@ -59,9 +65,10 @@ export const DataSync = {
                 }
             }
         ];
-    },    /**
+    },
+    /**
      * 处理同步模式变化
-     * @param {string} mode - 同步模式 ('disabled', 'upload', 'download')
+     * @param {string} mode 同步模式 ('disabled', 'upload', 'download')
      */
     handleSyncModeChange(mode) {
         try {
@@ -105,9 +112,10 @@ export const DataSync = {
                 duration: 3000
             });
         }
-    },    /**
+    },
+    /**
      * 处理同步间隔变化
-     * @param {string} interval - 同步间隔（秒）
+     * @param {string} interval 同步间隔（秒）
      */
     handleSyncIntervalChange(interval) {
         localStorage.setItem('sync-interval', interval);
@@ -132,10 +140,9 @@ export const DataSync = {
             detail: { type: 'syncInterval', value: interval } 
         }));
     },
-
     /**
-     * 创建同步状态显示
-     * @returns {HTMLElement} - 同步状态显示元素
+     * 创建同步状态显示元素
+     * @returns {HTMLElement} 同步状态显示元素
      */
     createSyncStatusDisplay() {
         const statusContainer = Utils.createElement('div', 'sync-status-container');
@@ -159,13 +166,17 @@ export const DataSync = {
         
         return statusContainer;
     },
-
     /**
      * 创建同步操作面板
-     * @returns {HTMLElement} - 同步操作面板
+     * @returns {HTMLElement} 同步操作面板
      */
     createSyncActionsPanel() {
         const actionsContainer = Utils.createElement('div', 'sync-actions-container');
+        
+        // 检查云端数据按钮
+        const checkBtn = Utils.createElement('button', 'btn btn-info sync-check-btn', {}, 
+            I18n.getMessage('checkCloudData', '检查云端数据'));
+        checkBtn.addEventListener('click', () => this.checkCloudData());
         
         // 手动上传按钮
         const uploadBtn = Utils.createElement('button', 'btn btn-primary sync-upload-btn', {}, 
@@ -182,17 +193,20 @@ export const DataSync = {
             I18n.getMessage('clearCloudData', '清除云端数据'));
         clearBtn.addEventListener('click', () => this.clearCloudData());
         
-        actionsContainer.append(uploadBtn, downloadBtn, clearBtn);
+        actionsContainer.append(checkBtn, uploadBtn, downloadBtn, clearBtn);
         
         return actionsContainer;
     },
-
     /**
      * 更新同步状态显示
      */
     updateSyncStatusDisplay() {
+        // 使用更安全的元素查找方式
         const statusValue = document.getElementById('sync-status-value');
         const lastSyncValue = document.getElementById('sync-last-value');
+        
+        console.log('更新同步状态显示 - 状态元素:', statusValue ? '存在' : '不存在', 
+                   '时间元素:', lastSyncValue ? '存在' : '不存在');
         
         if (statusValue) {
             const syncMode = localStorage.getItem('sync-mode') || 'disabled';
@@ -203,26 +217,42 @@ export const DataSync = {
             };
             statusValue.textContent = modeNames[syncMode];
             statusValue.className = `sync-status-value sync-${syncMode}`;
+            console.log('同步模式已更新:', syncMode);
         }
         
         if (lastSyncValue) {
             const lastSync = localStorage.getItem('last-sync-time');
-            if (lastSync) {
-                const date = new Date(parseInt(lastSync));
-                lastSyncValue.textContent = date.toLocaleString();
+            console.log('最后同步时间 localStorage值:', lastSync);
+            if (lastSync && lastSync !== 'null') {
+                try {
+                    const date = new Date(parseInt(lastSync));
+                    // 检查日期是否有效
+                    if (!isNaN(date.getTime())) {
+                        lastSyncValue.textContent = date.toLocaleString();
+                        console.log('最后同步时间已更新:', date.toLocaleString());
+                    } else {
+                        lastSyncValue.textContent = I18n.getMessage('never', '从未');
+                        console.log('日期无效，显示从未同步');
+                    }
+                } catch (error) {
+                    console.error('解析同步时间失败:', error);
+                    lastSyncValue.textContent = I18n.getMessage('never', '从未');
+                }
             } else {
                 lastSyncValue.textContent = I18n.getMessage('never', '从未');
+                console.log('没有同步时间记录，显示从未同步');
             }
         }
     },
-
     /**
      * 刷新同步状态
      */
     refreshSyncStatus() {
-        this.updateSyncStatusDisplay();
+        // 延迟执行，确保DOM元素已经渲染
+        setTimeout(() => {
+            this.updateSyncStatusDisplay();
+        }, 100);
     },
-
     /**
      * 手动同步
      * @param {string} mode - 同步模式 ('upload' | 'download')
@@ -236,77 +266,276 @@ export const DataSync = {
                     I18n.getMessage('downloadingData', '正在下载数据...'),
                 type: 'info',
                 duration: 2000
-            });            if (mode === 'upload') {
+            });
+
+            if (mode === 'upload') {
                 // 上传到 chrome.storage.sync
-                const dataToSync = {};
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    dataToSync[key] = localStorage.getItem(key);
+                const dataToSync = this.getFilteredLocalStorageData();
+                console.log('准备上传的数据:', Object.keys(dataToSync));
+                
+                // 检查数据大小
+                const dataSize = this.calculateDataSize(dataToSync);
+                console.log('数据大小:', dataSize, 'bytes');
+                
+                if (dataSize > 100 * 1024) { // 100KB 限制
+                    throw new Error(I18n.getMessage('dataTooLarge', '数据太大，超出云端存储限制（100KB）'));
                 }
+                
                 await chrome.storage.sync.set(dataToSync);
+                console.log('数据上传成功');
+                
             } else if (mode === 'download') {
                 // 从 chrome.storage.sync 获取并应用到 localStorage
+                console.log('开始从云端下载数据...');
                 const items = await chrome.storage.sync.get(null);
-                Object.keys(items).forEach(key => {
-                    localStorage.setItem(key, items[key]);
+                console.log('从云端获取的数据:', Object.keys(items));
+                
+                if (Object.keys(items).length === 0) {
+                    throw new Error(I18n.getMessage('noCloudData', '云端没有找到数据'));
+                }
+                
+                // 保护本地同步系统状态，避免被下载的数据覆盖
+                const protectedKeys = ['sync-mode', 'sync-interval', 'last-sync-time'];
+                const protectedValues = {};
+                protectedKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    if (value !== null) {
+                        protectedValues[key] = value;
+                    }
                 });
+                
+                // 应用数据到 localStorage（排除受保护的键）
+                Object.keys(items).forEach(key => {
+                    if (!protectedKeys.includes(key)) {
+                        localStorage.setItem(key, items[key]);
+                        console.log('设置项:', key, '=', items[key]);
+                    } else {
+                        console.log('跳过受保护的设置项:', key);
+                    }
+                });
+                
+                // 恢复受保护的同步系统状态
+                Object.keys(protectedValues).forEach(key => {
+                    localStorage.setItem(key, protectedValues[key]);
+                    console.log('恢复受保护的设置项:', key, '=', protectedValues[key]);
+                });
+                
+                console.log('数据下载并应用成功，同步系统状态已保护');
+                
+                // 重新加载页面以应用新设置
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
             }
 
             // 更新最后同步时间并通知
             localStorage.setItem('last-sync-time', Date.now().toString());
             this.updateSyncStatusDisplay();
+            
+            // 触发同步状态更新事件
+            window.dispatchEvent(new CustomEvent('syncStatusUpdated', { 
+                detail: { 
+                    type: 'syncComplete', 
+                    mode: mode,
+                    timestamp: Date.now()
+                } 
+            }));
+            
             Notification.notify({
                 title: I18n.getMessage('syncComplete', '同步完成'),
                 message: mode === 'upload' ? 
                     I18n.getMessage('uploadComplete', '数据上传完成') : 
-                    I18n.getMessage('downloadComplete', '数据下载完成'),
+                    I18n.getMessage('downloadComplete', '数据下载完成，页面即将刷新'),
                 type: 'success',
-                duration: 2000
+                duration: 3000
             });
         } catch (error) {
             console.error('手动同步失败:', error);
+            let errorMessage = error.message;
+            
+            // 处理特定的Chrome存储API错误
+            if (error.message && error.message.includes('QUOTA_EXCEEDED')) {
+                errorMessage = I18n.getMessage('quotaExceeded', '存储配额已满，请减少数据或清理云端数据');
+            } else if (error.message && error.message.includes('MAX_WRITE_OPERATIONS_PER_MINUTE')) {
+                errorMessage = I18n.getMessage('rateLimitExceeded', '操作过于频繁，请稍后再试');
+            }
+            
             Notification.notify({
                 title: I18n.getMessage('syncFailed', '同步失败'),
-                message: error.message || I18n.getMessage('syncFailed', '同步失败'),
+                message: errorMessage || I18n.getMessage('syncFailed', '同步失败'),
                 type: 'error',
-                duration: 3000
+                duration: 5000
             });
         }
     },
-
     /**
      * 清除云端数据
      */
     async clearCloudData() {
-        const confirmed = confirm(I18n.getMessage('confirmClearCloudData', '确定要清除所有云端数据吗？此操作不可撤销。'));
-        if (!confirmed) return;
+        Notification.notify({
+            title: I18n.getMessage('confirmDelete', '确认删除'),
+            message: I18n.getMessage('confirmClearCloudData', '确定要清除所有云端数据吗？此操作不可撤销。'),
+            duration: 0,
+            type: 'confirm',
+            buttons: [
+                {
+                    text: I18n.getMessage('confirm', '确认'),
+                    class: 'btn-primary confirm-yes',
+                    callback: async () => {
+                        try {
+                            Notification.notify({
+                                title: I18n.getMessage('clearingCloudData', '正在清除云端数据'),
+                                message: I18n.getMessage('pleaseWait', '请稍候...'),
+                                type: 'info',
+                                duration: 2000
+                            });
 
+                            // 清除 chrome.storage.sync 中的数据
+                            await chrome.storage.sync.clear();
+
+                            Notification.notify({
+                                title: I18n.getMessage('cloudDataCleared', '云端数据已清除'),
+                                message: I18n.getMessage('cloudDataClearComplete', '所有云端数据已清除'),
+                                type: 'success',
+                                duration: 2000
+                            });
+                        } catch (error) {
+                            console.error('清除云端数据失败:', error);
+                            Notification.notify({
+                                title: I18n.getMessage('error', '错误'),
+                                message: error.message || I18n.getMessage('error', '错误'),
+                                type: 'error',
+                                duration: 3000
+                            });
+                        }
+                    }
+                },
+                {
+                    text: I18n.getMessage('cancel', '取消'),
+                    class: 'confirm-no',
+                    callback: () => {}
+                }
+            ]
+        });
+    },
+    
+    /**
+     * 获取过滤后的localStorage数据（仅同步重要设置）
+     * 注意：不包括同步系统状态，避免下载数据时改变本地同步模式导致数据丢失
+     * @returns {Object} 过滤后的数据对象
+     */
+    getFilteredLocalStorageData() {
+        const syncableKeys = [
+            // 基础设置（排除同步系统状态）
+            'language',
+            'theme',
+            'background-type',
+            'background-color',
+            'background-image',
+            'grid-columns',
+            'grid-rows',
+            
+            // 搜索引擎设置
+            'search-engines',
+            'current-engine-index',
+            'search-suggestions-enabled',
+            
+            // AI 设置
+            'ai-provider',
+            'ai-api-key',
+            'ai-model',
+            'ai-enabled',
+            
+            // 小组件设置
+            'widgets',
+            'widget-positions',
+            
+            // 时钟设置
+            'clock-format',
+            'clock-show-seconds',
+            'clock-show-date',
+            
+            // 其他重要设置
+            'notification-settings',
+            'shortcuts-enabled'
+            // 注意：故意排除 'sync-mode', 'sync-interval', 'last-sync-time' 等同步系统状态
+            // 避免下载数据时改变本地同步配置导致数据丢失风险
+        ];
+        
+        const dataToSync = {};
+        
+        syncableKeys.forEach(key => {
+            const value = localStorage.getItem(key);
+            if (value !== null) {
+                dataToSync[key] = value;
+            }
+        });
+        
+        return dataToSync;
+    },
+    
+    /**
+     * 计算数据大小（字节）
+     * @param {Object} data 要计算大小的数据对象
+     * @returns {number} 数据大小（字节）
+     */
+    calculateDataSize(data) {
+        const jsonString = JSON.stringify(data);
+        return new Blob([jsonString]).size;
+    },
+    
+    /**
+     * 检查云端数据状态
+     */
+    async checkCloudData() {
         try {
             Notification.notify({
-                title: I18n.getMessage('clearingCloudData', '正在清除云端数据'),
+                title: I18n.getMessage('checkingCloudData', '检查云端数据'),
                 message: I18n.getMessage('pleaseWait', '请稍候...'),
                 type: 'info',
                 duration: 2000
-            });            // 清除 chrome.storage.sync 中的数据
-            await chrome.storage.sync.clear();
-
-            Notification.notify({
-                title: I18n.getMessage('cloudDataCleared', '云端数据已清除'),
-                message: I18n.getMessage('cloudDataClearComplete', '所有云端数据已清除'),
-                type: 'success',
-                duration: 2000
             });
-        } catch (error) {
-            console.error('清除云端数据失败:', error);
+            
+            const items = await chrome.storage.sync.get(null);
+            const keys = Object.keys(items);
+            const dataSize = this.calculateDataSize(items);
+            
+            let message;
+            if (keys.length === 0) {
+                message = I18n.getMessage('noCloudDataFound', '云端没有找到数据');
+            } else {
+                message = `${I18n.getMessage('cloudDataInfo', '云端数据信息')}:\n` +
+                          `${I18n.getMessage('itemCount', '项目数量')}: ${keys.length}\n` +
+                          `${I18n.getMessage('dataSize', '数据大小')}: ${(dataSize / 1024).toFixed(2)} KB\n` +
+                          `${I18n.getMessage('remainingQuota', '剩余配额')}: ${((100 * 1024 - dataSize) / 1024).toFixed(2)} KB\n\n` +
+                          `${I18n.getMessage('dataKeys', '数据项')}:\n${keys.join(', ')}`;
+            }
+            
+            // 使用通知系统显示详细信息
             Notification.notify({
-                title: I18n.getMessage('error', '错误'),
-                message: error.message || I18n.getMessage('error', '错误'),
+                title: I18n.getMessage('cloudDataInfo', '云端数据信息'),
+                message: message,
+                type: keys.length > 0 ? 'info' : 'warning',
+                duration: 8000, // 较长的显示时间以便阅读详细信息
+                buttons: [
+                    {
+                        text: I18n.getMessage('ok', '确定'),
+                        class: 'btn-primary',
+                        callback: () => {}
+                    }
+                ]
+            });
+            
+        } catch (error) {
+            console.error('检查云端数据失败:', error);
+            Notification.notify({
+                title: I18n.getMessage('checkFailed', '检查失败'),
+                message: error.message || I18n.getMessage('checkFailed', '检查失败'),
                 type: 'error',
                 duration: 3000
             });
         }
     },
-
     /**
      * 获取数据同步在设置中的分类配置
      * @returns {Object} 分类配置对象
@@ -319,7 +548,6 @@ export const DataSync = {
             items: this.createSettingsItems()
         };
     },
-
     /**
      * 启动自动同步
      */
@@ -337,7 +565,8 @@ export const DataSync = {
         }, interval * 1000);
         
         console.log(`自动同步已启动，间隔: ${interval}秒`);
-    },    /**
+    },
+    /**
      * 停止自动同步
      */
     stopAutoSync() {
@@ -347,7 +576,6 @@ export const DataSync = {
             console.log('自动同步已停止');
         }
     },
-
     /**
      * 同步数据同步设置UI
      * 用于同步设置界面与实际系统状态
@@ -382,7 +610,6 @@ export const DataSync = {
             console.error('同步数据同步设置UI失败:', error);
         }
     },
-
     /**
      * 初始化数据同步模块
      * 启动自动同步等
@@ -399,6 +626,20 @@ export const DataSync = {
         // 监听设置变化事件
         window.addEventListener('dataSyncSettingsChanged', () => {
             this.syncDataSyncSettings();
+        });
+        
+        // 延迟初始化同步状态显示，确保DOM已经渲染
+        setTimeout(() => {
+            this.updateSyncStatusDisplay();
+        }, 500);
+        
+        // 监听页面可见性变化，当页面重新可见时更新状态
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                setTimeout(() => {
+                    this.updateSyncStatusDisplay();
+                }, 100);
+            }
         });
     }
 };

@@ -1,6 +1,7 @@
 /**
  * AI助手模块
  * 负责AI功能的管理和交互
+ * @module AI
  */
 import { I18n, Utils, Menu, Notification, IconManager } from './core/index.js';
 // AI配置相关变量
@@ -8,10 +9,16 @@ let aiConfig = {
     enabled: false,
     providers: [
         {
+            name: 'DeepSeek',
+            apiUrl: 'https://api.deepseek.com/v1',
+            model: 'deepseek-chat',
+            isDefault: true
+        },
+        {
             name: 'OpenAI',
             apiUrl: 'https://api.openai.com/v1/chat/completions',
             model: 'gpt-3.5-turbo',
-            isDefault: true
+            isDefault: false
         }
     ],
     currentProvider: null,
@@ -38,9 +45,10 @@ const STORAGE_KEYS = {
  * AI模块API命名空间
  * @namespace
  */
-export const AI = {    /**
+export const AI = {
+    /**
      * 初始化AI模块
-     * @returns {Promise<void>}
+     * @returns {Promise<void>} 无
      */
     async initialize() {
         // 设置默认的国际化文本
@@ -62,7 +70,7 @@ export const AI = {    /**
 
     /**
      * 获取AI配置
-     * @returns {Object} - AI配置对象
+     * @returns {Object} AI配置对象
      */
     getConfig() {
         return { ...aiConfig };
@@ -70,8 +78,8 @@ export const AI = {    /**
 
     /**
      * 更新AI配置
-     * @param {Object} newConfig - 新的配置
-     * @returns {Promise<boolean>} - 操作是否成功
+     * @param {Object} newConfig 新的配置
+     * @returns {Promise<boolean>} 操作是否成功
      */
     async updateConfig(newConfig) {
         try {
@@ -90,11 +98,13 @@ export const AI = {    /**
 
     /**
      * 发送消息到AI（支持多轮对话）
-     * @param {string} message - 用户消息
-     * @param {string} conversationId - 对话ID（可选，不传则创建新对话）
-     * @returns {Promise<Object>} - 包含AI回复和对话ID的对象
+     * @param {string} message 用户消息
+     * @param {string} conversationId 对话ID（可选）
+     * @param {function} onChunk 流式回调（可选）
+     * @param {Object} temporaryProvider 临时供应商配置（可选，用于对话中临时切换供应商和模型）
+     * @returns {Promise<Object>} 包含AI回复和对话ID的对象
      */
-    async sendMessage(message, conversationId = null, onChunk = null) {
+    async sendMessage(message, conversationId = null, onChunk = null, temporaryProvider = null, temperature = null) {
         // 检查网络连接
         const isOnline = await checkNetworkConnection();
         if (!isOnline) {
@@ -108,7 +118,8 @@ export const AI = {    /**
             throw new Error(I18n.getMessage('aiNotEnabled', 'AI功能未启用'));
         }
 
-        const currentProvider = aiConfig.currentProvider || aiConfig.providers[0];
+        // 使用临时供应商（如果提供）或默认供应商
+        const currentProvider = temporaryProvider || aiConfig.currentProvider || aiConfig.providers[0];
         console.log('当前提供商:', currentProvider); // 调试日志
         
         if (!currentProvider || !currentProvider.apiUrl || !currentProvider.apiKey) {
@@ -178,13 +189,19 @@ export const AI = {    /**
                 // 检查是否为DeepSeek推理模型
                 const isDeepSeekReasoner = currentProvider.model === 'deepseek-reasoner';
                 
+                // 确定使用的温度值：优先使用传入的temperature，其次使用默认值
+                let useTemperature = temperature;
+                if (useTemperature === null || useTemperature === undefined) {
+                    useTemperature = isDeepSeekReasoner ? undefined : 1.0; // 默认温度改为1.0
+                }
+                
                 // 构建请求体，添加stream参数
                 const requestBody = {
                     model: currentProvider.model,
                     messages: apiMessages,
                     max_tokens: isDeepSeekReasoner ? 32000 : 1000,
                     stream: !!onChunk, // 如果有onChunk回调，启用流式
-                    temperature: isDeepSeekReasoner ? undefined : 0.7
+                    temperature: isDeepSeekReasoner ? undefined : useTemperature
                 };
                 
                 // 如果启用流式回复
@@ -737,30 +754,262 @@ export const AI = {    /**
         const config = this.getConfig();
         const currentPrompts = config.quickPrompts || [];
         
-        const textarea = Utils.createElement('textarea', 'setting-textarea', {
-            rows: 3,
-            placeholder: I18n.getMessage('quickPromptsPlaceholder', '输入快速提示词，用逗号分隔...')
-        });
-        textarea.value = currentPrompts.join(', ');
+        // 标题和说明
+        const title = Utils.createElement('h4', 'quick-prompts-title', {}, I18n.getMessage('quickPromptsManagement', '快速提示词管理'));
+        const description = Utils.createElement('p', 'quick-prompts-desc', {}, 
+            I18n.getMessage('quickPromptsManageDesc', '管理您的快速提示词，每个提示词可以设置不同的温度参数以适应不同场景'));
         
-        const saveBtn = Utils.createElement('button', 'btn btn-primary btn-small', {}, I18n.getMessage('save', '保存'));
+        // 提示词列表容器
+        const promptsList = Utils.createElement('div', 'quick-prompts-list');
         
-        saveBtn.addEventListener('click', () => {
-            const value = textarea.value.trim();
-            const prompts = value ? value.split(',').map(p => p.trim()).filter(p => p) : [];
-            
-            this.updateConfig({ quickPrompts: prompts });
-            
-            Notification.notify({
-                title: I18n.getMessage('success', '成功'),
-                message: I18n.getMessage('quickPromptsSaved', '快速提示词已保存'),
-                type: 'success',
-                duration: 2000
+        // 渲染现有提示词
+        const renderPrompts = () => {
+            promptsList.innerHTML = '';
+            currentPrompts.forEach((prompt, index) => {
+                const promptItem = this.createPromptItem(prompt, index, () => {
+                    currentPrompts.splice(index, 1);
+                    this.updateConfig({ quickPrompts: currentPrompts });
+                    renderPrompts();
+                }, (updatedPrompt) => {
+                    currentPrompts[index] = updatedPrompt;
+                    this.updateConfig({ quickPrompts: currentPrompts });
+                    renderPrompts();
+                });
+                promptsList.appendChild(promptItem);
+            });
+        };
+        
+        // 添加新提示词按钮
+        const addBtn = Utils.createElement('button', 'btn btn-primary btn-small add-prompt-btn', {}, 
+            I18n.getMessage('addQuickPrompt', '+ 添加提示词'));
+        
+        addBtn.addEventListener('click', () => {
+            this.showPromptFormModal(null, (newPrompt) => {
+                currentPrompts.push(newPrompt);
+                this.updateConfig({ quickPrompts: currentPrompts });
+                renderPrompts();
             });
         });
         
-        container.append(textarea, saveBtn);
+        // 预设温度说明
+        const tempGuide = Utils.createElement('div', 'temperature-guide');
+        tempGuide.innerHTML = `
+            <h5>${I18n.getMessage('temperatureGuide', '温度设置指南')}</h5>
+            <div class="temp-examples">
+                <div class="temp-item"><span class="temp-value">0.0</span> - ${I18n.getMessage('tempCode', '代码生成/数学解题')}</div>
+                <div class="temp-item"><span class="temp-value">1.0</span> - ${I18n.getMessage('tempAnalysis', '数据抽取/分析')}</div>
+                <div class="temp-item"><span class="temp-value">1.3</span> - ${I18n.getMessage('tempGeneral', '通用对话/翻译')}</div>
+                <div class="temp-item"><span class="temp-value">1.5</span> - ${I18n.getMessage('tempCreative', '创意写作/诗歌创作')}</div>
+            </div>
+        `;
+        
+        container.append(title, description, promptsList, addBtn, tempGuide);
+        
+        // 初始渲染
+        renderPrompts();
+        
         return container;
+    },
+
+    /**
+     * 创建单个提示词项目
+     * @param {Object} prompt - 提示词对象
+     * @param {number} index - 索引
+     * @param {Function} onDelete - 删除回调
+     * @param {Function} onUpdate - 更新回调
+     * @returns {HTMLElement} 提示词项目元素
+     */
+    createPromptItem(prompt, index, onDelete, onUpdate) {
+        const item = Utils.createElement('div', 'prompt-item');
+        
+        const content = Utils.createElement('div', 'prompt-content');
+        const text = Utils.createElement('div', 'prompt-text', {}, prompt.text || prompt);
+        const meta = Utils.createElement('div', 'prompt-meta');
+        
+        // 温度显示
+        const tempDisplay = Utils.createElement('span', 'temp-display', {}, 
+            `${I18n.getMessage('temperature', '温度')}: ${prompt.temperature ?? 1.0}`);
+        
+        // 分类显示
+        const categoryDisplay = Utils.createElement('span', 'category-display', {}, 
+            this.getCategoryDisplayName(prompt.category || 'general'));
+        
+        meta.append(tempDisplay, categoryDisplay);
+        content.append(text, meta);
+        
+        const actions = Utils.createElement('div', 'prompt-actions');
+        const editBtn = Utils.createElement('button', 'btn btn-sm btn-secondary edit-prompt-btn', {}, 
+            I18n.getMessage('edit', '编辑'));
+        const deleteBtn = Utils.createElement('button', 'btn btn-sm btn-danger delete-prompt-btn', {}, 
+            I18n.getMessage('delete', '删除'));
+        
+        editBtn.addEventListener('click', () => {
+            this.showPromptFormModal(prompt, onUpdate);
+        });
+        
+        deleteBtn.addEventListener('click', () => {
+            if (confirm(I18n.getMessage('confirmDeletePrompt', '确定要删除这个提示词吗？'))) {
+                onDelete();
+            }
+        });
+        
+        actions.append(editBtn, deleteBtn);
+        item.append(content, actions);
+        
+        return item;
+    },
+
+    /**
+     * 获取分类显示名称
+     * @param {string} category - 分类
+     * @returns {string} 显示名称
+     */
+    getCategoryDisplayName(category) {
+        const categoryNames = {
+            'code': I18n.getMessage('categoryCode', '代码'),
+            'math': I18n.getMessage('categoryMath', '数学'),
+            'analysis': I18n.getMessage('categoryAnalysis', '分析'),
+            'general': I18n.getMessage('categoryGeneral', '通用'),
+            'translation': I18n.getMessage('categoryTranslation', '翻译'),
+            'creative': I18n.getMessage('categoryCreative', '创意')
+        };
+        return categoryNames[category] || category;
+    },
+
+    /**
+     * 显示提示词表单模态框
+     * @param {Object} prompt - 现有提示词（编辑时）
+     * @param {Function} onSave - 保存回调
+     */
+    showPromptFormModal(prompt = null, onSave) {
+        const isEditing = prompt !== null;
+        const title = isEditing ? 
+            I18n.getMessage('editQuickPrompt', '编辑快速提示词') : 
+            I18n.getMessage('addQuickPrompt', '添加快速提示词');
+        
+        const formItems = [
+            {
+                type: 'text',
+                id: 'prompt-text',
+                label: I18n.getMessage('promptText', '提示词内容'),
+                value: isEditing ? (prompt.text || prompt) : '',
+                placeholder: I18n.getMessage('promptTextPlaceholder', '例如：帮我总结这段内容'),
+                required: true
+            },
+            {
+                type: 'range',
+                id: 'prompt-temperature',
+                label: I18n.getMessage('promptTemperature', '温度设置'),
+                value: isEditing ? (prompt.temperature ?? 1.0) : 1.0,
+                min: 0,
+                max: 2,
+                step: 0.1,
+                unit: '',
+                description: I18n.getMessage('temperatureDesc', '控制回答的创造性：0.0最保守，2.0最创新'),
+                showValue: true // 显示当前值
+            },
+            {
+                type: 'select',
+                id: 'prompt-category',
+                label: I18n.getMessage('promptCategory', '场景分类'),
+                value: isEditing ? (prompt.category || 'general') : 'general',
+                options: [
+                    { value: 'code', text: I18n.getMessage('categoryCode', '代码') + ' (' + I18n.getMessage('recommendedTemp', '推荐温度') + ': 0.0)' },
+                    { value: 'math', text: I18n.getMessage('categoryMath', '数学') + ' (' + I18n.getMessage('recommendedTemp', '推荐温度') + ': 0.0)' },
+                    { value: 'analysis', text: I18n.getMessage('categoryAnalysis', '分析') + ' (' + I18n.getMessage('recommendedTemp', '推荐温度') + ': 1.0)' },
+                    { value: 'general', text: I18n.getMessage('categoryGeneral', '通用') + ' (' + I18n.getMessage('recommendedTemp', '推荐温度') + ': 1.3)' },
+                    { value: 'translation', text: I18n.getMessage('categoryTranslation', '翻译') + ' (' + I18n.getMessage('recommendedTemp', '推荐温度') + ': 1.3)' },
+                    { value: 'creative', text: I18n.getMessage('categoryCreative', '创意') + ' (' + I18n.getMessage('recommendedTemp', '推荐温度') + ': 1.5)' }
+                ],
+                description: I18n.getMessage('categoryDesc', '选择使用场景，会自动推荐合适的温度值'),
+                onchange: (event) => {
+                    const selectedValue = event.target.value;
+                    // 自动设置推荐温度
+                    const tempInput = document.getElementById('prompt-temperature');
+                    if (tempInput) {
+                        const recommendedTemps = {
+                            'code': 0.0,
+                            'math': 0.0,
+                            'analysis': 1.0,
+                            'general': 1.3,
+                            'translation': 1.3,
+                            'creative': 1.5
+                        };
+                        // 修复：使用 !== undefined 而不是 || 运算符，避免0.0被当作falsy值
+                        const recommendedTemp = recommendedTemps[selectedValue] !== undefined ? recommendedTemps[selectedValue] : 1.0;
+                        
+                        // 确保DOM完全准备好后设置值
+                        setTimeout(() => {
+                            // 设置滑块的值
+                            tempInput.value = recommendedTemp;
+                            
+                            // 优先使用存储的更新显示函数
+                            if (tempInput._updateDisplay && typeof tempInput._updateDisplay === 'function') {
+                                tempInput._updateDisplay();
+                            }
+                            
+                            // 如果有值显示元素，也更新它
+                            if (tempInput._valueDisplay) {
+                                tempInput._valueDisplay.textContent = recommendedTemp.toFixed(1);
+                            }
+                            
+                            // 触发input和change事件确保所有监听器都能响应
+                            const inputEvent = new Event('input', { 
+                                bubbles: true, 
+                                cancelable: true 
+                            });
+                            tempInput.dispatchEvent(inputEvent);
+                            
+                            const changeEvent = new Event('change', { 
+                                bubbles: true, 
+                                cancelable: true 
+                            });
+                            tempInput.dispatchEvent(changeEvent);
+                            
+                            // 添加调试日志
+                            console.log(`分类切换到 ${selectedValue}，推荐温度设置为: ${recommendedTemp}`);
+                        }, 100); // 增加延迟时间确保DOM完全准备好
+                    }
+                }
+            }
+        ];
+
+        Menu.showFormModal(
+            title,
+            formItems,
+            (formData) => {
+                const newPrompt = {
+                    text: formData['prompt-text'].trim(),
+                    temperature: parseFloat(formData['prompt-temperature']),
+                    category: formData['prompt-category']
+                };
+                
+                if (!newPrompt.text) {
+                    Notification.notify({
+                        title: I18n.getMessage('error', '错误'),
+                        message: I18n.getMessage('promptTextRequired', '请输入提示词内容'),
+                        type: 'error',
+                        duration: 3000
+                    });
+                    return false;
+                }
+                
+                onSave(newPrompt);
+                
+                Notification.notify({
+                    title: I18n.getMessage('success', '成功'),
+                    message: isEditing ? 
+                        I18n.getMessage('promptUpdated', '提示词已更新') : 
+                        I18n.getMessage('promptAdded', '提示词已添加'),
+                    type: 'success',
+                    duration: 2000
+                });
+                
+                return true;
+            },
+            I18n.getMessage('save', '保存'),
+            I18n.getMessage('cancel', '取消')
+        );
     },
 
     /**
@@ -779,7 +1028,364 @@ export const AI = {    /**
      * 显示添加供应商模态框
      */
     showAddProviderModal() {
-        showAIConfigModal();
+        this.showProviderFormModal();
+    },
+
+    /**
+     * 通用的供应商表单模态框
+     * @param {Object} provider - 供应商对象（编辑时使用）
+     * @param {number} index - 供应商索引（编辑时使用）
+     */
+    showProviderFormModal(provider = null, index = null) {
+        const isEditing = provider !== null;
+        const prefix = isEditing ? 'edit' : 'add';
+        
+        // 当前表单状态
+        const currentFormState = {
+            models: [],
+            fetching: false,
+            error: null,
+            selectedModel: isEditing ? (provider.model || '') : ''
+        };
+
+        /**
+         * 创建获取模型功能的自定义字段
+         * @param {string} idPrefix - ID前缀
+         * @returns {Object} 自定义字段配置
+         */
+        const createModelFetchSection = (idPrefix) => ({
+            type: 'custom',
+            id: `${idPrefix}-fetch-models-section`,
+            render: (container) => {
+                const sectionContainer = Utils.createElement('div', 'fetch-models-section');
+                
+                // 标签
+                const label = Utils.createElement('label', 'form-label', {}, I18n.getMessage('providerModel', '模型名称'));
+                sectionContainer.appendChild(label);
+                
+                // 按钮容器
+                const btnContainer = Utils.createElement('div', 'fetch-models-container');
+                
+                // 创建获取模型按钮
+                const fetchBtn = Utils.createElement('button', 'fetch-models-btn btn btn-secondary', {
+                    type: 'button'
+                }, I18n.getMessage('fetchModels', '获取可用模型'));
+                
+                // 状态显示
+                const statusContainer = Utils.createElement('div', 'fetch-models-status');
+                
+                btnContainer.appendChild(fetchBtn);
+                btnContainer.appendChild(statusContainer);
+                sectionContainer.appendChild(btnContainer);
+                
+                // 模型选择下拉框
+                const modelSelectContainer = Utils.createElement('div', 'model-select-container');
+                const modelSelect = Utils.createElement('select', 'form-select', {
+                    id: `${idPrefix}-provider-model`,
+                    name: `${idPrefix}-provider-model`,
+                    disabled: true
+                });
+                
+                // 默认选项
+                const defaultOption = Utils.createElement('option', '', {
+                    value: '',
+                    disabled: true,
+                    selected: true
+                }, I18n.getMessage('selectModel', '请先获取模型列表'));
+                modelSelect.appendChild(defaultOption);
+                
+                modelSelectContainer.appendChild(modelSelect);
+                sectionContainer.appendChild(modelSelectContainer);
+                
+                // 手动输入选项
+                const manualInputContainer = Utils.createElement('div', 'manual-input-container');
+                const manualLabel = Utils.createElement('label', 'form-label small', {}, I18n.getMessage('orManualInput', '或手动输入模型名称:'));
+                const manualInput = Utils.createElement('input', 'form-input', {
+                    type: 'text',
+                    id: `${idPrefix}-provider-model-manual`,
+                    placeholder: '例如：deepseek-chat、gpt-3.5-turbo',
+                    value: isEditing ? (provider.model || '') : ''
+                });
+                
+                manualInputContainer.appendChild(manualLabel);
+                manualInputContainer.appendChild(manualInput);
+                sectionContainer.appendChild(manualInputContainer);
+                
+                container.appendChild(sectionContainer);
+                
+                // 绑定获取模型事件
+                fetchBtn.addEventListener('click', async () => {
+                    const urlInput = document.getElementById(`${idPrefix}-provider-api-url`);
+                    const keyInput = document.getElementById(`${idPrefix}-provider-api-key`);
+                    
+                    const apiUrl = urlInput.value.trim();
+                    const apiKey = keyInput.value.trim();
+                    
+                    if (!apiUrl || !apiKey) {
+                        statusContainer.textContent = I18n.getMessage('pleaseProvideApiInfo', '请先填写API地址和密钥');
+                        statusContainer.className = 'fetch-models-status error';
+                        return;
+                    }
+                    
+                    // 更新状态
+                    statusContainer.textContent = I18n.getMessage('fetchingModels', '正在获取模型列表...');
+                    statusContainer.className = 'fetch-models-status loading';
+                    fetchBtn.disabled = true;
+                    currentFormState.fetching = true;
+                    currentFormState.error = null;
+                    
+                    try {
+                        // 调用获取模型API
+                        const models = await AI.getModels(apiUrl, apiKey);
+                        
+                        // 更新状态
+                        currentFormState.models = models;
+                        currentFormState.fetching = false;
+                        
+                        // 更新下拉框
+                        modelSelect.innerHTML = '';
+                        
+                        // 添加默认选项
+                        const emptyOption = Utils.createElement('option', '', {
+                            value: '',
+                            disabled: true,
+                            selected: true
+                        }, I18n.getMessage('selectModel', '请选择一个模型'));
+                        modelSelect.appendChild(emptyOption);
+                        
+                        models.forEach(model => {
+                            const option = Utils.createElement('option');
+                            option.value = model;
+                            option.textContent = model;
+                            // 编辑时如果当前模型在列表中，选中它
+                            if (isEditing && model === provider.model) {
+                                option.selected = true;
+                            }
+                            modelSelect.appendChild(option);
+                        });
+                        
+                        // 如果是编辑且当前模型在列表中，选中它
+                        if (isEditing && provider.model && models.includes(provider.model)) {
+                            modelSelect.value = provider.model;
+                        }
+                        
+                        // 启用选择框
+                        modelSelect.disabled = false;
+                        
+                        // 更新状态提示
+                        statusContainer.textContent = I18n.getMessage('modelsLoaded', '已加载 ' + models.length + ' 个模型');
+                        statusContainer.className = 'fetch-models-status success';
+                        
+                    } catch (error) {
+                        // 处理错误
+                        currentFormState.error = error.message;
+                        currentFormState.fetching = false;
+                        
+                        // 更新状态提示并添加重试按钮
+                        statusContainer.innerHTML = '';
+                        
+                        // 错误信息
+                        const errorText = Utils.createElement('span', '', {}, error.message);
+                        statusContainer.appendChild(errorText);
+                        
+                        // 添加重试按钮
+                        const retryBtn = Utils.createElement('button', 'fetch-models-retry-btn', {}, I18n.getMessage('retry', '重试'));
+                        retryBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // 重新触发获取模型
+                            fetchBtn.click();
+                        });
+                        statusContainer.appendChild(retryBtn);
+                        
+                        statusContainer.className = 'fetch-models-status error';
+                        
+                        console.error('获取模型失败:', error);
+                    } finally {
+                        // 恢复按钮状态
+                        fetchBtn.disabled = false;
+                    }
+                });
+                
+                // 监听模型选择变化，同步到手动输入框
+                modelSelect.addEventListener('change', () => {
+                    if (modelSelect.value) {
+                        manualInput.value = modelSelect.value;
+                        currentFormState.selectedModel = modelSelect.value;
+                    }
+                });
+                
+                // 监听手动输入变化，清空下拉框选择
+                manualInput.addEventListener('input', () => {
+                    if (manualInput.value.trim()) {
+                        modelSelect.value = '';
+                        currentFormState.selectedModel = manualInput.value.trim();
+                    }
+                });
+            }
+        });
+
+        /**
+         * 创建自动获取模型的onchange处理函数
+         * @param {string} targetInputId - 目标输入框ID
+         * @returns {Function} onchange处理函数
+         */
+        const createAutoFetchHandler = (targetInputId) => {
+            return function(e) {
+                const currentValue = e.target.value.trim();
+                const targetInput = document.getElementById(targetInputId);
+                const targetValue = targetInput ? targetInput.value.trim() : '';
+                
+                if (currentValue && targetValue) {
+                    // 触发自动获取模型列表，但需要短暂延迟以避免频繁请求
+                    setTimeout(() => {
+                        document.querySelector('.fetch-models-btn')?.click();
+                    }, 500);
+                }
+            };
+        };
+
+        const formItems = [
+            {
+                type: 'text',
+                id: `${prefix}-provider-name`,
+                label: I18n.getMessage('providerName', 'AI供应商名称'),
+                value: isEditing ? provider.name : '',
+                placeholder: '例如：DeepSeek、OpenAI',
+                required: true
+            },
+            {
+                type: 'url',
+                id: `${prefix}-provider-api-url`,
+                label: I18n.getMessage('providerApiUrl', 'API地址'),
+                value: isEditing ? provider.apiUrl : '',
+                placeholder: 'https://api.deepseek.com/v1',
+                required: true,
+                onchange: createAutoFetchHandler(`${prefix}-provider-api-key`)
+            },
+            {
+                type: 'password-toggle',
+                id: `${prefix}-provider-api-key`,
+                label: I18n.getMessage('providerApiKey', 'API密钥'),
+                value: isEditing ? (provider.apiKey || '') : '',
+                placeholder: 'sk-...',
+                required: true,
+                onchange: createAutoFetchHandler(`${prefix}-provider-api-url`)
+            },
+            createModelFetchSection(prefix),
+            {
+                type: 'url',
+                id: `${prefix}-provider-icon`,
+                label: I18n.getMessage('providerIconUrl', '图标URL（可选）'),
+                value: isEditing ? (provider.iconUrl || '') : '',
+                placeholder: 'https://example.com/icon.png',
+                required: false
+            }
+        ];
+
+        const title = isEditing 
+            ? `${I18n.getMessage('editProvider', '编辑AI供应商')} - ${provider.name}`
+            : I18n.getMessage('addCustomAIProvider', '添加自定义AI供应商');
+
+        const submitButtonText = isEditing 
+            ? I18n.getMessage('save', '保存')
+            : I18n.getMessage('add', '添加');
+
+        Menu.showFormModal(
+            title,
+            formItems,
+            async (formData) => {
+                const name = formData[`${prefix}-provider-name`];
+                const apiUrl = formData[`${prefix}-provider-api-url`];
+                const apiKey = formData[`${prefix}-provider-api-key`];
+                const iconUrl = formData[`${prefix}-provider-icon`];
+                
+                // 获取模型名称：优先使用手动输入，其次使用下拉框选择
+                const manualModel = document.getElementById(`${prefix}-provider-model-manual`)?.value.trim();
+                const selectedModel = document.getElementById(`${prefix}-provider-model`)?.value;
+                const model = manualModel || selectedModel;
+                
+                if (!model) {
+                    Notification.notify({
+                        title: I18n.getMessage('error', '错误'),
+                        message: I18n.getMessage('pleaseSelectOrInputModel', '请选择或输入一个模型名称'),
+                        type: 'error',
+                        duration: 3000
+                    });
+                    return false; // 阻止表单提交
+                }
+                
+                const config = this.getConfig();
+                const providers = [...config.providers];
+                
+                // 检查供应商名称是否重复
+                const existingProvider = providers.find((p, i) => {
+                    if (isEditing && i === index) return false; // 排除当前编辑的供应商
+                    return p.name.toLowerCase() === name.toLowerCase();
+                });
+                
+                if (existingProvider) {
+                    Notification.notify({
+                        title: I18n.getMessage('error', '错误'),
+                        message: I18n.getMessage('providerNameExists', '该供应商名称已存在，请使用其他名称'),
+                        type: 'error',
+                        duration: 3000
+                    });
+                    return false; // 阻止表单提交
+                }
+                
+                const providerData = {
+                    name,
+                    apiUrl,
+                    apiKey,
+                    model,
+                    iconUrl: iconUrl || '',
+                    isDefault: isEditing ? provider.isDefault : false
+                };
+                
+                let updateConfig = { providers };
+                let successMessage, errorMessage;
+                
+                if (isEditing) {
+                    // 编辑供应商
+                    const updatedProvider = { ...provider, ...providerData };
+                    providers[index] = updatedProvider;
+                    
+                    // 如果编辑的是当前供应商，更新当前供应商配置
+                    if (config.currentProvider && config.currentProvider.name === provider.name) {
+                        updateConfig.currentProvider = updatedProvider;
+                    }
+                    
+                    successMessage = I18n.getMessage('updateProviderSuccess', 'AI供应商更新成功');
+                    errorMessage = I18n.getMessage('updateProviderError', '更新AI供应商失败');
+                } else {
+                    // 添加供应商
+                    providers.push(providerData);
+                    successMessage = I18n.getMessage('addProviderSuccess', 'AI供应商添加成功');
+                    errorMessage = I18n.getMessage('addProviderError', '添加AI供应商失败');
+                }
+                
+                const success = await this.updateConfig(updateConfig);
+                if (success) {
+                    this.refreshProviderListControl();
+                    Notification.notify({
+                        title: I18n.getMessage('success', '成功'),
+                        message: successMessage,
+                        type: 'success',
+                        duration: 2000
+                    });
+                } else {
+                    Notification.notify({
+                        title: I18n.getMessage('error', '错误'),
+                        message: errorMessage,
+                        type: 'error',
+                        duration: 3000
+                    });
+                }
+            },
+            submitButtonText,
+            I18n.getMessage('cancel', '取消')
+        );
     },
 
     /**
@@ -788,86 +1394,7 @@ export const AI = {    /**
      * @param {number} index - 供应商索引
      */
     showEditProviderModal(provider, index) {
-        const formItems = [
-            {
-                type: 'text',
-                id: 'edit-provider-name',
-                label: I18n.getMessage('providerName', 'AI供应商名称'),
-                value: provider.name,
-                required: true
-            },
-            {
-                type: 'url',
-                id: 'edit-provider-api-url',
-                label: I18n.getMessage('providerApiUrl', 'API地址'),
-                value: provider.apiUrl,
-                required: true
-            },
-            {
-                type: 'password-toggle',
-                id: 'edit-provider-api-key',
-                label: I18n.getMessage('providerApiKey', 'API密钥'),
-                value: provider.apiKey || '',
-                required: true
-            },
-            {
-                type: 'text',
-                id: 'edit-provider-model',
-                label: I18n.getMessage('providerModel', '模型名称'),
-                value: provider.model,
-                required: true
-            },
-            {
-                type: 'url',
-                id: 'edit-provider-icon',
-                label: I18n.getMessage('providerIconUrl', '图标URL（可选）'),
-                value: provider.iconUrl || '',
-                required: false
-            }
-        ];
-
-        Menu.showFormModal(
-            `${I18n.getMessage('editProvider', '编辑AI供应商')} - ${provider.name}`,
-            formItems,
-            async (formData) => {
-                const name = formData['edit-provider-name'];
-                const apiUrl = formData['edit-provider-api-url'];
-                const apiKey = formData['edit-provider-api-key'];
-                const model = formData['edit-provider-model'];
-                const iconUrl = formData['edit-provider-icon'];
-                
-                const config = this.getConfig();
-                const providers = [...config.providers];
-                const updatedProvider = { ...provider, name, apiUrl, apiKey, model, iconUrl };
-                providers[index] = updatedProvider;
-                
-                // 如果编辑的是当前供应商，更新当前供应商配置
-                let updateConfig = { providers };
-                if (config.currentProvider && config.currentProvider.name === provider.name) {
-                    updateConfig.currentProvider = updatedProvider;
-                }
-                
-                const success = await this.updateConfig(updateConfig);
-                if (success) {
-                    this.refreshProviderListControl();
-                    Notification.notify({
-                        title: I18n.getMessage('success', '成功'),
-                        message: I18n.getMessage('updateProviderSuccess', 'AI供应商更新成功'),
-                        type: 'success',
-                        duration: 2000
-                    });
-                } else {
-                    Notification.notify({
-                        title: I18n.getMessage('error', '错误'),
-                        message: I18n.getMessage('updateProviderError', '更新AI供应商失败'),
-                        type: 'error',
-                        duration: 3000
-                    });
-                }
-            },
-            I18n.getMessage('save', '保存'),
-            I18n.getMessage('cancel', '取消')
-        );
+        this.showProviderFormModal(provider, index);
     },
 
     /**
@@ -966,12 +1493,15 @@ async function updateConversationTitle(conversation, latestMessage) {
             (roundCount > 1 && roundCount % config.updateInterval === 0) // 达到更新间隔
         );
         
+        console.log(`标题生成检查 - 轮数: ${roundCount}, 是否需要生成: ${shouldGenerateTitle}, 配置间隔: ${config.updateInterval}`);
+        
         if (!shouldGenerateTitle) {
             return;
         }
         
         // 构建标题生成的上下文
         const context = buildTitleContext(conversation);
+        console.log('标题生成上下文:', context.substring(0, 200) + '...');
         
         // 调用AI生成标题
         const generatedTitle = await generateTitleWithAI(context, config.maxTokensForTitle);
@@ -979,6 +1509,10 @@ async function updateConversationTitle(conversation, latestMessage) {
         if (generatedTitle && generatedTitle.trim()) {
             conversation.title = generatedTitle.trim();
             console.log(`对话 ${conversation.id} 标题已更新为: ${conversation.title}`);
+        } else {
+            console.warn('AI返回的标题为空，使用降级处理');
+            // 降级处理：使用用户问题作为标题
+            conversation.title = latestMessage.length > 50 ? latestMessage.substring(0, 50) + '...' : latestMessage;
         }
         
     } catch (error) {
@@ -1024,11 +1558,35 @@ function buildTitleContext(conversation) {
  * @returns {Promise<string>} 生成的标题
  */
 async function generateTitleWithAI(context, maxTokens) {
-    const currentProvider = aiConfig.currentProvider || aiConfig.providers[0];
+    // 选择适合标题生成的供应商：避免使用推理模型，优先选择快速、便宜的模型
+    let titleProvider = null;
     
-    if (!currentProvider || !currentProvider.apiUrl || !currentProvider.apiKey) {
+    // 首先尝试找到非推理模型
+    const nonReasoningProviders = aiConfig.providers.filter(provider => {
+        if (!provider.apiKey || !provider.model) return false;
+        
+        // 检查是否为推理模型（通过模型名称判断）
+        const modelName = provider.model.toLowerCase();
+        const isReasoningModel = /reason|think|o[13]|deepseek[-_]?reasoner/i.test(modelName);
+        return !isReasoningModel;
+    });
+    
+    if (nonReasoningProviders.length > 0) {
+        // 优先选择 gpt-3.5-turbo 或 deepseek-chat 等快速模型
+        titleProvider = nonReasoningProviders.find(p => 
+            /gpt-3\.5|deepseek-chat|claude-3-haiku|gemini.*flash/i.test(p.model)
+        ) || nonReasoningProviders[0];
+    } else {
+        // 如果没有非推理模型，使用当前供应商但警告用户
+        titleProvider = aiConfig.currentProvider || aiConfig.providers[0];
+        console.warn('标题生成：未找到合适的非推理模型，将使用当前模型，可能消耗较多token');
+    }
+    
+    if (!titleProvider || !titleProvider.apiUrl || !titleProvider.apiKey) {
         throw new Error('AI配置不完整，无法生成标题');
     }
+    
+    console.log(`标题生成使用模型: ${titleProvider.name} - ${titleProvider.model}`);
     
     // 构建标题生成的系统提示
     const titlePrompt = I18n.getMessage('titleGenerationPrompt', 
@@ -1047,7 +1605,7 @@ async function generateTitleWithAI(context, maxTokens) {
     
     // 构建API URL
     let chatUrl;
-    const apiUrl = currentProvider.apiUrl.trim();
+    const apiUrl = titleProvider.apiUrl.trim();
     
     if (apiUrl.includes('/chat/completions')) {
         chatUrl = apiUrl;
@@ -1060,9 +1618,9 @@ async function generateTitleWithAI(context, maxTokens) {
     
     // 发送请求
     const requestBody = {
-        model: currentProvider.model,
+        model: titleProvider.model,
         messages: messages,
-        max_tokens: maxTokens,
+        max_tokens: Math.min(maxTokens, 100), // 标题生成限制更少的token
         temperature: 0.3, // 较低的temperature以获得更稳定的结果
         stream: false
     };
@@ -1071,7 +1629,7 @@ async function generateTitleWithAI(context, maxTokens) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentProvider.apiKey}`
+            'Authorization': `Bearer ${titleProvider.apiKey}`
         },
         body: JSON.stringify(requestBody)
     });
@@ -1237,8 +1795,73 @@ function showAIModal(initialMessage = '', conversationId = null) {
     // 对话头部
     const chatHeader = Utils.createElement('div', 'ai-chat-header');
     const chatTitle = Utils.createElement('h2', 'ai-chat-title', {}, I18n.getMessage('aiAssistant', 'AI助手'));
+    
+    // 供应商选择器容器（标题旁边）
+    const providerSwitcherContainer = Utils.createElement('div', 'ai-provider-switcher-container');
+    
+    // 创建供应商选择器
+    const providerSelect = Utils.createElement('select', 'ai-provider-select', {
+        title: I18n.getMessage('switchProvider', '切换AI供应商')
+    });
+    
+    // 当前选中的供应商和模型（用于对话中的临时切换）
+    let currentSelectedProvider = aiConfig.currentProvider || aiConfig.providers[0];
+    let currentSelectedModel = currentSelectedProvider?.model || '';
+    
+    // 获取有效的供应商（有API密钥的）
+    function getValidProviders() {
+        return aiConfig.providers.filter(provider => 
+            provider.apiKey && provider.apiKey.trim() !== ''
+        );
+    }
+    
+    // 填充供应商选择器（只显示有API密钥的）
+    function populateProviderSelect() {
+        providerSelect.innerHTML = '';
+        const validProviders = getValidProviders();
+        
+        if (validProviders.length === 0) {
+            const noProviderOption = Utils.createElement('option', '', {
+                disabled: true
+            }, I18n.getMessage('noValidProviders', '无可用供应商'));
+            providerSelect.appendChild(noProviderOption);
+            providerSelect.disabled = true;
+            return;
+        }
+        
+        providerSelect.disabled = false;
+        validProviders.forEach((provider, index) => {
+            const realIndex = aiConfig.providers.findIndex(p => p.name === provider.name);
+            const option = Utils.createElement('option', '', {
+                value: realIndex
+            }, provider.name);
+            
+            if (provider.name === currentSelectedProvider.name) {
+                option.selected = true;
+            }
+            
+            providerSelect.appendChild(option);
+        });
+    }
+    
+    // 供应商切换事件
+    providerSelect.addEventListener('change', async () => {
+        const selectedIndex = parseInt(providerSelect.value);
+        currentSelectedProvider = aiConfig.providers[selectedIndex];
+        // 切换供应商时默认选中其配置中的模型
+        currentSelectedModel = currentSelectedProvider?.model || '';
+        setTriggerModelText(currentSelectedModel);
+        // 更新模型面板
+        await refreshModelList(currentSelectedProvider);
+    });
+    
+    // 初始化供应商选择器
+    populateProviderSelect();
+    
+    providerSwitcherContainer.appendChild(providerSelect);
+    
     const closeBtn = Utils.createElement('span', 'modal-close', {}, '&times;');
-    chatHeader.append(chatTitle, closeBtn);
+    chatHeader.append(chatTitle, providerSwitcherContainer, closeBtn);
     
     // 对话内容区域
     const chatContainer = Utils.createElement('div', 'ai-chat-container');
@@ -1247,18 +1870,366 @@ function showAIModal(initialMessage = '', conversationId = null) {
     // 底部输入区域
     const inputArea = Utils.createElement('div', 'ai-input-area');
     
+    // 模型选择器区域（左下角）
+    const modelSwitcherContainer = Utils.createElement('div', 'ai-model-switcher-container');
+    
+    // 自定义模型下拉组件
+    const modelDropdown = Utils.createElement('div', 'ai-model-dropdown');
+    const modelTrigger = Utils.createElement('button', 'ai-model-trigger', {
+        type: 'button',
+        title: I18n.getMessage('switchModel', '切换AI模型')
+    });
+    
+    const modelPanel = Utils.createElement('div', 'ai-model-panel hidden');
+    const panelHeader = Utils.createElement('div', 'ai-model-panel-header');
+    const modelSearch = Utils.createElement('input', 'ai-model-search', {
+        type: 'search',
+        placeholder: I18n.getMessage('searchOrInputModel', '搜索模型或直接输入模型ID...')
+    });
+    const panelRefreshBtn = Utils.createElement('button', 'ai-model-panel-refresh', {
+        type: 'button',
+        title: I18n.getMessage('refreshModels', '刷新模型列表')
+    }, '🔄');
+    const searchUseBtn = Utils.createElement('button', 'ai-model-search-use', {
+        type: 'button',
+        title: I18n.getMessage('useInputModel', '使用输入的模型')
+    }, '✓');
+    panelHeader.append(modelSearch, searchUseBtn, panelRefreshBtn);
+    
+    const recentWrap = Utils.createElement('div', 'ai-model-recent-wrap');
+    const recentTitle = Utils.createElement('div', 'ai-model-recent-title', {}, I18n.getMessage('recentModels', '最近使用'));
+    const recentContainer = Utils.createElement('div', 'ai-model-recent');
+    recentWrap.append(recentTitle, recentContainer);
+    
+    const modelList = Utils.createElement('div', 'ai-model-list');
+    
+    modelPanel.append(panelHeader, recentWrap, modelList);
+    modelDropdown.append(modelTrigger, modelPanel);
+    
+    // 状态与持久化（最近模型）
+    const RECENT_MODELS_KEY = 'aiRecentModels';
+    function getRecentModels(providerName) {
+        try {
+            const all = JSON.parse(localStorage.getItem(RECENT_MODELS_KEY) || '{}');
+            return Array.isArray(all[providerName]) ? all[providerName] : [];
+        } catch { return []; }
+    }
+    function pushRecentModel(providerName, model) {
+        try {
+            const all = JSON.parse(localStorage.getItem(RECENT_MODELS_KEY) || '{}');
+            const list = Array.isArray(all[providerName]) ? all[providerName] : [];
+            const next = [model, ...list.filter(m => m !== model)].slice(0, 6);
+            all[providerName] = next;
+            localStorage.setItem(RECENT_MODELS_KEY, JSON.stringify(all));
+        } catch {}
+    }
+    
+    function setTriggerModelText(model) {
+        modelTrigger.dataset.model = model || '';
+        modelTrigger.innerHTML = `
+            <span class="model-trigger-label">${I18n.getMessage('currentModel', '当前模型')}:</span>
+            <span class="model-trigger-name">${model || '-'}</span>
+            <span class="model-trigger-chevron">▾</span>
+        `;
+    }
+    
+    async function refreshModelList(provider) {
+        modelList.innerHTML = '';
+        recentContainer.innerHTML = '';
+        const loading = Utils.createElement('div', 'ai-model-loading', {}, I18n.getMessage('loadingModels', '正在加载模型列表...'));
+        modelList.appendChild(loading);
+        try {
+            const models = await AI.getModels(provider.apiUrl, provider.apiKey);
+            // 渲染最近使用
+            const recents = getRecentModels(provider.name).filter(m => models.includes(m));
+            if (recents.length) {
+                recents.forEach(m => {
+                    const chip = Utils.createElement('button', 'ai-model-chip', { type: 'button' }, m);
+                    if (m === currentSelectedModel) chip.classList.add('active');
+                    chip.addEventListener('click', () => chooseModel(m));
+                    recentContainer.appendChild(chip);
+                });
+                recentWrap.style.display = '';
+            } else {
+                recentWrap.style.display = 'none';
+            }
+            // 渲染全部
+            modelList.innerHTML = '';
+            models.forEach(m => {
+                const item = Utils.createElement('button', 'ai-model-item', { type: 'button' });
+                const name = Utils.createElement('span', 'model-name', {}, m);
+                const caps = Utils.createElement('span', 'model-badges');
+                // 简单能力徽标
+                if (/reason|o3|think|deepseek\-reasoner/i.test(m)) {
+                    const b = Utils.createElement('span', 'badge badge-reason', {}, '🧠');
+                    caps.appendChild(b);
+                }
+                if (/gpt|claude|llama|gemini|deepseek/i.test(m)) {
+                    const b = Utils.createElement('span', 'badge badge-chat', {}, '💬');
+                    caps.appendChild(b);
+                }
+                if (m === currentSelectedModel) item.classList.add('active');
+                item.append(name, caps);
+                item.addEventListener('click', () => chooseModel(m));
+                modelList.appendChild(item);
+            });
+        } catch (err) {
+            modelList.innerHTML = '';
+            const errEl = Utils.createElement('div', 'ai-model-error', {}, I18n.getMessage('loadModelsError', '加载模型失败'));
+            modelList.appendChild(errEl);
+            console.warn('加载模型失败:', err);
+        }
+    }
+    
+    function chooseModel(model) {
+        currentSelectedModel = model;
+        setTriggerModelText(model);
+        pushRecentModel(currentSelectedProvider.name, model);
+        // 更新活动态
+        modelList.querySelectorAll('.ai-model-item').forEach(el => {
+            el.classList.toggle('active', el.querySelector('.model-name')?.textContent === model);
+        });
+        recentContainer.querySelectorAll('.ai-model-chip').forEach(el => {
+            el.classList.toggle('active', el.textContent === model);
+        });
+        // 关闭面板
+        modelPanel.classList.add('hidden');
+        modelTrigger.classList.remove('open');
+    }
+    
+    // 触发器与面板交互
+    modelTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const willOpen = modelPanel.classList.contains('hidden');
+        
+        // 关闭所有其他面板
+        document.querySelectorAll('.ai-model-panel').forEach(p => p.classList.add('hidden'));
+        document.querySelectorAll('.ai-model-trigger').forEach(t => t.classList.remove('open'));
+        
+        if (willOpen) {
+            // 计算触发器位置，使面板显示在触发器下方
+            const rect = modelTrigger.getBoundingClientRect();
+            const panelHeight = 360; // 面板最大高度
+            const viewportHeight = window.innerHeight;
+            const spaceBelow = viewportHeight - rect.bottom - 10; // 触发器下方剩余空间
+            const spaceAbove = rect.top - 10; // 触发器上方空间
+            
+            // 决定面板显示位置：优先显示在下方，空间不足时显示在上方
+            if (spaceBelow >= Math.min(panelHeight, 200) || spaceBelow >= spaceAbove) {
+                // 显示在下方
+                modelPanel.style.left = `${rect.left}px`;
+                modelPanel.style.top = `${rect.bottom + 6}px`;
+                modelPanel.style.bottom = 'auto';
+                modelPanel.style.maxHeight = `${Math.min(panelHeight, spaceBelow)}px`;
+            } else {
+                // 显示在上方
+                modelPanel.style.left = `${rect.left}px`;
+                modelPanel.style.top = 'auto';
+                modelPanel.style.bottom = `${viewportHeight - rect.top + 6}px`;
+                modelPanel.style.maxHeight = `${Math.min(panelHeight, spaceAbove)}px`;
+            }
+            
+            // 确保面板不会超出屏幕右边界
+            const panelWidth = 360;
+            if (rect.left + panelWidth > window.innerWidth - 10) {
+                modelPanel.style.left = `${window.innerWidth - panelWidth - 10}px`;
+            }
+            
+            modelPanel.classList.remove('hidden');
+            modelTrigger.classList.add('open');
+        }
+    });
+    document.addEventListener('click', () => {
+        modelPanel.classList.add('hidden');
+        modelTrigger.classList.remove('open');
+    });
+    
+    // 窗口大小改变时重新计算位置
+    window.addEventListener('resize', () => {
+        if (!modelPanel.classList.contains('hidden')) {
+            // 重新触发位置计算
+            modelTrigger.click();
+            modelTrigger.click();
+        }
+    });
+    
+    modelPanel.addEventListener('click', (e) => e.stopPropagation());
+    
+    // 搜索过滤和手动输入的组合功能
+    modelSearch.addEventListener('input', () => {
+        const q = modelSearch.value.trim().toLowerCase();
+        
+        // 显示/隐藏使用按钮
+        if (q) {
+            searchUseBtn.style.display = 'flex';
+        } else {
+            searchUseBtn.style.display = 'none';
+        }
+        
+        // 过滤模型列表
+        modelList.querySelectorAll('.ai-model-item').forEach(item => {
+            const name = item.querySelector('.model-name')?.textContent.toLowerCase() || '';
+            item.style.display = name.includes(q) ? '' : 'none';
+        });
+    });
+    
+    // 使用搜索框中输入的模型
+    searchUseBtn.addEventListener('click', () => {
+        const val = modelSearch.value.trim();
+        if (val) {
+            chooseModel(val);
+            modelSearch.value = ''; // 清空搜索框
+            searchUseBtn.style.display = 'none';
+        }
+    });
+    
+    // 支持回车键快速使用
+    modelSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = modelSearch.value.trim();
+            if (val) {
+                chooseModel(val);
+                modelSearch.value = '';
+                searchUseBtn.style.display = 'none';
+            }
+        }
+    });
+    
+    // 刷新按钮
+    panelRefreshBtn.addEventListener('click', async () => {
+        panelRefreshBtn.disabled = true;
+        panelRefreshBtn.textContent = '⏳';
+        try { await refreshModelList(currentSelectedProvider); }
+        finally { panelRefreshBtn.disabled = false; panelRefreshBtn.textContent = '🔄'; }
+    });
+    
+    // 初始化触发器文案
+    setTriggerModelText(currentSelectedModel);
+    
+    modelSwitcherContainer.appendChild(modelDropdown);
+    
     // 快速提示词
     const quickPromptsContainer = Utils.createElement('div', 'ai-quick-prompts');
+    
+    // 存储当前选中的温度设置和提示词状态
+    let currentTemperature = 1.0;
+    let lastPromptContent = null; // 记录最后一次由提示词设置的内容
+    let userModifiedContent = false; // 标记用户是否修改了内容
+    let originalUserContent = ''; // 记录用户点击提示词前的原始内容
+    
+    // 获取分类显示名称的本地函数
+    function getCategoryDisplayName(category) {
+        const categoryNames = {
+            'code': I18n.getMessage('categoryCode', '代码'),
+            'math': I18n.getMessage('categoryMath', '数学'),
+            'analysis': I18n.getMessage('categoryAnalysis', '分析'),
+            'general': I18n.getMessage('categoryGeneral', '通用'),
+            'translation': I18n.getMessage('categoryTranslation', '翻译'),
+            'creative': I18n.getMessage('categoryCreative', '创意')
+        };
+        return categoryNames[category] || category;
+    }
+    
     aiConfig.quickPrompts.forEach(prompt => {
-        const promptBtn = Utils.createElement('button', 'ai-quick-prompt-btn', {}, prompt);
+        // 兼容新旧格式
+        const promptText = typeof prompt === 'string' ? prompt : prompt.text;
+        const promptTemp = typeof prompt === 'object' ? (prompt.temperature ?? 1.0) : 1.0;
+        const promptCategory = typeof prompt === 'object' ? prompt.category : 'general';
+        
+        const promptBtn = Utils.createElement('button', 'ai-quick-prompt-btn', {
+            'data-temperature': promptTemp,
+            'data-category': promptCategory,
+            title: `${I18n.getMessage('temperature', '温度')}: ${promptTemp} | ${getCategoryDisplayName(promptCategory)}`
+        });
+        
+        // 按钮内容：提示词文本 + 温度标签
+        const textSpan = Utils.createElement('span', 'prompt-text', {}, promptText);
+        const tempSpan = Utils.createElement('span', 'prompt-temp', {}, promptTemp);
+        promptBtn.append(textSpan, tempSpan);
+        
         promptBtn.addEventListener('click', () => {
             const inputTextarea = document.getElementById('ai-input');
             const currentValue = inputTextarea.value.trim();
             
-            if (currentValue) {
-                inputTextarea.value = prompt + ': ' + currentValue;
+            // 检查是否已经选中该提示词（再次点击取消逻辑）
+            const isCurrentlyActive = promptBtn.classList.contains('active');
+            
+            if (isCurrentlyActive) {
+                // 再次点击：取消选中，恢复默认温度
+                promptBtn.classList.remove('active');
+                currentTemperature = 1.0; // 恢复默认温度
+                
+                // 智能恢复逻辑：当有原始用户内容时提示手动删除，不自动覆盖
+                if (originalUserContent) {
+                    // 如果有原始用户内容，不自动恢复，而是提示用户手动处理
+                    console.log(`检测到原始用户内容: ${originalUserContent}，保持当前输入框状态，提示用户手动处理`);
+                    
+                    // 显示提示通知
+                    if (typeof Notification !== 'undefined' && Notification.notify) {
+                        Notification.notify({
+                            title: I18n.getMessage('promptCancelled', '提示词已取消'),
+                            message: I18n.getMessage('manualDeleteHint', '如需清空输入框，请手动删除内容'),
+                            type: 'info',
+                            duration: 3000
+                        });
+                    }
+                } else {
+                    // 没有原始用户内容时，进行智能清空判断
+                    const shouldClear = lastPromptContent && 
+                                      currentValue === lastPromptContent && 
+                                      !userModifiedContent;
+                    
+                    if (shouldClear) {
+                        inputTextarea.value = '';
+                        console.log(`清空由提示词设置的内容: ${lastPromptContent}`);
+                    } else if (currentValue === promptText) {
+                        // 如果内容完全等于提示词文本（没有用户输入的额外内容），也清空
+                        inputTextarea.value = '';
+                        console.log(`清空纯提示词内容: ${promptText}`);
+                    } else {
+                        console.log(`保留用户修改的内容，不清空`);
+                    }
+                }
+                
+                // 重置状态
+                lastPromptContent = null;
+                userModifiedContent = false;
+                originalUserContent = '';
+                
+                // 更新所有快速提示词按钮的活动状态
+                quickPromptsContainer.querySelectorAll('.ai-quick-prompt-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                console.log(`取消选中提示词: ${promptText}，温度重置为: ${currentTemperature}`);
             } else {
-                inputTextarea.value = prompt;
+                // 首次点击：选中提示词，设置温度和内容
+                
+                // 记录用户的原始内容（点击提示词前的内容）
+                originalUserContent = currentValue;
+                
+                currentTemperature = promptTemp;
+                
+                // 更新所有快速提示词按钮的活动状态
+                quickPromptsContainer.querySelectorAll('.ai-quick-prompt-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                promptBtn.classList.add('active');
+                
+                // 设置输入内容
+                let newContent;
+                if (currentValue) {
+                    newContent = promptText + ': ' + currentValue;
+                } else {
+                    newContent = promptText;
+                }
+                
+                inputTextarea.value = newContent;
+                lastPromptContent = newContent; // 记录由提示词设置的内容
+                userModifiedContent = false; // 重置修改标记
+                
+                console.log(`选中提示词: ${promptText}，温度设置为: ${currentTemperature}，原始内容: ${originalUserContent}，设置内容: ${newContent}`);
             }
             
             inputTextarea.focus();
@@ -1275,13 +2246,23 @@ function showAIModal(initialMessage = '', conversationId = null) {
         rows: 1
     });
     
+    // 监听用户输入以追踪内容修改
+    inputTextarea.addEventListener('input', () => {
+        const currentContent = inputTextarea.value.trim();
+        // 如果当前内容与最后一次提示词设置的内容不同，标记为用户修改
+        if (lastPromptContent && currentContent !== lastPromptContent) {
+            userModifiedContent = true;
+            console.log('检测到用户修改内容，标记为已修改');
+        }
+    });
+    
     const sendButton = Utils.createElement('button', 'ai-send-btn', {
         type: 'button',
         title: I18n.getMessage('send', '发送')
     }, '⬆️');
     
     inputContainer.append(inputTextarea, sendButton);
-    inputArea.append(quickPromptsContainer, inputContainer);
+    inputArea.append(modelSwitcherContainer, quickPromptsContainer, inputContainer);
     
     // 组装对话区域
     chatContainer.appendChild(chatHistory);
@@ -1326,8 +2307,8 @@ function showAIModal(initialMessage = '', conversationId = null) {
         autoResizeTextarea(inputTextarea);
     }, 100);
 
-    // 设置事件监听
-    setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendButton, newChatBtn, clearAllBtn, conversationsList, () => currentConversationId, (id) => { currentConversationId = id; });
+    // 设置事件监听，传递温度变量访问器
+    setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendButton, newChatBtn, clearAllBtn, conversationsList, () => currentConversationId, (id) => { currentConversationId = id; }, () => currentTemperature);
 }
 
 /**
@@ -1385,27 +2366,44 @@ function loadConversationsList(conversationsList, chatHistory, chatTitle, getCur
         deleteBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             
-            if (confirm(I18n.getMessage('confirmDeleteConversation', '确定要删除这个对话吗？'))) {
-                const success = await AI.deleteConversation(conv.id);
-                if (success) {
-                    // 如果删除的是当前对话，清空聊天区域
-                    if (conv.id === getCurrentConversationId()) {
-                        chatHistory.innerHTML = '';
-                        chatTitle.textContent = I18n.getMessage('aiAssistant', 'AI助手');
-                        setCurrentConversationId(null);
+            Notification.notify({
+                title: I18n.getMessage('confirmDelete', '确认删除'),
+                message: I18n.getMessage('confirmDeleteConversation', '确定要删除这个对话吗？'),
+                duration: 0,
+                type: 'confirm',
+                buttons: [
+                    {
+                        text: I18n.getMessage('confirm', '确认'),
+                        class: 'btn-primary confirm-yes',
+                        callback: async () => {
+                            const success = await AI.deleteConversation(conv.id);
+                            if (success) {
+                                // 如果删除的是当前对话，清空聊天区域
+                                if (conv.id === getCurrentConversationId()) {
+                                    chatHistory.innerHTML = '';
+                                    chatTitle.textContent = I18n.getMessage('aiAssistant', 'AI助手');
+                                    setCurrentConversationId(null);
+                                }
+                                
+                                // 重新加载对话列表
+                                loadConversationsList(conversationsList, chatHistory, chatTitle, getCurrentConversationId, setCurrentConversationId);
+                                
+                                Notification.notify({
+                                    title: I18n.getMessage('success', '成功'),
+                                    message: I18n.getMessage('conversationDeleted', '对话已删除'),
+                                    type: 'success',
+                                    duration: 2000
+                                });
+                            }
+                        }
+                    },
+                    {
+                        text: I18n.getMessage('cancel', '取消'),
+                        class: 'confirm-no',
+                        callback: () => {}
                     }
-                    
-                    // 重新加载对话列表
-                    loadConversationsList(conversationsList, chatHistory, chatTitle, getCurrentConversationId, setCurrentConversationId);
-                    
-                    Notification.notify({
-                        title: I18n.getMessage('success', '成功'),
-                        message: I18n.getMessage('conversationDeleted', '对话已删除'),
-                        type: 'success',
-                        duration: 2000
-                    });
-                }
-            }
+                ]
+            });
         });
         
         conversationsList.appendChild(convItem);
@@ -1418,10 +2416,34 @@ function loadConversationsList(conversationsList, chatHistory, chatTitle, getCur
 function loadConversationMessages(chatHistory, conversation) {
     chatHistory.innerHTML = '';
     
-    conversation.messages.forEach(msg => {
+    conversation.messages.forEach((msg, index) => {
         const reasoning = msg.reasoning_content; // 获取推理内容
         addMessageToHistory(chatHistory, msg.content, msg.role === 'user' ? 'user' : 'ai', reasoning);
     });
+    
+    // 确保所有AI消息都有正确的控制按钮
+    setTimeout(() => {
+        const allAiMessages = chatHistory.querySelectorAll('.ai-message-ai');
+        allAiMessages.forEach((messageElement, index) => {
+            const controls = messageElement.querySelector('.ai-message-controls');
+            if (controls) {
+                const isLatestAiMessage = index === allAiMessages.length - 1;
+                
+                // 清除现有的控制按钮（除了Markdown切换按钮）
+                const regenerateBtn = controls.querySelector('.ai-regenerate-btn');
+                const newChatBtn = controls.querySelector('.ai-new-chat-btn');
+                if (regenerateBtn) regenerateBtn.remove();
+                if (newChatBtn) newChatBtn.remove();
+                
+                // 根据是否是最新消息添加相应的控制按钮
+                if (isLatestAiMessage) {
+                    addLatestMessageControls(controls, messageElement, chatHistory);
+                } else {
+                    addNewChatControl(controls, messageElement, chatHistory);
+                }
+            }
+        });
+    }, 0);
 }
 
 /**
@@ -1539,7 +2561,7 @@ async function checkNetworkConnection() {
 /**
  * 设置AI模态框事件
  */
-function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendButton, newChatBtn, clearAllBtn, conversationsList, getCurrentConversationId, setCurrentConversationId) {
+function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendButton, newChatBtn, clearAllBtn, conversationsList, getCurrentConversationId, setCurrentConversationId, getCurrentTemperature) {
     // 关闭按钮
     modal.querySelector('.modal-close').addEventListener('click', () => {
         Menu.Modal.hide(modal.id);
@@ -1570,25 +2592,42 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
 
     // 清空全部按钮
     clearAllBtn.addEventListener('click', async () => {
-        if (confirm(I18n.getMessage('confirmClearAllConversations', '确定要清空所有对话历史吗？此操作不可撤销。'))) {
-            const success = await AI.clearAllConversations();
-            if (success) {
-                // 清空聊天区域
-                chatHistory.innerHTML = '';
-                chatTitle.textContent = I18n.getMessage('aiAssistant', 'AI助手');
-                setCurrentConversationId(null);
-                
-                // 重新加载对话列表
-                loadConversationsList(conversationsList, chatHistory, chatTitle, getCurrentConversationId, setCurrentConversationId);
-                
-                Notification.notify({
-                    title: I18n.getMessage('success', '成功'),
-                    message: I18n.getMessage('conversationHistoryCleared', '对话历史已清空'),
-                    type: 'success',
-                    duration: 3000
-                });
-            }
-        }
+        Notification.notify({
+            title: I18n.getMessage('confirmDelete', '确认删除'),
+            message: I18n.getMessage('confirmClearAllConversations', '确定要清空所有对话历史吗？此操作不可撤销。'),
+            duration: 0,
+            type: 'confirm',
+            buttons: [
+                {
+                    text: I18n.getMessage('confirm', '确认'),
+                    class: 'btn-primary confirm-yes',
+                    callback: async () => {
+                        const success = await AI.clearAllConversations();
+                        if (success) {
+                            // 清空聊天区域
+                            chatHistory.innerHTML = '';
+                            chatTitle.textContent = I18n.getMessage('aiAssistant', 'AI助手');
+                            setCurrentConversationId(null);
+                            
+                            // 重新加载对话列表
+                            loadConversationsList(conversationsList, chatHistory, chatTitle, getCurrentConversationId, setCurrentConversationId);
+                            
+                            Notification.notify({
+                                title: I18n.getMessage('success', '成功'),
+                                message: I18n.getMessage('conversationHistoryCleared', '对话历史已清空'),
+                                type: 'success',
+                                duration: 3000
+                            });
+                        }
+                    }
+                },
+                {
+                    text: I18n.getMessage('cancel', '取消'),
+                    class: 'confirm-no',
+                    callback: () => {}
+                }
+            ]
+        });
     });
 
     // 输入框自动调整高度
@@ -1637,6 +2676,26 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
             chatHistory.scrollTop = chatHistory.scrollHeight;
             
             // 发送到AI（启用流式回复）
+            // 获取当前选中的供应商和模型
+            const providerSwitcher = modal.querySelector('.ai-provider-switcher-container');
+            const providerSelect = providerSwitcher?.querySelector('.ai-provider-select');
+            const modelSwitcher = modal.querySelector('.ai-model-switcher-container');
+            const modelTriggerBtn = modelSwitcher?.querySelector('.ai-model-trigger');
+            
+            let temporaryProvider = null;
+            if (providerSelect && modelTriggerBtn) {
+                const selectedProviderIndex = parseInt(providerSelect.value);
+                const selectedModel = modelTriggerBtn?.dataset.model;
+                
+                // 创建临时供应商配置，使用当前选中的模型
+                if (selectedProviderIndex >= 0 && selectedProviderIndex < aiConfig.providers.length) {
+                    temporaryProvider = {
+                        ...aiConfig.providers[selectedProviderIndex],
+                        model: selectedModel || aiConfig.providers[selectedProviderIndex].model
+                    };
+                }
+            }
+            
             const result = await AI.sendMessage(message, getCurrentConversationId(), (chunk, isFinished, reasoning, type) => {
                 if (isFinished) {
                     // 移除打字指示器
@@ -1717,7 +2776,8 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
                     
                     // 滚动到底部
                     chatHistory.scrollTop = chatHistory.scrollHeight;
-                }            });
+                }
+            }, temporaryProvider, getCurrentTemperature());
               // 流式完成后，用Markdown渲染最终内容
             const finalContent = result.reply || '';
             
@@ -1733,6 +2793,9 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
             
             // 初始渲染为Markdown
             aiContentElement.innerHTML = renderMarkdown(finalContent);
+            
+            // 存储原始消息内容到按钮上，方便后续获取
+            markdownToggle._originalMessage = finalContent;
             
             // 切换Markdown渲染
             markdownToggle.addEventListener('click', () => {
@@ -1754,6 +2817,10 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
             });
             
             controlsContainer.appendChild(markdownToggle);
+            
+            // 添加重新生成和另起新对话按钮
+            addLatestMessageControls(controlsContainer, aiMessageElement, chatHistory);
+            
             // 将控制按钮插入到AI消息元素的开头
             aiMessageElement.insertBefore(controlsContainer, aiContentElement);
             
@@ -1850,7 +2917,8 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
         const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
             type: 'button'
         }, '🧠 查看思维过程');
-          const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
+        
+        const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
         reasoningContent.style.display = 'none'; // 默认隐藏
         const reasoningText = reasoning || '';
         reasoningContent.innerHTML = renderMarkdown(reasoningText);
@@ -1886,6 +2954,9 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
         // 初始渲染为Markdown
         messageContent.innerHTML = renderMarkdown(originalMessage);
         
+        // 存储原始消息内容到按钮上，方便后续获取
+        markdownToggle._originalMessage = originalMessage;
+        
         // 切换Markdown渲染
         markdownToggle.addEventListener('click', () => {
             if (isMarkdownMode) {
@@ -1906,6 +2977,21 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
         });
         
         controlsContainer.appendChild(markdownToggle);
+        
+        // 为所有AI消息添加另起新对话按钮，重新生成按钮只给最新的AI消息
+        setTimeout(() => {
+            const allAiMessages = chatHistory.querySelectorAll('.ai-message-ai');
+            const isLatestAiMessage = allAiMessages[allAiMessages.length - 1] === messageElement;
+            
+            if (isLatestAiMessage) {
+                // 最新消息：添加重新生成和另起新对话按钮
+                addLatestMessageControls(controlsContainer, messageElement, chatHistory);
+            } else {
+                // 非最新消息：只添加另起新对话按钮
+                addNewChatControl(controlsContainer, messageElement, chatHistory);
+            }
+        }, 0);
+        
         messageElement.appendChild(controlsContainer);
     } else {
         // 用户消息和错误消息直接显示文本
@@ -1917,6 +3003,502 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
     
     // 滚动到底部
     chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+/**
+ * 为最新AI消息添加重新生成和另起新对话控件
+ * @param {HTMLElement} controlsContainer - 控制按钮容器
+ * @param {HTMLElement} messageElement - 消息元素
+ * @param {HTMLElement} chatHistory - 聊天历史容器
+ */
+function addLatestMessageControls(controlsContainer, messageElement, chatHistory) {
+    // 先移除其他AI消息的重新生成按钮（但保留另起新对话按钮）
+    removeRegenerateControlsFromOthers(chatHistory, messageElement);
+    
+    // 重新生成按钮
+    const regenerateBtn = Utils.createElement('button', 'ai-regenerate-btn', {
+        type: 'button',
+        title: I18n.getMessage('regenerateResponse', '重新生成回答')
+    }, '🔄');
+    
+    // 另起新对话按钮
+    const newChatBtn = Utils.createElement('button', 'ai-new-chat-btn', {
+        type: 'button', 
+        title: I18n.getMessage('startNewChat', '基于此消息另起新对话')
+    }, '💬');
+    
+    // 重新生成功能
+    regenerateBtn.addEventListener('click', async () => {
+        // 找到对应的用户消息
+        const userMessage = findCorrespondingUserMessage(messageElement, chatHistory);
+        if (!userMessage) {
+            console.warn('无法找到对应的用户消息');
+            return;
+        }
+        
+        // 禁用按钮，显示加载状态
+        regenerateBtn.disabled = true;
+        regenerateBtn.innerHTML = '⏳';
+        
+        try {
+            await regenerateAIResponse(userMessage, messageElement, chatHistory);
+        } catch (error) {
+            console.error('重新生成回答失败:', error);
+            Notification.notify({
+                title: I18n.getMessage('error', '错误'),
+                message: error.message || I18n.getMessage('regenerateFailed', '重新生成失败'),
+                type: 'error',
+                duration: 3000
+            });
+        } finally {
+            regenerateBtn.disabled = false;
+            regenerateBtn.innerHTML = '🔄';
+        }
+    });
+    
+    // 另起新对话功能
+    newChatBtn.addEventListener('click', () => {
+        const userMessage = findCorrespondingUserMessage(messageElement, chatHistory);
+        if (!userMessage) {
+            console.warn('无法找到对应的用户消息');
+            return;
+        }
+        
+        startNewChatFromMessage(userMessage, chatHistory, messageElement);
+    });
+    
+    // 添加按钮到控制容器
+    controlsContainer.appendChild(regenerateBtn);
+    controlsContainer.appendChild(newChatBtn);
+}
+
+/**
+ * 为非最新AI消息添加另起新对话控件
+ * @param {HTMLElement} controlsContainer - 控制按钮容器
+ * @param {HTMLElement} messageElement - 消息元素
+ * @param {HTMLElement} chatHistory - 聊天历史容器
+ */
+function addNewChatControl(controlsContainer, messageElement, chatHistory) {
+    // 另起新对话按钮
+    const newChatBtn = Utils.createElement('button', 'ai-new-chat-btn', {
+        type: 'button', 
+        title: I18n.getMessage('startNewChat', '基于此消息另起新对话')
+    }, '💬');
+    
+    // 另起新对话功能
+    newChatBtn.addEventListener('click', () => {
+        const userMessage = findCorrespondingUserMessage(messageElement, chatHistory);
+        if (!userMessage) {
+            console.warn('无法找到对应的用户消息');
+            return;
+        }
+        
+        startNewChatFromMessage(userMessage, chatHistory, messageElement);
+    });
+    
+    // 添加按钮到控制容器
+    controlsContainer.appendChild(newChatBtn);
+}
+
+/**
+ * 从其他AI消息中移除重新生成按钮（保留另起新对话按钮）
+ * @param {HTMLElement} chatHistory - 聊天历史容器
+ * @param {HTMLElement} currentMessageElement - 当前消息元素（不移除其按钮）
+ */
+function removeRegenerateControlsFromOthers(chatHistory, currentMessageElement) {
+    const allAiMessages = chatHistory.querySelectorAll('.ai-message-ai');
+    allAiMessages.forEach(msg => {
+        if (msg !== currentMessageElement) {
+            const controls = msg.querySelector('.ai-message-controls');
+            if (controls) {
+                // 只移除重新生成按钮，保留另起新对话按钮
+                const regenerateBtn = controls.querySelector('.ai-regenerate-btn');
+                if (regenerateBtn) regenerateBtn.remove();
+            }
+        }
+    });
+}
+
+/**
+ * 查找对应的用户消息
+ * @param {HTMLElement} aiMessageElement - AI消息元素
+ * @param {HTMLElement} chatHistory - 聊天历史容器
+ * @returns {string|null} 用户消息内容
+ */
+function findCorrespondingUserMessage(aiMessageElement, chatHistory) {
+    const allMessages = Array.from(chatHistory.children);
+    const aiMessageIndex = allMessages.indexOf(aiMessageElement);
+    
+    // 向前查找最近的用户消息
+    for (let i = aiMessageIndex - 1; i >= 0; i--) {
+        const msg = allMessages[i];
+        if (msg.classList.contains('ai-message-user')) {
+            const content = msg.querySelector('.ai-message-content');
+            return content ? content.textContent.trim() : null;
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * 重新生成AI回答
+ * @param {string} userMessage - 用户消息
+ * @param {HTMLElement} aiMessageElement - 要替换的AI消息元素
+ * @param {HTMLElement} chatHistory - 聊天历史容器
+ */
+async function regenerateAIResponse(userMessage, aiMessageElement, chatHistory) {
+    // 获取当前AI模态框中的配置
+    const modal = document.getElementById('ai-modal');
+    if (!modal) {
+        throw new Error('AI对话框未找到');
+    }
+    
+    // 获取当前选中的供应商和模型
+    const providerSwitcher = modal.querySelector('.ai-provider-switcher-container');
+    const providerSelect = providerSwitcher?.querySelector('.ai-provider-select');
+    const modelSwitcher = modal.querySelector('.ai-model-switcher-container');
+    const modelTriggerBtn = modelSwitcher?.querySelector('.ai-model-trigger');
+    
+    let temporaryProvider = null;
+    if (providerSelect && modelTriggerBtn) {
+        const selectedProviderIndex = parseInt(providerSelect.value);
+        const selectedModel = modelTriggerBtn?.dataset.model;
+        
+        // 创建临时供应商配置，使用当前选中的模型
+        if (selectedProviderIndex >= 0 && selectedProviderIndex < aiConfig.providers.length) {
+            temporaryProvider = {
+                ...aiConfig.providers[selectedProviderIndex],
+                model: selectedModel || aiConfig.providers[selectedProviderIndex].model
+            };
+        }
+    }
+    
+    // 获取当前温度设置（需要从模态框事件处理器中获取）
+    const getCurrentTemperature = () => {
+        // 检查是否有活跃的快速提示词按钮
+        const activePromptBtn = modal.querySelector('.ai-quick-prompt-btn.active');
+        if (activePromptBtn) {
+            return parseFloat(activePromptBtn.dataset.temperature) || 1.0;
+        }
+        return 1.0; // 默认温度
+    };
+    
+    // 创建新的AI消息元素用于流式显示
+    const newAiMessageElement = Utils.createElement('div', 'ai-message ai-message-ai');
+    const newAiContentElement = Utils.createElement('div', 'ai-message-content');
+    newAiMessageElement.appendChild(newAiContentElement);
+    
+    // 替换旧的AI消息元素
+    aiMessageElement.parentNode.insertBefore(newAiMessageElement, aiMessageElement);
+    aiMessageElement.remove();
+    
+    // 添加打字指示器
+    const typingIndicator = Utils.createElement('span', 'typing-indicator', {}, '|');
+    newAiContentElement.appendChild(typingIndicator);
+    
+    // 滚动到底部
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+    
+    let reasoningContainer = null;
+    let reasoningContentElement = null;
+    
+    try {
+        // 发送到AI（启用流式回复）
+        const result = await AI.sendMessage(userMessage, null, (chunk, isFinished, reasoning, type) => {
+            if (isFinished) {
+                // 移除打字指示器
+                const indicator = newAiContentElement.querySelector('.typing-indicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+                
+                // 如果推理容器中有内容，移除其打字指示器
+                if (reasoningContentElement) {
+                    const reasoningIndicator = reasoningContentElement.querySelector('.typing-indicator');
+                    if (reasoningIndicator) {
+                        reasoningIndicator.remove();
+                    }
+                }
+                
+                return;
+            }
+            
+            if (type === 'content' && chunk) {
+                // 处理正文内容
+                const indicator = newAiContentElement.querySelector('.typing-indicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+                
+                const currentText = newAiContentElement.textContent || '';
+                newAiContentElement.textContent = currentText + chunk;
+                
+                // 重新添加打字指示器
+                const newIndicator = Utils.createElement('span', 'typing-indicator', {}, '▋');
+                newAiContentElement.appendChild(newIndicator);
+                
+                // 滚动到底部
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+                
+            } else if (type === 'reasoning' && chunk) {
+                // 处理推理内容 - 流式显示
+                if (!reasoningContainer) {
+                    // 创建推理容器
+                    reasoningContainer = Utils.createElement('div', 'ai-reasoning-container');
+                    const reasoningHeader = Utils.createElement('div', 'ai-reasoning-header');
+                    const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
+                        type: 'button'
+                    }, '🧠 思维过程（实时）');
+                    
+                    reasoningContentElement = Utils.createElement('div', 'ai-reasoning-content');
+                    reasoningContentElement.style.display = 'block'; // 默认展开显示流式思维过程
+                    
+                    // 切换显示/隐藏推理内容
+                    reasoningToggle.addEventListener('click', () => {
+                        const isVisible = reasoningContentElement.style.display !== 'none';
+                        reasoningContentElement.style.display = isVisible ? 'none' : 'block';
+                        reasoningToggle.textContent = `🧠 ${isVisible ? I18n.getMessage('hideThinking', '隐藏思维过程') : I18n.getMessage('showThinking', '查看思维过程')}`;
+                    });
+                    
+                    reasoningHeader.appendChild(reasoningToggle);
+                    reasoningContainer.appendChild(reasoningHeader);
+                    reasoningContainer.appendChild(reasoningContentElement);
+                    
+                    // 将推理容器插入到正文内容之前
+                    newAiMessageElement.insertBefore(reasoningContainer, newAiContentElement);
+                }
+                
+                // 移除旧的打字指示器
+                const reasoningIndicator = reasoningContentElement.querySelector('.typing-indicator');
+                if (reasoningIndicator) {
+                    reasoningIndicator.remove();
+                }
+                
+                // 更新推理内容（使用纯文本避免部分Markdown渲染问题）
+                const currentReasoning = reasoningContentElement.textContent || '';
+                reasoningContentElement.textContent = currentReasoning + chunk;
+                
+                // 添加新的打字指示器
+                const newReasoningIndicator = Utils.createElement('span', 'typing-indicator', {}, '▋');
+                reasoningContentElement.appendChild(newReasoningIndicator);
+                
+                // 滚动到底部
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
+        }, temporaryProvider, getCurrentTemperature());
+        
+        // 流式完成后，用Markdown渲染最终内容
+        const finalContent = result.reply || '';
+        
+        // 为流式AI消息添加控制按钮
+        const controlsContainer = Utils.createElement('div', 'ai-message-controls');
+        const markdownToggle = Utils.createElement('button', 'ai-markdown-toggle active', {
+            type: 'button',
+            title: I18n.getMessage('markdownRendering', 'Markdown渲染')
+        }, '📝 MD');
+        
+        // 存储原始消息和渲染状态
+        let isMarkdownMode = true;
+        
+        // 初始渲染为Markdown
+        newAiContentElement.innerHTML = renderMarkdown(finalContent);
+        
+        // 存储原始消息内容到按钮上，方便后续获取
+        markdownToggle._originalMessage = finalContent;
+        
+        // 切换Markdown渲染
+        markdownToggle.addEventListener('click', () => {
+            if (isMarkdownMode) {
+                // 切换到纯文本模式
+                newAiContentElement.textContent = finalContent;
+                markdownToggle.textContent = '📄 TXT';
+                markdownToggle.title = I18n.getMessage('rawText', '原始文本');
+                markdownToggle.classList.remove('active');
+                isMarkdownMode = false;
+            } else {
+                // 切换到Markdown模式
+                newAiContentElement.innerHTML = renderMarkdown(finalContent);
+                markdownToggle.textContent = '📝 MD';
+                markdownToggle.title = I18n.getMessage('markdownRendering', 'Markdown渲染');
+                markdownToggle.classList.add('active');
+                isMarkdownMode = true;
+            }
+        });
+        
+        controlsContainer.appendChild(markdownToggle);
+        
+        // 添加重新生成和另起新对话按钮
+        addLatestMessageControls(controlsContainer, newAiMessageElement, chatHistory);
+        
+        // 将控制按钮插入到AI消息元素的开头
+        newAiMessageElement.insertBefore(controlsContainer, newAiContentElement);
+        
+        // 如果有推理内容，渲染最终的推理内容
+        if (result.reasoning && reasoningContentElement) {
+            const reasoningText = result.reasoning || '';
+            reasoningContentElement.innerHTML = renderMarkdown(reasoningText);
+            // 更新按钮文本
+            const reasoningToggle = reasoningContainer.querySelector('.ai-reasoning-toggle');
+            if (reasoningToggle) {
+                reasoningToggle.textContent = `🧠 ${I18n.getMessage('hideThinking', '隐藏思维过程')}`;
+            }
+        }
+        
+        // 滚动到底部
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        
+    } catch (error) {
+        // 如果出错，恢复原始消息
+        newAiMessageElement.parentNode.insertBefore(aiMessageElement, newAiMessageElement);
+        newAiMessageElement.remove();
+        throw error;
+    }
+}
+
+/**
+ * 获取从对话开始到指定消息元素的所有消息数据
+ * @param {HTMLElement} chatHistory - 聊天历史容器
+ * @param {HTMLElement} targetMessageElement - 目标消息元素
+ * @returns {Array} 消息数据数组
+ */
+function getMessagesFromElement(chatHistory, targetMessageElement) {
+    const messagesToCopy = [];
+    
+    if (!targetMessageElement) {
+        return messagesToCopy;
+    }
+    
+    const allMessages = Array.from(chatHistory.children);
+    let endIndex = -1;
+    
+    // 查找目标消息的位置
+    for (let i = 0; i < allMessages.length; i++) {
+        if (allMessages[i] === targetMessageElement) {
+            endIndex = i;
+            break;
+        }
+    }
+    
+    // 如果是AI消息，包含到AI消息为止；如果是用户消息，包含到用户消息为止
+    if (endIndex < 0) {
+        return messagesToCopy;
+    }
+    
+    // 从对话开始提取到目标消息（包含目标消息）
+    for (let i = 0; i <= endIndex; i++) {
+        const messageElement = allMessages[i];
+        const messageContent = messageElement.querySelector('.ai-message-content');
+        
+        if (!messageContent) continue;
+        
+        let messageType = 'user';
+        let reasoning = null;
+        
+        if (messageElement.classList.contains('ai-message-ai')) {
+            messageType = 'ai';
+            // 提取推理内容
+            const reasoningContent = messageElement.querySelector('.ai-reasoning-content');
+            if (reasoningContent) {
+                reasoning = reasoningContent.textContent.trim();
+            }
+        } else if (messageElement.classList.contains('ai-message-error')) {
+            messageType = 'error';
+        }
+        
+        // 提取消息内容（优先获取原始文本）
+        let content = '';
+        
+        // 如果是AI消息，尝试从控制按钮的事件中获取原始内容
+        if (messageType === 'ai') {
+            // 查找Markdown切换按钮，通过其事件获取原始内容
+            const markdownToggle = messageElement.querySelector('.ai-markdown-toggle');
+            if (markdownToggle && markdownToggle._originalMessage) {
+                content = markdownToggle._originalMessage;
+            } else {
+                // 如果没有存储的原始内容，直接获取文本内容
+                content = messageContent.textContent.trim();
+            }
+        } else {
+            content = messageContent.textContent.trim();
+        }
+        
+        if (content) {
+            messagesToCopy.push({
+                content: content,
+                type: messageType,
+                reasoning: reasoning
+            });
+        }
+    }
+    
+    return messagesToCopy;
+}
+
+/**
+ * 基于消息另起新对话
+ * @param {string} userMessage - 用户消息
+ * @param {HTMLElement} chatHistory - 聊天历史容器
+ * @param {HTMLElement} messageElement - 选中的消息元素
+ */
+function startNewChatFromMessage(userMessage, chatHistory, messageElement = null) {
+    const modal = document.getElementById('ai-modal');
+    if (!modal) return;
+    
+    try {
+        // 获取从对话开始到选中消息的所有消息
+        const messagesToCopy = getMessagesFromElement(chatHistory, messageElement);
+        
+        // 清空聊天历史显示
+        chatHistory.innerHTML = '';
+        
+        // 更新标题
+        const chatTitle = modal.querySelector('.ai-chat-title');
+        if (chatTitle) {
+            chatTitle.textContent = I18n.getMessage('aiAssistant', 'AI助手');
+        }
+        
+        // 移除侧边栏中所有对话项的active状态
+        const conversationsList = modal.querySelector('.ai-conversations-list');
+        if (conversationsList) {
+            conversationsList.querySelectorAll('.ai-conversation-item').forEach(item => {
+                item.classList.remove('active');
+            });
+        }
+        
+        // 重置当前对话ID
+        const setCurrentConversationId = modal._setCurrentConversationId;
+        if (setCurrentConversationId) {
+            setCurrentConversationId(null);
+        }
+        
+        // 复制从对话开始到选中消息的所有内容
+        if (messagesToCopy.length > 0) {
+            messagesToCopy.forEach(msgData => {
+                addMessageToHistory(chatHistory, msgData.content, msgData.type, msgData.reasoning);
+            });
+        } else {
+            // 如果没有找到消息数据，只添加用户消息
+            addMessageToHistory(chatHistory, userMessage, 'user');
+        }
+        
+        // 获取输入框并设置焦点
+        const inputTextarea = modal.querySelector('#ai-input');
+        if (inputTextarea) {
+            inputTextarea.focus();
+        }
+        
+        // 显示通知
+        Notification.notify({
+            title: I18n.getMessage('newChatStarted', '新对话已开始'),
+            message: I18n.getMessage('newChatStartedWithHistory', '已复制从该消息开始的对话内容'),
+            type: 'success',
+            duration: 2000
+        });
+        
+    } catch (error) {
+        console.error('另起新对话失败:', error);
+    }
 }
 
 /**
@@ -2102,9 +3684,9 @@ function showAIConfigModal() {
     // 当前表单状态
     const currentFormState = {
         enabled: aiConfig.enabled,
-        url: aiConfig.currentProvider?.apiUrl || 'https://api.openai.com/v1/chat/completions',
+        url: aiConfig.currentProvider?.apiUrl || 'https://api.deepseek.com/v1',
         key: aiConfig.currentProvider?.apiKey || '',
-        model: aiConfig.currentProvider?.model || 'gpt-3.5-turbo',
+        model: aiConfig.currentProvider?.model || 'deepseek-chat',
         models: [],
         fetching: false,
         error: null
@@ -2122,7 +3704,7 @@ function showAIConfigModal() {
             id: 'api-url',
             label: I18n.getMessage('apiUrl', 'API地址'),
             type: 'url',
-            placeholder: 'https://api.openai.com/v1/chat/completions',
+            placeholder: 'https://api.deepseek.com/v1',
             value: currentFormState.url,
             required: true,
             onchange: function(e) {
@@ -2205,20 +3787,30 @@ function showAIConfigModal() {
                         currentFormState.fetching = false;
                         
                         // 更新下拉框
-                        modelSelect.innerHTML = '';                        models.forEach(model => {
+                        modelSelect.innerHTML = '';
+                        
+                        // 添加默认选项
+                        const emptyOption = Utils.createElement('option', '', {
+                            value: '',
+                            disabled: true,
+                            selected: true
+                        }, I18n.getMessage('selectModel', '请选择一个模型'));
+                        modelSelect.appendChild(emptyOption);
+                        
+                        models.forEach(model => {
                             const option = Utils.createElement('option');
                             option.value = model;
                             option.textContent = model;
+                            // 编辑时如果当前模型在列表中，选中它
+                            if (isEditing && model === provider.model) {
+                                option.selected = true;
+                            }
                             modelSelect.appendChild(option);
                         });
                         
-                        // 如果有当前模型，选中它
-                        if (currentFormState.model && models.includes(currentFormState.model)) {
-                            modelSelect.value = currentFormState.model;
-                        } else if (models.length > 0) {
-                            // 选择第一个可用模型
-                            modelSelect.value = models[0];
-                            currentFormState.model = models[0];
+                        // 如果是编辑且当前模型在列表中，选中它
+                        if (isEditing && provider.model && models.includes(provider.model)) {
+                            modelSelect.value = provider.model;
                         }
                         
                         // 启用选择框
@@ -2439,7 +4031,8 @@ function createReasoningContainer(reasoning) {
     const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
         type: 'button'
     }, '🧠 查看思维过程');
-      const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
+    
+    const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
     reasoningContent.style.display = 'none';
     const reasoningText = reasoning || '';
     reasoningContent.innerHTML = renderMarkdown(reasoningText);
@@ -2464,11 +4057,49 @@ function setDefaultI18nTexts() {
     // 如果AI配置还没有快速提示词，设置默认的国际化版本
     if (!aiConfig.quickPrompts || aiConfig.quickPrompts.length === 0) {
         aiConfig.quickPrompts = [
-            I18n.getMessage('defaultPrompt1', '帮我总结这段内容'),
-            I18n.getMessage('defaultPrompt2', '翻译成中文'),
-            I18n.getMessage('defaultPrompt3', '优化这段文字'),
-            I18n.getMessage('defaultPrompt4', '写一个关于这个主题的大纲')
+            {
+                text: I18n.getMessage('defaultPrompt1', '帮我总结这段内容'),
+                temperature: 1.0,
+                category: 'analysis'
+            },
+            {
+                text: I18n.getMessage('defaultPrompt2', '翻译成中文'),
+                temperature: 1.3,
+                category: 'translation'
+            },
+            {
+                text: I18n.getMessage('defaultPrompt3', '优化这段文字'),
+                temperature: 1.3,
+                category: 'general'
+            },
+            {
+                text: I18n.getMessage('defaultPrompt4', '写一个关于这个主题的大纲'),
+                temperature: 1.5,
+                category: 'creative'
+            },
+            {
+                text: I18n.getMessage('defaultPrompt5', '帮我写代码实现这个功能'),
+                temperature: 0.0,
+                category: 'code'
+            },
+            {
+                text: I18n.getMessage('defaultPrompt6', '解释这个数学/编程概念'),
+                temperature: 0.0,
+                category: 'math'
+            }
         ];
+    } else {
+        // 兼容旧版本的字符串数组格式，转换为新格式
+        aiConfig.quickPrompts = aiConfig.quickPrompts.map(prompt => {
+            if (typeof prompt === 'string') {
+                return {
+                    text: prompt,
+                    temperature: 1.0,
+                    category: 'general'
+                };
+            }
+            return prompt;
+        });
     }
     
     // 如果AI配置还没有系统提示，设置默认的国际化版本

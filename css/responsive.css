@@ -15,10 +15,31 @@
     display: flex !important; /* 强制应用flex布局 */
     flex-direction: column !important; /* 强制垂直排列 */
     width: 100%;
-    height: auto;
-    align-items: center;
+    height: 100vh !important; /* 让主容器高度占满视口，便于子元素flex自适应 */
+    align-items: stretch !important; /* 主容器拉伸子元素，避免左右留白 */
     flex-wrap: nowrap !important; /* 禁止换行 */
-    overflow-y: visible !important; /* 确保内容可见并允许滚动 */
+    overflow: hidden !important; /* 强制隐藏溢出内容 */
+    box-sizing: border-box;
+  }
+  
+  /* 文件夹列表和快捷方式容器自适应填充剩余空间 */
+  #folder-list,
+  #shortcut-list {
+    flex: 1 1 0%;
+    min-height: 0;
+    max-height: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 文件夹列表内容溢出时滚动 */
+  #folder-list {
+    overflow-y: auto !important;
+  }
+
+  /* 快捷方式列表内容溢出时滚动 */
+  #shortcut-list {
+    overflow-y: auto !important;
   }
   
   /* 调整水平容器为垂直布局 */
@@ -40,22 +61,20 @@
   /* 调整元素排列顺序 */
   #search-box {
     order: 1;
+    flex: 0 0 auto;
     width: var(--element-width) !important; /* 强制使用统一宽度 */
-    margin: 20px auto;
+    margin: 20px auto 0 auto;
   }
 
   /* 文件夹列表调整 - 确保在搜索框和快捷方式之间 */
   #folder-list {
     order: 2;
-    min-width: unset;
-    max-width: unset;
+    flex: 0 0 auto !important;
+    max-height: 24vh !important;
+    min-height: 0;
+    margin: 0 auto 10px auto !important;
     width: var(--element-width) !important; /* 强制使用统一宽度 */
-    max-height: 200px;
-    margin: 10px auto;
     overflow-y: auto !important; /* 确保可以滚动 */
-    position: relative !important; /* 确保定位正确 */
-    left: auto !important; /* 取消任何可能的左侧定位 */
-    float: none !important; /* 取消任何浮动 */
     display: block !important; /* 确保显示为块级元素 */
     box-sizing: border-box; /* 确保内边距不会增加宽度 */
   }
@@ -63,20 +82,18 @@
   /* 快捷方式列表调整 - 确保在文件夹列表下方，但保持内部按钮水平排列 */
   #shortcut-list {
     order: 3;
+    flex: 0 1 auto !important;
+    max-height: 75% !important;
+    min-height: 0;
+    margin: 0 auto !important;
     width: var(--element-width) !important; /* 强制使用统一宽度 */
-    height: auto;
-    margin: 10px auto;
-    padding: 10px;
-    max-height: calc(100vh - 200px) !important; /* 设置最大高度为视口高度减去一个预留空间 */
     overflow-y: auto !important; /* 允许在需要时滚动 */
-    position: relative !important; /* 确保定位正确 */
-    right: auto !important; /* 取消任何可能的右侧定位 */
-    float: none !important; /* 取消任何浮动 */
     display: flex !important; /* 使用flex布局 */
     flex-direction: row !important; /* 确保水平排列 */
     flex-wrap: wrap !important; /* 允许换行 */
     justify-content: center !important; /* 水平居中排列 */
     box-sizing: border-box; /* 确保内边距不会增加宽度 */
+    padding: 10px 0 0 0;
   }
 
   /* 子文件夹缩进减小 */

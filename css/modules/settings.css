@@ -847,3 +847,224 @@
 [data-theme="dark"] .modal-overlay {
   background-color: rgba(0, 0, 0, 0.7);
 }
+
+/* ==================== 数据同步样式 ==================== */
+
+/* 同步状态容器 */
+.sync-status-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.sync-status-info,
+.sync-last-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sync-status-label,
+.sync-last-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 60px;
+}
+
+.sync-status-value {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sync-status-value.sync-disabled {
+  background: #f8d7da;  /* 浅红色背景 */
+  color: #721c24;       /* 深红色文字 */
+}
+
+.sync-status-value.sync-upload {
+  background: #d1ecf1;  /* 浅蓝色背景 */
+  color: #0c5460;       /* 深蓝色文字 */
+}
+
+.sync-status-value.sync-download {
+  background: #d4edda;  /* 浅绿色背景 */
+  color: #155724;       /* 深绿色文字 */
+}
+
+.sync-last-value {
+  color: var(--text-primary);
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+/* 同步操作面板 */
+.sync-actions-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.sync-check-btn {
+  background: #17a2b8;  /* 信息色 - 蓝绿色 */
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.sync-check-btn:hover {
+  background: #138496;  /* 深一点的信息色 */
+  transform: translateY(-1px);
+}
+
+.sync-upload-btn {
+  background: #007bff;  /* 主色 - 蓝色 */
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.sync-upload-btn:hover {
+  background: #0056b3;  /* 深一点的主色 */
+  transform: translateY(-1px);
+}
+
+.sync-download-btn {
+  background: #28a745;  /* 成功色 - 绿色 */
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.sync-download-btn:hover {
+  background: #1e7e34;  /* 深一点的成功色 */
+  transform: translateY(-1px);
+}
+
+.sync-clear-btn {
+  background: #dc3545;  /* 危险色 - 红色 */
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.sync-clear-btn:hover {
+  background: #c82333;  /* 深一点的危险色 */
+  transform: translateY(-1px);
+}
+
+/* 深色主题下的同步样式调整 */
+[data-theme="dark"] .sync-status-container,
+[data-theme="dark"] .sync-actions-container {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .sync-status-value.sync-disabled {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+[data-theme="dark"] .sync-status-value.sync-upload {
+  background: rgba(30, 136, 229, 0.2);
+  color: #1e88e5;
+}
+
+[data-theme="dark"] .sync-status-value.sync-download {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+/* 深色主题下的按钮样式 */
+[data-theme="dark"] .sync-check-btn {
+  background: #20c997;  /* 深色主题下更亮的青色 */
+}
+
+[data-theme="dark"] .sync-check-btn:hover {
+  background: #1aa085;
+}
+
+[data-theme="dark"] .sync-upload-btn {
+  background: #0d6efd;  /* 深色主题下更亮的蓝色 */
+}
+
+[data-theme="dark"] .sync-upload-btn:hover {
+  background: #0a58ca;
+}
+
+[data-theme="dark"] .sync-download-btn {
+  background: #198754;  /* 深色主题下更亮的绿色 */
+}
+
+[data-theme="dark"] .sync-download-btn:hover {
+  background: #146c43;
+}
+
+[data-theme="dark"] .sync-clear-btn {
+  background: #dc3545;  /* 保持红色 */
+}
+
+[data-theme="dark"] .sync-clear-btn:hover {
+  background: #b02a37;
+}
+
+/* 按钮禁用状态 */
+.sync-check-btn:disabled,
+.sync-upload-btn:disabled,
+.sync-download-btn:disabled,
+.sync-clear-btn:disabled {
+  background: #6c757d !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  opacity: 0.6;
+}
+
+/* 按钮焦点状态（键盘导航） */
+.sync-check-btn:focus,
+.sync-upload-btn:focus,
+.sync-download-btn:focus,
+.sync-clear-btn:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* 响应式设计 - 小屏幕下按钮堆叠 */
+@media (max-width: 768px) {
+  .sync-actions-container {
+    flex-direction: column;
+  }
+  
+  .sync-check-btn,
+  .sync-upload-btn,
+  .sync-download-btn,
+  .sync-clear-btn {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+}

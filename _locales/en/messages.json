@@ -1218,5 +1218,177 @@
   "tokens": {
     "message": "tokens",
     "description": "Token数量单位"
+  },
+  "switchProvider": {
+    "message": "Switch AI Provider",
+    "description": "供应商选择器标题"
+  },
+  "switchModel": {
+    "message": "Switch AI Model",
+    "description": "模型选择器标题"
+  },
+  "refreshModels": {
+    "message": "Refresh Model List",
+    "description": "刷新模型按钮标题"
+  },
+  "loadingModels": {
+    "message": "Loading model list...",
+    "description": "加载模型时的提示"
+  },
+  "noModelsAvailable": {
+    "message": "No models available",
+    "description": "没有可用模型时的提示"
+  },
+  "loadModelsError": {
+    "message": "Failed to load models",
+    "description": "加载模型失败时的提示"
+  },
+  "noValidProviders": {
+    "message": "No valid providers",
+    "description": "没有有效供应商时的提示"
+  },
+  "providerNoApiKey": {
+    "message": "Provider has no API key",
+    "description": "供应商缺少API密钥时的提示"
+  },
+  "currentModel": {
+    "message": "Current Model",
+    "description": "模型选择器标签"
+  },
+  "defaultPrompt5": {
+    "message": "Write code to implement this function",
+    "description": "AI默认快速提示词5"
+  },
+  "defaultPrompt6": {
+    "message": "Explain this mathematical/programming concept",
+    "description": "AI默认快速提示词6"
+  },
+  "quickPromptsManagement": {
+    "message": "Quick Prompts Management",
+    "description": "快速提示词管理标题"
+  },
+  "quickPromptsManageDesc": {
+    "message": "Manage your quick prompts, each prompt can be configured with different temperature parameters for different scenarios",
+    "description": "快速提示词管理描述"
+  },
+  "addQuickPrompt": {
+    "message": "Add Prompt",
+    "description": "添加快速提示词按钮"
+  },
+  "temperatureGuide": {
+    "message": "Temperature Setting Guide",
+    "description": "温度设置指南标题"
+  },
+  "tempCode": {
+    "message": "Code Generation/Math Problem Solving",
+    "description": "温度设置：代码生成"
+  },
+  "tempAnalysis": {
+    "message": "Data Extraction/Analysis",
+    "description": "温度设置：数据分析"
+  },
+  "tempGeneral": {
+    "message": "General Conversation/Translation",
+    "description": "温度设置：通用对话"
+  },
+  "tempCreative": {
+    "message": "Creative Writing/Poetry",
+    "description": "温度设置：创意写作"
+  },
+  "temperature": {
+    "message": "Temperature",
+    "description": "温度标签"
+  },
+  "confirmDeletePrompt": {
+    "message": "Are you sure you want to delete this prompt?",
+    "description": "删除提示词确认"
+  },
+  "editQuickPrompt": {
+    "message": "Edit Quick Prompt",
+    "description": "编辑快速提示词标题"
+  },
+  "promptText": {
+    "message": "Prompt Content",
+    "description": "提示词内容标签"
+  },
+  "promptTextPlaceholder": {
+    "message": "e.g.: Help me summarize this content",
+    "description": "提示词内容占位符"
+  },
+  "promptTemperature": {
+    "message": "Temperature Setting",
+    "description": "提示词温度设置标签"
+  },
+  "temperatureDesc": {
+    "message": "Controls creativity: 0.0 most conservative, 2.0 most innovative",
+    "description": "温度设置描述"
+  },
+  "promptCategory": {
+    "message": "Scenario Category",
+    "description": "提示词分类标签"
+  },
+  "categoryCode": {
+    "message": "Code",
+    "description": "分类：代码"
+  },
+  "categoryMath": {
+    "message": "Math",
+    "description": "分类：数学"
+  },
+  "categoryAnalysis": {
+    "message": "Analysis",
+    "description": "分类：分析"
+  },
+  "categoryGeneral": {
+    "message": "General",
+    "description": "分类：通用"
+  },
+  "categoryTranslation": {
+    "message": "Translation",
+    "description": "分类：翻译"
+  },
+  "categoryCreative": {
+    "message": "Creative",
+    "description": "分类：创意"
+  },
+  "categoryDesc": {
+    "message": "Select usage scenario, will automatically recommend appropriate temperature values",
+    "description": "分类描述"
+  },
+  "promptTextRequired": {
+    "message": "Please enter prompt content",
+    "description": "提示词内容必填提示"
+  },
+  "promptUpdated": {
+    "message": "Prompt updated",
+    "description": "提示词更新成功"
+  },
+  "promptAdded": {
+    "message": "Prompt added",
+    "description": "提示词添加成功"
+  },
+  "recommendedTemp": {
+    "message": "Recommended Temperature",
+    "description": "推荐温度标签"
+  },
+  "regenerateResponse": {
+    "message": "Regenerate Response",
+    "description": "重新生成AI回答按钮提示"
+  },
+  "startNewChat": {
+    "message": "Start New Chat from This Message",
+    "description": "另起新对话按钮提示"
+  },
+  "regenerateFailed": {
+    "message": "Regeneration Failed",
+    "description": "重新生成失败提示"
+  },
+  "newChatStarted": {
+    "message": "New Chat Started",
+    "description": "新对话开始通知标题"
+  },
+  "newChatStartedDesc": {
+    "message": "Started new chat based on this message",
+    "description": "新对话开始通知描述"
   }
 }

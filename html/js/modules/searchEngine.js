@@ -1,5 +1,7 @@
 /**
  * 搜索引擎处理模块
+ * 提供搜索引擎的增删改查、切换、UI渲染等功能
+ * @module SearchEngineAPI
  */
 
 import { I18n, IconManager, Utils, Menu, Notification } from './core/index.js';
@@ -33,9 +35,10 @@ const STORAGE_KEYS = {
  * 搜索引擎API命名空间
  * @namespace
  */
-export const SearchEngineAPI = {    /**
+export const SearchEngineAPI = {
+    /**
      * 初始化搜索引擎
-     * @returns {Promise<void>}
+     * @returns {Promise<void>} 无
      */
     async initialize() {
         // 创建搜索UI元素
@@ -53,8 +56,8 @@ export const SearchEngineAPI = {    /**
 
     /**
      * 设置当前使用的搜索引擎
-     * @param {number} index - 搜索引擎索引
-     * @returns {Promise<boolean>} - 操作是否成功
+     * @param {number} index 搜索引擎索引
+     * @returns {Promise<boolean>} 操作是否成功
      */
     async setCurrentEngine(index) {
         if (index < 0 || index >= searchEngines.length) return false;
@@ -79,7 +82,7 @@ export const SearchEngineAPI = {    /**
 
     /**
      * 执行搜索
-     * @param {string} query - 搜索查询
+     * @param {string} query 搜索查询
      */
     search(query) {
         if (!query) return;
@@ -92,8 +95,8 @@ export const SearchEngineAPI = {    /**
 
     /**
      * 删除搜索引擎
-     * @param {number} index - 搜索引擎索引
-     * @returns {Promise<boolean>} - 操作是否成功
+     * @param {number} index 搜索引擎索引
+     * @returns {Promise<boolean>} 操作是否成功
      */
     async deleteEngine(index) {
         if (index < 0 || index >= searchEngines.length || searchEngines.length <= 1) return false;
@@ -115,9 +118,9 @@ export const SearchEngineAPI = {    /**
 
     /**
      * 编辑搜索引擎
-     * @param {number} index - 搜索引擎索引
-     * @param {Object} engineData - 新的搜索引擎数据
-     * @returns {Promise<boolean>} - 操作是否成功
+     * @param {number} index 搜索引擎索引
+     * @param {Object} engineData 新的搜索引擎数据
+     * @returns {Promise<boolean>} 操作是否成功
      */
     async editEngine(index, engineData) {
         if (index < 0 || index >= searchEngines.length) return false;
@@ -130,8 +133,8 @@ export const SearchEngineAPI = {    /**
 
     /**
      * 添加自定义搜索引擎
-     * @param {Object} engineData - 搜索引擎数据 {name, url, icon?}
-     * @returns {Promise<boolean>} - 操作是否成功
+     * @param {Object} engineData 搜索引擎数据 {name, url, icon?}
+     * @returns {Promise<boolean>} 操作是否成功
      */
     async addCustomEngine(engineData) {
         let { name, url, icon } = engineData;

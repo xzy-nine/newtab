@@ -1,6 +1,7 @@
 /**
  * 书签管理模块
  * 负责处理Chrome书签的显示和交互
+ * @module BookmarkManager
  */
 
 import { Utils, Menu, I18n, IconManager, Notification } from './core/index.js';
@@ -24,6 +25,7 @@ const EXPAND_SYMBOLS = {
 export const BookmarkManager = {
     /**
      * 初始化书签功能
+     * @returns {Promise<void>} 无
      */
     init: async function() {
         try {
@@ -45,6 +47,7 @@ export const BookmarkManager = {
 
     /**
      * 显示错误通知
+     * @param {Error} error 错误对象
      */
     showError: function(error) {
         Notification.notify({
@@ -57,6 +60,7 @@ export const BookmarkManager = {
 
     /**
      * 加载文件夹展开状态
+     * @returns {Promise<void>} 无
      */
     loadExpandedFolders: async function() {
         try {
@@ -70,6 +74,7 @@ export const BookmarkManager = {
 
     /**
      * 保存文件夹展开状态
+     * @returns {Promise<void>} 无
      */
     saveExpandedFolders: async function() {
         try {
@@ -81,10 +86,10 @@ export const BookmarkManager = {
         }
     },    /**
      * 创建文件夹按钮
-     * @param {Object} folder - 文件夹数据
-     * @param {HTMLElement} container - 容器元素
-     * @param {boolean} isPinned - 是否为固定文件夹
-     * @param {number} level - 缩进级别（默认为0）
+     * @param {Object} folder 文件夹数据
+     * @param {HTMLElement} container 容器元素
+     * @param {boolean} isPinned 是否为固定文件夹
+     * @param {number} level 缩进级别（默认0）
      */
     createFolderButton: function(folder, container, isPinned = false, level = 0) {
         try {

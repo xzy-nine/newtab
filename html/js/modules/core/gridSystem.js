@@ -18,7 +18,8 @@ function getI18nMessage(key, defaultText) {
 }
 
 /**
- * 网格系统API
+ * 网格系统 API
+ * @namespace GridSystem
  */
 export const GridSystem = {
     // 网格系统配置
@@ -520,7 +521,7 @@ export const GridSystem = {
     },
 
     /**
-     * 验证网格位置是否在合法范围内
+     * 验证网格位置是否合法
      * @param {Object} gridPosition - 网格位置对象
      * @returns {Object} 调整后的网格位置对象
      */
@@ -666,13 +667,6 @@ export const GridSystem = {
      * 注册元素的拖拽功能，支持 Shift 键网格吸附
      * @param {HTMLElement} element - 要注册的元素
      * @param {Object} options - 拖拽选项
-     * @param {boolean} options.gridSnapEnabled - 是否启用网格吸附（默认 true）
-     * @param {boolean} options.showGridHint - 是否显示网格提示（默认 true）
-     * @param {Function} options.onDragStart - 拖拽开始回调
-     * @param {Function} options.onDragMove - 拖拽移动回调
-     * @param {Function} options.onDragEnd - 拖拽结束回调
-     * @param {Function} options.onShiftStateChange - Shift 状态变化回调
-     * @param {HTMLElement} options.dragHandle - 拖拽手柄元素（默认为 element）
      * @returns {Object} 拖拽状态对象
      */
     registerDraggable(element, options = {}) {
