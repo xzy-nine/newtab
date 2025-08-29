@@ -25,6 +25,7 @@ const externalNotificationStats = {
 };
 
 
+
 // 当扩展安装或更新时运行
 chrome.runtime.onInstalled.addListener(() => {
   console.log('新标签页扩展已安装或更新');
@@ -95,10 +96,9 @@ function openNewTabWithNotification() {
     }, 1500);
     return;
   }
-  chrome.tabs.create({
-    url: 'html/newtab.html'
-  }, tab => {
-    currentNewTabId = tab.id;
+  if (currentNewTabId) {
+    chrome.tabs.update(currentNewTabId, { active: true });
+    // 发送通知
     setTimeout(async () => {
       let title = '扩展已安装';
       let message = '新标签页扩展安装成功';
@@ -112,6 +112,41 @@ function openNewTabWithNotification() {
         message: message,
         showInBadge: true
       });
+      chrome.tabs.sendMessage(currentNewTabId, {
+        action: 'showMobileInstruction',
+        extensionUrl: extensionPageUrl
+      }).catch(err => {
+        console.log('页面可能尚未准备好接收消息，这是正常的:', err);
+      });
+    }, 1500);
+    return;
+  }
+  chrome.tabs.create({
+    url: 'html/newtab.html'
+  }, tab => {
+    currentNewTabId = tab.id;
+    setTimeout(async () => {
+  }, tab => {
+    currentNewTabId = tab.id;
+    setTimeout(async () => {
+      let title = '扩展已安装';
+      let message = '新标签页扩展安装成功';
+      if (I18n && typeof I18n.getMessage === 'function') {
+        title = I18n.getMessage('extensionInstalled') || title;
+        message = I18n.getMessage('extensionInstalledDesc') || message;
+      }
+      if (I18n && typeof I18n.getMessage === 'function') {
+        title = I18n.getMessage('extensionInstalled') || title;
+        message = I18n.getMessage('extensionInstalledDesc') || message;
+      }
+      await addPopupNotification({
+        type: 'success',
+        title: title,
+        title: title,
+        message: message,
+        showInBadge: true
+      });
+      chrome.tabs.sendMessage(tab.id, {
       chrome.tabs.sendMessage(tab.id, {
         action: 'showMobileInstruction',
         extensionUrl: extensionPageUrl
@@ -306,6 +341,9 @@ async function handleExternalNotification(options, sender) {
  * @param {string} message - 加载消息
  * @param {Object} sender - 发送者信息
  * @returns {Promise<void>}
+ * @param {string} message - 加载消息
+ * @param {Object} sender - 发送者信息
+ * @returns {Promise<void>}
  */
 async function handleExternalLoading(message, sender) {
   try {
@@ -330,6 +368,9 @@ async function handleExternalLoading(message, sender) {
  * 处理隐藏外部加载指示器请求
  * @param {Object} sender - 发送者信息
  * @returns {Promise<void>}
+ * 处理隐藏外部加载指示器请求
+ * @param {Object} sender - 发送者信息
+ * @returns {Promise<void>}
  */
 async function handleHideExternalLoading(sender) {
   try {
@@ -350,6 +391,11 @@ async function handleHideExternalLoading(sender) {
 }
 
 /**
+ * 处理更新外部加载进度请求
+ * @param {number} percent - 进度百分比
+ * @param {string} message - 进度消息
+ * @param {Object} sender - 发送者信息
+ * @returns {Promise<void>}
  * 处理更新外部加载进度请求
  * @param {number} percent - 进度百分比
  * @param {string} message - 进度消息
@@ -379,6 +425,9 @@ async function handleUpdateExternalLoadingProgress(percent, message, sender) {
  * 记录外部通知统计信息
  * @param {string} domain - 域名
  * @param {string} type - 通知类型
+ * 记录外部通知统计信息
+ * @param {string} domain - 域名
+ * @param {string} type - 通知类型
  */
 function recordExternalNotificationStats(domain, type) {
   externalNotificationStats.totalRequests++;
@@ -404,6 +453,9 @@ function recordExternalNotificationStats(domain, type) {
 }
 
 /**
+ * 添加通知到弹窗页面
+ * @param {Object} notification - 通知对象
+ * @returns {Promise<void>}
  * 添加通知到弹窗页面
  * @param {Object} notification - 通知对象
  * @returns {Promise<void>}
@@ -448,6 +500,8 @@ async function addPopupNotification(notification) {
 }
 
 /**
+ * 校验域名是否可信
+ * @param {string} url - 页面URL
  * 校验域名是否可信
  * @param {string} url - 页面URL
  * @returns {boolean} 是否可信

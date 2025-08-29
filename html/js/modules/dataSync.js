@@ -4,12 +4,19 @@
  * @module DataSync
  */
 
+/**
+ * 数据同步模块
+ * 提供同步设置项、同步状态、手动/自动同步等功能
+ * @module DataSync
+ */
+
 // 数据同步模块
 import { Utils, I18n, Notification } from './core/index.js';
 
 export const DataSync = {
     /**
      * 创建同步设置项
+     * @returns {Array} 设置项配置数组
      * @returns {Array} 设置项配置数组
      */
     createSettingsItems() {
@@ -67,7 +74,10 @@ export const DataSync = {
         ];
     },
     /**
+    },
+    /**
      * 处理同步模式变化
+     * @param {string} mode 同步模式 ('disabled', 'upload', 'download')
      * @param {string} mode 同步模式 ('disabled', 'upload', 'download')
      */
     handleSyncModeChange(mode) {
@@ -114,7 +124,10 @@ export const DataSync = {
         }
     },
     /**
+    },
+    /**
      * 处理同步间隔变化
+     * @param {string} interval 同步间隔（秒）
      * @param {string} interval 同步间隔（秒）
      */
     handleSyncIntervalChange(interval) {
@@ -143,6 +156,8 @@ export const DataSync = {
     /**
      * 创建同步状态显示元素
      * @returns {HTMLElement} 同步状态显示元素
+     * 创建同步状态显示元素
+     * @returns {HTMLElement} 同步状态显示元素
      */
     createSyncStatusDisplay() {
         const statusContainer = Utils.createElement('div', 'sync-status-container');
@@ -168,6 +183,7 @@ export const DataSync = {
     },
     /**
      * 创建同步操作面板
+     * @returns {HTMLElement} 同步操作面板
      * @returns {HTMLElement} 同步操作面板
      */
     createSyncActionsPanel() {
@@ -549,6 +565,18 @@ export const DataSync = {
         };
     },
     /**
+     * 获取数据同步在设置中的分类配置
+     * @returns {Object} 分类配置对象
+     */
+    getSettingsCategory() {
+        return {
+            id: 'data-sync',
+            icon: '☁️',
+            title: I18n.getMessage('settingsDataSync', '数据同步'),
+            items: this.createSettingsItems()
+        };
+    },
+    /**
      * 启动自动同步
      */
     startAutoSync() {
@@ -565,6 +593,8 @@ export const DataSync = {
         }, interval * 1000);
         
         console.log(`自动同步已启动，间隔: ${interval}秒`);
+    },
+    /**
     },
     /**
      * 停止自动同步

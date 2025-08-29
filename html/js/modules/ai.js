@@ -98,11 +98,9 @@ export const AI = {
 
     /**
      * 发送消息到AI（支持多轮对话）
-     * @param {string} message 用户消息
-     * @param {string} conversationId 对话ID（可选）
-     * @param {function} onChunk 流式回调（可选）
-     * @param {Object} temporaryProvider 临时供应商配置（可选，用于对话中临时切换供应商和模型）
-     * @returns {Promise<Object>} 包含AI回复和对话ID的对象
+     * @param {string} message - 用户消息
+     * @param {string} conversationId - 对话ID（可选，不传则创建新对话）
+     * @returns {Promise<Object>} - 包含AI回复和对话ID的对象
      */
     async sendMessage(message, conversationId = null, onChunk = null, temporaryProvider = null, temperature = null) {
         // 检查网络连接
