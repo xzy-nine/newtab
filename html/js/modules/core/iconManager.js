@@ -55,8 +55,8 @@ export const IconManager = {
 
         // 4. 异步尝试获取真实图标，获取到后自动替换
         this.fetchIconFromSources(url, domain).then(realIcon => {
-            if (realIcon && realIcon !== fallbackIcon) {
-                if (element && element.style.backgroundImage.includes(fallbackIcon)) {
+            if (realIcon && this.stripFallbackPrefix(realIcon) !== this.stripFallbackPrefix(fallbackIcon)) {
+                if (element && element.style.backgroundImage.includes(this.stripFallbackPrefix(fallbackIcon))) {
                     element.style.backgroundImage = `url(${this.stripFallbackPrefix(realIcon)})`;
                 }
             }
@@ -360,7 +360,8 @@ export const IconManager = {
 
             // 异步尝试获取真实图标
             this.fetchIconFromSources(url, domain).then(realIcon => {
-                if (realIcon && realIcon !== iconData && img.isConnected && img.dataset.originalUrl === url) {
+                if (realIcon && this.stripFallbackPrefix(realIcon) !== this.stripFallbackPrefix(iconData) && 
+                    img.isConnected && img.dataset.originalUrl === url) {
                     img.src = this.stripFallbackPrefix(realIcon);
                 }
             });
