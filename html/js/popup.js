@@ -181,7 +181,7 @@ class PopupManager {
         if (filteredNotifications.length === 0) {
             notificationList.innerHTML = `
                 <div class="empty-state">
-                    <div class="empty-icon">📭</div>
+                    <div class="empty-icon segoe-icon">&#xE946;</div>
                     <p>${this.getMessage('noNotifications', '暂无通知')}</p>
                 </div>
             `;
@@ -249,13 +249,13 @@ class PopupManager {
      */
     getTypeIcon(type) {
         const icons = {
-            info: 'ℹ️',
-            success: '✅',
-            warning: '⚠️',
-            error: '❌',
-            important: '🔥'
+            info: '\uE946',
+            success: '\uE73E',
+            warning: '\uE7BA',
+            error: '\uE711',
+            important: '\uE730'
         };
-        return icons[type] || 'ℹ️';
+        return icons[type] || '\uE946';
     }    /**
      * 获取通知类型标签
      * @param {string} type - 通知类型

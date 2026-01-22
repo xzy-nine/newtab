@@ -11,12 +11,12 @@
         <!-- 简化的标签页导航 -->
         <div class="popup-tabs">
             <button class="popup-tab-btn active" data-tab="notifications">
-                <span class="tab-icon">🔔</span>
+                <span class="tab-icon segoe-icon">&#xE700;</span>
                 <span class="tab-label" data-i18n="notifications">通知</span>
                 <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
             </button>
             <button class="popup-tab-btn" data-tab="settings">
-                <span class="tab-icon">⚙️</span>
+                <span class="tab-icon segoe-icon">&#xE713;</span>
                 <span class="tab-label" data-i18n="settings">设置</span>
             </button>
         </div>
@@ -33,14 +33,14 @@
                             <option value="unread">未读</option>
                             <option value="important">重要</option>
                         </select>
-                        <button id="clearAllNotifications" class="clear-btn" title="清除所有通知">
-                            🗑️
+                        <button id="clearAllNotifications" class="clear-btn segoe-icon" title="清除所有通知">
+                            &#xE738;
                         </button>
                     </div>
                 </div>
                 <div class="notification-list" id="notificationList">
                     <div class="empty-state">
-                        <div class="empty-icon">📭</div>
+                        <div class="empty-icon segoe-icon">&#xE946;</div>
                         <p data-i18n="noNotifications">暂无通知</p>
                     </div>
                 </div>
@@ -49,7 +49,7 @@
             <!-- 设置标签页 -->
             <div class="popup-tab-content" id="settings">
                 <div class="coming-soon">
-                    <div class="coming-soon-icon">🚧</div>
+                    <div class="coming-soon-icon segoe-icon">&#xE768;</div>
                     <h3>功能开发中</h3>
                     <p>设置功能正在开发中，敬请期待...</p>
                 </div>
@@ -59,7 +59,7 @@
         <!-- 底部操作栏 -->
         <div class="popup-footer">
             <button id="openNewTab" class="footer-btn">
-                <span>🏠</span>
+                <span class="segoe-icon">&#xE80F;</span>
                 <span data-i18n="openNewTab">打开新标签页</span>
             </button>
         </div>

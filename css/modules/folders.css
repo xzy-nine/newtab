@@ -106,6 +106,7 @@
   margin-right: 4px;
   flex-shrink: 0;
   font-size: 16px;
+  color: #FFD700; /* 亮黄色 */
 }
 
 .folder-name {
@@ -136,9 +137,13 @@
 }
 
 .folder-button.selected .folder-name,
-.folder-button.selected .folder-icon,
 .folder-button.selected .folder-arrow {
   color: var(--color-primary);
+}
+
+/* 选中状态时文件夹图标保持亮黄色 */
+.folder-button.selected .folder-icon {
+  color: #FFD700;
 }
 
 /* 文件夹展开/收缩 */
@@ -229,8 +234,12 @@
 }
 
 [data-theme="dark"] .folder-button.selected .folder-name,
-[data-theme="dark"] .folder-button.selected .folder-icon,
 [data-theme="dark"] .folder-button.selected .folder-arrow {
   color: #6bb6ff;
+}
+
+/* 深色主题下选中状态时文件夹图标保持亮黄色 */
+[data-theme="dark"] .folder-button.selected .folder-icon {
+  color: #FFD700;
 }
 

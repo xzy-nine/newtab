@@ -960,7 +960,7 @@ export const WidgetSystem = {
         
         container.appendChild(dragHandle);
         
-        // 创建固定按钮（图钉）
+        // 创建固定按钮
         const pinButton = Utils.createElement('button', 'widget-pin-button');
         
         // 使用安全的国际化方法
@@ -968,7 +968,14 @@ export const WidgetSystem = {
         const fixText = getI18nMessage('fixWidgetContainer', '固定小部件');
         
         pinButton.title = data.fixed ? unfixText : fixText;
-        pinButton.innerHTML = data.fixed ? '📌' : '📍';
+        pinButton.classList.add('segoe-icon');
+        if (data.fixed) {
+            pinButton.classList.add('widget-pinned');
+            pinButton.textContent = '\uE841';
+        } else {
+            pinButton.classList.remove('widget-pinned');
+            pinButton.textContent = '\uE842';
+        }
         
         pinButton.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1419,7 +1426,9 @@ export const WidgetSystem = {
             container.classList.remove('widget-fixed');
             
             if (pinButton) {
-                pinButton.innerHTML = '📍';
+                pinButton.classList.add('segoe-icon');
+                pinButton.classList.remove('widget-pinned');
+                pinButton.textContent = '\uE842';
                 pinButton.title = I18n.getMessage('fixWidgetContainer', '固定小部件');
             }
         } else {
@@ -1428,7 +1437,9 @@ export const WidgetSystem = {
             container.classList.add('widget-fixed');
             
             if (pinButton) {
-                pinButton.innerHTML = '📌';
+                pinButton.classList.add('segoe-icon');
+                pinButton.classList.add('widget-pinned');
+                pinButton.textContent = '\uE841';
                 pinButton.title = I18n.getMessage('unfixWidgetContainer', '取消固定');
             }
         }

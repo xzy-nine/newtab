@@ -129,7 +129,8 @@ export const BookmarkManager = {
             // 创建图标和名称包装器
             const iconNameWrapper = Utils.createElement("div", "folder-icon-name-wrapper");
             const iconElement = Utils.createElement("span", "folder-icon");
-            iconElement.textContent = isPinned ? '📌' : '📁';
+            iconElement.classList.add('segoe-icon');
+            iconElement.textContent = isPinned ? '\uE718' : '\uE8B7';
             const nameElement = Utils.createElement("span", "folder-name");
             nameElement.textContent = folder.title || I18n.getMessage('untitledFolder', '未命名文件夹');
             
@@ -287,12 +288,20 @@ export const BookmarkManager = {
 
                 // 判断并选中对应按钮
                 const isPinned = pinnedFolders.includes(folder);
+                let targetBtn;
                 if (isPinned) {
-                    const pinBtn = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
-                    if (pinBtn) pinBtn.classList.add('selected');
+                    targetBtn = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
                 } else {
-                    const regBtn = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
-                    if (regBtn) regBtn.classList.add('selected');
+                    targetBtn = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
+                }
+                
+                if (targetBtn) {
+                    targetBtn.classList.add('selected');
+                    // 更新为打开文件夹图标
+                    const iconElement = targetBtn.querySelector('.folder-icon');
+                    if (iconElement) {
+                        iconElement.textContent = '\uE838';
+                    }
                 }
             }
         } catch (err) {
@@ -307,10 +316,16 @@ export const BookmarkManager = {
         if (!folderButton || !folder) return;
         
         const isCurrentlySelected = folderButton.classList.contains('selected');
+        const iconElement = folderButton.querySelector('.folder-icon');
+        const isPinned = folderButton.getAttribute('data-pinned') === 'true';
         
         if (isCurrentlySelected) {
             // 取消选中
             folderButton.classList.remove('selected');
+            // 恢复原始图标
+            if (iconElement) {
+                iconElement.textContent = isPinned ? '\uE718' : '\uE8B7';
+            }
             this.hideShortcuts();
             currentFolder = "";
             chrome.storage.local.remove('folder');
@@ -320,16 +335,24 @@ export const BookmarkManager = {
             currentFolder = folder.id;
             chrome.storage.local.set({ folder: folder.id });
             
-            // 清除所有选中状态
+            // 清除所有选中状态并恢复原始图标
             document.querySelectorAll('.folder-button.selected').forEach(btn => {
                 btn.classList.remove('selected');
+                const btnIcon = btn.querySelector('.folder-icon');
+                if (btnIcon) {
+                    const btnIsPinned = btn.getAttribute('data-pinned') === 'true';
+                    btnIcon.textContent = btnIsPinned ? '\uE718' : '\uE8B7';
+                }
             });
             
             // 只选中当前点击的按钮
             folderButton.classList.add('selected');
+            // 更新为打开文件夹图标
+            if (iconElement) {
+                iconElement.textContent = '\uE838';
+            }
             
             // 如果点击的是固定文件夹，确保原始文件夹不被选中
-            const isPinned = folderButton.getAttribute('data-pinned') === 'true';
             const folderId = folderButton.getAttribute('data-folder-id');
             
             if (isPinned) {
@@ -337,6 +360,10 @@ export const BookmarkManager = {
                 const regularButton = document.querySelector(`[data-folder-id="${folderId}"][data-pinned="false"]`);
                 if (regularButton) {
                     regularButton.classList.remove('selected');
+                    const regularIcon = regularButton.querySelector('.folder-icon');
+                    if (regularIcon) {
+                        regularIcon.textContent = '\uE8B7';
+                    }
                 }
             } else {
                 // 确保固定版本不被选中

@@ -217,6 +217,17 @@
   opacity: 0.7;
 }
 
+/* 未固定状态的固定按钮逆时针旋转90度 */
+.widget-pin-button:not(.widget-pinned) {
+  transform: rotate(-90deg);
+}
+
+/* 已固定状态的固定按钮不旋转且颜色为正红色 */
+.widget-pin-button.widget-pinned {
+  transform: rotate(0deg);
+  color: #ff0000;
+}
+
 .widget-resize-handle {
   position: absolute;
   bottom: 0;
@@ -295,7 +306,7 @@
 
 .widget-container.widget-fixed .widget-pin-button {
   opacity: 1;
-  color: var(--widget-primary-color-hover);
+  color: #ff0000;
 }
 
 .widget-container.widget-fixed .widget-drag-handle {

@@ -44,7 +44,7 @@ export const Settings = {
     const categories = [
         {
           id: 'general',
-          icon: '⚙️',
+          icon: '\uE713',
           title: I18n.getMessage('settingsGeneral', '常规设置'),      items: [
              ...I18n.createSettingsItems(),
              ...ThemeManager.createSettingsItems()
@@ -52,18 +52,18 @@ export const Settings = {
         },
         {
           id: 'notifications',
-          icon: '🔔',
+          icon: '\uE700',
           title: I18n.getMessage('settingsNotifications', '通知设置'),
           items: NotificationManager.createSettingsItems()
         },
         {
           id: 'ai-assistant',
-          icon: '🤖',
+          icon: '\uE901',
           title: I18n.getMessage('settingsAI', 'AI助手'),
           items: window.AI ? window.AI.createSettingsItems() : []    },
         {
           id: 'search-engines',
-          icon: '🔍',
+          icon: '\uE721',
           title: I18n.getMessage('settingsSearchEngines', '搜索引擎'),
           items: SearchEngineAPI ? SearchEngineAPI.createSettingsItems() : []
         },
@@ -71,7 +71,7 @@ export const Settings = {
         // 关于页
         {
           id: 'about',
-          icon: 'ℹ️',
+          icon: '\uE946',
           title: I18n.getMessage('settingsAbout', '关于'),
           items: [
             {
@@ -104,7 +104,7 @@ export const Settings = {
         // 开发者选项，初始隐藏
         {
           id: 'developer',
-          icon: '🛠️',
+          icon: '\uE713',
           title: I18n.getMessage('settingsDeveloper', '开发者选项'),
           items: [
             {

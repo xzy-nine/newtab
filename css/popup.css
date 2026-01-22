@@ -16,6 +16,23 @@ body {
     overflow: hidden;
 }
 
+/* Segoe MDL2 Assets字体图标样式 */
+@font-face {
+    font-family: 'Segoe MDL2 Assets Local';
+    src: url('../fonts/SegMDL2.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.segoe-icon {
+    font-family: 'Segoe MDL2 Assets Local', 'Segoe MDL2 Assets', 'Segoe UI Symbol';
+}
+
+/* 确保所有图标元素使用Segoe字体 */
+.tab-icon, .clear-btn, .empty-icon, .coming-soon-icon, .footer-btn span, .notification-type span {
+    font-family: 'Segoe MDL2 Assets Local', 'Segoe MDL2 Assets', 'Segoe UI Symbol';
+}
+
 .popup-container {
     width: 100%;
     height: 100%;

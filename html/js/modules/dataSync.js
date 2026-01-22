@@ -543,7 +543,7 @@ export const DataSync = {
     getSettingsCategory() {
         return {
             id: 'data-sync',
-            icon: '☁️',
+            icon: '\uE753',
             title: I18n.getMessage('settingsDataSync', '数据同步'),
             items: this.createSettingsItems()
         };

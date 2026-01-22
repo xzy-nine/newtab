@@ -1889,7 +1889,7 @@ function showAIModal(initialMessage = '', conversationId = null) {
     const panelRefreshBtn = Utils.createElement('button', 'ai-model-panel-refresh', {
         type: 'button',
         title: I18n.getMessage('refreshModels', '刷新模型列表')
-    }, '🔄');
+    }, '\uE72C');
     const searchUseBtn = Utils.createElement('button', 'ai-model-search-use', {
         type: 'button',
         title: I18n.getMessage('useInputModel', '使用输入的模型')
@@ -1961,11 +1961,11 @@ function showAIModal(initialMessage = '', conversationId = null) {
                 const caps = Utils.createElement('span', 'model-badges');
                 // 简单能力徽标
                 if (/reason|o3|think|deepseek\-reasoner/i.test(m)) {
-                    const b = Utils.createElement('span', 'badge badge-reason', {}, '🧠');
+                    const b = Utils.createElement('span', 'badge badge-reason segoe-icon', {}, '\uE90A');
                     caps.appendChild(b);
                 }
                 if (/gpt|claude|llama|gemini|deepseek/i.test(m)) {
-                    const b = Utils.createElement('span', 'badge badge-chat', {}, '💬');
+                    const b = Utils.createElement('span', 'badge badge-chat segoe-icon', {}, '\uE901');
                     caps.appendChild(b);
                 }
                 if (m === currentSelectedModel) item.classList.add('active');
@@ -2101,7 +2101,7 @@ function showAIModal(initialMessage = '', conversationId = null) {
         panelRefreshBtn.disabled = true;
         panelRefreshBtn.textContent = '⏳';
         try { await refreshModelList(currentSelectedProvider); }
-        finally { panelRefreshBtn.disabled = false; panelRefreshBtn.textContent = '🔄'; }
+        finally { panelRefreshBtn.disabled = false; panelRefreshBtn.textContent = '\uE72C'; }
     });
     
     // 初始化触发器文案
@@ -2339,7 +2339,7 @@ function loadConversationsList(conversationsList, chatHistory, chatTitle, getCur
         
         const deleteBtn = Utils.createElement('button', 'ai-conversation-delete', { 
             title: I18n.getMessage('delete', '删除')
-        }, '🗑️');
+        }, '\uE738');
         
         convItem.append(convTitle, convMeta, deleteBtn);
         
@@ -2740,7 +2740,7 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
                         const reasoningHeader = Utils.createElement('div', 'ai-reasoning-header');
                         const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
                             type: 'button'
-                        }, '🧠 思维过程（实时）');
+                        }, '\uE90A 思维过程（实时）');
                         
                         reasoningContentElement = Utils.createElement('div', 'ai-reasoning-content');
                         reasoningContentElement.style.display = 'block'; // 默认展开显示流式思维过程
@@ -2749,7 +2749,7 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
                         reasoningToggle.addEventListener('click', () => {
                             const isVisible = reasoningContentElement.style.display !== 'none';
                             reasoningContentElement.style.display = isVisible ? 'none' : 'block';
-                            reasoningToggle.textContent = `🧠 ${isVisible ? I18n.getMessage('hideThinking', '隐藏思维过程') : I18n.getMessage('showThinking', '查看思维过程')}`;
+                            reasoningToggle.textContent = `\uE90A ${isVisible ? I18n.getMessage('hideThinking', '隐藏思维过程') : I18n.getMessage('showThinking', '查看思维过程')}`;
                         });
                         
                         reasoningHeader.appendChild(reasoningToggle);
@@ -2786,7 +2786,7 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
             const markdownToggle = Utils.createElement('button', 'ai-markdown-toggle active', {
                 type: 'button',
                 title: I18n.getMessage('markdownRendering', 'Markdown渲染')
-            }, '📝 MD');
+            }, '\uE736 MD');
             
             // 存储原始消息和渲染状态
             let isMarkdownMode = true;
@@ -2802,14 +2802,16 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
                 if (isMarkdownMode) {
                     // 切换到纯文本模式
                     aiContentElement.textContent = finalContent;
-                    markdownToggle.textContent = '📄 TXT';
+                    markdownToggle.className = 'ai-markdown-toggle';
+                    markdownToggle.textContent = '\uE8EF TXT';
                     markdownToggle.title = I18n.getMessage('rawText', '原始文本');
                     markdownToggle.classList.remove('active');
                     isMarkdownMode = false;
                 } else {
                     // 切换到Markdown模式
                     aiContentElement.innerHTML = renderMarkdown(finalContent);
-                    markdownToggle.textContent = '📝 MD';
+                    markdownToggle.className = 'ai-markdown-toggle active';
+                    markdownToggle.textContent = '\uE736 MD';
                     markdownToggle.title = I18n.getMessage('markdownRendering', 'Markdown渲染');
                     markdownToggle.classList.add('active');
                     isMarkdownMode = true;
@@ -2831,7 +2833,7 @@ function setupAIModalEvents(modal, inputTextarea, chatHistory, chatTitle, sendBu
                 // 更新按钮文本
                 const reasoningToggle = reasoningContainer.querySelector('.ai-reasoning-toggle');
                 if (reasoningToggle) {
-                    reasoningToggle.textContent = `🧠 ${I18n.getMessage('hideThinking', '隐藏思维过程')}`;
+                    reasoningToggle.textContent = `\uE90A ${I18n.getMessage('hideThinking', '隐藏思维过程')}`;
                 }
             }
             
@@ -2916,7 +2918,7 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
         const reasoningHeader = Utils.createElement('div', 'ai-reasoning-header');
         const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
             type: 'button'
-        }, '🧠 查看思维过程');
+        }, '\uE90A 查看思维过程');
         
         const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
         reasoningContent.style.display = 'none'; // 默认隐藏
@@ -2927,7 +2929,7 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
         reasoningToggle.addEventListener('click', () => {
             const isVisible = reasoningContent.style.display !== 'none';
             reasoningContent.style.display = isVisible ? 'none' : 'block';
-            reasoningToggle.textContent = `🧠 ${isVisible ? I18n.getMessage('hideThinking', '隐藏思维过程') : I18n.getMessage('showThinking', '查看思维过程')}`;
+            reasoningToggle.textContent = `\uE90A ${isVisible ? I18n.getMessage('hideThinking', '隐藏思维过程') : I18n.getMessage('showThinking', '查看思维过程')}`;
         });
         
         reasoningHeader.appendChild(reasoningToggle);
@@ -2945,7 +2947,7 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
         const markdownToggle = Utils.createElement('button', 'ai-markdown-toggle active', {
             type: 'button',
             title: I18n.getMessage('markdownRendering', 'Markdown渲染')
-        }, '📝 MD');
+        }, '\uE736 MD');
         
         // 存储原始消息和渲染状态
         let isMarkdownMode = true;
@@ -2962,14 +2964,16 @@ function addMessageToHistory(chatHistory, message, type, reasoning = null) {
             if (isMarkdownMode) {
                 // 切换到纯文本模式
                 messageContent.textContent = originalMessage;
-                markdownToggle.textContent = '📄 TXT';
+                markdownToggle.className = 'ai-markdown-toggle';
+                markdownToggle.textContent = '\uE8EF TXT';
                 markdownToggle.title = I18n.getMessage('rawText', '原始文本');
                 markdownToggle.classList.remove('active');
                 isMarkdownMode = false;
             } else {
                 // 切换到Markdown模式
                 messageContent.innerHTML = renderMarkdown(originalMessage);
-                markdownToggle.textContent = '📝 MD';
+                markdownToggle.className = 'ai-markdown-toggle active';
+                markdownToggle.textContent = '\uE736 MD';
                 markdownToggle.title = I18n.getMessage('markdownRendering', 'Markdown渲染');
                 markdownToggle.classList.add('active');
                 isMarkdownMode = true;
@@ -3019,13 +3023,13 @@ function addLatestMessageControls(controlsContainer, messageElement, chatHistory
     const regenerateBtn = Utils.createElement('button', 'ai-regenerate-btn', {
         type: 'button',
         title: I18n.getMessage('regenerateResponse', '重新生成回答')
-    }, '🔄');
+    }, '\uE72C');
     
     // 另起新对话按钮
     const newChatBtn = Utils.createElement('button', 'ai-new-chat-btn', {
         type: 'button', 
         title: I18n.getMessage('startNewChat', '基于此消息另起新对话')
-    }, '💬');
+    }, '\uE751');
     
     // 重新生成功能
     regenerateBtn.addEventListener('click', async () => {
@@ -3052,7 +3056,7 @@ function addLatestMessageControls(controlsContainer, messageElement, chatHistory
             });
         } finally {
             regenerateBtn.disabled = false;
-            regenerateBtn.innerHTML = '🔄';
+            regenerateBtn.textContent = '\uE72C';
         }
     });
     
@@ -3083,7 +3087,7 @@ function addNewChatControl(controlsContainer, messageElement, chatHistory) {
     const newChatBtn = Utils.createElement('button', 'ai-new-chat-btn', {
         type: 'button', 
         title: I18n.getMessage('startNewChat', '基于此消息另起新对话')
-    }, '💬');
+    }, '\uE901');
     
     // 另起新对话功能
     newChatBtn.addEventListener('click', () => {
@@ -3249,7 +3253,7 @@ async function regenerateAIResponse(userMessage, aiMessageElement, chatHistory) 
                     const reasoningHeader = Utils.createElement('div', 'ai-reasoning-header');
                     const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
                         type: 'button'
-                    }, '🧠 思维过程（实时）');
+                    }, '\uE90A 思维过程（实时）');
                     
                     reasoningContentElement = Utils.createElement('div', 'ai-reasoning-content');
                     reasoningContentElement.style.display = 'block'; // 默认展开显示流式思维过程
@@ -3258,7 +3262,7 @@ async function regenerateAIResponse(userMessage, aiMessageElement, chatHistory) 
                     reasoningToggle.addEventListener('click', () => {
                         const isVisible = reasoningContentElement.style.display !== 'none';
                         reasoningContentElement.style.display = isVisible ? 'none' : 'block';
-                        reasoningToggle.textContent = `🧠 ${isVisible ? I18n.getMessage('hideThinking', '隐藏思维过程') : I18n.getMessage('showThinking', '查看思维过程')}`;
+                        reasoningToggle.textContent = `\uE90A ${isVisible ? I18n.getMessage('hideThinking', '隐藏思维过程') : I18n.getMessage('showThinking', '查看思维过程')}`;
                     });
                     
                     reasoningHeader.appendChild(reasoningToggle);
@@ -3296,7 +3300,7 @@ async function regenerateAIResponse(userMessage, aiMessageElement, chatHistory) 
         const markdownToggle = Utils.createElement('button', 'ai-markdown-toggle active', {
             type: 'button',
             title: I18n.getMessage('markdownRendering', 'Markdown渲染')
-        }, '📝 MD');
+        }, '\uE736 MD');
         
         // 存储原始消息和渲染状态
         let isMarkdownMode = true;
@@ -3312,14 +3316,16 @@ async function regenerateAIResponse(userMessage, aiMessageElement, chatHistory) 
             if (isMarkdownMode) {
                 // 切换到纯文本模式
                 newAiContentElement.textContent = finalContent;
-                markdownToggle.textContent = '📄 TXT';
+                markdownToggle.className = 'ai-markdown-toggle';
+                markdownToggle.textContent = '\uE8EF TXT';
                 markdownToggle.title = I18n.getMessage('rawText', '原始文本');
                 markdownToggle.classList.remove('active');
                 isMarkdownMode = false;
             } else {
                 // 切换到Markdown模式
                 newAiContentElement.innerHTML = renderMarkdown(finalContent);
-                markdownToggle.textContent = '📝 MD';
+                markdownToggle.className = 'ai-markdown-toggle active';
+                markdownToggle.textContent = '\uE736 MD';
                 markdownToggle.title = I18n.getMessage('markdownRendering', 'Markdown渲染');
                 markdownToggle.classList.add('active');
                 isMarkdownMode = true;
@@ -3341,7 +3347,7 @@ async function regenerateAIResponse(userMessage, aiMessageElement, chatHistory) 
             // 更新按钮文本
             const reasoningToggle = reasoningContainer.querySelector('.ai-reasoning-toggle');
             if (reasoningToggle) {
-                reasoningToggle.textContent = `🧠 ${I18n.getMessage('hideThinking', '隐藏思维过程')}`;
+                reasoningToggle.textContent = `\uE90A ${I18n.getMessage('hideThinking', '隐藏思维过程')}`;
             }
         }
         
@@ -3635,14 +3641,13 @@ function createAIButton() {
         'data-i18n-title': 'aiAssistant'
     });
 
-    // AI图标SVG
-    aiButton.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.1 3.89 23 5 23H19C20.1 23 21 22.1 21 21V9M19 21H5V3H14V9H19Z"/>
-            <circle cx="12" cy="15" r="3"/>
-            <path d="M8 15L9.5 13.5L12 16L14.5 13.5L16 15"/>
-        </svg>
-    `;
+    // AI图标 - 使用Segoe MDL2 Assets字体的机器人图标
+    aiButton.textContent = '\uE99A';
+    aiButton.style.fontFamily = 'Segoe MDL2 Assets Local, Segoe MDL2 Assets, Segoe UI Symbol';
+    aiButton.style.fontSize = '18px';
+    aiButton.style.display = 'flex';
+    aiButton.style.alignItems = 'center';
+    aiButton.style.justifyContent = 'center';
 
     return aiButton;
 }
@@ -4030,7 +4035,7 @@ function createReasoningContainer(reasoning) {
     const reasoningHeader = Utils.createElement('div', 'ai-reasoning-header');
     const reasoningToggle = Utils.createElement('button', 'ai-reasoning-toggle', {
         type: 'button'
-    }, '🧠 查看思维过程');
+    }, '\uE90A 查看思维过程');
     
     const reasoningContent = Utils.createElement('div', 'ai-reasoning-content');
     reasoningContent.style.display = 'none';

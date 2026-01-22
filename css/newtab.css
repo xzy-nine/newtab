@@ -12,6 +12,30 @@
 @import 'modules/gridSystem.css';                  /* 网格系统样式 */
 @import 'modules/settings.css';           /* 设置页面样式 */
 @import 'modules/ai.css';                 /* AI助手样式 */
+
+/* Segoe MDL2 Assets字体图标样式 */
+@font-face {
+    font-family: 'Segoe MDL2 Assets Local';
+    src: url('fonts/SegMDL2.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.segoe-icon {
+    font-family: 'Segoe MDL2 Assets Local', 'Segoe MDL2 Assets', 'Segoe UI Symbol';
+}
+
+/* 确保所有图标元素使用Segoe字体 */
+.tab-icon, .clear-btn, .empty-icon, .coming-soon-icon, .footer-btn span, .notification-type span, 
+.folder-icon, .ai-markdown-toggle, .ai-regenerate-btn, .ai-new-chat-btn, .ai-model-panel-refresh, 
+.ai-conversation-delete, .settings-icon, .category-icon, .engine-icon, .eye-icon, 
+.grid-hint-icon, .shortcut-icon, .widget-pin-button, .widget-indicator, 
+.modal-close, .sync-check-btn, .sync-upload-btn, .sync-download-btn, 
+.sync-clear-btn, [class*="icon"], [class*="btn"][class*="icon"], 
+[class*="-icon"], [class*="icon-"] {
+    font-family: 'Segoe MDL2 Assets Local', 'Segoe MDL2 Assets', 'Segoe UI Symbol';
+}
+
 /* ===== 1. 变量定义层 ===== */
 :root {
   /* === 简化底层变量：颜色 === */

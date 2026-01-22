@@ -815,6 +815,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    font-family: 'Segoe MDL2 Assets Local', 'Segoe MDL2 Assets', 'Segoe UI Symbol';
 }
 
 .ai-reasoning-toggle:hover {
