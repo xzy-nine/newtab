@@ -25,6 +25,7 @@
   align-items: center;
   width: 61%;
   height: 48px;
+  margin-top: 120px; /* 确保搜索框位于时钟下方，避免重叠 */
   border: 1px solid var(--search-border-color);
   border-radius: 24px;
   background: var(--search-bg-color);
@@ -35,6 +36,7 @@
               background var(--transition-slow), 
               transform var(--transition-normal);
   overflow: hidden;
+  z-index: 2; /* 确保搜索框可以被点击 */
 }
 
 #search-box:hover {

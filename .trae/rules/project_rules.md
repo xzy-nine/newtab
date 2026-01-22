@@ -1,0 +1,1 @@
+请先阅读`.github/copilot-instructions.md`文件,获取项目详情及要求,再根据要求进行项目开发
