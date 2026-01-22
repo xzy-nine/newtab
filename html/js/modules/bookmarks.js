@@ -856,18 +856,23 @@ export const BookmarkManager = {
             const pinnedFolders = data.pinnedFolders || [];
             
             // 渲染固定文件夹
-            if (pinnedFolders.length > 0) {
-                const pinnedSection = Utils.createElement("div", "pinned-folders-section");
-                const pinnedHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('pinnedFolders', '固定文件夹'));
-                pinnedSection.appendChild(pinnedHeader);
-                
-                for (const folderId of pinnedFolders) {
-                    const folder = this.findFolderById(root, folderId);
-                    if (folder && !this.isFolderEmpty(folder)) {
-                        this.createFolderButton(folder, pinnedSection, true);
+            let hasPinnedFolders = false;
+            const pinnedSection = Utils.createElement("div", "pinned-folders-section");
+            
+            for (const folderId of pinnedFolders) {
+                const folder = this.findFolderById(root, folderId);
+                if (folder && !this.isFolderEmpty(folder)) {
+                    if (!hasPinnedFolders) {
+                        // 只有在有实际固定文件夹时才添加标题
+                        const pinnedHeader = Utils.createElement("h3", "section-header", {}, I18n.getMessage('pinnedFolders', '固定文件夹'));
+                        pinnedSection.appendChild(pinnedHeader);
+                        hasPinnedFolders = true;
                     }
+                    this.createFolderButton(folder, pinnedSection, true);
                 }
-                
+            }
+            
+            if (hasPinnedFolders) {
                 container.appendChild(pinnedSection);
                 container.appendChild(Utils.createElement("hr", "folder-section-divider"));
             }
