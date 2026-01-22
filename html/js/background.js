@@ -29,8 +29,6 @@ const externalNotificationStats = {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('新标签页扩展已安装或更新');
   setupExtensionPage();
-  // 安装或更新时直接打开新标签页并显示提示
-  openNewTabWithNotification();
 });
 
 // 当浏览器启动时运行
@@ -498,5 +496,4 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
   
   setupExtensionPage();
-  openNewTabWithNotification();
 });
