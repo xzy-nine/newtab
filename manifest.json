@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.4.32",
+  "version": "1.4.33",
   "description": "__MSG_appDescription__",  
   "icons": {
     "16": "./icons/icon16.png",
@@ -44,13 +44,7 @@
   ],  "host_permissions": [
     "https://*/*",
     "http://*/*"
-  ],  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["html/js/content.js"],
-      "run_at": "document_start",
-      "all_frames": false
-    }
+  
   ],
   "default_locale": "zh_CN"
 }

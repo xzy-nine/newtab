@@ -183,9 +183,11 @@
 
 /* 控制元素 */
 .widget-add-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  /* 确保宽高始终固定，不受父容器影响 */
+  width: 40px !important;
+  height: 40px !important;
+  /* 强制保持圆形 */
+  border-radius: 50% !important;
   background-color: var(--widget-primary-color);
   color: white;
   font-size: 24px;
@@ -196,6 +198,20 @@
   cursor: pointer;
   transition: transform var(--widget-transition-quick), background-color var(--widget-transition-quick);
   margin: 10px auto;
+  /* 确保按钮不受父容器变换影响 */
+  transform: translate(0, 0) !important;
+  transform-origin: center !important;
+  /* 确保布局不受影响 */
+  box-sizing: border-box;
+  overflow: visible;
+  position: relative;
+  z-index: 10;
+  /* 防止被压缩 */
+  flex-shrink: 0;
+  flex-grow: 0;
+  /* 确保内容居中 */
+  line-height: 1;
+  padding: 0;
 }
 
 .widget-pin-button {
