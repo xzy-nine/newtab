@@ -1,0 +1,308 @@
+/* 便签小部件样式 */
+
+/* 覆盖widgets.css中的居中对齐设置 - 使用更具体的选择器 */
+body [data-theme="light"] .widget-item .note-widget-container,
+body [data-theme="light"] .widget-content .note-widget-container,
+body [data-theme="dark"] .widget-item .note-widget-container,
+body [data-theme="dark"] .widget-content .note-widget-container {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    text-align: left !important;
+}
+
+/* 确保widget-content和widget-item也从左上角开始 */
+body [data-theme="light"] .widget-content,
+body [data-theme="dark"] .widget-content,
+body [data-theme="light"] .widget-item,
+body [data-theme="dark"] .widget-item {
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+}
+
+.note-widget-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--widget-bg-solid);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.note-editor {
+    width: 100%;
+    height: 100%;
+    padding: 12px;
+    border: none;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    background-color: var(--widget-bg-solid);
+    color: var(--widget-text-color);
+    outline: none;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    text-align: left;
+    vertical-align: top;
+    overflow-y: auto;
+    display: block;
+}
+
+/* 深色模式下强制使用白色字体 - 使用更具体的选择器 */
+body [data-theme="dark"] .note-editor {
+    color: #ffffff !important;
+}
+
+.note-editor:empty::before {
+    content: attr(placeholder);
+    color: var(--widget-text-secondary);
+    pointer-events: none;
+}
+
+/* 深色模式下的placeholder颜色 */
+body [data-theme="dark"] .note-editor:empty::before {
+    color: #e0e0e0 !important;
+}
+
+.note-editor:focus {
+    outline: none;
+}
+
+.note-preview {
+    width: 100%;
+    height: 100%;
+    padding: 12px;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    background-color: var(--widget-bg-solid);
+    color: var(--widget-text-color);
+    overflow-y: auto;
+    border-radius: 4px;
+    text-align: left;
+    vertical-align: top;
+    display: block;
+}
+
+/* 深色模式下强制使用白色字体 - 使用更具体的选择器 */
+body [data-theme="dark"] .note-preview {
+    color: #ffffff !important;
+}
+
+.note-preview h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    color: var(--widget-text-color);
+}
+
+.note-preview h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    color: var(--widget-text-color);
+}
+
+.note-preview h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: var(--widget-text-color);
+}
+
+.note-preview strong {
+    font-weight: 600;
+    color: var(--widget-text-color);
+}
+
+.note-preview em {
+    font-style: italic;
+    color: var(--widget-text-secondary);
+}
+
+.note-preview a {
+    color: var(--widget-primary-color);
+    text-decoration: none;
+}
+
+.note-preview a:hover {
+    text-decoration: underline;
+}
+
+.note-preview ul {
+    margin: 8px 0;
+    padding-left: 18px;
+    margin-left: 0;
+    list-style-position: inside;
+}
+
+.note-preview li {
+    margin: 4px 0;
+    color: var(--widget-text-color);
+}
+
+.note-preview code {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    background-color: var(--widget-control-bg);
+    padding: 2px 4px;
+    border-radius: 3px;
+    color: var(--widget-primary-color);
+}
+
+.note-preview pre {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    background-color: var(--widget-control-bg);
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid var(--widget-control-bg-hover);
+    overflow-x: auto;
+    margin: 12px 0;
+}
+
+.note-preview pre code {
+    background-color: transparent;
+    padding: 0;
+    color: var(--widget-text-color);
+}
+
+.note-preview img.note-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin: 12px 0;
+    box-shadow: 0 2px 4px var(--widget-shadow-color);
+}
+
+.note-preview blockquote {
+    border-left: 4px solid var(--widget-primary-color);
+    padding: 8px 12px;
+    margin: 12px 0;
+    background-color: var(--widget-control-bg);
+    border-radius: 0 4px 4px 0;
+    color: var(--widget-text-secondary);
+}
+
+.note-preview hr {
+    border: none;
+    border-top: 1px solid var(--widget-control-bg-hover);
+    margin: 16px 0;
+}
+
+.note-preview h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 16px 0 12px 0;
+    color: var(--widget-text-color);
+}
+
+.note-preview h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 14px 0 10px 0;
+    color: var(--widget-text-color);
+}
+
+.note-preview h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 12px 0 8px 0;
+    color: var(--widget-text-color);
+}
+
+.note-preview h4,
+.note-preview h5,
+.note-preview h6 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 10px 0 6px 0;
+    color: var(--widget-text-secondary);
+}
+
+.note-preview ul {
+    margin: 8px 0;
+    padding-left: 18px;
+    margin-left: 0;
+    list-style-position: inside;
+}
+
+.note-preview li {
+    margin: 4px 0;
+    line-height: 1.4;
+    color: var(--widget-text-color);
+}
+
+.note-empty {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    height: 100%;
+    color: var(--widget-text-secondary);
+    font-style: italic;
+    padding: 12px;
+}
+
+/* 深色模式下强制使用白色字体 - 使用更具体的选择器 */
+body [data-theme="dark"] .note-preview h1,
+body [data-theme="dark"] .note-preview h2,
+body [data-theme="dark"] .note-preview h3,
+body [data-theme="dark"] .note-preview h4,
+body [data-theme="dark"] .note-preview h5,
+body [data-theme="dark"] .note-preview h6,
+body [data-theme="dark"] .note-preview strong,
+body [data-theme="dark"] .note-preview li,
+body [data-theme="dark"] .note-preview p,
+body [data-theme="dark"] .note-preview span {
+    color: #ffffff !important;
+}
+
+body [data-theme="dark"] .note-preview em,
+body [data-theme="dark"] .note-preview blockquote,
+body [data-theme="dark"] .note-empty {
+    color: #e0e0e0 !important;
+}
+
+body [data-theme="dark"] .note-preview pre code {
+    color: #ffffff !important;
+}
+
+/* 确保所有文本元素都从左上角开始 */
+body [data-theme="light"] .note-preview,
+body [data-theme="dark"] .note-preview,
+body [data-theme="light"] .note-editor,
+body [data-theme="dark"] .note-editor {
+    text-align: left !important;
+    vertical-align: top !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .note-editor,
+    .note-preview {
+        font-size: 13px;
+        padding: 10px;
+    }
+    
+    .note-preview pre {
+        padding: 8px;
+        font-size: 11px;
+    }
+    
+    .note-preview h1 {
+        font-size: 16px;
+    }
+    
+    .note-preview h2 {
+        font-size: 15px;
+    }
+    
+    .note-preview h3 {
+        font-size: 14px;
+    }
+}

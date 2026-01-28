@@ -49,8 +49,97 @@ export const WidgetRegistry = {
             type,
             path,
             importFunction,
-            metadata: null // 初始化为空，将在首次加载时填充
+            metadata: null, // 初始化为空，将在首次加载时填充
+            isCustom: false // 标记是否为自定义小部件
         });
+    },
+    
+    /**
+     * 动态注册自定义小部件（仅在开发者模式下可用）
+     * @param {string} type - 小部件类型标识符
+     * @param {string} name - 小部件名称
+     * @param {string} css - CSS内容
+     * @param {string} js - JS内容
+     * @returns {boolean} 是否注册成功
+     */
+    registerCustomWidget(type, name, css, js) {
+        // 检查是否在开发者模式下
+        const isDeveloperMode = localStorage.getItem('developerUnlocked') === 'true';
+        if (!isDeveloperMode) {
+            console.error('自定义小部件功能仅在开发者模式下可用');
+            return false;
+        }
+        
+        if (!type || typeof type !== 'string') {
+            console.error('小部件类型必须是有效的字符串');
+            return false;
+        }
+        
+        if (!name || typeof name !== 'string') {
+            console.error('小部件名称必须是有效的字符串');
+            return false;
+        }
+        
+        if (!js || typeof js !== 'string') {
+            console.error('小部件JS内容必须是有效的字符串');
+            return false;
+        }
+        
+        // 生成唯一的小部件ID
+        const widgetId = `custom-${type}-${Date.now()}`;
+        
+        // 创建Blob URL存储CSS和JS内容
+        let cssUrl = '';
+        if (css) {
+            const cssBlob = new Blob([css], { type: 'text/css' });
+            cssUrl = URL.createObjectURL(cssBlob);
+        }
+        
+        const jsBlob = new Blob([js], { type: 'text/javascript' });
+        const jsUrl = URL.createObjectURL(jsBlob);
+        
+        // 创建动态导入函数
+        const importFunction = async () => {
+            try {
+                // 加载CSS（如果有）
+                if (cssUrl) {
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = cssUrl;
+                    document.head.appendChild(link);
+                }
+                
+                // 加载JS模块
+                const module = await import(jsUrl);
+                return module;
+            } catch (error) {
+                console.error(`导入自定义小部件模块失败: ${type}`, error);
+                throw error;
+            }
+        };
+        
+        // 检查是否已存在同名小部件
+        if (registeredWidgets.has(type)) {
+            console.warn(`小部件类型 "${type}" 已存在，自定义小部件将替代它`);
+        }
+        
+        // 注册自定义小部件
+        registeredWidgets.set(type, {
+            type,
+            path: jsUrl,
+            importFunction,
+            metadata: {
+                name: name,
+                description: '自定义小部件',
+                icon: '\uE734'
+            },
+            isCustom: true,
+            cssUrl: cssUrl,
+            jsUrl: jsUrl
+        });
+        
+        console.log(`自定义小部件 "${type}" 已成功注册`);
+        return true;
     },
     
     /**
@@ -62,7 +151,7 @@ export const WidgetRegistry = {
         if (forceLoad) {
             // 如果强制加载，确保所有小部件的元数据都已加载
             const loadPromises = Array.from(registeredWidgets.values()).map(async (widget) => {
-                if (!widget.metadata) {
+                if (!widget.metadata && !widget.isCustom) {
                     try {
                         const module = await widget.importFunction();
                         const widgetModule = module.default || module;
@@ -74,7 +163,8 @@ export const WidgetRegistry = {
                 }
                 return {
                     type: widget.type,
-                    ...widget.metadata
+                    ...widget.metadata,
+                    isCustom: widget.isCustom
                 };
             });
             
@@ -84,7 +174,8 @@ export const WidgetRegistry = {
         // 不强制加载时，返回已有的元数据
         return Array.from(registeredWidgets.values()).map(widget => ({
             type: widget.type,
-            ...(widget.metadata || {})
+            ...(widget.metadata || {}),
+            isCustom: widget.isCustom
         }));
     },
     
@@ -166,6 +257,7 @@ export const WidgetRegistry = {
 // 注册所有可用的小部件类型，只提供路径
 WidgetRegistry.register('counter', '/html/js/modules/widgets/types/counterWidget.js');
 WidgetRegistry.register('timer', '/html/js/modules/widgets/types/timerWidget.js');
+WidgetRegistry.register('note', '/html/js/modules/widgets/types/noteWidget.js');
 
 // 注册新的小部件类型示例:
 // WidgetRegistry.register('weather', '/html/js/modules/widgets/types/weatherWidget.js');

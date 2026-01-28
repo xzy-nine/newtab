@@ -3,8 +3,8 @@
  * 提供扩展页面访问功能，并显示通知
  */
 
-// 导入合并后的核心模块（Utils现在自动检测环境）
-import { Notification, I18n, Utils } from './modules/core/index.js';
+// 注意：Service Worker环境不支持ES模块语法
+// 直接使用Chrome扩展API，不导入模块
 
 /**
  * 外部通知统计信息对象
@@ -69,10 +69,6 @@ function openNewTabWithNotification() {
     setTimeout(async () => {
       let title = '扩展已安装';
       let message = '新标签页扩展安装成功';
-      if (I18n && typeof I18n.getMessage === 'function') {
-        title = I18n.getMessage('extensionInstalled') || title;
-        message = I18n.getMessage('extensionInstalledDesc') || message;
-      }
       await addPopupNotification({
         type: 'success',
         title: title,
@@ -95,10 +91,6 @@ function openNewTabWithNotification() {
     setTimeout(async () => {
       let title = '扩展已安装';
       let message = '新标签页扩展安装成功';
-      if (I18n && typeof I18n.getMessage === 'function') {
-        title = I18n.getMessage('extensionInstalled') || title;
-        message = I18n.getMessage('extensionInstalledDesc') || message;
-      }
       await addPopupNotification({
         type: 'success',
         title: title,
@@ -220,8 +212,8 @@ chrome.runtime.onInstalled.addListener((details) => {
       // 发送更新通知
     addPopupNotification({
       type: 'info',
-      title: I18n.getMessage('extensionUpdated') || '扩展已更新',
-      message: I18n.getMessage('extensionUpdatedDesc', [chrome.runtime.getManifest().version]) || `扩展已更新到版本 ${chrome.runtime.getManifest().version}`,
+      title: '扩展已更新',
+      message: `扩展已更新到版本 ${chrome.runtime.getManifest().version}`,
       showInBadge: true
     });
   }

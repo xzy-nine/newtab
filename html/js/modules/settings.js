@@ -14,7 +14,8 @@ import {
     AI,
     DataSync,
     ThemeManager,
-    NotificationManager
+    NotificationManager,
+    WidgetRegistry
 } from './core/index.js';
 
 // 全局 modal ID 常量
@@ -41,152 +42,158 @@ export const Settings = {
    * @returns {Array} 设置分类数组
    */
   getCategories: () => {
-    const categories = [
-        {
-          id: 'general',
-          icon: '\uE713',
-          title: I18n.getMessage('settingsGeneral', '常规设置'),      items: [
-             ...I18n.createSettingsItems(),
-             ...ThemeManager.createSettingsItems()
-          ]
-        },
-        {
-          id: 'notifications',
-          icon: '\uE700',
-          title: I18n.getMessage('settingsNotifications', '通知设置'),
-          items: NotificationManager.createSettingsItems()
-        },
-        {
-          id: 'ai-assistant',
-          icon: '\uE901',
-          title: I18n.getMessage('settingsAI', 'AI助手'),
-          items: window.AI ? window.AI.createSettingsItems() : []    },
-        {
-          id: 'search-engines',
-          icon: '\uE721',
-          title: I18n.getMessage('settingsSearchEngines', '搜索引擎'),
-          items: SearchEngineAPI ? SearchEngineAPI.createSettingsItems() : []
-        },
-        DataSync.getSettingsCategory(),
-        // 关于页
-        {
-          id: 'about',
-          icon: '\uE946',
-          title: I18n.getMessage('settingsAbout', '关于'),
-          items: [
+        const categories = [
             {
-              id: 'version',
-              label: I18n.getMessage('settingsVersion', '版本号'),
-              type: 'custom',
-              async createControl() {
-                const span = Utils.createElement('span', 'setting-text', {}, window.VERSION);
-                return span;
-              }
+              id: 'general',
+              icon: '\uE713',
+              title: I18n.getMessage('settingsGeneral', '常规设置'),      items: [
+                 ...I18n.createSettingsItems(),
+                 ...ThemeManager.createSettingsItems()
+              ]
             },
             {
-              id: 'openRepo',
-              label: I18n.getMessage('settingsOpenRepo', 'github开源地址'),
-              type: 'button',
-              buttonText: 'GitHub',
-              buttonClass: 'btn-secondary',
-              onClick: () => window.open('https://github.com/xzy-nine/newtab', '_blank')
+              id: 'notifications',
+              icon: '\uE700',
+              title: I18n.getMessage('settingsNotifications', '通知设置'),
+              items: NotificationManager.createSettingsItems()
             },
             {
-              id: 'openStore',
-              label: I18n.getMessage('settingsOpenStore', 'edge商店地址'),
-              type: 'button',
-              buttonText: '商店',
-              buttonClass: 'btn-secondary',
-              onClick: () => window.open('https://microsoftedge.microsoft.com/addons/detail/lpdhbhkcbnhldcpcbocplhgeooabhbme', '_blank')
-            },
-          ]
-        },
-        // 开发者选项，初始隐藏
-        {
-          id: 'developer',
-          icon: '\uE713',
-          title: I18n.getMessage('settingsDeveloper', '开发者选项'),
-          items: [
+              id: 'ai-assistant',
+              icon: '\uE901',
+              title: I18n.getMessage('settingsAI', 'AI助手'),
+              items: window.AI ? window.AI.createSettingsItems() : []    },
             {
-              id: 'grid-debug',
-              label: I18n.getMessage('settingsGridDebug', '显示网格线'),
-              type: 'checkbox',
-              getValue: () => window.GridSystem.isDebugMode,
-              description: I18n.getMessage('settingsGridDebugDesc', '显示网格辅助线，帮助对齐元素'),
-              onChange: async (v) => { window.GridSystem.toggleGridDebug(v); }
+              id: 'search-engines',
+              icon: '\uE721',
+              title: I18n.getMessage('settingsSearchEngines', '搜索引擎'),
+              items: SearchEngineAPI ? SearchEngineAPI.createSettingsItems() : []
             },
             {
-              id: 'openDev',
-              label: I18n.getMessage('settingsOpenDev', 'Microsoft 合作伙伴中心'),
-              type: 'button',
-              buttonText: '合作伙伴中心',
-              buttonClass: 'btn-secondary',
-              onClick: () => window.open('https://partner.microsoft.com/en-us/dashboard/microsoftedge/overview', '_blank')
+              id: 'widgets',
+              icon: '\uE763',
+              title: I18n.getMessage('settingsWidgets', '小部件设置'),
+              items: Settings.createWidgetSettingsItems()
             },
+            DataSync.getSettingsCategory(),
+            // 关于页
             {
-              id: 'debugMode',
-              label: I18n.getMessage('settingsDebugMode', '调试模式'),
-              type: 'checkbox',
-              getValue: () => Settings.debugEnabled,
-              description: I18n.getMessage('settingsDebugModeDesc', '其他模块将进入调试模式,增加信息显示和部分日志输出'),
-              onChange: async (value) => {
-                Settings.debugEnabled = value;
-                window.DEBUG_MODE = value;
-                // 持久化调试模式状态
-                localStorage.setItem('debugEnabled', value);
-              }
+              id: 'about',
+              icon: '\uE946',
+              title: I18n.getMessage('settingsAbout', '关于'),
+              items: [
+                {
+                  id: 'version',
+                  label: I18n.getMessage('settingsVersion', '版本号'),
+                  type: 'custom',
+                  async createControl() {
+                    const span = Utils.createElement('span', 'setting-text', {}, window.VERSION);
+                    return span;
+                  }
+                },
+                {
+                  id: 'openRepo',
+                  label: I18n.getMessage('settingsOpenRepo', 'github开源地址'),
+                  type: 'button',
+                  buttonText: 'GitHub',
+                  buttonClass: 'btn-secondary',
+                  onClick: () => window.open('https://github.com/xzy-nine/newtab', '_blank')
+                },
+                {
+                  id: 'openStore',
+                  label: I18n.getMessage('settingsOpenStore', 'edge商店地址'),
+                  type: 'button',
+                  buttonText: '商店',
+                  buttonClass: 'btn-secondary',
+                  onClick: () => window.open('https://microsoftedge.microsoft.com/addons/detail/lpdhbhkcbnhldcpcbocplhgeooabhbme', '_blank')
+                },
+              ]
             },
+            // 开发者选项，初始隐藏
             {
-              id: 'clearSearchData',
-              label: I18n.getMessage('settingsClearSearchData', '清除拓展全部数据'),
-              type: 'button',
-              buttonText: I18n.getMessage('settingsClearSearchDataBtn', '清除拓展全部数据'),
-              buttonClass: 'btn-warning',
-              onClick: () => {
-                Notification.notify({
-                  title: I18n.getMessage('confirm', '确认'),
-                  message: I18n.getMessage('clearStorageConfirm', '确定要清除所有存储数据吗？此操作不可恢复。'),
-                  duration: 0,
-                  type: 'confirm',
-                  buttons: [
-                    {
-                      text: I18n.getMessage('confirm', '确认'),
-                      class: 'btn-primary confirm-yes',
-                      callback: async () => {
-                         // 直接清除所有 localStorage，为后续功能保留清除入口
-                         localStorage.clear();
-                           const success = await SearchEngineAPI.clearStorage();
-                           if (success) {
-                             Notification.notify({
-                               title: I18n.getMessage('success', '成功'),
-                               message: I18n.getMessage('clearStorageSuccess', '存储已成功清除，页面将刷新。'),
-                               type: 'success',
-                               duration: 1500,
-                               onClose: () => window.location.reload()
-                             });
-                           } else {
-                             Notification.notify({
-                               title: I18n.getMessage('error', '错误'),
-                               message: I18n.getMessage('clearStorageError', '清除存储失败'),
-                               type: 'error',
-                               duration: 3000
-                             });
-                           }
+              id: 'developer',
+              icon: '\uE713',
+              title: I18n.getMessage('settingsDeveloper', '开发者选项'),
+              items: [
+                {
+                  id: 'grid-debug',
+                  label: I18n.getMessage('settingsGridDebug', '显示网格线'),
+                  type: 'checkbox',
+                  getValue: () => window.GridSystem.isDebugMode,
+                  description: I18n.getMessage('settingsGridDebugDesc', '显示网格辅助线，帮助对齐元素'),
+                  onChange: async (v) => { window.GridSystem.toggleGridDebug(v); }
+                },
+                {
+                  id: 'openDev',
+                  label: I18n.getMessage('settingsOpenDev', 'Microsoft 合作伙伴中心'),
+                  type: 'button',
+                  buttonText: '合作伙伴中心',
+                  buttonClass: 'btn-secondary',
+                  onClick: () => window.open('https://partner.microsoft.com/en-us/dashboard/microsoftedge/overview', '_blank')
+                },
+                {
+                  id: 'debugMode',
+                  label: I18n.getMessage('settingsDebugMode', '调试模式'),
+                  type: 'checkbox',
+                  getValue: () => Settings.debugEnabled,
+                  description: I18n.getMessage('settingsDebugModeDesc', '其他模块将进入调试模式,增加信息显示和部分日志输出'),
+                  onChange: async (value) => {
+                    Settings.debugEnabled = value;
+                    window.DEBUG_MODE = value;
+                    // 持久化调试模式状态
+                    localStorage.setItem('debugEnabled', value);
+                  }
+                },
+                {
+                  id: 'clearSearchData',
+                  label: I18n.getMessage('settingsClearSearchData', '清除拓展全部数据'),
+                  type: 'button',
+                  buttonText: I18n.getMessage('settingsClearSearchDataBtn', '清除拓展全部数据'),
+                  buttonClass: 'btn-warning',
+                  onClick: () => {
+                    Notification.notify({
+                      title: I18n.getMessage('confirm', '确认'),
+                      message: I18n.getMessage('clearStorageConfirm', '确定要清除所有存储数据吗？此操作不可恢复。'),
+                      duration: 0,
+                      type: 'confirm',
+                      buttons: [
+                        {
+                          text: I18n.getMessage('confirm', '确认'),
+                          class: 'btn-primary confirm-yes',
+                          callback: async () => {
+                             // 直接清除所有 localStorage，为后续功能保留清除入口
+                             localStorage.clear();
+                               const success = await SearchEngineAPI.clearStorage();
+                               if (success) {
+                                 Notification.notify({
+                                   title: I18n.getMessage('success', '成功'),
+                                   message: I18n.getMessage('clearStorageSuccess', '存储已成功清除，页面将刷新。'),
+                                   type: 'success',
+                                   duration: 1500,
+                                   onClose: () => window.location.reload()
+                                 });
+                               } else {
+                                 Notification.notify({
+                                   title: I18n.getMessage('error', '错误'),
+                                   message: I18n.getMessage('clearStorageError', '清除存储失败'),
+                                   type: 'error',
+                                   duration: 3000
+                                 });
+                               }
+                            }
+                        },
+                        {
+                          text: I18n.getMessage('cancel', '取消'),
+                          class: 'confirm-no',
+                          callback: () => {}
                         }
-                    },
-                    {
-                      text: I18n.getMessage('cancel', '取消'),
-                      class: 'confirm-no',
-                      callback: () => {}
-                    }
-                  ]
-                });
-              }
+                      ]
+                    });
+                  }
+                }
+              ]
             }
-          ]
-        }
-      ];
-    return categories.filter(cat => cat.id !== 'developer' || Settings.developerUnlocked);
+          ];
+        return categories.filter(cat => cat.id !== 'developer' || Settings.developerUnlocked);
   },
 
   currentCategory: 'general',
@@ -801,4 +808,156 @@ if (Settings.currentCategory === 'about') {
     };
     document.addEventListener('keydown', handleEscKey);
   },
+  
+  /**
+   * 创建小部件设置项
+   * @returns {Array} 小部件设置项数组
+   */
+  createWidgetSettingsItems: () => {
+    const items = [
+      {
+        id: 'widget-list',
+        label: I18n.getMessage('settingsWidgetsList', '可用小部件'),
+        type: 'custom',
+        async createControl() {
+          const container = Utils.createElement('div', 'widget-list-container');
+          
+          try {
+            // 获取所有可用小部件
+            const widgets = await WidgetRegistry.getAllWidgets();
+            
+            if (widgets.length === 0) {
+              container.innerHTML = '<div class="widget-list-empty">' + I18n.getMessage('settingsWidgetsEmpty', '暂无可用小部件') + '</div>';
+              return container;
+            }
+            
+            // 创建小部件列表
+            const widgetList = Utils.createElement('div', 'widget-list');
+            
+            widgets.forEach(widget => {
+              const widgetItem = Utils.createElement('div', 'widget-list-item');
+              
+              const widgetIcon = Utils.createElement('span', 'widget-list-icon', {}, widget.icon || '\uE763');
+              const widgetInfo = Utils.createElement('div', 'widget-list-info');
+              const widgetName = Utils.createElement('div', 'widget-list-name', {}, widget.name || widget.type);
+              const widgetDesc = Utils.createElement('div', 'widget-list-desc', {}, widget.description || '');
+              const widgetType = Utils.createElement('div', 'widget-list-type', {}, widget.isCustom ? I18n.getMessage('settingsWidgetsCustom', '自定义') : I18n.getMessage('settingsWidgetsBuiltIn', '内置'));
+              
+              widgetInfo.append(widgetName, widgetDesc, widgetType);
+              widgetItem.append(widgetIcon, widgetInfo);
+              widgetList.appendChild(widgetItem);
+            });
+            
+            container.appendChild(widgetList);
+          } catch (error) {
+            console.error('获取小部件列表失败:', error);
+            container.innerHTML = '<div class="widget-list-error">' + I18n.getMessage('settingsWidgetsError', '获取小部件列表失败') + '</div>';
+          }
+          
+          return container;
+        }
+      }
+    ];
+    
+    // 仅在开发者模式下添加自定义小部件导入功能
+    const isDeveloperMode = localStorage.getItem('developerUnlocked') === 'true';
+    if (isDeveloperMode) {
+      items.push({
+        id: 'import-custom-widget',
+        label: I18n.getMessage('settingsWidgetsImportCustom', '导入自定义小部件'),
+        type: 'button',
+        buttonText: I18n.getMessage('settingsWidgetsImportCustomBtn', '导入'),
+        buttonClass: 'btn-primary',
+        onClick: () => Settings.showImportCustomWidgetDialog()
+      });
+    }
+    
+    return items;
+  },
+  
+  /**
+   * 显示导入自定义小部件对话框
+   */
+  showImportCustomWidgetDialog: () => {
+    const formItems = [
+      {
+        id: 'widget-type',
+        label: I18n.getMessage('settingsWidgetsType', '小部件类型'),
+        type: 'text',
+        placeholder: I18n.getMessage('settingsWidgetsTypePlaceholder', '例如: my-widget'),
+        value: ''
+      },
+      {
+        id: 'widget-name',
+        label: I18n.getMessage('settingsWidgetsName', '小部件名称'),
+        type: 'text',
+        placeholder: I18n.getMessage('settingsWidgetsNamePlaceholder', '例如: 我的小部件'),
+        value: ''
+      },
+      {
+        id: 'widget-css',
+        label: I18n.getMessage('settingsWidgetsCSS', 'CSS内容'),
+        type: 'textarea',
+        rows: 5,
+        placeholder: I18n.getMessage('settingsWidgetsCSSPlaceholder', '小部件的CSS样式'),
+        value: ''
+      },
+      {
+        id: 'widget-js',
+        label: I18n.getMessage('settingsWidgetsJS', 'JS内容'),
+        type: 'textarea',
+        rows: 10,
+        placeholder: I18n.getMessage('settingsWidgetsJSPlaceholder', '小部件的JavaScript代码，必须包含initialize方法'),
+        value: ''
+      }
+    ];
+    
+    Menu.showFormModal(
+      I18n.getMessage('settingsWidgetsImportCustomTitle', '导入自定义小部件'),
+      formItems,
+      async (formData) => {
+        // 验证表单数据
+        if (!formData['widget-type'] || !formData['widget-name'] || !formData['widget-js']) {
+          Notification.notify({
+            title: I18n.getMessage('error', '错误'),
+            message: I18n.getMessage('settingsWidgetsImportError', '请填写所有必填字段'),
+            type: 'error',
+            duration: 3000
+          });
+          return;
+        }
+        
+        // 注册自定义小部件
+        const success = WidgetRegistry.registerCustomWidget(
+          formData['widget-type'],
+          formData['widget-name'],
+          formData['widget-css'],
+          formData['widget-js']
+        );
+        
+        if (success) {
+          Notification.notify({
+            title: I18n.getMessage('success', '成功'),
+            message: I18n.getMessage('settingsWidgetsImportSuccess', '自定义小部件导入成功'),
+            type: 'success',
+            duration: 3000
+          });
+          
+          // 刷新设置页面
+          setTimeout(() => {
+            Settings.renderCategoryContent('widgets');
+          }, 500);
+        } else {
+          Notification.notify({
+            title: I18n.getMessage('error', '错误'),
+            message: I18n.getMessage('settingsWidgetsImportFailed', '自定义小部件导入失败'),
+            type: 'error',
+            duration: 3000
+          });
+        }
+      },
+      I18n.getMessage('import', '导入'),
+      I18n.getMessage('cancel', '取消')
+    );
+  }
 };

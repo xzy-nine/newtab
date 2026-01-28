@@ -4,6 +4,34 @@
  * @module AI
  */
 import { I18n, Utils, Menu, Notification, IconManager } from './core/index.js';
+
+// 加载marked.js库
+const script = document.createElement('script');
+script.src = 'js/libs/marked.min.js';
+script.async = false;
+document.head.appendChild(script);
+
+/**
+ * 确保marked库加载完成
+ * @returns {Promise<void>}
+ */
+function ensureMarkedLoaded() {
+  return new Promise((resolve) => {
+    if (window.marked) {
+      resolve();
+    } else {
+      const checkInterval = setInterval(() => {
+        if (window.marked) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 100);
+    }
+  });
+}
+
+// 初始化marked库
+ensureMarkedLoaded();
 // AI配置相关变量
 let aiConfig = {
     enabled: false,
@@ -3508,7 +3536,7 @@ function startNewChatFromMessage(userMessage, chatHistory, messageElement = null
 }
 
 /**
- * 简单的Markdown渲染器
+ * 使用marked.js库的Markdown渲染器
  * @param {string} text - 要渲染的文本
  * @returns {string} 渲染后的HTML
  */
@@ -3528,8 +3556,27 @@ function renderMarkdown(text) {
         }
     }
     
-    // 直接使用简单的Markdown渲染器
-    return renderSimpleMarkdown(text);
+    // 使用marked.js库渲染Markdown
+    // 获取marked渲染函数
+    const getMarkedFunction = () => {
+        if (!window.marked) return null;
+        // 直接返回marked对象的marked方法，这是现代版本marked.js的标准用法
+        return window.marked.marked || window.marked;
+    };
+    
+    const markedFunction = getMarkedFunction();
+    if (markedFunction) {
+        try {
+            return markedFunction(text);
+        } catch (error) {
+            console.error('marked.js渲染失败:', error);
+            // 降级到简单渲染器
+            return renderSimpleMarkdown(text);
+        }
+    } else {
+        // 降级到简单渲染器
+        return renderSimpleMarkdown(text);
+    }
 }
 
 /**

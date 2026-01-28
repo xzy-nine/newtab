@@ -341,23 +341,63 @@ handle.addEventListener('touchstart', (e) => {
      */
     setupScrollHandlers(container) {
         container.addEventListener('wheel', (e) => {
+            // 如果事件发生在可滚动的子元素上，并且该元素还能在滚动方向上继续滚动，
+            // 则允许默认滚动行为；否则拦截并用于切换小部件。
+            try {
+                const path = e.composedPath ? e.composedPath() : (function(){
+                    const p = [];
+                    let el = e.target;
+                    while (el) { p.push(el); el = el.parentElement; }
+                    return p;
+                })();
+
+                // 在事件路径中查找最近的可滚动元素（到 container 为止）
+                const isScrollable = (el) => {
+                    if (!el || el === document || el === window) return false;
+                    const style = window.getComputedStyle(el);
+                    const overflowY = style.overflowY;
+                    const canScroll = (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay')
+                        && el.scrollHeight > el.clientHeight;
+                    return !!canScroll;
+                };
+
+                let scrollableEl = null;
+                for (const el of path) {
+                    if (!el || el === container) break;
+                    if (el.nodeType === 1 && isScrollable(el)) { scrollableEl = el; break; }
+                }
+
+                if (scrollableEl) {
+                    // 判断能否在滚动方向上继续滚动
+                    const atTop = scrollableEl.scrollTop === 0;
+                    const atBottom = Math.ceil(scrollableEl.scrollTop + scrollableEl.clientHeight) >= scrollableEl.scrollHeight;
+                    if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
+                        // 允许默认滚动，退出处理
+                        return;
+                    }
+                }
+            } catch (err) {
+                // 如果判断过程中出错，回退到拦截行为（用于切换小部件）
+                console.warn('滚轮判断出现异常，使用切换行为', err);
+            }
+
+            // 否则阻止默认并进行 widget 切换
             e.preventDefault();
-            
             const contentArea = container.querySelector('.widget-content');
             if (!contentArea) return;
-            
+
             const widgetItems = contentArea.querySelectorAll('.widget-item');
             if (widgetItems.length <= 1) return;
-            
+
             const currentIndex = WidgetSystem.getActiveWidgetIndex(container);
             let newIndex = currentIndex;
-            
+
             if (e.deltaY > 0) {
                 newIndex = (currentIndex + 1) % widgetItems.length;
             } else {
                 newIndex = (currentIndex - 1 + widgetItems.length) % widgetItems.length;
             }
-            
+
             WidgetSystem.setActiveWidgetItem(container, newIndex);
         }, { passive: false });
     }
