@@ -13,6 +13,10 @@
   --page-zoom: 1;              /* 页面缩放比例 */
   --zoom-compensation: 1;      /* 缩放补偿 */
   --inverse-zoom: 1;           /* 反向缩放 */
+  
+  /* 快捷方式网格变量 */
+  --shortcut-cell-size: 80px;   /* 快捷方式单元格大小 */
+  --shortcut-grid-gap: 10px;    /* 快捷方式网格间隙 */
 }
 
 /* ===========================================
@@ -726,4 +730,40 @@ body.modal-dragging {
     background: rgba(40, 167, 69, 1);
     border-color: rgba(255, 255, 255, 0.5);
   }
+}
+
+/* 快捷方式网格样式 */
+
+#shortcut-list {
+  /* 确保快捷方式列表支持网格布局 */
+  position: relative;
+  overflow: auto;
+}
+
+.shortcut-button {
+  /* 确保快捷方式按钮支持网格布局 */
+  position: absolute;
+  z-index: 1;
+  transition: left 0.15s ease-out, top 0.15s ease-out;
+}
+
+.shortcut-button.grid-snapping {
+  transition: left 0.15s ease-out, top 0.15s ease-out;
+}
+
+/* 小部件与快捷方式混排时的层级关系 */
+.widget-container,
+.shortcut-button {
+  position: absolute;
+  z-index: 1;
+}
+
+.widget-container:hover,
+.shortcut-button:hover {
+  z-index: 2;
+}
+
+.widget-container.widget-dragging,
+.shortcut-button.shortcut-dragging {
+  z-index: 1000;
 }

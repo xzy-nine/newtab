@@ -30,8 +30,12 @@ export const GridSystem = {
     isDebugMode: false,      // 是否显示网格辅助线
     gridColumnCount: 45,     // 列数，提供精细的水平网格
     gridRowCount: 30,        // 行数，提供精细的垂直网格
-    minCellSize: 10,         // 最小单元格大小（从40减小到20）
-    minGridGap: 2,           // 最小网格间隙（从4减小到2）
+    minCellSize: 10,         // 最小单元格大小
+    minGridGap: 2,           // 最小网格间隙
+    // 快捷方式区域专用配置
+    shortcutGridEnabled: true, // 快捷方式区域网格启用
+    shortcutCellSize: 80,      // 快捷方式单元格大小（基础值，可根据宽度调整）
+    shortcutGridGap: 10,       // 快捷方式网格间隙
 
     // Shift 键吸附功能相关状态
     dragStates: new Map(),   // 存储每个元素的拖拽状态
@@ -786,9 +790,16 @@ export const GridSystem = {
         // 更新 Shift 键状态
         dragState.shiftPressed = this.isShiftPressed;
         
-        // 计算新位置
-        let x = e.clientX - dragState.offsetX;
-        let y = e.clientY - dragState.offsetY;
+        // 获取父容器位置
+        const parentRect = element.parentElement.getBoundingClientRect();
+        
+        // 计算新位置（相对于父容器）
+        let x = e.clientX - parentRect.left - dragState.offsetX;
+        let y = e.clientY - parentRect.top - dragState.offsetY;
+        
+        // 确保位置不为负
+        x = Math.max(0, x);
+        y = Math.max(0, y);
         
         // 应用网格吸附
         if (dragState.gridSnapEnabled && this.isShiftPressed && this.gridEnabled) {
@@ -950,6 +961,153 @@ export const GridSystem = {
             console.warn('网格吸附失败:', error);
             return { x, y };
         }
+    },
+    
+    /**
+     * 快捷方式区域网格计算
+     * @param {number} containerWidth - 容器宽度
+     * @returns {Object} 快捷方式网格配置
+     */
+    calculateShortcutGrid(containerWidth) {
+        if (!this.shortcutGridEnabled) {
+            return {
+                columns: 4,
+                cellSize: 80,
+                gap: 10
+            };
+        }
+        
+        console.log('计算快捷方式网格，容器宽度:', containerWidth);
+        
+        // 基础单元格大小
+        const baseCellSize = this.shortcutCellSize;
+        
+        // 边距设置
+        const margin = 10;
+        const availableWidth = containerWidth - 2 * margin;
+        
+        console.log('可用宽度（考虑边距）:', availableWidth);
+        
+        // 目标间隙范围
+        const minGap = 30; // 进一步增加最小间隙
+        const maxGap = 60; // 进一步增加最大间隙
+        const maxCellSize = 100; // 限制最大单元格大小
+        const minCellSize = 60;  // 稍微减小最小单元格大小，为间隙留出更多空间
+        
+        // 尝试不同的列数，找到最适合的
+        let bestColumns = 6;
+        let bestGap = 35;
+        let bestCellSize = 80;
+        let bestLayout = null;
+        
+        // 测试不同的列数，从更少的列数开始
+        for (let cols = 6; cols <= 12; cols++) {
+            // 计算最佳单元格大小和间隙
+            // 先计算一个较大的目标间隙
+            const targetGap = Math.min(maxGap, Math.max(minGap, Math.floor(availableWidth * 0.03)));
+            
+            const totalGapWidth = (cols - 1) * targetGap;
+            const availableCellWidth = availableWidth - totalGapWidth;
+            const cellSize = Math.floor(availableCellWidth / cols);
+            
+            // 确保单元格大小在合理范围内
+            if (cellSize >= minCellSize && cellSize <= maxCellSize) {
+                // 计算实际间隙
+                const actualGap = Math.floor((availableWidth - cols * cellSize) / (cols - 1));
+                
+                // 确保间隙在合理范围内
+                if (actualGap >= minGap && actualGap <= maxGap) {
+                    const totalWidth = cols * cellSize + (cols - 1) * actualGap;
+                    const remaining = availableWidth - totalWidth;
+                    
+                    // 计算视觉评分，更优先选择间隙更大的布局
+                    const visualScore = remaining + (maxGap - actualGap) * 0.5;
+                    
+                    console.log('测试列数:', cols, '单元格大小:', cellSize, '间隙:', actualGap, '剩余宽度:', remaining, '视觉评分:', visualScore);
+                    
+                    // 找到最合适的布局
+                    if (!bestLayout || 
+                        (visualScore < bestLayout.visualScore) ||
+                        (visualScore === bestLayout.visualScore && actualGap > bestLayout.gap)) {
+                        bestLayout = {
+                            columns: cols,
+                            cellSize: cellSize,
+                            gap: actualGap,
+                            remaining: remaining,
+                            visualScore: visualScore
+                        };
+                    }
+                }
+            }
+        }
+        
+        // 如果没有找到合适的布局，使用默认值
+        if (!bestLayout) {
+            bestLayout = {
+                columns: 6,
+                cellSize: 80,
+                gap: 35,
+                remaining: 0,
+                visualScore: 0
+            };
+        }
+        
+        // 如果找到合适的布局
+        if (bestLayout) {
+            bestColumns = bestLayout.columns;
+            bestCellSize = bestLayout.cellSize;
+            bestGap = bestLayout.gap;
+        }
+        
+        console.log('计算结果:', { columns: bestColumns, cellSize: bestCellSize, gap: bestGap });
+        
+        return {
+            columns: bestColumns,
+            cellSize: bestCellSize,
+            gap: bestGap
+        };
+    },
+    
+    /**
+     * 获取快捷方式在网格中的位置
+     * @param {number} index - 快捷方式索引
+     * @param {number} columns - 列数
+     * @param {number} cellSize - 单元格大小
+     * @param {number} gap - 间隙大小
+     * @returns {Object} 位置对象 {x, y, row, col}
+     */
+    getShortcutGridPosition(index, columns, cellSize, gap) {
+        const row = Math.floor(index / columns);
+        const col = index % columns;
+        
+        // 计算位置，添加适当的边距
+        const margin = 10;
+        const x = margin + col * (cellSize + gap);
+        const y = margin + row * (cellSize + gap);
+        
+        return {
+            x: x,
+            y: y,
+            row: row,
+            col: col
+        };
+    },
+    
+    /**
+     * 获取网格索引从位置
+     * @param {number} x - X坐标
+     * @param {number} y - Y坐标
+     * @param {number} columns - 列数
+     * @param {number} cellSize - 单元格大小
+     * @param {number} gap - 间隙大小
+     * @returns {number} 网格索引
+     */
+    getGridIndexFromPosition(x, y, columns, cellSize, gap) {
+        const margin = 10;
+        const col = Math.round((x - margin) / (cellSize + gap));
+        const row = Math.round((y - margin) / (cellSize + gap));
+        
+        return row * columns + col;
     },
 };
 

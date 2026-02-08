@@ -475,6 +475,9 @@ export const WidgetSystem = {
                 }
             }, 250));
             
+            // 初始化文件夹绑定功能
+            this.initFolderBinding();
+            
             state.isInitialized = true;
             return Promise.resolve();
         } catch (error) {
@@ -495,12 +498,56 @@ export const WidgetSystem = {
         // 使用withLoading替代自行管理加载状态
         return Utils.withLoading(async () => {
             const data = await chrome.storage.local.get('widgets');
-            state.widgets = data.widgets || [];
+            let widgets = data.widgets || [];
+            
+            // 迁移逻辑：将旧的没有文件夹绑定的小部件容器自动绑定到ID为1的文件夹
+            try {
+                console.log('开始执行迁移逻辑');
+                
+                // 硬编码使用ID为1的文件夹作为默认文件夹
+                const targetFolderId = '1';
+                console.log('使用固定文件夹ID作为默认文件夹:', targetFolderId);
+                
+                // 检查是否需要迁移
+                const needMigration = widgets.some(widget => widget.folderId === undefined || widget.folderId === null || widget.folderId === 'null' || widget.folderId === '0');
+                console.log('是否需要迁移:', needMigration);
+                
+                if (needMigration) {
+                    console.log('开始执行迁移');
+                    // 执行迁移
+                    widgets = widgets.map(widget => {
+                        if (widget.folderId === undefined || widget.folderId === null || widget.folderId === 'null' || widget.folderId === '0') {
+                            // 为没有folderId或folderId为'0'的小部件添加目标文件夹ID
+                            console.log('迁移小部件容器:', widget.id, '到文件夹:', targetFolderId);
+                            return { ...widget, folderId: targetFolderId };
+                        }
+                        return widget;
+                    });
+                    
+                    // 保存迁移后的数据
+                    await chrome.storage.local.set({ widgets });
+                    console.log('小部件容器迁移完成：所有未绑定文件夹的小部件已绑定到ID为1的文件夹');
+                    console.log('迁移后的数据:', widgets);
+                }
+            } catch (error) {
+                console.error('小部件容器迁移失败:', error);
+            }
+            
+            // 确保所有小部件容器都有folderId
+            console.log('迁移后的widgets数据:', widgets);
+            
+            state.widgets = widgets;
             
             // 清除现有小部件容器
             state.widgetContainers.forEach(container => {
+                // 检查容器是否在document.body或shortcut-list中
                 if (document.body.contains(container)) {
                     document.body.removeChild(container);
+                } else {
+                    const shortcutList = document.getElementById('shortcut-list');
+                    if (shortcutList && shortcutList.contains(container)) {
+                        shortcutList.removeChild(container);
+                    }
                 }
             });
             state.widgetContainers = [];
@@ -523,6 +570,10 @@ export const WidgetSystem = {
         try {
             // 只保存必要的数据
             const widgetsToSave = state.widgetContainers.map(container => {
+                // 获取网格占用信息
+                const gridColumns = parseInt(container.dataset.gridColumns) || 2;
+                const gridRows = parseInt(container.dataset.gridRows) || 2;
+                
                 // 获取绝对位置和尺寸
                 const pixelPosition = {
                     x: parseInt(container.style.left) || 0,
@@ -538,8 +589,8 @@ export const WidgetSystem = {
                 const gridPosition = {
                     gridX: parseInt(container.dataset.gridX) || 0,
                     gridY: parseInt(container.dataset.gridY) || 0,
-                    gridColumns: parseInt(container.dataset.gridColumns) || 1,
-                    gridRows: parseInt(container.dataset.gridRows) || 1
+                    gridColumns: gridColumns,
+                    gridRows: gridRows
                 };
                 
                 return {
@@ -548,7 +599,11 @@ export const WidgetSystem = {
                     position: pixelPosition,
                     size: pixelSize,
                     gridPosition: gridPosition,
+                    gridColumns: gridColumns,
+                    gridRows: gridRows,
+                    gridIndex: parseInt(container.dataset.gridIndex) || 0,
                     fixed: container.dataset.fixed === 'true',
+                    folderId: container.dataset.folderId || null, // 添加文件夹绑定
                     activeIndex: this.getActiveWidgetIndex(container),
                     items: [...container.querySelectorAll('.widget-item')].map(item => ({
                         type: item.dataset.widgetType,
@@ -584,35 +639,26 @@ export const WidgetSystem = {
             return;
         }
         
-        // 获取鼠标位置下的所有元素（包括可能被覆盖的元素）
-        const elementsAtPoint = document.elementsFromPoint(event.clientX, event.clientY);
-        
-        // 检查是否有更高层级的交互元素，避免小部件菜单干扰其他元素
-        const hasHigherLevelInteractive = elementsAtPoint.some(el => 
-            el.closest('#folder-list, #shortcut-list, #search-box, #background-button, #time') && 
-            !el.closest('.widget-container')
-        );
-        
-        if (hasHigherLevelInteractive) {
-            return; // 如果有更高层级的交互元素，不处理小部件的右键菜单
-        }
+        // 检查是否点击在快捷方式按钮框内
+        const isInShortcutList = event.target.closest('#shortcut-list') || 
+            document.elementsFromPoint(event.clientX, event.clientY).some(el => el.closest('#shortcut-list'));
         
         // 检查是否点击在小部件或小部件容器上
         const widgetItem = event.target.closest('.widget-item');
         const widgetContainer = event.target.closest('.widget-container');
         
+        // 小部件项的右键菜单 - 确保不是在功能区点击
         if (widgetItem && !event.target.closest('.widget-functional-area')) {
-            // 小部件项的右键菜单 - 确保不是在功能区点击
             event.preventDefault();
             this.showWidgetItemContextMenu(event, widgetItem);
-        } else if (widgetContainer && !widgetItem) {
-            // 小部件容器的右键菜单 - 确保不是点击在小部件项上
+        }
+        // 小部件容器的右键菜单 - 确保不是点击在小部件项上
+        else if (widgetContainer && !widgetItem) {
             event.preventDefault();
-            this.showWidgetContainerContextMenu(event, widgetContainer);        } else if (
-            // 在空白区域创建小部件容器，但排除特定区域
-            !event.target.closest('#folder-list, #shortcut-list, #search-box, #background-button, #time')
-        ) {
-            // 空白区域的右键菜单
+            this.showWidgetContainerContextMenu(event, widgetContainer);
+        }
+        // 只在快捷方式按钮框内显示创建菜单
+        else if (isInShortcutList) {
             event.preventDefault();
             this.showCreateWidgetMenu(event);
         }
@@ -628,11 +674,19 @@ export const WidgetSystem = {
                 id: 'create-widget-container',
                 text: I18n.getMessage('createWidgetContainer', '创建小部件容器'),
                 callback: () => {
-                    this.createWidgetContainer({ 
-                        position: { 
-                            x: event.clientX, 
-                            y: event.clientY 
-                        } 
+                    // 获取当前选中的文件夹
+                    chrome.storage.local.get('folder', (result) => {
+                        const currentFolderId = result.folder;
+                        
+                        this.createWidgetContainer({ 
+                            position: { 
+                                x: event.clientX, 
+                                y: event.clientY 
+                            },
+                            folderId: currentFolderId,
+                            gridColumns: 2, // 默认占用2列
+                            gridRows: 2 // 默认占用2行
+                        });
                     });
                 }
             }
@@ -663,7 +717,21 @@ export const WidgetSystem = {
                 callback: () => {
                     this.toggleFixedContainer(container);
                 }
-            },            {
+            },
+            {
+                id: container.dataset.folderId ? 'unbind-folder' : 'bind-folder',
+                text: container.dataset.folderId 
+                    ? I18n.getMessage('unbindFolder', '取消绑定文件夹') 
+                    : I18n.getMessage('bindFolder', '绑定到文件夹'),
+                callback: () => {
+                    if (container.dataset.folderId) {
+                        this.unbindWidgetFromFolder(container);
+                    } else {
+                        this.showFolderSelectionDialog(container);
+                    }
+                }
+            },
+            {
                 type: 'separator'
             }
         ];
@@ -956,6 +1024,19 @@ export const WidgetSystem = {
             id: data.id || `widget-container-${Date.now()}`
         });
         
+        // 获取快捷方式网格配置
+        const shortcutList = document.getElementById('shortcut-list');
+        let gridConfig = { columns: 4, cellSize: 80, gap: 10 };
+        
+        if (shortcutList) {
+            const containerWidth = Math.max(shortcutList.offsetWidth, 800);
+            gridConfig = GridSystem.calculateShortcutGrid(containerWidth);
+            // 确保至少有4列
+            gridConfig.columns = Math.max(gridConfig.columns, 4);
+        }
+        
+        console.log('网格配置:', gridConfig);
+        
         // 如果有网格位置信息且启用了网格，使用网格位置
         if (data.gridPosition && GridSystem.gridEnabled) {
             const pixelPos = GridSystem.gridToPixelPosition(data.gridPosition);
@@ -969,27 +1050,79 @@ export const WidgetSystem = {
             container.dataset.gridY = data.gridPosition.gridY;
             container.dataset.gridColumns = data.gridPosition.gridColumns;
             container.dataset.gridRows = data.gridPosition.gridRows;
+            container.dataset.gridIndex = data.gridIndex || 0;
         } else {
-            // 使用像素位置
-            const position = data.position || { x: 100, y: 100 };
-            container.style.left = `${position.x}px`;
-            container.style.top = `${position.y}px`;
+            // 使用网格系统计算位置和尺寸
+            // 计算小部件的网格占用 - 限制最大占用值
+            const gridColumns = Math.min(data.gridColumns || 2, 4); // 默认占用2列，最大4列
+            const gridRows = Math.min(data.gridRows || 2, 4); // 默认占用2行，最大4行
             
-            // 设置尺寸
-            const size = data.size || { width: 200, height: 150 };
-            container.style.width = `${size.width}px`;
-            container.style.height = `${size.height}px`;
+            // 计算尺寸
+            const width = gridColumns * gridConfig.cellSize + (gridColumns - 1) * gridConfig.gap;
+            const height = gridRows * gridConfig.cellSize + (gridRows - 1) * gridConfig.gap;
             
-            // 计算并存储网格位置
-            if (GridSystem.gridEnabled) {
-                GridSystem.updateElementGridData(container);
+            console.log('计算尺寸:', width, 'x', height);
+            
+            // 计算位置 - 基于保存的gridIndex或顺序队列
+            let widgetIndex = data.gridIndex || 0;
+            
+            if (!widgetIndex) {
+                // 获取当前文件夹的快捷方式数量
+                let shortcutCount = 0;
+                try {
+                    const shortcutList = document.getElementById('shortcut-list');
+                    if (shortcutList) {
+                        shortcutCount = shortcutList.querySelectorAll('.shortcut-button').length;
+                    }
+                } catch (error) {
+                    console.error('获取快捷方式数量失败:', error);
+                }
+                
+                // 从快捷方式数量开始计算
+                widgetIndex = shortcutCount;
+                
+                // 考虑现有小部件的大小，避免重叠
+                state.widgetContainers.forEach(existingContainer => {
+                    const existingColumns = parseInt(existingContainer.dataset.gridColumns) || 2;
+                    const existingRows = parseInt(existingContainer.dataset.gridRows) || 2;
+                    // 计算该小部件占用的网格数量
+                    const occupiedSlots = existingColumns * existingRows;
+                    // 增加索引以跳过这些占用的位置
+                    widgetIndex += occupiedSlots;
+                });
             }
+            
+            // 计算最终位置
+            const position = GridSystem.getShortcutGridPosition(widgetIndex, gridConfig.columns, gridConfig.cellSize, gridConfig.gap);
+            const x = position.x;
+            const y = position.y;
+            
+            console.log('计算位置:', x, y);
+            
+            // 设置位置和尺寸
+            container.style.left = `${x}px`;
+            container.style.top = `${y}px`;
+            container.style.width = `${width}px`;
+            container.style.height = `${height}px`;
+            
+            // 存储网格位置数据
+            container.dataset.gridColumns = gridColumns;
+            container.dataset.gridRows = gridRows;
+            container.dataset.gridIndex = widgetIndex;
         }
         
         // 设置固定状态
         container.dataset.fixed = data.fixed ? 'true' : 'false';
         if (data.fixed) {
             container.classList.add('widget-fixed');
+        }
+        
+        // 设置文件夹绑定
+        console.log('createWidgetContainer - data.folderId:', data.folderId);
+        container.dataset.folderId = data.folderId !== undefined ? data.folderId : null;
+        console.log('createWidgetContainer - container.dataset.folderId:', container.dataset.folderId);
+        if (data.folderId !== undefined && data.folderId !== null) {
+            container.classList.add('widget-bound-to-folder');
         }
         
         // 创建侧边拖动条
@@ -1031,11 +1164,74 @@ export const WidgetSystem = {
         });
         container.appendChild(resizeHandle);
         
-        // 添加拖动事件
-        EventHandlers.setupDragHandlers(dragHandle, container);
+        // 添加拖动事件 - 基于网格系统
+        // 移除默认的拖动处理，使用基于网格的拖动
+        dragHandle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // 获取当前网格配置
+            const shortcutList = document.getElementById('shortcut-list');
+            let gridConfig = { columns: 4, cellSize: 80, gap: 10 };
+            
+            if (shortcutList) {
+                const containerWidth = Math.max(shortcutList.offsetWidth, 800);
+                gridConfig = GridSystem.calculateShortcutGrid(containerWidth);
+                gridConfig.columns = Math.max(gridConfig.columns, 4);
+            }
+            
+            // 计算当前小部件的网格位置
+            const currentLeft = parseInt(container.style.left) || 0;
+            const currentTop = parseInt(container.style.top) || 0;
+            
+            // 计算鼠标相对于容器的位置
+            const offsetX = e.clientX - currentLeft;
+            const offsetY = e.clientY - currentTop;
+            
+            // 鼠标移动事件处理
+            const handleMouseMove = (e) => {
+                e.preventDefault();
+                
+                // 计算新位置
+                const newLeft = e.clientX - offsetX;
+                const newTop = e.clientY - offsetY;
+                
+                // 基于网格系统计算最接近的网格位置
+                const gridColumns = parseInt(container.dataset.gridColumns) || 2;
+                const gridRows = parseInt(container.dataset.gridRows) || 2;
+                
+                // 计算网格索引
+                const col = Math.round(newLeft / (gridConfig.cellSize + gridConfig.gap));
+                const row = Math.round(newTop / (gridConfig.cellSize + gridConfig.gap));
+                const newIndex = row * gridConfig.columns + col;
+                
+                // 计算新位置
+                const position = GridSystem.getShortcutGridPosition(newIndex, gridConfig.columns, gridConfig.cellSize, gridConfig.gap);
+                
+                // 更新容器位置
+                container.style.left = `${position.x}px`;
+                container.style.top = `${position.y}px`;
+                
+                // 更新网格索引
+                container.dataset.gridIndex = newIndex;
+            };
+            
+            // 鼠标释放事件处理
+            const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+                
+                // 保存状态
+                this.saveWidgets();
+            };
+            
+            // 添加事件监听器
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        });
         
-        // 添加调整大小事件
-        EventHandlers.setupResizeHandlers(resizeHandle, container);
+        // 暂时禁用调整大小事件，因为我们希望小部件容器的大小基于网格占用
+        // EventHandlers.setupResizeHandlers(resizeHandle, container);
         
         // 创建内容区域包装器
         const contentWrapper = Utils.createElement('div', 'widget-content-wrapper');
@@ -1068,8 +1264,19 @@ export const WidgetSystem = {
         // 添加滚轮事件监听器
         EventHandlers.setupScrollHandlers(container);
         
-        // 添加到DOM
-        document.body.appendChild(container);
+        // 添加到DOM - 插入到shortcut-list中，加入快捷方式的排序列表
+        // 使用之前声明的shortcutList变量
+        if (shortcutList) {
+            console.log('将小部件容器插入到shortcut-list内:', container.id);
+            shortcutList.appendChild(container);
+            // 确保小部件容器在shortcut-list内正确定位
+            container.style.position = 'absolute';
+            container.style.zIndex = '100'; // 确保小部件容器在快捷方式按钮之上
+        } else {
+            // 后备方案：如果快捷方式按钮框不存在，添加到document.body
+            console.log('将小部件容器插入到document.body内:', container.id);
+            document.body.appendChild(container);
+        }
         
         // 添加到管理列表
         state.addContainer(container);
@@ -1443,7 +1650,19 @@ export const WidgetSystem = {
      */
     deleteWidgetContainer(container) {
         // 从DOM中移除
-        document.body.removeChild(container);
+        if (container && container.parentNode) {
+            try {
+                container.parentNode.removeChild(container);
+                console.log('成功从父元素中移除小部件容器:', container.id);
+            } catch (error) {
+                console.error('删除小部件容器失败:', error);
+                // 尝试从document.body中移除作为后备
+                if (document.body.contains(container)) {
+                    document.body.removeChild(container);
+                    console.log('成功从document.body中移除小部件容器:', container.id);
+                }
+            }
+        }
         
         // 从管理列表中移除
         state.removeContainer(container);
@@ -2212,6 +2431,228 @@ export const WidgetSystem = {
         if (changed) {
             element.style.left = `${left}px`;
             element.style.top = `${top}px`;
-        }    },
+        }
+    },
+    
+    /**
+     * 显示文件夹选择对话框
+     * @param {HTMLElement} container - 小部件容器
+     */
+    async showFolderSelectionDialog(container) {
+        try {
+            // 获取所有文件夹
+            const tree = await chrome.bookmarks.getTree();
+            const root = tree[0];
+            const folders = this.getAllFolders(root);
+            
+            // 创建文件夹选项
+            const folderOptions = folders.map(folder => ({
+                id: folder.id,
+                label: folder.title || I18n.getMessage('untitledFolder', '未命名文件夹'),
+                value: folder.id
+            }));
+            
+            // 显示选择对话框
+            Menu.showFormModal(
+                I18n.getMessage('bindFolder', '绑定到文件夹'),
+                folderOptions.map(option => ({
+                    id: option.id,
+                    label: option.label,
+                    type: 'radio',
+                    value: option.value
+                })),
+                async (formData) => {
+                    const selectedFolderId = Object.values(formData)[0];
+                    if (selectedFolderId) {
+                        this.bindWidgetToFolder(container, selectedFolderId);
+                    }
+                },
+                I18n.getMessage('confirm', '确认'),
+                I18n.getMessage('cancel', '取消')
+            );
+        } catch (error) {
+            console.error('显示文件夹选择对话框失败:', error);
+        }
+    },
+    
+    /**
+     * 获取所有文件夹
+     * @param {Object} node - 书签节点
+     * @returns {Array} 文件夹数组
+     */
+    getAllFolders(node) {
+        const folders = [];
+        
+        function traverse(currentNode) {
+            if (currentNode.children) {
+                // 只添加包含书签的文件夹
+                const hasBookmarks = currentNode.children.some(child => child.url);
+                if (hasBookmarks) {
+                    folders.push(currentNode);
+                }
+                
+                // 递归遍历子文件夹
+                currentNode.children.forEach(child => {
+                    if (child.children) {
+                        traverse(child);
+                    }
+                });
+            }
+        }
+        
+        traverse(node);
+        return folders;
+    },
+    
+    /**
+     * 绑定小部件到文件夹
+     * @param {HTMLElement} container - 小部件容器
+     * @param {string} folderId - 文件夹ID
+     */
+    bindWidgetToFolder(container, folderId) {
+        container.dataset.folderId = folderId;
+        container.classList.add('widget-bound-to-folder');
+        this.saveWidgets();
+        
+        // 触发可见性更新
+        this.updateWidgetVisibility();
+        
+        Notification.notify({
+            title: I18n.getMessage('bindSuccess', '绑定成功'),
+            message: I18n.getMessage('widgetBoundToFolder', '小部件已绑定到文件夹'),
+            type: 'success',
+            duration: 2000
+        });
+    },
+    
+    /**
+     * 取消绑定小部件从文件夹
+     * @param {HTMLElement} container - 小部件容器
+     */
+    unbindWidgetFromFolder(container) {
+        container.dataset.folderId = null;
+        container.classList.remove('widget-bound-to-folder');
+        this.saveWidgets();
+        
+        // 触发可见性更新
+        this.updateWidgetVisibility();
+        
+        Notification.notify({
+            title: I18n.getMessage('unbindSuccess', '取消绑定成功'),
+            message: I18n.getMessage('widgetUnboundFromFolder', '小部件已取消绑定'),
+            type: 'success',
+            duration: 2000
+        });
+    },
+    
+    /**
+     * 根据当前选中的文件夹更新小部件可见性
+     */
+    updateWidgetVisibility() {
+        console.log('开始更新小部件可见性');
+        // 获取当前选中的文件夹
+        chrome.storage.local.get('folder', (result) => {
+            const currentFolderId = result.folder;
+            console.log('当前选中的文件夹:', currentFolderId);
+            
+            // 获取快捷方式网格配置
+            const shortcutList = document.getElementById('shortcut-list');
+            let gridConfig = { columns: 4, cellSize: 80, gap: 10 };
+            
+            if (shortcutList) {
+                const containerWidth = Math.max(shortcutList.offsetWidth, 800);
+                gridConfig = GridSystem.calculateShortcutGrid(containerWidth);
+                // 确保至少有4列
+                gridConfig.columns = Math.max(gridConfig.columns, 4);
+            }
+            
+            // 更新所有小部件的可见性
+            console.log('state.widgetContainers.length:', state.widgetContainers.length);
+            state.widgetContainers.forEach(container => {
+                const folderId = container.dataset.folderId;
+                console.log('小部件容器', container.id, '绑定的文件夹:', folderId);
+                
+                // 确保类型一致进行比较
+                const folderIdStr = String(folderId);
+                const currentFolderIdStr = String(currentFolderId);
+                console.log('比较 folderId:', folderIdStr, '===', currentFolderIdStr, '=', folderIdStr === currentFolderIdStr);
+                
+                if (folderId) {
+                    // 绑定到特定文件夹的小部件
+                    if (folderIdStr === currentFolderIdStr) {
+                        container.style.display = 'block';
+                        console.log('显示小部件容器:', container.id);
+                        
+                        // 更新小部件容器的尺寸根据网格配置
+                        let gridColumns = parseInt(container.dataset.gridColumns) || 2;
+                        let gridRows = parseInt(container.dataset.gridRows) || 2;
+                        
+                        // 限制最大网格占用值
+                        gridColumns = Math.min(gridColumns, 4); // 最大4列
+                        gridRows = Math.min(gridRows, 4); // 最大4行
+                        
+                        // 更新存储的网格占用值
+                        container.dataset.gridColumns = gridColumns;
+                        container.dataset.gridRows = gridRows;
+                        
+                        const width = gridColumns * gridConfig.cellSize + (gridColumns - 1) * gridConfig.gap;
+                        const height = gridRows * gridConfig.cellSize + (gridRows - 1) * gridConfig.gap;
+                        
+                        console.log('网格配置:', gridConfig);
+                        console.log('网格占用:', gridColumns, 'x', gridRows);
+                        console.log('计算尺寸:', width, 'x', height);
+                        
+                        container.style.width = `${width}px`;
+                        container.style.height = `${height}px`;
+                        console.log('更新小部件容器尺寸:', container.id, width, 'x', height);
+                    } else {
+                        container.style.display = 'none';
+                        console.log('隐藏小部件容器:', container.id);
+                    }
+                } else {
+                    // 未绑定的小部件始终显示
+                    container.style.display = 'block';
+                    console.log('始终显示未绑定的小部件容器:', container.id);
+                    
+                    // 更新小部件容器的尺寸根据网格配置
+                    let gridColumns = parseInt(container.dataset.gridColumns) || 2;
+                    let gridRows = parseInt(container.dataset.gridRows) || 2;
+                    
+                    // 限制最大网格占用值
+                    gridColumns = Math.min(gridColumns, 4); // 最大4列
+                    gridRows = Math.min(gridRows, 4); // 最大4行
+                    
+                    // 更新存储的网格占用值
+                    container.dataset.gridColumns = gridColumns;
+                    container.dataset.gridRows = gridRows;
+                    
+                    const width = gridColumns * gridConfig.cellSize + (gridColumns - 1) * gridConfig.gap;
+                    const height = gridRows * gridConfig.cellSize + (gridRows - 1) * gridConfig.gap;
+                    
+                    console.log('网格配置:', gridConfig);
+                    console.log('网格占用:', gridColumns, 'x', gridRows);
+                    console.log('计算尺寸:', width, 'x', height);
+                    
+                    container.style.width = `${width}px`;
+                    container.style.height = `${height}px`;
+                    console.log('更新小部件容器尺寸:', container.id, width, 'x', height);
+                }
+            });
+            console.log('小部件可见性更新完成');
+        });
+    },
+    
+    /**
+     * 初始化文件夹绑定相关功能
+     */
+    initFolderBinding() {
+        // 监听文件夹选择变化
+        document.addEventListener('folder-changed', () => {
+            this.updateWidgetVisibility();
+        });
+        
+        // 初始更新可见性
+        this.updateWidgetVisibility();
+    }
 };
 

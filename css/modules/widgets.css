@@ -80,6 +80,23 @@
   will-change: transform; /* 提升为合成层，优化渲染性能 */
   backface-visibility: hidden; /* 防止渲染问题 */
   -webkit-font-smoothing: subpixel-antialiased; /* 提高文字渲染质量 */
+  /* 确保小部件与快捷方式在同一层级 */
+  z-index: 1;
+}
+
+/* 绑定到文件夹的小部件样式 */
+.widget-bound-to-folder {
+  border: 1px solid var(--widget-primary-color);
+  box-shadow: 0 2px 12px rgba(0, 120, 212, 0.2);
+}
+
+/* 快捷方式拖动状态 */
+.shortcut-dragging {
+  opacity: 0.8;
+  box-shadow: 0 5px 15px var(--widget-shadow-color-hover);
+  cursor: move;
+  transition: none;
+  z-index: 1000;
 }
 
 /* 小部件拖动条 */

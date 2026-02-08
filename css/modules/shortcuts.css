@@ -19,35 +19,24 @@
 /*------------------------------------*\
   #COMMON-STYLES
 \*------------------------------------*/
-.shortcut-title {
-  font-size: var(--font-size-small);
-  color: var(--color-text);  /* 统一使用全局变量 */
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  user-select: none;
-  margin-top: 5px;
-}
 
-/*------------------------------------*\
+
+/*------------------------------------*
   #CONTAINERS
 \*------------------------------------*/
 #shortcut-list {
-  width: 80%;
+  width: 100%;
   height: 100%;
-  margin-left: 10px;
+  margin: 0;
   background: var(--container-bg);
   border-radius: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
+  position: relative;
   overflow-y: auto;
   box-shadow: inset 0 0 15px var(--container-shadow);
   backdrop-filter: blur(3px);
   border: none;
   transition: opacity var(--transition-normal), visibility var(--transition-normal);
+  display: block !important;
 }
 
 #shortcut-list:empty {
@@ -69,12 +58,10 @@
 \*------------------------------------*/
 .shortcut-button {
   width: var(--shortcut-width);
-  aspect-ratio: 1 / 1;
-  margin: var(--shortcut-margin);
-  padding-top: 50px;
+  height: var(--shortcut-width);
   background: var(--container-bg);  /* 使用统一的背景颜色变量 */
   background-size: 60%;
-  background-position: center;
+  background-position: center 35%;
   background-repeat: no-repeat;
   border: none;
   border-radius: var(--shortcut-border-radius);
@@ -82,15 +69,57 @@
   clip-path: inset(0 round 10px);
   cursor: pointer;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   text-align: center;
   transition: 
     box-shadow var(--transition-normal), 
-    transform var(--transition-normal) ease,
     background-color var(--transition-normal);
+  /* 移除transform过渡，避免与拖动冲突 */
+  /* 确保快捷方式与小部件在同一层级 */
+  position: absolute;
+  z-index: 1;
+  margin: 0 !important;
+  float: none !important;
+}
+
+.shortcut-title {
+  font-size: var(--font-size-small);
+  color: var(--color-text);  /* 统一使用全局变量 */
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  user-select: none;
+  padding: 0 4px;
+  width: 100%;
+  text-align: center;
+  clip: rect(0, 100%, 20px, 0);
+  line-height: 1.1;
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+}
+
+.shortcut-button:hover .shortcut-title {
+  overflow: visible;
+  white-space: normal;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--container-bg);
+  padding: 4px;
+  border-radius: 0 0 var(--shortcut-border-radius) var(--shortcut-border-radius);
+  z-index: 10;
+  box-shadow: 0 -2px 8px var(--container-shadow);
+  clip: auto;
+  margin-bottom: 0;
+  line-height: 1.2;
+}
+
+/* 拖动时禁用所有过渡效果 */
+.shortcut-button.shortcut-dragging {
+  transition: none !important;
+  transform: none !important;
 }
 
 .shortcut-button:hover {
@@ -106,6 +135,21 @@
   color: white;  /* 确保文字在主题色上可见 */
 }
 
+/* 空位置样式 */
+.shortcut-empty-slot {
+  position: absolute;
+  border: 2px dashed rgba(150, 150, 150, 0.5);
+  border-radius: var(--shortcut-border-radius);
+  background-color: rgba(150, 150, 150, 0.1);
+  transition: all 0.2s ease;
+  z-index: 0;
+}
+
+.shortcut-empty-slot:hover {
+  border-color: rgba(100, 100, 100, 0.8);
+  background-color: rgba(100, 100, 100, 0.2);
+}
+
 /* 深色模式调整 */
 [data-theme="dark"] body {
   /* 深色模式下的主体色调整 */
@@ -117,4 +161,15 @@
 [data-theme="dark"] .shortcut-button img,
 [data-theme="dark"] .shortcut-icon {
   filter: brightness(1.9);  /* 略微提高图标亮度以增强可见度 */
+}
+
+/* 深色模式下的空位置样式 */
+[data-theme="dark"] .shortcut-empty-slot {
+  border-color: rgba(100, 100, 100, 0.5);
+  background-color: rgba(100, 100, 100, 0.1);
+}
+
+[data-theme="dark"] .shortcut-empty-slot:hover {
+  border-color: rgba(150, 150, 150, 0.8);
+  background-color: rgba(150, 150, 150, 0.2);
 }
