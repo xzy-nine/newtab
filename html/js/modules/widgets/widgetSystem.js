@@ -508,10 +508,14 @@ export const WidgetSystem = {
             });
             state.widgetContainers = [];
             
-            // 为每个保存的小部件容器创建DOM元素
-            state.widgets.forEach(widgetData => {
-                this.createWidgetContainer(widgetData);
-            });
+            // 不再直接创建DOM元素，而是让desktopSystem.js在需要时加载小部件
+            // 小部件将在切换文件夹时通过desktopSystem.js的网格系统加载
+            console.log('小部件数据加载完成，共', state.widgets.length, '个小部件容器');
+            
+            // 触发小部件数据加载完成事件，通知其他模块
+            document.dispatchEvent(new CustomEvent('widgets-loaded', {
+                detail: { widgets: state.widgets }
+            }));
         }, {
             startMessage: loadingMessage,
             successMessage: successMessage
@@ -545,6 +549,15 @@ export const WidgetSystem = {
             console.error('保存小部件数据失败:', error);
             return Promise.reject(error);
         }
+    },
+    
+    /**
+     * 获取指定文件夹ID的小部件数据
+     * @param {string} folderId - 文件夹ID
+     * @returns {Array} 小部件数据数组
+     */
+    getWidgetsByFolderId(folderId) {
+        return state.widgets.filter(widget => widget.folderId === folderId);
     },
     
     /**
@@ -940,93 +953,30 @@ export const WidgetSystem = {
     /**
      * 创建小部件容器
      * @param {Object} data - 小部件容器数据
-     * @returns {HTMLElement} 创建的小部件容器
+     * @returns {Object} 创建的小部件数据对象
      */
     createWidgetContainer(data = {}) {
-        const container = Utils.createElement('div', 'widget-container', {
-            id: data.id || `widget-container-${Date.now()}`
-        });
+        // 生成唯一ID
+        const containerId = data.id || `widget-container-${Date.now()}`;
         
         // 设置文件夹绑定
-        console.log('createWidgetContainer - data.folderId:', data.folderId);
-        container.dataset.folderId = data.folderId !== undefined ? data.folderId : null;
-        console.log('createWidgetContainer - container.dataset.folderId:', container.dataset.folderId);
-        if (data.folderId !== undefined && data.folderId !== null) {
-            container.classList.add('widget-bound-to-folder');
-        }
+        const folderId = data.folderId !== undefined ? data.folderId : null;
+        console.log('createWidgetContainer - folderId:', folderId);
         
         // 设置固定状态
-        container.dataset.fixed = data.fixed ? 'true' : 'false';
-        if (data.fixed) {
-            container.classList.add('widget-fixed');
-        }
+        const fixed = data.fixed ? true : false;
         
-        // 创建侧边拖动条
-        const dragHandle = Utils.createElement('div', 'widget-drag-handle', {
-            title: '拖动'
-        });
-        dragHandle.style.cursor = 'move';
+        // 创建小部件数据对象（与desktopSystem.js兼容的格式）
+        const widgetData = {
+            id: containerId,
+            folderId: folderId,
+            fixed: fixed,
+            activeIndex: 0,
+            items: data.items && Array.isArray(data.items) ? data.items : []
+        };
         
-        container.appendChild(dragHandle);
-        
-        // 创建固定按钮
-        const pinButton = Utils.createElement('button', 'widget-pin-button');
-        
-        // 使用安全的国际化方法
-        const unfixText = getI18nMessage('unfixWidgetContainer', '取消固定');
-        const fixText = getI18nMessage('fixWidgetContainer', '固定小部件');
-        
-        pinButton.title = data.fixed ? unfixText : fixText;
-        pinButton.classList.add('segoe-icon');
-        if (data.fixed) {
-            pinButton.classList.add('widget-pinned');
-            pinButton.textContent = '\uE841';
-        } else {
-            pinButton.classList.remove('widget-pinned');
-            pinButton.textContent = '\uE842';
-        }
-        
-        pinButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            this.toggleFixedContainer(container);
-        });
-        
-        container.appendChild(pinButton);
-        
-        // 添加调整大小控制点
-        const resizeHandle = Utils.createElement('div', 'widget-resize-handle', {
-            title: '调整大小'
-        });
-        container.appendChild(resizeHandle);
-        
-        // 创建内容区域包装器
-        const contentWrapper = Utils.createElement('div', 'widget-content-wrapper');
-        container.appendChild(contentWrapper);
-        
-        // 创建内容区域
-        const contentArea = Utils.createElement('div', 'widget-content');
-        contentWrapper.appendChild(contentArea);
-        
-        // 添加小部件指示器容器
-        const indicatorsContainer = Utils.createElement('div', 'widget-indicators');
-        contentWrapper.appendChild(indicatorsContainer);
-
-        // 如果有已保存的小部件，添加它们
-        if (data.items && Array.isArray(data.items)) {
-            data.items.forEach(item => {
-                this.addWidgetItem(container, item.type, item.data);
-            });
-        } else {
-            // 添加添加按钮
-            this.addAddButton(container);
-        }
-        
-        // 添加滚轮事件监听器
-        EventHandlers.setupScrollHandlers(container);
-        
-        // 添加到管理列表
-        state.addContainer(container);
+        // 添加到状态
+        state.widgets.push(widgetData);
         
         // 显示通知
         const title = getI18nMessage('widgetContainerCreated', '小部件容器已创建');
@@ -1042,17 +992,14 @@ export const WidgetSystem = {
         // 保存小部件容器
         this.saveWidgets();
         
-        console.log('将小部件容器插入到shortcut-list内:', container.id);
+        console.log('创建小部件容器:', containerId, '绑定到文件夹:', folderId);
         
-        // 将小部件容器插入到shortcut-list内
-        const shortcutList = document.getElementById('shortcut-list');
-        if (shortcutList) {
-            shortcutList.appendChild(container);
-        } else {
-            console.error('未找到shortcut-list元素');
-        }
+        // 触发小部件创建事件，通知desktopSystem.js重新渲染
+        document.dispatchEvent(new CustomEvent('widget-created', {
+            detail: { widgetData: widgetData }
+        }));
         
-        return container;
+        return widgetData;
     },
   
     

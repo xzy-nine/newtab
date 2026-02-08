@@ -176,14 +176,13 @@ export const DesktopSystem = {
     /**
      * 创建小部件容器
      */
-    createWidgetContainer(item) {
+    async createWidgetContainer(item) {
         const widgetContainer = Utils.createElement("div", "widget-container", {
             'data-widget-id': item.id,
-            'data-widget-type': item.widgetType
+            'data-widget-type': item.widgetType,
+            'data-folder-id': item.folderId
         });
 
-        widgetContainer.style.width = '100%';
-        widgetContainer.style.height = '100%';
         widgetContainer.style.borderRadius = '12px';
         widgetContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
         widgetContainer.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
@@ -201,8 +200,45 @@ export const DesktopSystem = {
             widgetContainer.appendChild(titleElement);
         }
 
-        // 显示与文件夹id对应的小部件
-        widgetContainer.textContent = `小部件类型: ${item.widgetType} (文件夹ID: ${item.folderId || '未绑定'})`;
+        // 尝试加载和初始化小部件（基于WidgetRegistry）
+        try {
+            // 检查WidgetRegistry是否可用
+            if (typeof WidgetRegistry !== 'undefined') {
+                // 加载小部件模块
+                const widgetModule = await WidgetRegistry.loadWidget(item.widgetType);
+                if (widgetModule && typeof widgetModule.initialize === 'function') {
+                    // 初始化小部件
+                    await widgetModule.initialize(widgetContainer, item);
+                } else {
+                    // 显示小部件类型信息
+                    const infoElement = Utils.createElement("div");
+                    infoElement.style.textAlign = 'center';
+                    infoElement.style.color = 'rgba(0, 0, 0, 0.6)';
+                    infoElement.innerHTML = `<div>小部件类型: ${item.widgetType}</div><div>初始化失败: 模块不可用</div>`;
+                    widgetContainer.appendChild(infoElement);
+                }
+            } else {
+                // WidgetRegistry不可用，显示简单的占位内容
+                console.log('WidgetRegistry不可用，显示占位小部件:', item.widgetType);
+                const placeholderElement = Utils.createElement("div");
+                placeholderElement.style.textAlign = 'center';
+                placeholderElement.style.color = 'rgba(0, 0, 0, 0.6)';
+                placeholderElement.innerHTML = `
+                    <div style="font-size: 24px; margin-bottom: 8px;">📦</div>
+                    <div style="font-size: 14px; font-weight: 500;">${item.widgetType}</div>
+                    <div style="font-size: 12px; opacity: 0.7;">小部件</div>
+                `;
+                widgetContainer.appendChild(placeholderElement);
+            }
+        } catch (error) {
+            console.error(`小部件 ${item.widgetType} 初始化失败:`, error);
+            // 显示错误信息
+            const errorElement = Utils.createElement("div");
+            errorElement.style.textAlign = 'center';
+            errorElement.style.color = 'rgba(239, 68, 68, 0.8)';
+            errorElement.innerHTML = `<div>小部件类型: ${item.widgetType}</div><div>初始化失败: ${error.message}</div>`;
+            widgetContainer.appendChild(errorElement);
+        }
 
         return widgetContainer;
     },
@@ -211,17 +247,24 @@ export const DesktopSystem = {
     /**
      * 创建桌面网格（基于 Temp123 的实现）
      */
-    createDesktopGrid(container, items, gridConfig) {
+    async createDesktopGrid(container, items, gridConfig) {
         container.innerHTML = '';
         container.style.position = 'relative';
         container.style.width = `${gridConfig.cols * gridConfig.cellSize + (gridConfig.cols - 1) * gridConfig.gap}px`;
         container.style.height = `${gridConfig.rows * gridConfig.cellSize + (gridConfig.rows - 1) * gridConfig.gap}px`;
         container.style.margin = '0 auto';
 
-        items.forEach(item => {
-            const element = item.type === ItemType.SHORTCUT
-                ? this.createShortcutButton(item)
-                : this.createWidgetContainer(item);
+        // 异步处理每个项目
+        for (const item of items) {
+            let element;
+            
+            if (item.type === ItemType.SHORTCUT) {
+                // 快捷方式是同步创建的
+                element = this.createShortcutButton(item);
+            } else {
+                // 小部件是异步创建的
+                element = await this.createWidgetContainer(item);
+            }
 
             // 计算位置和大小
             const width = item.w * gridConfig.cellSize + (item.w - 1) * gridConfig.gap;
@@ -236,12 +279,18 @@ export const DesktopSystem = {
             element.style.height = `${height}px`;
             element.style.transition = 'all 0.2s ease';
             element.style.zIndex = 1;
+            // 确保小部件和快捷方式在同一层级
+            element.style.pointerEvents = 'auto';
 
             // 添加拖拽功能（基于 Temp123 的拖拽概念）
             this.addDraggableFunctionality(element, item, items, gridConfig, container);
 
             container.appendChild(element);
-        });
+        }
+
+        // 确保所有元素在同一层级，不受DOM顺序影响
+        // 在拖动时，被拖动的元素会临时提升层级
+        container.style.zIndex = 0;
     },
 
     /**
@@ -252,13 +301,13 @@ export const DesktopSystem = {
         let startX, startY;
         let startPosX, startPosY;
 
-        // 创建拖拽手柄
+        // 创建拖拽手柄（现代化设计，基于Temp123）
         const dragHandle = Utils.createElement("div", "drag-handle");
         dragHandle.style.position = 'absolute';
         dragHandle.style.top = '0';
         dragHandle.style.left = '0';
         dragHandle.style.right = '0';
-        dragHandle.style.height = '24px';
+        dragHandle.style.height = '32px';
         dragHandle.style.cursor = 'move';
         dragHandle.style.zIndex = '10';
         dragHandle.style.opacity = '0';
@@ -268,14 +317,16 @@ export const DesktopSystem = {
         dragHandle.style.justifyContent = 'center';
         dragHandle.style.touchAction = 'none';
 
-        // 添加拖拽图标
+        // 添加拖拽图标（基于Temp123的设计）
         const dragIcon = Utils.createElement("div", "drag-icon");
-        dragIcon.style.fontSize = '16px';
+        dragIcon.style.fontSize = '14px';
         dragIcon.textContent = '⋮⋮';
         dragIcon.style.color = 'white';
         dragIcon.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        dragIcon.style.padding = '2px 8px';
-        dragIcon.style.borderRadius = '4px';
+        dragIcon.style.backdropFilter = 'blur(8px)';
+        dragIcon.style.padding = '4px 12px';
+        dragIcon.style.borderRadius = '16px';
+        dragIcon.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
 
         dragHandle.appendChild(dragIcon);
         element.appendChild(dragHandle);
@@ -363,27 +414,45 @@ export const DesktopSystem = {
         let startX, startY;
         let startWidth, startHeight;
 
-        // 创建调整大小手柄
+        // 创建调整大小手柄（基于Temp123的设计）
         const resizeHandle = Utils.createElement("div", "resize-handle");
         resizeHandle.style.position = 'absolute';
         resizeHandle.style.bottom = '0';
         resizeHandle.style.right = '0';
-        resizeHandle.style.width = '16px';
-        resizeHandle.style.height = '16px';
+        resizeHandle.style.width = '24px';
+        resizeHandle.style.height = '24px';
         resizeHandle.style.cursor = 'se-resize';
         resizeHandle.style.zIndex = '10';
         resizeHandle.style.display = 'flex';
         resizeHandle.style.alignItems = 'center';
         resizeHandle.style.justifyContent = 'center';
+        resizeHandle.style.opacity = '0';
+        resizeHandle.style.transition = 'opacity 0.2s ease';
 
-        // 添加调整大小图标
+        // 添加调整大小图标（基于Temp123的设计）
         const resizeIcon = Utils.createElement("div", "resize-icon");
-        resizeIcon.style.fontSize = '12px';
-        resizeIcon.textContent = '⋮';
-        resizeIcon.style.color = '#666';
+        resizeIcon.style.fontSize = '14px';
+        resizeIcon.textContent = '⋮⋮';
+        resizeIcon.style.color = 'rgba(0, 0, 0, 0.6)';
+        resizeIcon.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+        resizeIcon.style.backdropFilter = 'blur(4px)';
+        resizeIcon.style.padding = '2px 6px';
+        resizeIcon.style.borderRadius = '8px';
+        resizeIcon.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
 
         resizeHandle.appendChild(resizeIcon);
         element.appendChild(resizeHandle);
+
+        // 悬停时显示调整大小手柄
+        element.addEventListener('mouseenter', () => {
+            resizeHandle.style.opacity = '1';
+        });
+
+        element.addEventListener('mouseleave', () => {
+            if (!isResizing) {
+                resizeHandle.style.opacity = '0';
+            }
+        });
 
         // 鼠标按下事件
         resizeHandle.addEventListener('mousedown', (e) => {
@@ -431,6 +500,7 @@ export const DesktopSystem = {
             if (isResizing) {
                 isResizing = false;
                 element.style.zIndex = '1';
+                resizeHandle.style.opacity = '0';
             }
         });
     },
@@ -490,7 +560,8 @@ export const DesktopSystem = {
      */
     createShortcutsFromBookmarks(bookmarks, folderId = '') {
         const shortcuts = [];
-        const folderColor = '#ffffffff'
+        // 使用统一的蓝色主色调，20%透明度
+        const folderColor = 'rgba(59, 130, 246, 0.2)'
 
         bookmarks.forEach((bookmark, index) => {
             if (!bookmark.children) {

@@ -4,7 +4,7 @@
  * @module BookmarkManager
  */
 
-import { Utils, Menu, I18n, IconManager, Notification, DesktopSystem } from './core/index.js';
+import { Utils, Menu, I18n, IconManager, Notification, DesktopSystem, WidgetItem, WidgetSystem } from './core/index.js';
 
 // 当前文件夹
 let currentFolder = "";
@@ -40,6 +40,20 @@ export const BookmarkManager = {
             
             // 注册全局事件处理
             document.addEventListener('contextmenu', this.handleContextMenu.bind(this));
+            
+            // 监听小部件创建事件，重新渲染当前文件夹
+            document.addEventListener('widget-created', async (event) => {
+                console.log('检测到小部件创建事件，重新渲染当前文件夹');
+                // 获取当前文件夹的完整数据（包括子项）并重新渲染
+                try {
+                    const [folderTree] = await chrome.bookmarks.getSubTree(currentFolder);
+                    if (folderTree) {
+                        this.showShortcuts(folderTree);
+                    }
+                } catch (error) {
+                    console.error('重新渲染文件夹失败:', error);
+                }
+            });
         } catch (error) {
             this.showError(error);
         }
@@ -394,32 +408,64 @@ export const BookmarkManager = {
     },
 
     /**
-     * 显示指定文件夹的快捷方式
+     * 显示指定文件夹的快捷方式和小部件
      */
     showShortcuts: async function(folder) {
         const shortcutList = document.getElementById("shortcut-list");
         if (!shortcutList) return;
         
-        if (!folder || !folder.children || folder.children.length === 0) {
+        if (!folder) {
             shortcutList.classList.add('hidden');
             return;
         }
 
         // 从文件夹中提取快捷方式
-        const bookmarks = folder.children.filter(node => !node.children);
-        if (bookmarks.length === 0) {
-            shortcutList.classList.add('hidden');
-            return;
-        }
-
+        const bookmarks = folder.children ? folder.children.filter(node => !node.children) : [];
+        
         // 使用 DesktopSystem 创建快捷方式项目（传递folder.id以计算统一的颜色）
         const shortcuts = DesktopSystem.createShortcutsFromBookmarks(bookmarks, folder.id);
         
-        // 创建默认小部件
-        const widgets = DesktopSystem.createDefaultWidgets();
+        // 加载与当前文件夹id对应的小部件
+        let widgets = [];
+        try {
+            // 使用WidgetSystem.getWidgetsByFolderId获取小部件数据
+            const folderWidgets = WidgetSystem.getWidgetsByFolderId(folder.id);
+            
+            console.log('找到与文件夹', folder.id, '对应的小部件容器:', folderWidgets.length, '个');
+            
+            // 将小部件转换为WidgetItem对象
+            folderWidgets.forEach((widgetData, containerIndex) => {
+                if (widgetData.items && Array.isArray(widgetData.items)) {
+                    widgetData.items.forEach((item, itemIndex) => {
+                        // 计算小部件的位置，避免与快捷方式重叠
+                        const x = 4; // 从第4列开始，避免与左侧的快捷方式重叠
+                        const y = containerIndex * 2; // 每个容器占用2行
+                        
+                        // 创建WidgetItem对象
+                        widgets.push(new WidgetItem(
+                            item.id || `widget-${widgetData.id}-${itemIndex}`,
+                            item.type || 'unknown',
+                            item.type || 'unknown',
+                            item.data || {},
+                            x, // x 位置
+                            y, // y 位置
+                            2, // 宽度
+                            2  // 高度
+                        ));
+                        
+                        console.log('添加小部件:', item.type, '到位置:', x, y);
+                    });
+                }
+            });
+        } catch (error) {
+            console.error('加载小部件数据失败:', error);
+        }
         
         // 合并所有项目
         const allItems = [...shortcuts, ...widgets];
+        
+        // 将allItems存储在shortcutList元素上，确保事件监听器使用正确的数据
+        shortcutList._allItems = allItems;
         
         // 移除hidden类，使容器可见
         shortcutList.classList.remove('hidden');
@@ -430,19 +476,27 @@ export const BookmarkManager = {
         shortcutList.style.minHeight = '400px';
         
         // 使用requestAnimationFrame确保DOM更新后再计算和渲染
-        requestAnimationFrame(() => {
+        requestAnimationFrame(async () => {
             // 计算网格配置
             const gridConfig = DesktopSystem.calculateGridConfig();
             
-            // 显示快捷方式和小部件
-            DesktopSystem.createDesktopGrid(shortcutList, allItems, gridConfig);
+            // 显示快捷方式和小部件（异步处理）
+            await DesktopSystem.createDesktopGrid(shortcutList, allItems, gridConfig);
         });
         
+        // 移除之前的窗口大小变化事件监听器
+        // 为了避免监听器累积，我们使用一个唯一的事件监听器
+        window.removeEventListener('resize', window._shortcutResizeHandler);
+        
         // 响应窗口大小变化
-        window.addEventListener('resize', () => {
+        window._shortcutResizeHandler = async () => {
             const newGridConfig = DesktopSystem.calculateGridConfig();
-            DesktopSystem.createDesktopGrid(shortcutList, allItems, newGridConfig);
-        });
+            // 使用存储在shortcutList上的allItems，确保使用正确的数据
+            const currentItems = shortcutList._allItems || allItems;
+            await DesktopSystem.createDesktopGrid(shortcutList, currentItems, newGridConfig);
+        };
+        
+        window.addEventListener('resize', window._shortcutResizeHandler);
     },
 
     /**
