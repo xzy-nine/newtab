@@ -63,23 +63,7 @@ export class GridConfig {
     }
 }
 
-// 图标映射（基于 Temp123 的 Lucide 图标）
-const iconMap = {
-    'Globe': '🌐',
-    'Camera': '📷',
-    'Music': '🎵',
-    'Settings': '⚙️',
-    'Mail': '📧',
-    'Map': '🗺️',
-    'Image': '🖼️',
-    'Video': '🎬',
-    'AppWindow': '📱',
-    'Clock': '🕒',
-    'Cloud': '☁️',
-    'Calendar': '📅',
-    'FileText': '📄',
-    'Photo': '🖼️'
-};
+
 
 // 网格工具函数
 const gridUtils = {
@@ -138,10 +122,20 @@ export const DesktopSystem = {
         iconContainer.style.backgroundColor = item.color || '#3b82f6';
         iconContainer.style.transition = 'all 0.2s ease';
 
-        // 创建图标元素
-        const iconElement = Utils.createElement("div", "shortcut-icon");
-        iconElement.style.fontSize = '24px';
-        iconElement.textContent = iconMap[item.icon] || iconMap['AppWindow'];
+        // 创建图标元素（使用img标签而不是div，以便显示URL图标）
+        const iconElement = Utils.createElement("img", "shortcut-icon");
+        iconElement.style.width = '32px';
+        iconElement.style.height = '32px';
+        iconElement.style.borderRadius = '6px';
+        
+        // 使用IconManager为图标元素设置URL的图标
+        if (item.url) {
+            IconManager.setIconForElement(iconElement, item.url);
+            iconElement.onerror = () => IconManager.handleIconError(iconElement, '../icons/icon128.png');
+        } else {
+            // 如果没有URL，使用默认图标
+            iconElement.src = '../icons/icon128.png';
+        }
 
         iconContainer.appendChild(iconElement);
 
@@ -492,19 +486,19 @@ export const DesktopSystem = {
     },
 
     /**
-     * 从Chrome书签创建快捷方式项目（基于 Temp123 的实现）
+     * 从书签创建快捷方式项目
      */
-    createShortcutsFromBookmarks(bookmarks) {
+    createShortcutsFromBookmarks(bookmarks, folderId = '') {
         const shortcuts = [];
-        const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#6b7280', '#10b981', '#f59e0b', '#06b6d4', '#ef4444'];
+        const folderColor = '#ffffffff'
 
         bookmarks.forEach((bookmark, index) => {
             if (!bookmark.children) {
                 const shortcut = new ShortcutItem(
                     bookmark.id,
                     bookmark.title || '未命名',
-                    'Globe', // 默认为地球图标
-                    colors[index % colors.length],
+                    '', // 不需要图标名称，使用URL图标
+                    folderColor,
                     bookmark.url,
                     index % 4, // 基于 Temp123 的网格布局
                     Math.floor(index / 4),

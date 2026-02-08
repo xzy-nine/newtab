@@ -412,8 +412,8 @@ export const BookmarkManager = {
             return;
         }
 
-        // 使用 DesktopSystem 创建快捷方式项目
-        const shortcuts = DesktopSystem.createShortcutsFromBookmarks(bookmarks);
+        // 使用 DesktopSystem 创建快捷方式项目（传递folder.id以计算统一的颜色）
+        const shortcuts = DesktopSystem.createShortcutsFromBookmarks(bookmarks, folder.id);
         
         // 创建默认小部件
         const widgets = DesktopSystem.createDefaultWidgets();
