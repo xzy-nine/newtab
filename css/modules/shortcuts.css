@@ -36,7 +36,20 @@
   backdrop-filter: blur(3px);
   border: none;
   transition: opacity var(--transition-normal), visibility var(--transition-normal);
-  display: block !important;
+  display: block;
+}
+
+#shortcut-list.hidden {
+  display: none !important;
+  opacity: 0;
+  visibility: hidden;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
 }
 
 #shortcut-list:empty {

@@ -27,8 +27,7 @@ export { Menu } from './menu.js';
 // 图标管理 - 依赖 Utils, I18n
 export { IconManager } from './iconManager.js';
 
-// 网格系统模块 - 依赖 Notification, I18n, Utils
-export { GridSystem } from './gridSystem.js';
+
 
 // ==================== 高级功能模块 ====================
 // 主题管理 - 依赖核心模块
@@ -62,3 +61,7 @@ export { WidgetSystem } from '../widgets/widgetSystem.js';
 
 // 小部件注册中心
 export { WidgetRegistry } from '../widgets/widgetRegistry.js';
+
+// ==================== 桌面系统 ====================
+// 桌面系统管理器
+export { DesktopSystem, ShortcutItem, WidgetItem, GridConfig, ItemType, WidgetType } from '../desktopSystem.js';

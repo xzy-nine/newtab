@@ -26,8 +26,8 @@ export const Menu = {
     const modalId = 'form-modal-' + Date.now();
     const modal = Utils.createElement('div', 'modal', { id: modalId });
     
-    // 如果启用网格功能，添加相应类名
-    if (options.gridSnap !== false && window.GridSystem && window.GridSystem.gridEnabled) {
+    // 网格功能已迁移到DesktopSystem，不再使用GridSystem
+    if (options.gridSnap !== false) {
       modal.classList.add('modal-grid-enabled');
     }
     
@@ -222,26 +222,19 @@ export const Menu = {
         }
       },
       
-      // 手动吸附到网格
+      // 手动吸附到网格（已迁移到DesktopSystem）
       snapToGrid: () => {
-        if (window.GridSystem && window.GridSystem.gridEnabled) {
-          const currentLeft = parseInt(modalContent.style.left) || 0;
-          const currentTop = parseInt(modalContent.style.top) || 0;
-          const snappedPos = Menu._snapToGrid(
-            currentLeft, 
-            currentTop, 
-            modalContent.offsetWidth, 
-            modalContent.offsetHeight
-          );
-          
-          modalContent.style.transition = 'left 0.3s ease-out, top 0.3s ease-out';
-          modalContent.style.left = `${snappedPos.x}px`;
-          modalContent.style.top = `${snappedPos.y}px`;
-          
-          setTimeout(() => {
-            modalContent.style.transition = '';
-          }, 300);
-        }
+        // 网格功能已迁移到DesktopSystem，使用简化的定位
+        const currentLeft = parseInt(modalContent.style.left) || 0;
+        const currentTop = parseInt(modalContent.style.top) || 0;
+        
+        modalContent.style.transition = 'left 0.3s ease-out, top 0.3s ease-out';
+        modalContent.style.left = `${currentLeft}px`;
+        modalContent.style.top = `${currentTop}px`;
+        
+        setTimeout(() => {
+          modalContent.style.transition = '';
+        }, 300);
       },
       
       // 获取当前位置
@@ -756,7 +749,7 @@ export const Menu = {
     }
   },
   /**
-   * 使模态框可拖动（支持网格吸附/降级）
+   * 使模态框可拖动
    * @param {HTMLElement} modal - 模态框元素
    * @param {HTMLElement} modalContent - 内容元素
    * @param {Object} options - 拖动选项
@@ -771,48 +764,10 @@ export const Menu = {
     dragHandle.classList.add('draggable');
     
     // 添加拖动提示
-    dragHandle.title = I18n.getMessage('modalDragHint', '拖拽移动窗口，按住Shift键进行网格吸附');
+    dragHandle.title = I18n.getMessage('modalDragHint', '拖拽移动窗口');
     
-    // 使用网格系统的统一拖拽功能
-    if (window.GridSystem && typeof window.GridSystem.registerDraggable === 'function') {
-      const dragController = window.GridSystem.registerDraggable(modalContent, {
-        gridSnapEnabled: options.gridSnap !== false,
-        showGridHint: true,
-        dragHandle: dragHandle,
-        onDragStart: (e, dragState) => {
-          modalContent.classList.add('dragging');
-          document.body.classList.add('modal-dragging');
-        },
-        onDragMove: (e, dragState, position) => {
-          // 确保模态框不会被拖出屏幕
-          Menu._keepModalInViewport(modalContent);
-        },
-        onDragEnd: (e, dragState) => {
-          modalContent.classList.remove('dragging');
-          document.body.classList.remove('modal-dragging');
-        }
-      });
-      
-      // 保存拖动状态到modalContent以便其他方法访问
-      modalContent._dragState = {
-        isDragging: () => {
-          const state = window.GridSystem.dragStates.get(modalContent);
-          return state ? state.isDragging : false;
-        },
-        gridSnapEnabled: () => {
-          const state = window.GridSystem.dragStates.get(modalContent);
-          return state ? state.gridSnapEnabled : false;
-        },
-        setGridSnap: (enabled) => {
-          if (dragController) {
-            dragController.setGridSnapEnabled(enabled);
-          }
-        }
-      };
-    } else {
-      // 降级到原始拖拽实现
-      this._makeModalDraggableFallback(modal, modalContent, options);
-    }
+    // 直接使用简化的拖拽实现
+    this._makeModalDraggableFallback(modal, modalContent, options);
   },
   /**
    * 使模态框保持在视窗内
@@ -838,31 +793,16 @@ export const Menu = {
     }
   },
   /**
-   * 网格吸附功能
+   * 网格吸附功能（已迁移到DesktopSystem）
    * @param {number} x - X 坐标
    * @param {number} y - Y 坐标
    * @param {number} width - 元素宽度
    * @param {number} height - 元素高度
-   * @returns {Object} 吸附后的位置 {x, y}
+   * @returns {Object} 位置 {x, y}
    */
   _snapToGrid: function(x, y, width, height) {
-    if (!window.GridSystem || !window.GridSystem.gridEnabled) {
-      return { x, y };
-    }
-    
-    try {
-      // 使用网格系统的吸附功能
-      const gridPosition = window.GridSystem.pixelToGridPosition(x, y, width, height);
-      const snappedPosition = window.GridSystem.gridToPixelPosition(gridPosition);
-      
-      return {
-        x: snappedPosition.left,
-        y: snappedPosition.top
-      };
-    } catch (error) {
-      console.warn('网格吸附失败:', error);
-      return { x, y };
-    }
+    // 网格功能已迁移到DesktopSystem，直接返回原始位置
+    return { x, y };
   },
   /**
    * 显示网格提示
@@ -953,7 +893,7 @@ export const Menu = {
     }, 0);
   },
   /**
-   * 降级的模态框拖拽实现（当网格系统不可用时使用）
+   * 简化的模态框拖拽实现
    * @param {HTMLElement} modal - 模态框元素
    * @param {HTMLElement} modalContent - 内容元素
    * @param {Object} options - 拖动选项
@@ -962,8 +902,6 @@ export const Menu = {
     let isDragging = false;
     let dragStartX, dragStartY;
     let offsetX, offsetY;
-    let gridSnapEnabled = options.gridSnap !== false;
-    let gridSnapKeyPressed = false;
     
     const dragHandle = modalContent.querySelector('.modal-header, h2');
     if (!dragHandle) return;
@@ -985,38 +923,19 @@ export const Menu = {
       
       modalContent.classList.add('dragging');
       document.body.classList.add('modal-dragging');
-      
-      if (window.GridSystem && window.GridSystem.gridEnabled) {
-        Menu._showGridHint(modalContent);
-      }
     };
     
     // 拖动过程
     const handleDrag = (e) => {
       if (!isDragging) return;
       
-      gridSnapKeyPressed = e.shiftKey;
-      
       let x = e.clientX - offsetX;
       let y = e.clientY - offsetY;
-      
-      if (gridSnapEnabled && gridSnapKeyPressed && window.GridSystem && window.GridSystem.gridEnabled) {
-        const snappedPos = Menu._snapToGrid(x, y, modalContent.offsetWidth, modalContent.offsetHeight);
-        x = snappedPos.x;
-        y = snappedPos.y;
-        modalContent.classList.add('grid-snapping');
-      } else {
-        modalContent.classList.remove('grid-snapping');
-      }
       
       modalContent.style.left = `${x}px`;
       modalContent.style.top = `${y}px`;
       
       Menu._keepModalInViewport(modalContent);
-      
-      if (window.GridSystem && window.GridSystem.gridEnabled) {
-        Menu._updateGridHint(modalContent, gridSnapKeyPressed);
-      }
     };
     
     // 结束拖动
@@ -1024,24 +943,8 @@ export const Menu = {
       if (!isDragging) return;
       
       isDragging = false;
-      modalContent.classList.remove('dragging', 'grid-snapping');
+      modalContent.classList.remove('dragging');
       document.body.classList.remove('modal-dragging');
-      
-      if (gridSnapEnabled && gridSnapKeyPressed && window.GridSystem && window.GridSystem.gridEnabled) {
-        const currentLeft = parseInt(modalContent.style.left) || 0;
-        const currentTop = parseInt(modalContent.style.top) || 0;
-        const snappedPos = Menu._snapToGrid(currentLeft, currentTop, modalContent.offsetWidth, modalContent.offsetHeight);
-        
-        modalContent.style.transition = 'left 0.2s ease-out, top 0.2s ease-out';
-        modalContent.style.left = `${snappedPos.x}px`;
-        modalContent.style.top = `${snappedPos.y}px`;
-        
-        setTimeout(() => {
-          modalContent.style.transition = '';
-        }, 200);
-      }
-      
-      Menu._hideGridHint();
     };
     
     // 绑定事件
@@ -1049,31 +952,11 @@ export const Menu = {
     document.addEventListener('mousemove', handleDrag);
     document.addEventListener('mouseup', endDrag);
     
-    // 键盘事件监听
-    document.addEventListener('keydown', (e) => {
-      if (isDragging && e.key === 'Shift') {
-        gridSnapKeyPressed = true;
-        if (window.GridSystem && window.GridSystem.gridEnabled) {
-          Menu._updateGridHint(modalContent, true);
-        }
-      }
-    });
-    
-    document.addEventListener('keyup', (e) => {
-      if (isDragging && e.key === 'Shift') {
-        gridSnapKeyPressed = false;
-        modalContent.classList.remove('grid-snapping');
-        if (window.GridSystem && window.GridSystem.gridEnabled) {
-          Menu._updateGridHint(modalContent, false);
-        }
-      }
-    });
-    
     // 保存拖动状态
     modalContent._dragState = {
       isDragging: () => isDragging,
-      gridSnapEnabled: () => gridSnapEnabled,
-      setGridSnap: (enabled) => { gridSnapEnabled = enabled; }
+      gridSnapEnabled: () => false,
+      setGridSnap: (enabled) => {}
     };
   }
 };

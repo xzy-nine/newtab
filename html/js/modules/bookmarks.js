@@ -4,7 +4,7 @@
  * @module BookmarkManager
  */
 
-import { Utils, Menu, I18n, IconManager, Notification, GridSystem } from './core/index.js';
+import { Utils, Menu, I18n, IconManager, Notification, DesktopSystem } from './core/index.js';
 
 // 当前文件夹
 let currentFolder = "";
@@ -84,7 +84,9 @@ export const BookmarkManager = {
         } catch (error) {
             console.error('保存文件夹展开状态失败:', error);
         }
-    },    /**
+    },
+
+    /**
      * 创建文件夹按钮
      * @param {Object} folder 文件夹数据
      * @param {HTMLElement} container 容器元素
@@ -256,6 +258,12 @@ export const BookmarkManager = {
                 
                 // 确保展开的内容可见
                 setTimeout(() => this.ensureChildrenVisibility(folderButton), 350);
+                
+                // 延迟触发窗口大小变化事件，确保快捷方式列表正确渲染
+                setTimeout(() => {
+                    // 触发窗口大小变化事件，重新计算快捷方式列表尺寸
+                    window.dispatchEvent(new Event('resize'));
+                }, 400);
             }
         }
     },
@@ -392,274 +400,48 @@ export const BookmarkManager = {
         const shortcutList = document.getElementById("shortcut-list");
         if (!shortcutList) return;
         
-        // 保存小部件容器
-        const widgetContainers = [];
-        shortcutList.querySelectorAll('.widget-container').forEach(container => {
-            widgetContainers.push(container);
-        });
-        
-        // 清空快捷方式列表
-        shortcutList.innerHTML = "";
-
         if (!folder || !folder.children || folder.children.length === 0) {
             shortcutList.classList.add('hidden');
-            // 恢复小部件容器
-            widgetContainers.forEach(container => {
-                shortcutList.appendChild(container);
-            });
             return;
         }
 
-        let shortcuts = folder.children.filter(node => !node.children);
-        if (shortcuts.length === 0) {
+        // 从文件夹中提取快捷方式
+        const bookmarks = folder.children.filter(node => !node.children);
+        if (bookmarks.length === 0) {
             shortcutList.classList.add('hidden');
-            // 恢复小部件容器
-            widgetContainers.forEach(container => {
-                shortcutList.appendChild(container);
-            });
             return;
         }
 
-        // 加载保存的网格布局
-        let gridLayout = [];
-        try {
-            const result = await chrome.storage.local.get(`gridLayout_${folder.id}`);
-            const savedLayout = result[`gridLayout_${folder.id}`] || [];
-            
-            // 重新关联shortcut对象
-            gridLayout = savedLayout.map(item => {
-                if (item.type === 'shortcut') {
-                    const shortcut = shortcuts.find(s => s.id === item.id);
-                    return shortcut ? { ...item, shortcut: shortcut } : { ...item, type: 'empty' };
-                }
-                return item;
-            });
-            
-            // 确保布局包含所有快捷方式
-            const existingIds = new Set(gridLayout.map(item => item.id));
-            const newShortcuts = shortcuts.filter(shortcut => !existingIds.has(shortcut.id));
-            
-            // 添加新的快捷方式到布局末尾
-            newShortcuts.forEach(shortcut => {
-                gridLayout.push({ id: shortcut.id, type: 'shortcut', shortcut: shortcut });
-            });
-            
-            console.log('加载保存的网格布局:', gridLayout);
-        } catch (error) {
-            console.error('加载网格布局失败:', error);
-            // 如果没有保存的布局，创建默认布局
-            gridLayout = shortcuts.map(shortcut => ({
-                id: shortcut.id,
-                type: 'shortcut',
-                shortcut: shortcut
-            }));
-        }
+        // 使用 DesktopSystem 创建快捷方式项目
+        const shortcuts = DesktopSystem.createShortcutsFromBookmarks(bookmarks);
         
-        // 确保布局至少有一定数量的空位置
-        const minEmptySlots = 16; // 增加空位置数量，以便拖动时可以超出当前高度
-        while (gridLayout.length < shortcuts.length + minEmptySlots) {
-            gridLayout.push({ id: `empty_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, type: 'empty' });
-        }
+        // 创建默认小部件
+        const widgets = DesktopSystem.createDefaultWidgets();
         
-        // 保存this上下文供回调使用
-        const self = this;
-
+        // 合并所有项目
+        const allItems = [...shortcuts, ...widgets];
+        
+        // 移除hidden类，使容器可见
         shortcutList.classList.remove('hidden');
-        // 设置为网格布局
-        shortcutList.style.position = 'relative';
+        
+        // 调整容器大小
+        shortcutList.style.width = 'auto';
         shortcutList.style.height = 'auto';
-        shortcutList.style.width = '100%';
+        shortcutList.style.minHeight = '400px';
         
-        // 默认隐藏空位置
-        self.showEmptySlots(false);
-        
-        // 计算网格配置
-        // 强制使用更大的宽度来测试
-        const containerWidth = Math.max(shortcutList.offsetWidth, 800);
-        console.log('快捷方式容器宽度:', containerWidth);
-        const gridConfig = GridSystem.calculateShortcutGrid(containerWidth);
-        console.log('计算得到的网格配置:', gridConfig);
-        
-        // 确保至少有4列
-        gridConfig.columns = Math.max(gridConfig.columns, 4);
-        console.log('最终网格配置:', gridConfig);
-        
-        gridLayout.forEach((item, index) => {
-            // 获取网格位置
-            const position = GridSystem.getShortcutGridPosition(index, gridConfig.columns, gridConfig.cellSize, gridConfig.gap);
+        // 使用requestAnimationFrame确保DOM更新后再计算和渲染
+        requestAnimationFrame(() => {
+            // 计算网格配置
+            const gridConfig = DesktopSystem.calculateGridConfig();
             
-            if (item.type === 'shortcut') {
-                const shortcut = item.shortcut;
-                if (!shortcut || !shortcut.url) return;
-                
-                const shortcutButton = Utils.createElement("button", "shortcut-button", {
-                    title: shortcut.title,
-                    'data-shortcut-id': shortcut.id,
-                    'data-grid-index': index
-                });
-                
-                // 设置位置和大小
-                shortcutButton.style.position = 'absolute';
-                shortcutButton.style.left = `${position.x}px`;
-                shortcutButton.style.top = `${position.y}px`;
-                shortcutButton.style.width = `${gridConfig.cellSize}px`;
-                shortcutButton.style.height = `${gridConfig.cellSize}px`;
-                
-                // 添加右键菜单事件
-                shortcutButton.addEventListener('contextmenu', event => {
-                    event.preventDefault();
-                    this.showIconSelectorModal(shortcut);
-                });
-                
-                // 添加拖动排序功能
-                if (GridSystem && typeof GridSystem.registerDraggable === 'function') {
-                    // 标记是否为真正的拖动（有足够的移动距离）
-                    let isRealDrag = false;
-                    let startX = 0;
-                    let startY = 0;
-                    let originalIndex = index;
-                    
-                    // 先添加点击事件
-                    shortcutButton.addEventListener('click', () => {
-                        if (!isRealDrag) {
-                            chrome.tabs.create({ url: shortcut.url });
-                        }
-                    });
-                    
-                    GridSystem.registerDraggable(shortcutButton, {
-                        gridSnapEnabled: true,
-                        showGridHint: true,
-                        onDragStart: (e, dragState) => {
-                            // 记录起始位置
-                            startX = e.clientX;
-                            startY = e.clientY;
-                            isRealDrag = false;
-                            shortcutButton.classList.add('shortcut-dragging');
-                            originalIndex = index;
-                            // 显示空位置
-                            console.log('开始拖动，显示空位置');
-                            self.showEmptySlots(true);
-                        },
-                        onDragMove: (e, dragState, position) => {
-                            // 检查是否有足够的移动距离
-                            const distance = Math.sqrt(
-                                Math.pow(e.clientX - startX, 2) + 
-                                Math.pow(e.clientY - startY, 2)
-                            );
-                            // 如果移动距离超过5像素，认为是真正的拖动
-                            if (distance > 5) {
-                                isRealDrag = true;
-                            }
-                        },
-                        onDragEnd: (e, dragState) => {
-                            shortcutButton.classList.remove('shortcut-dragging');
-                            
-                            // 拖动结束后，基于位置计算新的索引
-                            if (isRealDrag) {
-                                const rect = shortcutButton.getBoundingClientRect();
-                                const parentRect = shortcutButton.parentElement.getBoundingClientRect();
-                                const relativeX = rect.left - parentRect.left;
-                                const relativeY = rect.top - parentRect.top;
-                                
-                                // 计算新的网格索引
-                                if (GridSystem && typeof GridSystem.getGridIndexFromPosition === 'function') {
-                                    const newIndex = GridSystem.getGridIndexFromPosition(
-                                        relativeX,
-                                        relativeY,
-                                        gridConfig.columns,
-                                        gridConfig.cellSize,
-                                        gridConfig.gap
-                                    );
-                                    
-                                    // 确保索引在有效范围内
-                                    const validIndex = Math.max(0, Math.min(newIndex, gridLayout.length - 1));
-                                    
-                                    if (validIndex !== originalIndex) {
-                                        // 重新排序网格布局
-                                        this.reorderGridLayout(gridLayout, originalIndex, validIndex);
-                                        // 保存新的布局
-                                        this.saveGridLayout(folder, gridLayout);
-                                        // 重新渲染
-                                        this.showShortcuts(folder);
-                                    } else {
-                                        // 如果没有移动，隐藏空位置
-                                        console.log('没有移动，隐藏空位置');
-                                        self.showEmptySlots(false);
-                                    }
-                                }
-                            } else {
-                                // 如果不是真正的拖动，隐藏空位置
-                                console.log('不是真正的拖动，隐藏空位置');
-                                self.showEmptySlots(false);
-                            }
-                            
-                            // 重置拖动标记
-                            setTimeout(() => {
-                                isRealDrag = false;
-                            }, 100);
-                        }
-                    });
-                } else {
-                    // 如果没有拖动功能，添加普通点击事件
-                    shortcutButton.addEventListener('click', () => {
-                        chrome.tabs.create({ url: shortcut.url });
-                    });
-                }
-                
-                // 获取图标
-                this.getCustomIconForShortcut(shortcut, shortcutButton);
-                
-                // 添加标题
-                shortcutButton.appendChild(
-                    Utils.createElement("span", "shortcut-title", {}, shortcut.title)
-                );
-                
-                // 添加元素到DOM
-                shortcutList.appendChild(shortcutButton);
-            } else if (item.type === 'empty') {
-                // 创建空位置元素（可选，用于可视化）
-                const emptySlot = Utils.createElement("div", "shortcut-empty-slot", {
-                    'data-grid-index': index,
-                    'data-empty-id': item.id
-                });
-                
-                // 设置位置和大小
-                emptySlot.style.position = 'absolute';
-                emptySlot.style.left = `${position.x}px`;
-                emptySlot.style.top = `${position.y}px`;
-                emptySlot.style.width = `${gridConfig.cellSize}px`;
-                emptySlot.style.height = `${gridConfig.cellSize}px`;
-                emptySlot.style.border = '1px dashed rgba(255, 255, 255, 0.3)';
-                emptySlot.style.borderRadius = '12px';
-                emptySlot.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                emptySlot.style.display = 'none'; // 默认隐藏
-                
-                // 添加元素到DOM
-                shortcutList.appendChild(emptySlot);
-            }
+            // 显示快捷方式和小部件
+            DesktopSystem.createDesktopGrid(shortcutList, allItems, gridConfig);
         });
         
-        // 调整容器高度，使其与左侧文件夹按钮框高度一致
-        const folderList = document.getElementById('folder-list');
-        if (folderList) {
-            const folderListHeight = folderList.offsetHeight;
-            shortcutList.style.height = `${folderListHeight}px`;
-            console.log('设置快捷方式列表高度与文件夹列表一致:', folderListHeight, 'px');
-        } else {
-            // 如果没有文件夹列表，使用默认高度
-            const margin = 10;
-            const rowCount = Math.ceil(gridLayout.length / gridConfig.columns);
-            const containerHeight = rowCount * (gridConfig.cellSize + gridConfig.gap) + 2 * margin;
-            shortcutList.style.height = `${containerHeight}px`;
-            console.log('设置快捷方式列表默认高度:', containerHeight, 'px, 行数:', rowCount);
-        }
-        
-        // 保存网格布局
-        this.saveGridLayout(folder, gridLayout);
-        
-        // 恢复小部件容器
-        widgetContainers.forEach(container => {
-            shortcutList.appendChild(container);
+        // 响应窗口大小变化
+        window.addEventListener('resize', () => {
+            const newGridConfig = DesktopSystem.calculateGridConfig();
+            DesktopSystem.createDesktopGrid(shortcutList, allItems, newGridConfig);
         });
     },
 
@@ -728,242 +510,6 @@ export const BookmarkManager = {
     },
 
     /**
-     * 应用选中的文件夹
-     */
-    applySelectedFolder: async function(root) {
-        try {
-            // 获取当前选中文件夹或使用根节点
-            const { folder = root.id } = await chrome.storage.local.get("folder");
-            currentFolder = folder;
-
-            // 查找并显示快捷方式
-            const selectedFolder = this.findFolderById(root, folder);
-            if (selectedFolder) {
-                this.showShortcuts(selectedFolder);
-
-                // 清除所有选中状态
-                document.querySelectorAll('.folder-button.selected').forEach(btn => btn.classList.remove('selected'));
-
-                // 获取固定文件夹列表
-                let pinnedFolders = [];
-                try {
-                    const result = await chrome.storage.local.get("pinnedFolders");
-                    pinnedFolders = result.pinnedFolders || [];
-                } catch (err) {
-                    console.warn('获取固定文件夹失败:', err);
-                }
-
-                // 判断并选中对应按钮
-                const isPinned = pinnedFolders.includes(folder);
-                if (isPinned) {
-                    const pinBtn = document.querySelector(`[data-folder-id="${folder}"][data-pinned="true"]`);
-                    if (pinBtn) pinBtn.classList.add('selected');
-                } else {
-                    const regBtn = document.querySelector(`[data-folder-id="${folder}"][data-pinned="false"]`);
-                    if (regBtn) regBtn.classList.add('selected');
-                }
-            }
-        } catch (err) {
-            this.showError(err);
-        }
-    },
-
-    /**
-     * 显示图标选择模态框
-     */
-    showIconSelectorModal: function(shortcut) {
-        try {
-            Menu.ImageSelector.show({
-                title: I18n.getMessage('customIcon', '自定义图标'),
-                modalId: 'icon-selector-modal',
-                mode: 'icon',
-                urlLabel: I18n.getMessage('iconUrl', '图标链接'),
-                uploadLabel: I18n.getMessage('uploadIcon', '上传图标'),
-                urlPlaceholder: 'https://example.com/icon.png',
-                showReset: true,
-                onReset: () => this.resetShortcutIcon(shortcut),
-                onConfirm: async (iconData) => {
-                    if (iconData) {
-                        await this.saveCustomIconForShortcut(shortcut, iconData);
-                    }
-                },
-                onShow: async () => {
-                    const preview = document.getElementById('icon-selector-modal-preview');
-                    if (!preview) return;
-                    preview.innerHTML = `<div class="loading-spinner"></div>`;
-                    try {
-                        const customIcons = await this.getCustomIcons();
-                        const customIcon = customIcons[shortcut.id];
-                        if (customIcon) {
-                            preview.innerHTML = `<img src="${customIcon}" alt="Current Icon" class="preview-icon-img">`;
-                        } else {
-                            try {
-                                const iconUrl = await IconManager.getIconUrlAsync(shortcut.url);
-                                if (iconUrl) {
-                                    preview.innerHTML = `<img src="${iconUrl}" alt="Current Icon" class="preview-icon-img">`;
-                                    // 移除早期return，允许后续debug信息处理
-                                }
-                            } catch (e) {
-                                console.log('通过IconManager获取图标失败');
-                            }
-                        }
-                    } catch (error) {
-                        console.error('加载当前图标失败:', error);
-                        preview.innerHTML = `<img src="../icons/default.png" alt="Default Icon" class="preview-icon-img">`;
-                    }
-                   // 如果开启调试模式，显示图标实际尺寸
-                   if (window.DEBUG_MODE) {
-                       const img = preview.querySelector('.preview-icon-img');
-                       if (img) {
-                           const appendSize = () => {
-                               const info = Utils.createElement('div', 'icon-size-info', {}, `${img.naturalWidth}x${img.naturalHeight}px`);
-                               preview.appendChild(info);
-                           };
-                           if (img.complete) {
-                               appendSize();
-                           } else {
-                               img.addEventListener('load', appendSize);
-                           }
-                       }
-                   }
-                }
-            });
-        } catch (error) {
-            this.showError(error);
-        }
-    },
-
-    /**
-     * 保存自定义图标
-     */
-    saveCustomIconForShortcut: async function(shortcut, iconData) {
-        try {
-            if (!iconData) return;
-            
-            const customIcons = await this.getCustomIcons();
-            customIcons[shortcut.id] = iconData;
-            await chrome.storage.local.set({ customIcons });
-            
-            await this.reloadCurrentFolder();
-            
-            Notification.notify({
-                title: I18n.getMessage('success', '成功'),
-                message: I18n.getMessage('iconUpdated', '图标已更新'),
-                type: 'success',
-                duration: 2000
-            });
-            
-        } catch (error) {
-            this.showError(error);
-        }
-    },
-
-    /**
-     * 重置书签图标
-     */
-    resetShortcutIcon: async function(shortcut) {
-        try {
-            const customIcons = await this.getCustomIcons();
-            const shortcutList = document.getElementById("shortcut-list");
-            
-            if (shortcutList) {
-                const shortcutButtons = shortcutList.querySelectorAll('.shortcut-button');
-                
-                for (const button of shortcutButtons) {
-                    if (button.title === shortcut.title) {
-                        button.style.backgroundImage = '';
-                        button.style.transition = 'all 0.3s';
-                        button.style.boxShadow = '0 0 15px rgba(0, 123, 255, 0.8)';
-                        
-                        if (customIcons[shortcut.id]) {
-                            delete customIcons[shortcut.id];
-                            await chrome.storage.local.set({ customIcons });
-                        }
-                        
-                        await IconManager.resetIcon(shortcut.url);
-                        
-                        const domain = Utils.getDomain(shortcut.url);
-                        await chrome.storage.local.remove(domain);
-                        await chrome.storage.local.remove(shortcut.url);
-                        
-                        setTimeout(() => {
-                            button.style.boxShadow = '';
-                            button.style.backgroundImage = '';
-                            
-                            const timestamp = Date.now();
-                            const refreshedUrl = shortcut.url + (shortcut.url.includes('?') ? '&' : '?') + '_t=' + timestamp;
-                            IconManager.getIconUrl(refreshedUrl, button);
-                        }, 300);
-                        
-                        break;
-                    }
-                }
-            }
-            
-            Notification.notify({
-                title: I18n.getMessage('iconReset', '图标已重置'),
-                message: I18n.getMessage('fetchingDefaultIcon', '正在获取默认图标'),
-                type: 'info',
-                duration: 2000
-            });
-            
-        } catch (error) {
-            this.showError(error);
-        }
-    },
-
-    /**
-     * 获取保存的自定义图标
-     */
-    getCustomIcons: async function() {
-        try {
-            const result = await chrome.storage.local.get('customIcons');
-            return result.customIcons || {};
-        } catch (error) {
-            this.showError(error);
-            return {};
-        }
-    },
-
-    /**
-     * 重新加载当前文件夹内容
-     */
-    reloadCurrentFolder: async function() {
-        try {
-            const tree = await chrome.bookmarks.getTree();
-            const root = tree[0];
-            
-            if (!currentFolder) return;
-            
-            const folder = this.findFolderById(root, currentFolder);
-            if (folder) {
-                this.showShortcuts(folder);
-            }
-        } catch (error) {
-            this.showError(error);
-        }
-    },
-
-    /**
-     * 为快捷方式获取自定义图标
-     */
-    getCustomIconForShortcut: async function(shortcut, element) {
-        try {
-            const customIcons = await this.getCustomIcons();
-            const customIcon = customIcons[shortcut.id];
-            
-            if (customIcon) {
-                element.style.backgroundImage = `url(${customIcon})`;
-            } else {
-                IconManager.getIconUrl(shortcut.url, element);
-            }
-        } catch (error) {
-            this.showError(error);
-            IconManager.getIconUrl(shortcut.url, element);
-        }
-    },
-
-    /**
      * 确保文件夹子元素在视图中可见
      */
     ensureChildrenVisibility: function(folderButton) {
@@ -994,69 +540,6 @@ export const BookmarkManager = {
             }
         });
     },
-    
-
-    
-    /**
-     * 重新排序网格布局
-     */
-    reorderGridLayout: function(gridLayout, fromIndex, toIndex) {
-        if (fromIndex === toIndex) return;
-        
-        // 保存要移动的元素
-        const movedItem = gridLayout[fromIndex];
-        
-        // 1. 将原位置替换为空位置
-        gridLayout[fromIndex] = {
-            id: `empty_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            type: 'empty'
-        };
-        
-        // 2. 将目标位置的元素替换为移动的元素
-        gridLayout[toIndex] = movedItem;
-        
-        console.log('重新排序网格布局:', `从 ${fromIndex} 到 ${toIndex}`);
-    },
-    
-    /**
-     * 保存网格布局
-     */
-    saveGridLayout: async function(folder, gridLayout) {
-        try {
-            // 保存包含空位置的完整布局
-            const layoutToSave = gridLayout.map(item => {
-                if (item.type === 'shortcut') {
-                    return {
-                        id: item.id,
-                        type: 'shortcut'
-                    };
-                } else {
-                    return {
-                        id: item.id,
-                        type: 'empty'
-                    };
-                }
-            });
-            
-            await chrome.storage.local.set({ 
-                [`gridLayout_${folder.id}`]: layoutToSave 
-            });
-            
-            console.log('网格布局已保存:', layoutToSave);
-        } catch (error) {
-            console.error('保存网格布局失败:', error);
-        }
-    },
-    
-    /**
-     * 显示或隐藏空位置
-     */
-    showEmptySlots: function(show) {
-        const emptySlots = document.querySelectorAll('.shortcut-empty-slot');
-        emptySlots.forEach(slot => {
-            slot.style.display = show ? 'block' : 'none';
-        });
-    },
 
     /**
      * 处理右键菜单事件
@@ -1064,7 +547,8 @@ export const BookmarkManager = {
     handleContextMenu: function(event) {
         if (event.target.matches('input, textarea, [contenteditable="true"]')) {
             return;
-        }        const shortcutButton = event.target.closest('.shortcut-button');
+        }
+        const shortcutButton = event.target.closest('.shortcut-button');
         
         if (shortcutButton) {
             return;
@@ -1228,7 +712,8 @@ export const BookmarkManager = {
             if (hasRegularFolders) {
                 container.appendChild(regularSection);
             }
-              await new Promise(resolve => setTimeout(resolve, 0));
+            
+            await new Promise(resolve => setTimeout(resolve, 0));
             this.applySelectedFolder(root);
             
         } catch (error) {
