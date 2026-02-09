@@ -37,6 +37,7 @@
   border: none;
   transition: opacity var(--transition-normal), visibility var(--transition-normal);
   display: block;
+  grid-column: 3;
 }
 
 #shortcut-list.hidden {
@@ -52,17 +53,30 @@
   padding: 0;
 }
 
-#shortcut-list:empty {
-  display: none;  /* 完全隐藏容器 */
-  opacity: 0;
-  visibility: hidden;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  width: 0;
-  height: 0;
-  margin: 0;
-  padding: 0;
+
+.desktop-page-indicators {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.15);
+  z-index: 5;
+}
+
+.desktop-page-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+
+.desktop-page-indicator.active {
+  background: rgba(255, 255, 255, 0.95);
 }
 
 
@@ -99,12 +113,12 @@
   color: var(--color-text);  /* 统一使用全局变量 */
   max-width: 100%;
   overflow: hidden;
+  text-overflow: clip;
   white-space: nowrap;
   user-select: none;
   padding: 0 4px;
   width: 100%;
   text-align: center;
-  clip: rect(0, 100%, 20px, 0);
   line-height: 1.1;
   position: absolute;
   bottom: 8px;
@@ -174,6 +188,10 @@
 [data-theme="dark"] .shortcut-button img,
 [data-theme="dark"] .shortcut-icon {
   filter: brightness(1.9);  /* 略微提高图标亮度以增强可见度 */
+}
+
+[data-theme="dark"] .shortcut-title {
+  color: #ffffff;
 }
 
 /* 深色模式下的空位置样式 */

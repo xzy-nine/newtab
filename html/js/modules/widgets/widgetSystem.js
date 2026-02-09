@@ -323,6 +323,14 @@ handle.addEventListener('touchstart', (e) => {
      */
     setupScrollHandlers(container) {
         container.addEventListener('wheel', (e) => {
+            if (e.target && e.target.closest && e.target.closest('.widget-container') !== container) {
+                return;
+            }
+
+            if (!container.matches(':hover')) {
+                return;
+            }
+
             // 如果事件发生在可滚动的子元素上，并且该元素还能在滚动方向上继续滚动，
             // 则允许默认滚动行为；否则拦截并用于切换小部件。
             try {
@@ -355,6 +363,7 @@ handle.addEventListener('touchstart', (e) => {
                     const atBottom = Math.ceil(scrollableEl.scrollTop + scrollableEl.clientHeight) >= scrollableEl.scrollHeight;
                     if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
                         // 允许默认滚动，退出处理
+                        e.stopPropagation();
                         return;
                     }
                 }
@@ -365,6 +374,7 @@ handle.addEventListener('touchstart', (e) => {
 
             // 否则阻止默认并进行 widget 切换
             e.preventDefault();
+            e.stopPropagation();
             const contentArea = container.querySelector('.widget-content');
             if (!contentArea) return;
 
@@ -440,6 +450,106 @@ export const WidgetSystem = {
             console.error('初始化小部件系统失败:', error);
             return Promise.reject(error);
         }
+    },
+
+    /**
+     * 判断小部件系统是否已初始化完成
+     * @returns {boolean} 是否已就绪
+     */
+    isReady() {
+        return state.isInitialized === true;
+    },
+
+    /**
+     * 等待小部件系统初始化完成
+     * @param {number} timeoutMs - 超时时间（毫秒）
+     * @returns {Promise<void>} 无
+     */
+    whenReady(timeoutMs = 3000) {
+        if (state.isInitialized === true) {
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+            let settled = false;
+
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                resolve();
+            };
+
+            const onLoaded = () => {
+                finish();
+            };
+
+            document.addEventListener('widgets-loaded', onLoaded, { once: true });
+
+            if (timeoutMs > 0) {
+                setTimeout(finish, timeoutMs);
+            }
+        });
+    },
+
+    /**
+     * 重置已渲染的小部件容器缓存
+     */
+    resetRenderedContainers() {
+        state.widgetContainers = [];
+    },
+
+    /**
+     * 创建并初始化小部件容器DOM
+     * @param {Object} widgetData - 小部件容器数据
+     * @returns {Promise<HTMLElement>} 小部件容器元素
+     */
+    async buildContainerElement(widgetData) {
+        const containerId = widgetData && widgetData.id ? widgetData.id : `widget-container-${Date.now()}`;
+        const container = Utils.createElement('div', 'widget-container', {
+            'data-widget-id': containerId
+        });
+        container.id = containerId;
+
+        if (widgetData && widgetData.folderId !== undefined && widgetData.folderId !== null) {
+            container.dataset.folderId = widgetData.folderId;
+        }
+
+        const isFixed = widgetData && widgetData.fixed === true;
+        container.dataset.fixed = isFixed.toString();
+        if (isFixed) {
+            container.classList.add('widget-fixed');
+        }
+
+        const contentWrapper = Utils.createElement('div', 'widget-content-wrapper');
+        const contentArea = Utils.createElement('div', 'widget-content');
+        const indicators = Utils.createElement('div', 'widget-indicators');
+
+        contentWrapper.appendChild(contentArea);
+        contentWrapper.appendChild(indicators);
+        container.appendChild(contentWrapper);
+
+        state.widgetContainers.push(container);
+
+        const items = widgetData && Array.isArray(widgetData.items) ? widgetData.items : [];
+        if (items.length > 0) {
+            for (const item of items) {
+                const widgetType = item && item.type ? item.type : 'unknown';
+                const widgetPayload = { ...(item && item.data ? item.data : {}) };
+                if (item && item.id) {
+                    widgetPayload.id = item.id;
+                }
+                await this.addWidgetItem(container, widgetType, widgetPayload);
+            }
+            const activeIndex = widgetData && Number.isInteger(widgetData.activeIndex) ? widgetData.activeIndex : 0;
+            this.setActiveWidgetItem(container, activeIndex);
+            this.updateWidgetIndicators(container);
+        } else {
+            this.addAddButton(container);
+        }
+
+        EventHandlers.setupScrollHandlers(container);
+
+        return container;
     },
     
     /**
@@ -530,8 +640,9 @@ export const WidgetSystem = {
         try {
             // 只保存必要的数据
             const widgetsToSave = state.widgetContainers.map(container => {
+                const containerId = container.id || container.dataset.widgetId;
                 return {
-                    id: container.id,
+                    id: containerId,
                     folderId: container.dataset.folderId || null,
                     fixed: container.dataset.fixed === 'true',
                     activeIndex: this.getActiveWidgetIndex(container),
@@ -542,8 +653,16 @@ export const WidgetSystem = {
                     }))
                 };
             });
-            
-            await chrome.storage.local.set({ widgets: widgetsToSave });
+
+            const widgetMap = new Map(state.widgets.map(widget => [widget.id, widget]));
+            widgetsToSave.forEach(widget => {
+                if (widget && widget.id) {
+                    widgetMap.set(widget.id, widget);
+                }
+            });
+
+            state.widgets = Array.from(widgetMap.values());
+            await chrome.storage.local.set({ widgets: state.widgets });
             return Promise.resolve();
         } catch (error) {
             console.error('保存小部件数据失败:', error);
@@ -652,19 +771,13 @@ export const WidgetSystem = {
                     this.toggleFixedContainer(container);
                 }
             },
-            {
-                id: container.dataset.folderId ? 'unbind-folder' : 'bind-folder',
-                text: container.dataset.folderId 
-                    ? I18n.getMessage('unbindFolder', '取消绑定文件夹') 
-                    : I18n.getMessage('bindFolder', '绑定到文件夹'),
+            ...(container.dataset.folderId ? [] : [{
+                id: 'bind-folder',
+                text: I18n.getMessage('bindFolder', '绑定到文件夹'),
                 callback: () => {
-                    if (container.dataset.folderId) {
-                        this.unbindWidgetFromFolder(container);
-                    } else {
-                        this.showFolderSelectionDialog(container);
-                    }
+                    this.showFolderSelectionDialog(container);
                 }
-            },
+            }]),
             {
                 type: 'separator'
             }
@@ -817,16 +930,16 @@ export const WidgetSystem = {
             let widgetModule;
             try {
                 widgetModule = await WidgetRegistry.loadWidget(widgetType);
-                
-                // 检查元素是否仍在DOM中，防止在加载过程中被移除
-                if (!document.body.contains(widgetItem)) {
-                    console.warn('小部件项在初始化过程中被移除');
-                    return null;
-                }
-                
+
                 // 移除加载指示器
                 if (loadingIndicator && widgetItem.contains(loadingIndicator)) {
                     widgetItem.removeChild(loadingIndicator);
+                }
+                
+                // 检查元素是否仍在DOM中，防止在加载过程中被移除
+                if (container.isConnected && !document.body.contains(widgetItem)) {
+                    console.warn('小部件项在初始化过程中被移除');
+                    return null;
                 }
                 
                 // 检查模块是否正确加载
@@ -1125,9 +1238,14 @@ export const WidgetSystem = {
         addButton.appendChild(addIcon);
         addButton.appendChild(addText);
         
-        addButton.addEventListener('click', () => {
-            this.showAddWidgetDialog(container);
-        });
+        const openDialog = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.showAddWidgetDialog(container, event);
+        };
+
+        addButton.addEventListener('click', openDialog);
+        addButton.addEventListener('pointerup', openDialog);
         
         contentArea.appendChild(addButton);
     },
@@ -1136,22 +1254,72 @@ export const WidgetSystem = {
      * 显示添加小部件对话框
      * @param {HTMLElement} container - 小部件容器元素
      */
-    showAddWidgetDialog(container) {
-        const widgetTypes = WidgetRegistry.getWidgetTypes();
-        
-        const menuItems = widgetTypes.map(type => ({
-            id: type.type,
-            text: type.name,
-            callback: () => {
-                this.addWidgetItem(container, type.type);
-            }
-        }));
-        
+    async showAddWidgetDialog(container, event = null) {
+        let widgetTypes = [];
+        try {
+            widgetTypes = await WidgetRegistry.getAllWidgets(true);
+        } catch (error) {
+            console.error('加载小部件列表失败:', error);
+            widgetTypes = WidgetRegistry.getWidgetTypes();
+        }
+
+        if (!widgetTypes || widgetTypes.length === 0) {
+            Notification.notify({
+                title: getI18nMessage('noWidgets', '没有可用的小部件'),
+                message: getI18nMessage('noWidgetsMessage', '请确认小部件模块已加载'),
+                type: 'info',
+                duration: 2000
+            });
+            return;
+        }
+
         const dialogTitle = getI18nMessage('addWidget', '添加小部件');
-        Menu.ContextMenu.show({ clientX: 100, clientY: 100 }, menuItems, { 
-            menuId: 'add-widget-dialog',
-            title: dialogTitle
-        });
+        const modalId = 'add-widget-modal';
+        let modal = document.getElementById(modalId);
+        if (!modal) {
+            modal = Utils.createElement('div', 'modal', { id: modalId });
+            const modalContent = Utils.createElement('div', 'modal-content');
+            const closeButton = Utils.createElement('span', 'modal-close', {}, '&times;');
+            const title = Utils.createElement('h2', 'modal-header', {}, dialogTitle);
+            const listContainer = Utils.createElement('div', 'modal-form widget-type-list');
+
+            modalContent.appendChild(closeButton);
+            modalContent.appendChild(title);
+            modalContent.appendChild(listContainer);
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+
+            if (!modal.dataset.keybound) {
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        Menu.Modal.hide(modalId);
+                    }
+                });
+                modal.dataset.keybound = 'true';
+            }
+        } else {
+            const title = modal.querySelector('.modal-header');
+            if (title) {
+                title.textContent = dialogTitle;
+            }
+        }
+
+        const listContainer = modal.querySelector('.widget-type-list');
+        if (listContainer) {
+            listContainer.innerHTML = '';
+            widgetTypes.forEach(type => {
+                const itemText = type.name || type.type;
+                const item = Utils.createElement('div', 'context-menu-item', { id: `widget-type-${type.type}` }, itemText);
+                item.addEventListener('click', () => {
+                    Menu.Modal.hide(modalId);
+                    this.addWidgetItem(container, type.type);
+                });
+                listContainer.appendChild(item);
+            });
+        }
+
+        modal.classList.add('visible');
+        Menu.Modal.show(modalId);
     },
     
     /**
@@ -1161,6 +1329,8 @@ export const WidgetSystem = {
     deleteWidgetContainer(container) {
         const confirmMessage = getI18nMessage('confirmDeleteWidgetContainer', '确定要删除这个小部件容器吗？');
         if (!confirm(confirmMessage)) return;
+
+        const containerId = container.id || container.dataset.widgetId;
         
         // 从DOM中移除
         if (container.parentNode) {
@@ -1169,6 +1339,10 @@ export const WidgetSystem = {
         
         // 从管理列表中移除
         state.removeContainer(container);
+
+        if (containerId) {
+            state.widgets = state.widgets.filter(widget => widget.id !== containerId);
+        }
         
         // 保存状态
         this.saveWidgets();
@@ -1240,26 +1414,6 @@ export const WidgetSystem = {
         
         // 显示通知
         const title = getI18nMessage('widgetBoundToFolder', '小部件已绑定到文件夹');
-        Notification.notify({
-            title: title,
-            type: 'success',
-            duration: 2000
-        });
-    },
-    
-    /**
-     * 取消绑定小部件与文件夹的关联
-     * @param {HTMLElement} container - 小部件容器元素
-     */
-    unbindWidgetFromFolder(container) {
-        container.dataset.folderId = null;
-        container.classList.remove('widget-bound-to-folder');
-        
-        // 保存状态
-        this.saveWidgets();
-        
-        // 显示通知
-        const title = getI18nMessage('widgetUnboundFromFolder', '小部件已取消绑定文件夹');
         Notification.notify({
             title: title,
             type: 'success',

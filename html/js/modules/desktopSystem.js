@@ -5,6 +5,9 @@
 
 import { Utils, IconManager } from './core/index.js';
 
+const layoutStorageKey = 'desktopLayouts';
+const layoutSaveTimers = new Map();
+
 // 桌面项目类型
 export const ItemType = {
     SHORTCUT: 'shortcut',
@@ -13,11 +16,9 @@ export const ItemType = {
 
 // 小部件类型
 export const WidgetType = {
-    CLOCK: 'clock',
-    WEATHER: 'weather',
-    CALENDAR: 'calendar',
-    NOTES: 'notes',
-    PHOTO: 'photo'
+    COUNTER: 'counter',
+    TIMER: 'timer',
+    NOTE: 'note'
 };
 
 // 基础项目接口
@@ -93,12 +94,226 @@ const gridUtils = {
  */
 export const DesktopSystem = {
     /**
+     * 检查当前布局是否需要重新排布
+     * @param {Array} items - 桌面项目
+     * @param {GridConfig} gridConfig - 网格配置
+     * @returns {boolean} 是否需要重排
+     */
+    needsReflow(items, gridConfig) {
+        const pageBuckets = new Map();
+
+        for (const item of items) {
+            const page = Number.isFinite(item.page) ? item.page : 0;
+            if (!pageBuckets.has(page)) {
+                pageBuckets.set(page, []);
+            }
+            pageBuckets.get(page).push(item);
+        }
+
+        for (const bucket of pageBuckets.values()) {
+            for (const item of bucket) {
+                if (!gridUtils.isWithinBounds(item, gridConfig)) {
+                    return true;
+                }
+            }
+
+            for (let i = 0; i < bucket.length; i += 1) {
+                for (let j = i + 1; j < bucket.length; j += 1) {
+                    if (gridUtils.checkCollision(bucket[i], bucket[j])) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    },
+
+    /**
+     * 重新按顺序铺排并分页
+     * @param {Array} items - 桌面项目
+     * @param {GridConfig} gridConfig - 网格配置
+     * @returns {Array} 重排后的项目
+     */
+    reflowItems(items, gridConfig) {
+        const pageSize = Math.max(1, gridConfig.cols * gridConfig.rows);
+
+        return items.map((item, index) => {
+            const next = { ...item };
+            const page = Math.floor(index / pageSize);
+            const indexInPage = index % pageSize;
+            next.page = page;
+            next.x = indexInPage % gridConfig.cols;
+            next.y = Math.floor(indexInPage / gridConfig.cols);
+
+            if (next.type === ItemType.SHORTCUT) {
+                next.w = 1;
+                next.h = 1;
+            }
+
+            return next;
+        });
+    },
+    /**
+     * 查找最近的可用空位
+     * @param {Object} item - 待放置的项目
+     * @param {Array} items - 当前项目列表
+     * @param {GridConfig} gridConfig - 网格配置
+     * @returns {{x:number,y:number}|null} 最近的可用位置
+     */
+    findNearestFreePosition(item, items, gridConfig) {
+        let best = null;
+        let bestDistance = Infinity;
+
+        for (let y = 0; y <= gridConfig.rows - item.h; y += 1) {
+            for (let x = 0; x <= gridConfig.cols - item.w; x += 1) {
+                const candidate = { ...item, x, y };
+                const otherItems = items.filter(i => i.id !== item.id);
+                const hasCollision = otherItems.some(otherItem => gridUtils.checkCollision(candidate, otherItem));
+                if (hasCollision) continue;
+
+                const distance = Math.abs(item.x - x) + Math.abs(item.y - y);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    best = { x, y };
+                }
+            }
+        }
+
+        return best;
+    },
+    /**
+     * 加载指定文件夹的布局数据
+     * @param {string} folderId - 文件夹ID
+     * @returns {Promise<Object|null>} 布局数据
+     */
+    async loadLayout(folderId) {
+        if (!folderId) return null;
+        try {
+            const result = await chrome.storage.local.get(layoutStorageKey);
+            const layouts = result[layoutStorageKey] || {};
+            return layouts[folderId] || null;
+        } catch (error) {
+            console.error('加载布局数据失败:', error);
+            return null;
+        }
+    },
+
+    /**
+     * 保存指定文件夹的布局数据
+     * @param {string} folderId - 文件夹ID
+     * @param {Array} items - 桌面项目
+     * @param {GridConfig} gridConfig - 网格配置
+     * @returns {Promise<void>} 无
+     */
+    async saveLayout(folderId, items, gridConfig) {
+        if (!folderId) return;
+        try {
+            const result = await chrome.storage.local.get(layoutStorageKey);
+            const layouts = result[layoutStorageKey] || {};
+            const existingLayout = layouts[folderId] || { items: [] };
+            const itemMap = new Map((existingLayout.items || []).map(item => [item.id, item]));
+
+            items.forEach(item => {
+                itemMap.set(item.id, {
+                    id: item.id,
+                    type: item.type,
+                    x: item.x,
+                    y: item.y,
+                    w: item.type === ItemType.SHORTCUT ? 1 : item.w,
+                    h: item.type === ItemType.SHORTCUT ? 1 : item.h,
+                    page: Number.isFinite(item.page) ? item.page : 0
+                });
+            });
+
+            layouts[folderId] = {
+                grid: {
+                    cols: gridConfig.cols,
+                    rows: gridConfig.rows
+                },
+                items: Array.from(itemMap.values())
+            };
+
+            await chrome.storage.local.set({ [layoutStorageKey]: layouts });
+        } catch (error) {
+            console.error('保存布局数据失败:', error);
+        }
+    },
+
+    /**
+     * 调度布局保存，避免频繁写入
+     * @param {string} folderId - 文件夹ID
+     * @param {Array} items - 桌面项目
+     * @param {GridConfig} gridConfig - 网格配置
+     */
+    scheduleLayoutSave(folderId, items, gridConfig) {
+        if (!folderId) return;
+        if (layoutSaveTimers.has(folderId)) {
+            clearTimeout(layoutSaveTimers.get(folderId));
+        }
+        const timerId = setTimeout(() => {
+            this.saveLayout(folderId, items, gridConfig);
+            layoutSaveTimers.delete(folderId);
+        }, 250);
+        layoutSaveTimers.set(folderId, timerId);
+    },
+
+    /**
+     * 应用布局并根据网格变化进行缩放
+     * @param {Array} items - 桌面项目
+     * @param {Object|null} layout - 布局数据
+     * @param {GridConfig} gridConfig - 当前网格配置
+     * @returns {Array} 应用布局后的项目
+     */
+    applyLayout(items, layout, gridConfig) {
+        if (!layout || !layout.items || layout.items.length === 0) {
+            return items;
+        }
+
+        const savedCols = layout.grid && layout.grid.cols ? layout.grid.cols : gridConfig.cols;
+        const savedRows = layout.grid && layout.grid.rows ? layout.grid.rows : gridConfig.rows;
+        const scaleX = gridConfig.cols / savedCols;
+        const scaleY = gridConfig.rows / savedRows;
+
+        const layoutMap = new Map(layout.items.map(saved => [saved.id, saved]));
+
+        return items.map(item => {
+            const saved = layoutMap.get(item.id);
+            if (!saved) return item;
+
+            const next = { ...item };
+            const savedW = Number.isFinite(saved.w) ? saved.w : next.w;
+            const savedH = Number.isFinite(saved.h) ? saved.h : next.h;
+
+            if (next.type === ItemType.SHORTCUT) {
+                next.w = 1;
+                next.h = 1;
+            } else {
+                next.w = Math.max(1, Math.min(gridConfig.cols, Math.round(savedW * scaleX)));
+                next.h = Math.max(1, Math.min(gridConfig.rows, Math.round(savedH * scaleY)));
+            }
+            next.x = Math.max(0, Math.min(gridConfig.cols - next.w, Math.round(saved.x * scaleX)));
+            next.y = Math.max(0, Math.min(gridConfig.rows - next.h, Math.round(saved.y * scaleY)));
+            next.page = Number.isFinite(saved.page) ? saved.page : (Number.isFinite(item.page) ? item.page : 0);
+
+            if (!gridUtils.isWithinBounds(next, gridConfig)) {
+                next.x = Math.max(0, Math.min(gridConfig.cols - next.w, next.x));
+                next.y = Math.max(0, Math.min(gridConfig.rows - next.h, next.y));
+            }
+
+            return next;
+        });
+    },
+    /**
      * 创建快捷方式按钮
      */
     createShortcutButton(item) {
         const shortcutButton = Utils.createElement("div", "shortcut-button", {
             'data-shortcut-id': item.id
         });
+        if (item.url) {
+            shortcutButton.dataset.shortcutUrl = item.url;
+        }
 
         shortcutButton.style.display = 'flex';
         shortcutButton.style.flexDirection = 'column';
@@ -140,20 +355,17 @@ export const DesktopSystem = {
         iconContainer.appendChild(iconElement);
 
         // 创建名称元素
-        const nameElement = Utils.createElement("span", "shortcut-name", {}, item.name);
-        nameElement.style.fontSize = '12px';
-        nameElement.style.textAlign = 'center';
-        nameElement.style.maxWidth = '80px';
-        nameElement.style.whiteSpace = 'nowrap';
-        nameElement.style.overflow = 'hidden';
-        nameElement.style.textOverflow = 'ellipsis';
-        nameElement.style.padding = '0 4px';
+        const nameElement = Utils.createElement("span", "shortcut-title", {}, item.name);
 
         shortcutButton.appendChild(iconContainer);
         shortcutButton.appendChild(nameElement);
 
         // 添加点击事件
         shortcutButton.addEventListener('click', () => {
+            if (shortcutButton.dataset.dragged === 'true') {
+                shortcutButton.dataset.dragged = 'false';
+                return;
+            }
             if (item.url) {
                 chrome.tabs.create({ url: item.url });
             }
@@ -177,6 +389,18 @@ export const DesktopSystem = {
      * 创建小部件容器
      */
     async createWidgetContainer(item) {
+        const widgetSystem = window.WidgetSystem;
+        if (widgetSystem && typeof widgetSystem.buildContainerElement === 'function' && item.data) {
+            try {
+                if (!Array.isArray(item.data.items)) {
+                    item.data.items = [];
+                }
+                return await widgetSystem.buildContainerElement(item.data);
+            } catch (error) {
+                console.error('使用WidgetSystem渲染小部件容器失败:', error);
+            }
+        }
+
         const widgetContainer = Utils.createElement("div", "widget-container", {
             'data-widget-id': item.id,
             'data-widget-type': item.widgetType,
@@ -249,10 +473,6 @@ export const DesktopSystem = {
      */
     async createDesktopGrid(container, items, gridConfig) {
         container.innerHTML = '';
-        container.style.position = 'relative';
-        container.style.width = `${gridConfig.cols * gridConfig.cellSize + (gridConfig.cols - 1) * gridConfig.gap}px`;
-        container.style.height = `${gridConfig.rows * gridConfig.cellSize + (gridConfig.rows - 1) * gridConfig.gap}px`;
-        container.style.margin = '0 auto';
 
         // 异步处理每个项目
         for (const item of items) {
@@ -300,6 +520,7 @@ export const DesktopSystem = {
         let isDragging = false;
         let startX, startY;
         let startPosX, startPosY;
+        let lastValidPosition = { x: item.x, y: item.y };
 
         // 创建拖拽手柄（现代化设计，基于Temp123）
         const dragHandle = Utils.createElement("div", "drag-handle");
@@ -350,6 +571,10 @@ export const DesktopSystem = {
             startY = e.clientY;
             startPosX = item.x;
             startPosY = item.y;
+            lastValidPosition = { x: item.x, y: item.y };
+            if (item.type === ItemType.SHORTCUT) {
+                element.dataset.dragged = 'false';
+            }
 
             element.style.zIndex = '50';
             element.style.opacity = '0.8';
@@ -364,27 +589,32 @@ export const DesktopSystem = {
 
             const deltaX = e.clientX - startX;
             const deltaY = e.clientY - startY;
+            if (item.type === ItemType.SHORTCUT && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
+                element.dataset.dragged = 'true';
+            }
 
             // 计算新位置
             const cellSizeWithGap = gridConfig.cellSize + gridConfig.gap;
             const newX = Math.max(0, Math.min(gridConfig.cols - item.w, Math.round((startPosX * cellSizeWithGap + deltaX) / cellSizeWithGap)));
             const newY = Math.max(0, Math.min(gridConfig.rows - item.h, Math.round((startPosY * cellSizeWithGap + deltaY) / cellSizeWithGap)));
 
-            // 检查碰撞
+            // 检查碰撞，记录最后可用位置
             const newItem = { ...item, x: newX, y: newY };
             const otherItems = items.filter(i => i.id !== item.id);
             const hasCollision = otherItems.some(otherItem => gridUtils.checkCollision(newItem, otherItem));
 
-            if (!hasCollision) {
-                item.x = newX;
-                item.y = newY;
+            item.x = newX;
+            item.y = newY;
 
-                // 更新元素位置
-                const left = newX * cellSizeWithGap;
-                const top = newY * cellSizeWithGap;
-                element.style.left = `${left}px`;
-                element.style.top = `${top}px`;
+            if (!hasCollision) {
+                lastValidPosition = { x: newX, y: newY };
             }
+
+            // 更新元素位置
+            const left = newX * cellSizeWithGap;
+            const top = newY * cellSizeWithGap;
+            element.style.left = `${left}px`;
+            element.style.top = `${top}px`;
         });
 
         // 鼠标释放事件
@@ -397,22 +627,42 @@ export const DesktopSystem = {
 
                 // 隐藏网格背景
                 this.hideGridBackground(container);
+
+                const otherItems = items.filter(i => i.id !== item.id);
+                const hasCollision = otherItems.some(otherItem => gridUtils.checkCollision(item, otherItem));
+                if (hasCollision) {
+                    const resolved = this.findNearestFreePosition(item, items, gridConfig);
+                    if (resolved) {
+                        item.x = resolved.x;
+                        item.y = resolved.y;
+                    } else {
+                        item.x = lastValidPosition.x;
+                        item.y = lastValidPosition.y;
+                    }
+                    const cellSizeWithGap = gridConfig.cellSize + gridConfig.gap;
+                    element.style.left = `${item.x * cellSizeWithGap}px`;
+                    element.style.top = `${item.y * cellSizeWithGap}px`;
+                }
+
+                const folderId = container && container.dataset ? container.dataset.folderId : null;
+                this.scheduleLayoutSave(folderId, items, gridConfig);
             }
         });
 
         // 添加调整大小功能（仅小部件）
         if (item.type === ItemType.WIDGET) {
-            this.addResizableFunctionality(element, item, items, gridConfig);
+            this.addResizableFunctionality(element, item, items, gridConfig, container);
         }
     },
 
     /**
      * 添加调整大小功能
      */
-    addResizableFunctionality(element, item, items, gridConfig) {
+    addResizableFunctionality(element, item, items, gridConfig, container) {
         let isResizing = false;
         let startX, startY;
         let startWidth, startHeight;
+        let lastValidSize = { w: item.w, h: item.h };
 
         // 创建调整大小手柄（基于Temp123的设计）
         const resizeHandle = Utils.createElement("div", "resize-handle");
@@ -462,6 +712,7 @@ export const DesktopSystem = {
             startY = e.clientY;
             startWidth = item.w;
             startHeight = item.h;
+            lastValidSize = { w: item.w, h: item.h };
 
             element.style.zIndex = '50';
         });
@@ -478,21 +729,23 @@ export const DesktopSystem = {
             const newWidth = Math.max(1, Math.min(gridConfig.cols - item.x, Math.round((startWidth * cellSizeWithGap + deltaX) / cellSizeWithGap)));
             const newHeight = Math.max(1, Math.min(gridConfig.rows - item.y, Math.round((startHeight * cellSizeWithGap + deltaY) / cellSizeWithGap)));
 
-            // 检查碰撞
+            // 检查碰撞，记录最后可用尺寸
             const newItem = { ...item, w: newWidth, h: newHeight };
             const otherItems = items.filter(i => i.id !== item.id);
             const hasCollision = otherItems.some(otherItem => gridUtils.checkCollision(newItem, otherItem));
 
-            if (!hasCollision) {
-                item.w = newWidth;
-                item.h = newHeight;
+            item.w = newWidth;
+            item.h = newHeight;
 
-                // 更新元素大小
-                const width = newWidth * gridConfig.cellSize + (newWidth - 1) * gridConfig.gap;
-                const height = newHeight * gridConfig.cellSize + (newHeight - 1) * gridConfig.gap;
-                element.style.width = `${width}px`;
-                element.style.height = `${height}px`;
+            if (!hasCollision) {
+                lastValidSize = { w: newWidth, h: newHeight };
             }
+
+            // 更新元素大小
+            const width = newWidth * gridConfig.cellSize + (newWidth - 1) * gridConfig.gap;
+            const height = newHeight * gridConfig.cellSize + (newHeight - 1) * gridConfig.gap;
+            element.style.width = `${width}px`;
+            element.style.height = `${height}px`;
         });
 
         // 鼠标释放事件
@@ -501,6 +754,30 @@ export const DesktopSystem = {
                 isResizing = false;
                 element.style.zIndex = '1';
                 resizeHandle.style.opacity = '0';
+
+                const otherItems = items.filter(i => i.id !== item.id);
+                const hasCollision = otherItems.some(otherItem => gridUtils.checkCollision(item, otherItem));
+                if (hasCollision) {
+                    const resolved = this.findNearestFreePosition(item, items, gridConfig);
+                    if (resolved) {
+                        item.x = resolved.x;
+                        item.y = resolved.y;
+                    } else {
+                        item.w = lastValidSize.w;
+                        item.h = lastValidSize.h;
+                    }
+
+                    const cellSizeWithGap = gridConfig.cellSize + gridConfig.gap;
+                    const width = item.w * gridConfig.cellSize + (item.w - 1) * gridConfig.gap;
+                    const height = item.h * gridConfig.cellSize + (item.h - 1) * gridConfig.gap;
+                    element.style.width = `${width}px`;
+                    element.style.height = `${height}px`;
+                    element.style.left = `${item.x * cellSizeWithGap}px`;
+                    element.style.top = `${item.y * cellSizeWithGap}px`;
+                }
+
+                const folderId = container && container.dataset ? container.dataset.folderId : null;
+                this.scheduleLayoutSave(folderId, items, gridConfig);
             }
         });
     },
@@ -558,10 +835,12 @@ export const DesktopSystem = {
     /**
      * 从书签创建快捷方式项目
      */
-    createShortcutsFromBookmarks(bookmarks, folderId = '') {
+    createShortcutsFromBookmarks(bookmarks, folderId = '', columns = 4) {
         const shortcuts = [];
         // 使用统一的蓝色主色调，20%透明度
         const folderColor = 'rgba(59, 130, 246, 0.2)'
+
+        const cols = Math.max(1, columns || 4);
 
         bookmarks.forEach((bookmark, index) => {
             if (!bookmark.children) {
@@ -571,8 +850,8 @@ export const DesktopSystem = {
                     '', // 不需要图标名称，使用URL图标
                     folderColor,
                     bookmark.url,
-                    index % 4, // 基于 Temp123 的网格布局
-                    Math.floor(index / 4),
+                    index % cols,
+                    Math.floor(index / cols),
                     1,
                     1
                 );
@@ -594,34 +873,78 @@ export const DesktopSystem = {
     /**
      * 计算响应式网格配置（基于 Temp123 的实现）
      */
-    calculateGridConfig() {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
+    calculateGridConfig(container = null) {
+        const target = container || document.getElementById('shortcut-list');
+        if (!target) {
+            return new GridConfig(2, 2, 14, 88);
+        }
 
-        if (width < 768) {
-            // 移动设备
-            return new GridConfig(
-                4,
-                6,
-                12,
-                Math.min(80, (width - 64) / 4 - 12)
-            );
-        } else if (width < 1024) {
-            // 平板
-            return new GridConfig(
-                6,
-                4,
-                14,
-                90
-            );
-        } else {
-            // 桌面
-            return new GridConfig(
-                6,
-                3,
-                16,
-                100
+        const rect = target.getBoundingClientRect();
+        let width = rect.width || target.clientWidth || 0;
+        let height = rect.height || target.clientHeight || 0;
+
+        const styles = window.getComputedStyle(target);
+        const paddingX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+        const paddingY = (parseFloat(styles.paddingTop) || 0) + (parseFloat(styles.paddingBottom) || 0);
+        width = Math.max(0, width - paddingX);
+        height = Math.max(0, height - paddingY);
+
+        if (!width || !height) {
+            return new GridConfig(2, 2, 14, 88);
+        }
+
+        const isSmall = width < 768;
+        const gap = isSmall ? 12 : 14;
+        const minCellSize = isSmall ? 72 : 88;
+        const maxCellSize = isSmall ? 90 : 120;
+
+        let cols = Math.max(2, Math.floor((width + gap) / (minCellSize + gap)));
+        let rows = Math.max(2, Math.floor((height + gap) / (minCellSize + gap)));
+
+        if (cols % 2 !== 0) cols -= 1;
+        if (rows % 2 !== 0) rows -= 1;
+
+        cols = Math.max(2, Math.min(12, cols));
+        rows = Math.max(2, rows);
+
+        let cellSize = Math.min(
+            maxCellSize,
+            Math.floor((width - (cols - 1) * gap) / cols),
+            Math.floor((height - (rows - 1) * gap) / rows)
+        );
+
+        while ((cellSize < minCellSize) && (cols > 2 || rows > 2)) {
+            if (cols > 2) cols -= 2;
+            if (rows > 2) rows -= 2;
+            cellSize = Math.min(
+                maxCellSize,
+                Math.floor((width - (cols - 1) * gap) / cols),
+                Math.floor((height - (rows - 1) * gap) / rows)
             );
         }
+
+        cellSize = Math.max(minCellSize, cellSize);
+
+        let gridWidth = cols * cellSize + (cols - 1) * gap;
+        let gridHeight = rows * cellSize + (rows - 1) * gap;
+
+        while ((gridWidth > width || gridHeight > height) && (cols > 2 || rows > 2)) {
+            if (gridWidth > width && cols > 2) cols -= 2;
+            if (gridHeight > height && rows > 2) rows -= 2;
+
+            if (cols < 2) cols = 2;
+            if (rows < 2) rows = 2;
+
+            cellSize = Math.min(
+                maxCellSize,
+                Math.floor((width - (cols - 1) * gap) / cols),
+                Math.floor((height - (rows - 1) * gap) / rows)
+            );
+            cellSize = Math.max(minCellSize, cellSize);
+            gridWidth = cols * cellSize + (cols - 1) * gap;
+            gridHeight = rows * cellSize + (rows - 1) * gap;
+        }
+
+        return new GridConfig(cols, rows, gap, cellSize);
     }
 };

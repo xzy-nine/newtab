@@ -8,6 +8,7 @@
     flex-direction: column;
     align-items: center;
     overflow-y: auto !important; /* 确保页面可以滚动 */
+    padding-bottom: var(--desktop-bottom-safe);
   }
   
   /* 确保主容器内的所有元素垂直排列 */
@@ -30,6 +31,7 @@
     max-height: none !important;
     width: 100% !important;
     max-width: 100% !important;
+    grid-column: auto !important;
   }
 
   /* 文件夹列表内容溢出时滚动 */
@@ -114,6 +116,10 @@
     order: 4;
     width: var(--element-width) !important; /* 强制使用统一宽度 */
     margin: 10px auto;
+    margin-bottom: var(--desktop-bottom-safe);
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
     box-sizing: border-box; /* 确保内边距不会增加宽度 */
   }
 

@@ -419,43 +419,77 @@ export const BookmarkManager = {
             return;
         }
 
+        shortcutList.classList.remove('hidden');
+        await new Promise(resolve => requestAnimationFrame(resolve));
+
+        const hasValidSize = () => {
+            const rect = shortcutList.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+        };
+
+        if (!hasValidSize()) {
+            await new Promise(resolve => requestAnimationFrame(resolve));
+        }
+
+        if (!hasValidSize()) {
+            if (!shortcutList._gridSizeRetry) {
+                shortcutList._gridSizeRetry = true;
+                setTimeout(() => {
+                    this.showShortcuts(folder);
+                }, 60);
+            }
+            return;
+        }
+
+        shortcutList._gridSizeRetry = false;
+
+        // 计算网格配置
+        const gridConfig = DesktopSystem.calculateGridConfig(shortcutList);
+
         // 从文件夹中提取快捷方式
         const bookmarks = folder.children ? folder.children.filter(node => !node.children) : [];
         
         // 使用 DesktopSystem 创建快捷方式项目（传递folder.id以计算统一的颜色）
-        const shortcuts = DesktopSystem.createShortcutsFromBookmarks(bookmarks, folder.id);
+        const shortcuts = DesktopSystem.createShortcutsFromBookmarks(bookmarks, folder.id, gridConfig.cols);
         
-        // 加载与当前文件夹id对应的小部件
+        // 加载与当前文件夹id对应的小部件容器
         let widgets = [];
         try {
+            if (WidgetSystem && typeof WidgetSystem.whenReady === 'function') {
+                await WidgetSystem.whenReady();
+            }
+
+            if (!WidgetSystem || typeof WidgetSystem.getWidgetsByFolderId !== 'function') {
+                throw new Error('WidgetSystem未就绪');
+            }
+
             // 使用WidgetSystem.getWidgetsByFolderId获取小部件数据
             const folderWidgets = WidgetSystem.getWidgetsByFolderId(folder.id);
             
             console.log('找到与文件夹', folder.id, '对应的小部件容器:', folderWidgets.length, '个');
             
-            // 将小部件转换为WidgetItem对象
+            // 将每个小部件容器转换为一个WidgetItem对象
+            const baseRow = Math.ceil(shortcuts.length / Math.max(1, gridConfig.cols));
             folderWidgets.forEach((widgetData, containerIndex) => {
-                if (widgetData.items && Array.isArray(widgetData.items)) {
-                    widgetData.items.forEach((item, itemIndex) => {
-                        // 计算小部件的位置，避免与快捷方式重叠
-                        const x = 4; // 从第4列开始，避免与左侧的快捷方式重叠
-                        const y = containerIndex * 2; // 每个容器占用2行
-                        
-                        // 创建WidgetItem对象
-                        widgets.push(new WidgetItem(
-                            item.id || `widget-${widgetData.id}-${itemIndex}`,
-                            item.type || 'unknown',
-                            item.type || 'unknown',
-                            item.data || {},
-                            x, // x 位置
-                            y, // y 位置
-                            2, // 宽度
-                            2  // 高度
-                        ));
-                        
-                        console.log('添加小部件:', item.type, '到位置:', x, y);
-                    });
-                }
+                const widgetWidth = Math.min(2, gridConfig.cols);
+                const widgetHeight = 2;
+                const x = 0;
+                const y = baseRow + containerIndex * widgetHeight;
+
+                const firstItemType = (widgetData.items && widgetData.items[0]) ? widgetData.items[0].type : 'unknown';
+                
+                widgets.push(new WidgetItem(
+                    widgetData.id || `widget-container-${containerIndex}`,
+                    firstItemType || 'unknown',
+                    firstItemType || 'unknown',
+                    widgetData,
+                    x,
+                    y,
+                    widgetWidth,
+                    widgetHeight
+                ));
+                
+                console.log('添加小部件容器:', widgetData.id, '到位置:', x, y);
             });
         } catch (error) {
             console.error('加载小部件数据失败:', error);
@@ -463,25 +497,100 @@ export const BookmarkManager = {
         
         // 合并所有项目
         const allItems = [...shortcuts, ...widgets];
+        const pageSize = Math.max(1, gridConfig.cols * gridConfig.rows);
+
+        allItems.forEach((item, index) => {
+            if (!Number.isFinite(item.page)) {
+                item.page = Math.floor(index / pageSize);
+            }
+        });
         
-        // 将allItems存储在shortcutList元素上，确保事件监听器使用正确的数据
-        shortcutList._allItems = allItems;
+        // 记录当前文件夹，供布局持久化使用
+        shortcutList.dataset.folderId = folder.id;
         
-        // 移除hidden类，使容器可见
-        shortcutList.classList.remove('hidden');
-        
-        // 调整容器大小
-        shortcutList.style.width = 'auto';
-        shortcutList.style.height = 'auto';
-        shortcutList.style.minHeight = '400px';
+        if (!WidgetSystem || typeof WidgetSystem.isReady !== 'function' || !WidgetSystem.isReady()) {
+            if (!shortcutList._widgetInitListenerAdded) {
+                shortcutList._widgetInitListenerAdded = true;
+                document.addEventListener('widgets-loaded', async () => {
+                    try {
+                        const [folderTree] = await chrome.bookmarks.getSubTree(folder.id);
+                        if (folderTree) {
+                            this.showShortcuts(folderTree);
+                        }
+                    } catch (error) {
+                        console.error('小部件加载完成后重新渲染失败:', error);
+                    }
+                }, { once: true });
+            }
+        }
         
         // 使用requestAnimationFrame确保DOM更新后再计算和渲染
         requestAnimationFrame(async () => {
-            // 计算网格配置
-            const gridConfig = DesktopSystem.calculateGridConfig();
+            if (WidgetSystem && typeof WidgetSystem.resetRenderedContainers === 'function') {
+                WidgetSystem.resetRenderedContainers();
+            }
+            const layout = await DesktopSystem.loadLayout(folder.id);
+            let layoutItems = DesktopSystem.applyLayout(allItems, layout, gridConfig);
+            if (DesktopSystem.needsReflow(layoutItems, gridConfig)) {
+                layoutItems = DesktopSystem.reflowItems(layoutItems, gridConfig);
+            }
+
+            const maxPage = layoutItems.reduce((maxValue, item) => {
+                const value = Number.isFinite(item.page) ? item.page : 0;
+                return Math.max(maxValue, value);
+            }, 0);
+            const pageCount = Math.max(1, maxPage + 1, Math.ceil(layoutItems.length / pageSize));
+            let pageIndex = Number.isFinite(shortcutList._desktopPageIndex) ? shortcutList._desktopPageIndex : 0;
+            if (pageIndex >= pageCount) pageIndex = pageCount - 1;
+            shortcutList._desktopPageIndex = pageIndex;
+
+            const pageItems = layoutItems.filter(item => (Number.isFinite(item.page) ? item.page : 0) === pageIndex);
+
+            // 将allItems存储在shortcutList元素上，确保事件监听器使用正确的数据
+            shortcutList._allItems = layoutItems;
             
             // 显示快捷方式和小部件（异步处理）
-            await DesktopSystem.createDesktopGrid(shortcutList, allItems, gridConfig);
+            await DesktopSystem.createDesktopGrid(shortcutList, pageItems, gridConfig);
+
+            const existingIndicators = shortcutList.querySelector('.desktop-page-indicators');
+            if (existingIndicators) {
+                existingIndicators.remove();
+            }
+
+            if (pageCount > 1) {
+                const indicators = document.createElement('div');
+                indicators.className = 'desktop-page-indicators';
+                for (let i = 0; i < pageCount; i += 1) {
+                    const dot = document.createElement('div');
+                    dot.className = 'desktop-page-indicator';
+                    if (i === pageIndex) {
+                        dot.classList.add('active');
+                    }
+                    dot.addEventListener('click', () => {
+                        shortcutList._desktopPageIndex = i;
+                        this.showShortcuts(folder);
+                    });
+                    indicators.appendChild(dot);
+                }
+                shortcutList.appendChild(indicators);
+
+                if (!shortcutList._pageWheelHandler) {
+                    shortcutList._pageWheelHandler = (event) => {
+                        if (pageCount <= 1) return;
+                        if (event.target && event.target.closest && event.target.closest('.widget-container')) {
+                            return;
+                        }
+                        event.preventDefault();
+                        const direction = event.deltaY > 0 ? 1 : -1;
+                        const nextIndex = Math.min(pageCount - 1, Math.max(0, shortcutList._desktopPageIndex + direction));
+                        if (nextIndex !== shortcutList._desktopPageIndex) {
+                            shortcutList._desktopPageIndex = nextIndex;
+                            this.showShortcuts(folder);
+                        }
+                    };
+                    shortcutList.addEventListener('wheel', shortcutList._pageWheelHandler, { passive: false });
+                }
+            }
         });
         
         // 移除之前的窗口大小变化事件监听器
@@ -490,10 +599,15 @@ export const BookmarkManager = {
         
         // 响应窗口大小变化
         window._shortcutResizeHandler = async () => {
-            const newGridConfig = DesktopSystem.calculateGridConfig();
-            // 使用存储在shortcutList上的allItems，确保使用正确的数据
+            const newGridConfig = DesktopSystem.calculateGridConfig(shortcutList);
+            const layout = await DesktopSystem.loadLayout(folder.id);
             const currentItems = shortcutList._allItems || allItems;
-            await DesktopSystem.createDesktopGrid(shortcutList, currentItems, newGridConfig);
+            let layoutItems = DesktopSystem.applyLayout(currentItems, layout, newGridConfig);
+            if (DesktopSystem.needsReflow(layoutItems, newGridConfig)) {
+                layoutItems = DesktopSystem.reflowItems(layoutItems, newGridConfig);
+            }
+            shortcutList._allItems = layoutItems;
+            await DesktopSystem.createDesktopGrid(shortcutList, layoutItems, newGridConfig);
         };
         
         window.addEventListener('resize', window._shortcutResizeHandler);
@@ -605,6 +719,8 @@ export const BookmarkManager = {
         const shortcutButton = event.target.closest('.shortcut-button');
         
         if (shortcutButton) {
+            event.preventDefault();
+            this.showShortcutContextMenu(event, shortcutButton);
             return;
         }
         
@@ -615,6 +731,179 @@ export const BookmarkManager = {
             this.showFolderContextMenu(event, folderButton.folderData);
             return;
         }
+    },
+
+    /**
+     * 显示快捷方式右键菜单
+     * @param {MouseEvent} event - 鼠标事件
+     * @param {HTMLElement} shortcutButton - 快捷方式元素
+     */
+    showShortcutContextMenu: function(event, shortcutButton) {
+        const shortcutUrl = shortcutButton.dataset.shortcutUrl;
+        if (!shortcutUrl) return;
+
+        const menuItems = [
+            {
+                id: 'shortcut-custom-icon',
+                text: I18n.getMessage('shortcutCustomIcon', '自定义图标'),
+                callback: () => {
+                    this.showShortcutIconModal(shortcutUrl, shortcutButton);
+                }
+            },
+            {
+                id: 'shortcut-reset-icon',
+                text: I18n.getMessage('shortcutResetIcon', '重置图标'),
+                callback: async () => {
+                    await IconManager.resetIcon(shortcutUrl);
+                    this.refreshShortcutIcon(shortcutButton, shortcutUrl);
+                }
+            }
+        ];
+
+        Menu.ContextMenu.show(event, menuItems, { menuId: 'shortcut-context-menu' });
+    },
+
+    /**
+     * 显示快捷方式自定义图标弹窗
+     * @param {string} shortcutUrl - 快捷方式URL
+     * @param {HTMLElement} shortcutButton - 快捷方式元素
+     */
+    showShortcutIconModal: function(shortcutUrl, shortcutButton) {
+        const formItems = [
+            {
+                type: 'custom',
+                id: 'shortcut-icon-input',
+                label: I18n.getMessage('shortcutIconInput', '图标设置'),
+                render: (container) => {
+                    const wrapper = Utils.createElement('div', '', { id: 'shortcut-icon-input' });
+
+                    const previewLabel = Utils.createElement('label', '', {}, I18n.getMessage('shortcutIconPreview', '当前图标预览'));
+                    const previewImage = Utils.createElement('img', 'shortcut-icon-preview', {
+                        alt: I18n.getMessage('shortcutIconPreview', '当前图标预览')
+                    });
+                    previewImage.style.width = '48px';
+                    previewImage.style.height = '48px';
+                    previewImage.style.borderRadius = '8px';
+                    previewImage.style.display = 'block';
+                    previewImage.style.margin = '8px 0 12px 0';
+
+                    const refreshButton = Utils.createElement('button', 'btn', {}, I18n.getMessage('shortcutIconRefresh', '重新获取图标'));
+                    refreshButton.type = 'button';
+                    refreshButton.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        await IconManager.resetIcon(shortcutUrl);
+                        IconManager.setIconForElement(previewImage, shortcutUrl);
+                        this.refreshShortcutIcon(shortcutButton, shortcutUrl);
+                    });
+
+                    const fileLabel = Utils.createElement('label', '', {}, I18n.getMessage('shortcutIconFile', '本地图标（可选）'));
+                    const fileInput = Utils.createElement('input', '', {
+                        type: 'file',
+                        accept: 'image/*'
+                    });
+
+                    const urlLabel = Utils.createElement('label', '', {}, I18n.getMessage('shortcutIconUrl', '图标URL（可选）'));
+                    const urlInput = Utils.createElement('input', '', {
+                        type: 'url',
+                        placeholder: 'https://example.com/icon.png'
+                    });
+
+                    wrapper.appendChild(previewLabel);
+                    wrapper.appendChild(previewImage);
+                    wrapper.appendChild(refreshButton);
+                    wrapper.appendChild(fileLabel);
+                    wrapper.appendChild(fileInput);
+                    wrapper.appendChild(urlLabel);
+                    wrapper.appendChild(urlInput);
+                    container.appendChild(wrapper);
+
+                    IconManager.setIconForElement(previewImage, shortcutUrl);
+                    wrapper._shortcutIconFile = fileInput;
+                    wrapper._shortcutIconUrl = urlInput;
+                },
+                getValue: () => {
+                    const wrapper = document.getElementById('shortcut-icon-input');
+                    if (!wrapper) return { file: null, url: '' };
+                    const fileInput = wrapper._shortcutIconFile;
+                    const urlInput = wrapper._shortcutIconUrl;
+                    return {
+                        file: fileInput && fileInput.files ? fileInput.files[0] : null,
+                        url: urlInput ? urlInput.value.trim() : ''
+                    };
+                }
+            }
+        ];
+
+        Menu.showFormModal(
+            I18n.getMessage('shortcutCustomIcon', '自定义图标'),
+            formItems,
+            async (formData) => {
+                const iconInput = formData['shortcut-icon-input'] || {};
+                if (!iconInput.file && !iconInput.url) {
+                    return;
+                }
+                const iconData = await this.resolveShortcutIconData(iconInput);
+
+                if (!iconData) {
+                    Notification.notify({
+                        title: I18n.getMessage('error', '错误'),
+                        message: I18n.getMessage('shortcutIconEmpty', '请提供图标文件或URL'),
+                        type: 'error',
+                        duration: 2500
+                    });
+                    return;
+                }
+
+                await IconManager.setCustomIcon(shortcutUrl, iconData);
+                this.refreshShortcutIcon(shortcutButton, shortcutUrl);
+            },
+            I18n.getMessage('confirm', '确认'),
+            I18n.getMessage('cancel', '取消')
+        );
+    },
+
+    /**
+     * 解析快捷方式图标输入数据
+     * @param {{file: File|null, url: string}} iconInput - 图标输入
+     * @returns {Promise<string|null>} 图标数据
+     */
+    resolveShortcutIconData: async function(iconInput) {
+        if (!iconInput) return null;
+        if (iconInput.file) {
+            return await Utils.blobToBase64(iconInput.file);
+        }
+
+        const iconUrl = iconInput.url;
+        if (!iconUrl) return null;
+        if (iconUrl.startsWith('data:')) {
+            return iconUrl;
+        }
+
+        try {
+            const response = await fetch(iconUrl);
+            if (!response.ok) throw new Error('fetch failed');
+            const blob = await response.blob();
+            return await Utils.blobToBase64(blob);
+        } catch (error) {
+            Notification.notify({
+                title: I18n.getMessage('error', '错误'),
+                message: I18n.getMessage('shortcutIconFetchFailed', '图标获取失败'),
+                type: 'error',
+                duration: 2500
+            });
+            return null;
+        }
+    },
+
+    /**
+     * 刷新快捷方式图标
+     * @param {HTMLElement} shortcutButton - 快捷方式元素
+     * @param {string} shortcutUrl - 快捷方式URL
+     */
+    refreshShortcutIcon: function(shortcutButton, shortcutUrl) {
+        const iconElement = shortcutButton.querySelector('img.shortcut-icon');
+        if (!iconElement) return;
+        IconManager.setIconForElement(iconElement, shortcutUrl);
     },
 
     /**
