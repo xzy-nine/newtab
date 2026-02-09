@@ -58,7 +58,7 @@ export const Settings = {
             },
             {
               id: 'ai-assistant',
-              icon: '\uE901',
+              icon: '\uE99A',
               title: I18n.getMessage('settingsAI', 'AI助手'),
               items: window.AI ? window.AI.createSettingsItems() : []    },
             {
