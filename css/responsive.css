@@ -119,8 +119,14 @@
     margin-bottom: var(--desktop-bottom-safe);
     display: flex !important;
     flex-direction: column !important;
-    height: auto !important;
+    height: 80vh !important;
     box-sizing: border-box; /* 确保内边距不会增加宽度 */
+  }
+  
+  /* 快捷方式列表容器调整 */
+  #shortcut-list {
+    flex: 1 !important;
+    min-height: 0 !important;
   }
 
   /* 调整时钟位置 */

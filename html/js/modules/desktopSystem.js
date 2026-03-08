@@ -136,21 +136,24 @@ export const DesktopSystem = {
      * @returns {Array} 重排后的项目
      */
     reflowItems(items, gridConfig) {
-        const pageSize = Math.max(1, gridConfig.cols * gridConfig.rows);
-
+        // 简化处理，仅保留基本属性
         return items.map((item, index) => {
             const next = { ...item };
-            const page = Math.floor(index / pageSize);
-            const indexInPage = index % pageSize;
-            next.page = page;
-            next.x = indexInPage % gridConfig.cols;
-            next.y = Math.floor(indexInPage / gridConfig.cols);
-
+            // 为快捷方式设置默认尺寸
             if (next.type === ItemType.SHORTCUT) {
                 next.w = 1;
                 next.h = 1;
             }
-
+            // 为小部件设置默认尺寸
+            if (next.type === ItemType.WIDGET) {
+                next.w = next.w || 2;
+                next.h = next.h || 2;
+            }
+            // 简化分页，每页放置所有项目
+            next.page = 0;
+            // 设置默认位置
+            next.x = next.x || 0;
+            next.y = next.y || 0;
             return next;
         });
     },
@@ -473,6 +476,18 @@ export const DesktopSystem = {
      */
     async createDesktopGrid(container, items, gridConfig) {
         container.innerHTML = '';
+        
+        // 设置容器为弹性布局，居中显示，横排自动换行
+        container.style.display = 'flex';
+        container.style.flexDirection = 'row';
+        container.style.flexWrap = 'wrap';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        container.style.gap = '20px';
+        container.style.width = '100%';
+        container.style.height = '100%';
+        container.style.padding = '20px';
+        container.style.boxSizing = 'border-box';
 
         // 异步处理每个项目
         for (const item of items) {
@@ -486,30 +501,19 @@ export const DesktopSystem = {
                 element = await this.createWidgetContainer(item);
             }
 
-            // 计算位置和大小
-            const width = item.w * gridConfig.cellSize + (item.w - 1) * gridConfig.gap;
-            const height = item.h * gridConfig.cellSize + (item.h - 1) * gridConfig.gap;
-            const left = item.x * (gridConfig.cellSize + gridConfig.gap);
-            const top = item.y * (gridConfig.cellSize + gridConfig.gap);
-
-            element.style.position = 'absolute';
-            element.style.left = `${left}px`;
-            element.style.top = `${top}px`;
-            element.style.width = `${width}px`;
-            element.style.height = `${height}px`;
+            // 简化样式，使用默认大小
+            element.style.position = 'relative';
+            element.style.width = '150px';
+            element.style.height = '150px';
             element.style.transition = 'all 0.2s ease';
             element.style.zIndex = 1;
             // 确保小部件和快捷方式在同一层级
             element.style.pointerEvents = 'auto';
 
-            // 添加拖拽功能（基于 Temp123 的拖拽概念）
-            this.addDraggableFunctionality(element, item, items, gridConfig, container);
-
             container.appendChild(element);
         }
 
         // 确保所有元素在同一层级，不受DOM顺序影响
-        // 在拖动时，被拖动的元素会临时提升层级
         container.style.zIndex = 0;
     },
 
@@ -925,6 +929,10 @@ export const DesktopSystem = {
 
         cellSize = Math.max(minCellSize, cellSize);
 
+        // 重新计算行数，确保充分利用垂直空间
+        rows = Math.max(2, Math.floor((height + gap) / (cellSize + gap)));
+        if (rows % 2 !== 0) rows -= 1;
+
         let gridWidth = cols * cellSize + (cols - 1) * gap;
         let gridHeight = rows * cellSize + (rows - 1) * gap;
 
@@ -941,6 +949,11 @@ export const DesktopSystem = {
                 Math.floor((height - (rows - 1) * gap) / rows)
             );
             cellSize = Math.max(minCellSize, cellSize);
+            
+            // 重新计算行数，确保充分利用垂直空间
+            rows = Math.max(2, Math.floor((height + gap) / (cellSize + gap)));
+            if (rows % 2 !== 0) rows -= 1;
+            
             gridWidth = cols * cellSize + (cols - 1) * gap;
             gridHeight = rows * cellSize + (rows - 1) * gap;
         }

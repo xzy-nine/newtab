@@ -1328,31 +1328,49 @@ export const WidgetSystem = {
      */
     deleteWidgetContainer(container) {
         const confirmMessage = getI18nMessage('confirmDeleteWidgetContainer', '确定要删除这个小部件容器吗？');
-        if (!confirm(confirmMessage)) return;
-
-        const containerId = container.id || container.dataset.widgetId;
         
-        // 从DOM中移除
-        if (container.parentNode) {
-            container.parentNode.removeChild(container);
-        }
-        
-        // 从管理列表中移除
-        state.removeContainer(container);
-
-        if (containerId) {
-            state.widgets = state.widgets.filter(widget => widget.id !== containerId);
-        }
-        
-        // 保存状态
-        this.saveWidgets();
-        
-        // 显示通知
-        const title = getI18nMessage('widgetContainerDeleted', '小部件容器已删除');
         Notification.notify({
-            title: title,
-            type: 'success',
-            duration: 2000
+            title: getI18nMessage('confirm', '确认'),
+            message: confirmMessage,
+            duration: 0,
+            type: 'confirm',
+            buttons: [
+                {
+                    text: getI18nMessage('confirm', '确认'),
+                    class: 'btn-primary confirm-yes',
+                    callback: () => {
+                        const containerId = container.id || container.dataset.widgetId;
+
+                        // 从DOM中移除
+                        if (container.parentNode) {
+                            container.parentNode.removeChild(container);
+                        }
+
+                        // 从管理列表中移除
+                        state.removeContainer(container);
+
+                        if (containerId) {
+                            state.widgets = state.widgets.filter(widget => widget.id !== containerId);
+                        }
+
+                        // 保存状态
+                        this.saveWidgets();
+
+                        // 显示通知
+                        const title = getI18nMessage('widgetContainerDeleted', '小部件容器已删除');
+                        Notification.notify({
+                            title: title,
+                            type: 'success',
+                            duration: 2000
+                        });
+                    }
+                },
+                {
+                    text: getI18nMessage('cancel', '取消'),
+                    class: 'confirm-no',
+                    callback: () => {}
+                }
+            ]
         });
     },
     

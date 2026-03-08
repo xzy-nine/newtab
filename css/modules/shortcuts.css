@@ -84,25 +84,18 @@
   #SHORTCUT-ELEMENTS
 \*------------------------------------*/
 .shortcut-button {
-  width: var(--shortcut-width);
-  height: var(--shortcut-width);
   background: var(--container-bg);  /* 使用统一的背景颜色变量 */
-  background-size: 60%;
-  background-position: center 35%;
-  background-repeat: no-repeat;
   border: none;
   border-radius: var(--shortcut-border-radius);
   box-shadow: 0 2px 8px var(--container-shadow);  /* 使用统一的阴影变量 */
   clip-path: inset(0 round 10px);
   cursor: pointer;
   overflow: hidden;
-  text-align: center;
   transition: 
     box-shadow var(--transition-normal), 
     background-color var(--transition-normal);
   /* 移除transform过渡，避免与拖动冲突 */
   /* 确保快捷方式与小部件在同一层级 */
-  position: absolute;
   z-index: 1;
   margin: 0 !important;
   float: none !important;
@@ -120,10 +113,6 @@
   width: 100%;
   text-align: center;
   line-height: 1.1;
-  position: absolute;
-  bottom: 8px;
-  left: 0;
-  right: 0;
 }
 
 .shortcut-button:hover .shortcut-title {
