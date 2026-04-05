@@ -330,21 +330,21 @@ export const DesktopSystem = {
 
         // 创建图标容器
         const iconContainer = Utils.createElement("div", "shortcut-icon-container");
-        iconContainer.style.width = '56px';
-        iconContainer.style.height = '56px';
-        iconContainer.style.borderRadius = '16px';
+        iconContainer.style.width = '48px';
+        iconContainer.style.height = '48px';
+        iconContainer.style.borderRadius = '12px';
         iconContainer.style.display = 'flex';
         iconContainer.style.alignItems = 'center';
         iconContainer.style.justifyContent = 'center';
-        iconContainer.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+        iconContainer.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
         iconContainer.style.backgroundColor = item.color || '#3b82f6';
         iconContainer.style.transition = 'all 0.2s ease';
 
         // 创建图标元素（使用img标签而不是div，以便显示URL图标）
         const iconElement = Utils.createElement("img", "shortcut-icon");
-        iconElement.style.width = '32px';
-        iconElement.style.height = '32px';
-        iconElement.style.borderRadius = '6px';
+        iconElement.style.width = '24px';
+        iconElement.style.height = '24px';
+        iconElement.style.borderRadius = '4px';
         
         // 使用IconManager为图标元素设置URL的图标
         if (item.url) {
@@ -477,17 +477,16 @@ export const DesktopSystem = {
     async createDesktopGrid(container, items, gridConfig) {
         container.innerHTML = '';
         
-        // 设置容器为弹性布局，居中显示，横排自动换行
-        container.style.display = 'flex';
-        container.style.flexDirection = 'row';
-        container.style.flexWrap = 'wrap';
-        container.style.alignItems = 'center';
-        container.style.justifyContent = 'center';
-        container.style.gap = '20px';
+        // 设置容器为相对定位，用于绝对定位的子元素
+        container.style.position = 'relative';
         container.style.width = '100%';
         container.style.height = '100%';
         container.style.padding = '20px';
         container.style.boxSizing = 'border-box';
+
+        // 计算单元格大小和间距
+        const cellSize = gridConfig.cellSize;
+        const gap = gridConfig.gap;
 
         // 异步处理每个项目
         for (const item of items) {
@@ -501,16 +500,29 @@ export const DesktopSystem = {
                 element = await this.createWidgetContainer(item);
             }
 
-            // 简化样式，使用默认大小
-            element.style.position = 'relative';
-            element.style.width = '150px';
-            element.style.height = '150px';
+            // 设置元素样式为绝对定位
+            element.style.position = 'absolute';
             element.style.transition = 'all 0.2s ease';
             element.style.zIndex = 1;
             // 确保小部件和快捷方式在同一层级
             element.style.pointerEvents = 'auto';
 
+            // 计算元素大小和位置
+            const width = item.w * cellSize + (item.w - 1) * gap;
+            const height = item.h * cellSize + (item.h - 1) * gap;
+            const left = item.x * (cellSize + gap);
+            const top = item.y * (cellSize + gap);
+
+            // 设置元素大小和位置
+            element.style.width = `${width}px`;
+            element.style.height = `${height}px`;
+            element.style.left = `${left}px`;
+            element.style.top = `${top}px`;
+
             container.appendChild(element);
+
+            // 添加拖拽和调整大小功能
+            this.addDraggableFunctionality(element, item, items, gridConfig, container);
         }
 
         // 确保所有元素在同一层级，不受DOM顺序影响
@@ -875,12 +887,12 @@ export const DesktopSystem = {
     },
 
     /**
-     * 计算响应式网格配置（基于 Temp123 的实现）
+     * 计算响应式网格配置
      */
     calculateGridConfig(container = null) {
         const target = container || document.getElementById('shortcut-list');
         if (!target) {
-            return new GridConfig(2, 2, 14, 88);
+            return new GridConfig(12, 4, 14, 88);
         }
 
         const rect = target.getBoundingClientRect();
@@ -894,68 +906,56 @@ export const DesktopSystem = {
         height = Math.max(0, height - paddingY);
 
         if (!width || !height) {
-            return new GridConfig(2, 2, 14, 88);
+            return new GridConfig(12, 4, 14, 88);
         }
 
         const isSmall = width < 768;
         const gap = isSmall ? 12 : 14;
-        const minCellSize = isSmall ? 72 : 88;
-        const maxCellSize = isSmall ? 90 : 120;
+        const minCellSize = isSmall ? 48 : 64;
+        const maxCellSize = isSmall ? 80 : 100;
 
-        let cols = Math.max(2, Math.floor((width + gap) / (minCellSize + gap)));
-        let rows = Math.max(2, Math.floor((height + gap) / (minCellSize + gap)));
+        // 计算宽高比，决定行列数
+        const aspectRatio = width / height;
+        let cols, rows;
 
-        if (cols % 2 !== 0) cols -= 1;
-        if (rows % 2 !== 0) rows -= 1;
+        if (aspectRatio > 1.5) {
+            // 宽屏：12列4行
+            cols = 12;
+            rows = 4;
+        } else if (aspectRatio < 0.75) {
+            // 竖屏：4列12行
+            cols = 4;
+            rows = 12;
+        } else {
+            // 正方形：8列8行（64格）
+            cols = 8;
+            rows = 8;
+        }
 
-        cols = Math.max(2, Math.min(12, cols));
-        rows = Math.max(2, rows);
-
+        // 计算单元格大小
         let cellSize = Math.min(
             maxCellSize,
             Math.floor((width - (cols - 1) * gap) / cols),
             Math.floor((height - (rows - 1) * gap) / rows)
         );
 
-        while ((cellSize < minCellSize) && (cols > 2 || rows > 2)) {
-            if (cols > 2) cols -= 2;
-            if (rows > 2) rows -= 2;
-            cellSize = Math.min(
-                maxCellSize,
-                Math.floor((width - (cols - 1) * gap) / cols),
-                Math.floor((height - (rows - 1) * gap) / rows)
-            );
-        }
-
+        // 确保单元格大小不小于最小值
         cellSize = Math.max(minCellSize, cellSize);
 
-        // 重新计算行数，确保充分利用垂直空间
-        rows = Math.max(2, Math.floor((height + gap) / (cellSize + gap)));
-        if (rows % 2 !== 0) rows -= 1;
-
-        let gridWidth = cols * cellSize + (cols - 1) * gap;
-        let gridHeight = rows * cellSize + (rows - 1) * gap;
-
-        while ((gridWidth > width || gridHeight > height) && (cols > 2 || rows > 2)) {
-            if (gridWidth > width && cols > 2) cols -= 2;
-            if (gridHeight > height && rows > 2) rows -= 2;
-
-            if (cols < 2) cols = 2;
-            if (rows < 2) rows = 2;
-
-            cellSize = Math.min(
-                maxCellSize,
-                Math.floor((width - (cols - 1) * gap) / cols),
-                Math.floor((height - (rows - 1) * gap) / rows)
-            );
-            cellSize = Math.max(minCellSize, cellSize);
-            
-            // 重新计算行数，确保充分利用垂直空间
-            rows = Math.max(2, Math.floor((height + gap) / (cellSize + gap)));
-            if (rows % 2 !== 0) rows -= 1;
-            
-            gridWidth = cols * cellSize + (cols - 1) * gap;
-            gridHeight = rows * cellSize + (rows - 1) * gap;
+        // 重新计算行列数，确保64格
+        if (cols * rows !== 64) {
+            // 调整为最接近64格的配置
+            if (aspectRatio > 1.5) {
+                cols = 12;
+                rows = 4;
+            } else if (aspectRatio < 0.75) {
+                cols = 4;
+                rows = 12;
+            } else {
+                // 中等比例：8列4行
+                cols = 8;
+                rows = 8;
+            }
         }
 
         return new GridConfig(cols, rows, gap, cellSize);
