@@ -86,7 +86,10 @@ class BackgroundManager {
         }
         
         await this.loadSettings();
-        await this.setImage();
+        // 异步执行背景设置，不阻塞其他模块初始化
+        this.setImage().catch(error => {
+            console.error('背景设置失败:', error);
+        });
         this.initControls();
         this.bindButtonEvent();
     }
