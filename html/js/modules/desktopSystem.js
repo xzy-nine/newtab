@@ -472,17 +472,41 @@ export const DesktopSystem = {
 
     
     /**
+     * 检测当前是否处于响应式模式（竖屏/小屏幕）
+     */
+    isResponsiveMode() {
+        return window.matchMedia('(max-aspect-ratio: 1/1), (max-width: 768px), (orientation: portrait)').matches;
+    },
+
+    /**
      * 创建桌面网格（基于 Temp123 的实现）
      */
     async createDesktopGrid(container, items, gridConfig) {
         container.innerHTML = '';
         
-        // 设置容器为相对定位，用于绝对定位的子元素
-        container.style.position = 'relative';
-        container.style.width = '100%';
-        container.style.height = '100%';
-        container.style.padding = '20px';
-        container.style.boxSizing = 'border-box';
+        // 检测当前是否处于响应式模式
+        const isResponsive = this.isResponsiveMode();
+
+        // 设置容器样式
+        if (isResponsive) {
+            // 响应式模式：移除绝对定位相关样式，让CSS flex布局处理
+            container.style.position = 'relative';
+            container.style.width = '100%';
+            container.style.height = '100%';
+            container.style.boxSizing = 'border-box';
+            // 清除内联的flex相关样式，让CSS媒体查询处理
+            container.style.display = '';
+            container.style.flexDirection = '';
+            container.style.flexWrap = '';
+            container.style.justifyContent = '';
+        } else {
+            // 桌面模式：设置相对定位，用于绝对定位的子元素
+            container.style.position = 'relative';
+            container.style.width = '100%';
+            container.style.height = '100%';
+            container.style.padding = '20px';
+            container.style.boxSizing = 'border-box';
+        }
 
         // 计算单元格大小和间距
         const cellSize = gridConfig.cellSize;
@@ -500,29 +524,44 @@ export const DesktopSystem = {
                 element = await this.createWidgetContainer(item);
             }
 
-            // 设置元素样式为绝对定位
-            element.style.position = 'absolute';
-            element.style.transition = 'all 0.2s ease';
-            element.style.zIndex = 1;
-            // 确保小部件和快捷方式在同一层级
-            element.style.pointerEvents = 'auto';
+            if (isResponsive) {
+                // 响应式模式：不设置绝对定位，让CSS处理布局
+                // 清除可能存在的内联样式
+                element.style.position = '';
+                element.style.left = '';
+                element.style.top = '';
+                element.style.width = '';
+                element.style.height = '';
+                element.style.transition = 'all 0.2s ease';
+                element.style.zIndex = 1;
+                element.style.pointerEvents = 'auto';
+            } else {
+                // 桌面模式：设置元素样式为绝对定位
+                element.style.position = 'absolute';
+                element.style.transition = 'all 0.2s ease';
+                element.style.zIndex = 1;
+                // 确保小部件和快捷方式在同一层级
+                element.style.pointerEvents = 'auto';
 
-            // 计算元素大小和位置
-            const width = item.w * cellSize + (item.w - 1) * gap;
-            const height = item.h * cellSize + (item.h - 1) * gap;
-            const left = item.x * (cellSize + gap);
-            const top = item.y * (cellSize + gap);
+                // 计算元素大小和位置
+                const width = item.w * cellSize + (item.w - 1) * gap;
+                const height = item.h * cellSize + (item.h - 1) * gap;
+                const left = item.x * (cellSize + gap);
+                const top = item.y * (cellSize + gap);
 
-            // 设置元素大小和位置
-            element.style.width = `${width}px`;
-            element.style.height = `${height}px`;
-            element.style.left = `${left}px`;
-            element.style.top = `${top}px`;
+                // 设置元素大小和位置
+                element.style.width = `${width}px`;
+                element.style.height = `${height}px`;
+                element.style.left = `${left}px`;
+                element.style.top = `${top}px`;
+            }
 
             container.appendChild(element);
 
-            // 添加拖拽和调整大小功能
-            this.addDraggableFunctionality(element, item, items, gridConfig, container);
+            // 只有在桌面模式下才添加拖拽和调整大小功能
+            if (!isResponsive) {
+                this.addDraggableFunctionality(element, item, items, gridConfig, container);
+            }
         }
 
         // 确保所有元素在同一层级，不受DOM顺序影响
