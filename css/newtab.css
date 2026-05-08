@@ -78,6 +78,13 @@
   
   /* 其他缺失的变量 */
   --hover-bg: rgba(0, 0, 0, 0.1);
+
+  /* 桌面框尺寸与间距 */
+  --desktop-folder-column-width: clamp(200px, 22vw, 320px);
+  --desktop-folder-gap: 2ch;
+  --desktop-frame-height: 60vh;
+  --desktop-bottom-safe: 15ch;
+  --desktop-edge-padding: clamp(12px, 3vw, 32px);
 }
 
 /* 深色模式全局变量 */
@@ -129,10 +136,20 @@ body {
 }
 
 #bookmark-box {
-  width: 80%;
-  height: 60%;
-  display: flex;
+  width: 100vw;
+  height: var(--desktop-frame-height);
+  display: grid;
+  grid-template-columns: var(--desktop-folder-column-width) var(--desktop-folder-gap) minmax(0, 1fr);
+  align-items: stretch;
   margin-top: 20px;
+  padding: 0 var(--desktop-edge-padding);
+  user-select: none;
+}
+
+#bookmark-box input,
+#bookmark-box textarea,
+#bookmark-box [contenteditable="true"] {
+  user-select: text;
 }
 
 /* ===== 4. 背景系统 ===== */

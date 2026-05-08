@@ -7,7 +7,6 @@
 import { 
     I18n, 
     Utils, 
-    GridSystem, 
     backgroundManager, 
     SearchEngineAPI, 
     BookmarkManager, 
@@ -16,7 +15,8 @@ import {
     AI, 
     DataSync, 
     WidgetRegistry, 
-    WidgetSystem 
+    WidgetSystem,
+    DesktopSystem
 } from '../index.js';
 
 /**
@@ -78,15 +78,6 @@ export const moduleConfigs = [
         },
         dependencies: ['Utils', 'I18n'],
         timeout: 3000
-    },
-
-    {
-        name: 'GridSystem',
-        initFunction: async () => {
-            return GridSystem.init();
-        },
-        dependencies: ['Notification', 'I18n', 'Utils'],
-        timeout: 5000
     },
 
     // ==================== 第四层：应用功能模块 ====================
@@ -174,7 +165,7 @@ export const moduleConfigs = [
             // Settings 依赖几乎所有其他模块，但通常不需要异步初始化
             return Promise.resolve();
         },
-        dependencies: ['Menu', 'Utils', 'GridSystem', 'I18n', 'SearchEngine', 'Notification', 'AI', 'DataSync', 'ThemeManager'],
+        dependencies: ['Menu', 'Utils', 'I18n', 'SearchEngine', 'Notification', 'AI', 'DataSync', 'ThemeManager'],
         timeout: 3000
     },
 
@@ -198,8 +189,20 @@ export const moduleConfigs = [
         initFunction: async () => {
             return WidgetSystem.init();
         },
-        dependencies: ['I18n', 'Utils', 'Menu', 'Notification', 'GridSystem', 'WidgetRegistry'],
+        dependencies: ['I18n', 'Utils', 'Menu', 'Notification', 'WidgetRegistry'],
         timeout: 10000
+    },
+    
+    // ==================== 第七层：桌面系统（最终初始化） ====================
+    {
+        name: 'DesktopSystem',
+        initFunction: async () => {
+            // DesktopSystem 是静态的，只需要确保全局可访问
+            window.DesktopSystem = DesktopSystem;
+            return Promise.resolve();
+        },
+        dependencies: ['I18n', 'Utils'],
+        timeout: 3000
     }
 ];
 

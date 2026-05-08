@@ -6,7 +6,6 @@
 import {
     Menu,
     Utils,
-    GridSystem,
     I18n,
     SearchEngineAPI,
     Notification,
@@ -59,7 +58,7 @@ export const Settings = {
             },
             {
               id: 'ai-assistant',
-              icon: '\uE901',
+              icon: '\uE99A',
               title: I18n.getMessage('settingsAI', 'AI助手'),
               items: window.AI ? window.AI.createSettingsItems() : []    },
             {
@@ -114,14 +113,6 @@ export const Settings = {
               icon: '\uE713',
               title: I18n.getMessage('settingsDeveloper', '开发者选项'),
               items: [
-                {
-                  id: 'grid-debug',
-                  label: I18n.getMessage('settingsGridDebug', '显示网格线'),
-                  type: 'checkbox',
-                  getValue: () => window.GridSystem.isDebugMode,
-                  description: I18n.getMessage('settingsGridDebugDesc', '显示网格辅助线，帮助对齐元素'),
-                  onChange: async (v) => { window.GridSystem.toggleGridDebug(v); }
-                },
                 {
                   id: 'openDev',
                   label: I18n.getMessage('settingsOpenDev', 'Microsoft 合作伙伴中心'),
@@ -265,7 +256,6 @@ export const Settings = {
     }, 100);
       // 监听外部设置变化
     const syncHandler = () => Settings.syncSettingsWithSystem();
-    window.addEventListener('gridSettingsChanged', syncHandler);
     window.addEventListener('dataSyncSettingsChanged', syncHandler);
     
     // 监听同步状态更新事件
@@ -284,11 +274,10 @@ export const Settings = {
     const originalHide = Menu.Modal.hide;
     Menu.Modal.hide = function(id) {
       if (id === SETTINGS_MODAL_ID) {
-        window.removeEventListener('gridSettingsChanged', syncHandler);
-        window.removeEventListener('dataSyncSettingsChanged', syncHandler);
-        window.removeEventListener('syncStatusUpdated', syncStatusHandler);
-        Menu.Modal.hide = originalHide; // 恢复原方法
-      }
+          window.removeEventListener('dataSyncSettingsChanged', syncHandler);
+          window.removeEventListener('syncStatusUpdated', syncStatusHandler);
+          Menu.Modal.hide = originalHide; // 恢复原方法
+        }
       return originalHide.call(this, id);
     };
     

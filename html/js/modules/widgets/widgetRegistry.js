@@ -178,6 +178,20 @@ export const WidgetRegistry = {
             isCustom: widget.isCustom
         }));
     },
+
+    /**
+     * 获取用于菜单展示的小部件类型列表（同步）
+     * @returns {Array} 小部件类型数组
+     */
+    getWidgetTypes() {
+        return Array.from(registeredWidgets.values()).map(widget => {
+            const name = widget.metadata && widget.metadata.name ? widget.metadata.name : widget.type;
+            return {
+                type: widget.type,
+                name: name
+            };
+        });
+    },
     
     /**
      * 异步加载指定小部件类型的模块

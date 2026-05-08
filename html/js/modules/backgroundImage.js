@@ -27,6 +27,51 @@ class BackgroundManager {
             blur: 0, // 模糊效果值
             dark: 0  // 暗化效果值
         };
+        
+        // 队列管理
+        this.queue = [];
+        this.isProcessing = false;
+        
+        // 缓存更新标志
+        this.isUpdatingCache = false;
+    }
+    
+    /**
+     * 将任务添加到队列
+     * @param {Function} task - 要执行的任务
+     * @returns {Promise} 任务执行结果
+     */
+    async queueTask(task) {
+        return new Promise((resolve, reject) => {
+            this.queue.push({ task, resolve, reject });
+            if (!this.isProcessing) {
+                this.processQueue();
+            }
+        });
+    }
+    
+    /**
+     * 处理队列中的任务
+     */
+    async processQueue() {
+        if (this.isProcessing || this.queue.length === 0) {
+            return;
+        }
+        
+        this.isProcessing = true;
+        const { task, resolve, reject } = this.queue.shift();
+        
+        try {
+            const result = await task();
+            resolve(result);
+        } catch (error) {
+            reject(error);
+        } finally {
+            this.isProcessing = false;
+            if (this.queue.length > 0) {
+                this.processQueue();
+            }
+        }
     }
 
     /**
@@ -41,7 +86,10 @@ class BackgroundManager {
         }
         
         await this.loadSettings();
-        await this.setImage();
+        // 异步执行背景设置，不阻塞其他模块初始化
+        this.setImage().catch(error => {
+            console.error('背景设置失败:', error);
+        });
         this.initControls();
         this.bindButtonEvent();
     }
@@ -208,11 +256,22 @@ class BackgroundManager {
             const cachedData = await chrome.storage.local.get(CACHE_KEY);
             const now = Date.now();
 
-            // 使用缓存内图片（如未过期）
-            if (cachedData[CACHE_KEY] && (now - cachedData[CACHE_KEY].timestamp < CACHE_EXPIRATION)) {
+            // 检查是否有缓存数据（无论是否过期）
+            const hasCache = cachedData[CACHE_KEY];
+            const isCacheValid = hasCache && (now - cachedData[CACHE_KEY].timestamp < CACHE_EXPIRATION);
+
+            // 如果有缓存（即使过期），先返回缓存的URL
+            if (hasCache) {
+                // 如果缓存已过期，在后台异步更新缓存
+                if (!isCacheValid) {
+                    this.updateBingImageCache().catch(error => {
+                        console.error('后台更新必应图片缓存失败:', error);
+                    });
+                }
                 return cachedData[CACHE_KEY].url;
             }
 
+            // 如果没有缓存，同步获取新图片
             Notification.updateLoadingProgress(50, I18n.getMessage('fetchingBingImage', '获取必应图片'));
             
             // 必应API地址
@@ -256,88 +315,167 @@ class BackgroundManager {
             return null;
         }
     }
+    
+    /**
+     * 后台更新必应图片缓存
+     * @returns {Promise<void>}
+     */
+    async updateBingImageCache() {
+        // 防止并发更新
+        if (this.isUpdatingCache) {
+            return;
+        }
+        
+        this.isUpdatingCache = true;
+        
+        try {
+            // 必应API地址
+            const apiUrl = 'https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1';
+            
+            // 使用Utils.fetchData替代原生fetch
+            const data = await Utils.fetchData(apiUrl);
+            
+            if (!data.images || !data.images.length) {
+                throw new Error('No images found in API response');
+            }
+            
+            const imageUrl = 'https://www.bing.com' + data.images[0].url;
+            const now = Date.now();
+            
+            // 更新缓存
+            await chrome.storage.local.set({
+                [CACHE_KEY]: {
+                    url: imageUrl,
+                    timestamp: now
+                }
+            });
+            
+            console.log('必应图片缓存已后台更新');
+        } catch (error) {
+            console.error('后台更新必应图片缓存失败:', error);
+        } finally {
+            this.isUpdatingCache = false;
+        }
+    }
 
     /**
      * 设置背景图像
      * @returns {Promise<void>}
      */
     async setImage() {
-        try {
-            // 显示加载指示器
-            Notification.showLoadingIndicator();
-            Notification.updateLoadingProgress(10, I18n.getMessage('loadingBackground', '加载背景中'));
-            
-            // 获取背景容器元素
-            const container = document.getElementById('background-container');
-            if (!container) {
-                console.error('Background container not found');
-                Notification.hideLoadingIndicator();
-                return;
-            }
+        return this.queueTask(async () => {
+            try {
+                // 显示加载指示器
+                Notification.showLoadingIndicator();
+                Notification.updateLoadingProgress(10, I18n.getMessage('loadingBackground', '加载背景中'));
+                
+                // 获取背景容器元素
+                const container = document.getElementById('background-container');
+                if (!container) {
+                    console.error('Background container not found');
+                    Notification.hideLoadingIndicator();
+                    return;
+                }
 
-            Notification.updateLoadingProgress(20, I18n.getMessage('preparingBackground', '准备背景'));
-            
-            // 根据背景类型选择图片URL
-            let bgUrl;
-            switch (this.settings.type) {
-                case 'custom':
-                    // 使用自定义图片
-                    if (this.settings.customImageData) {
-                        bgUrl = this.settings.customImageData;
-                        Notification.updateLoadingProgress(60, I18n.getMessage('loadingCustomBackground', '加载自定义背景'));
-                    } else {
-                        // 如果没有自定义图片数据，则回退到必应
+                Notification.updateLoadingProgress(20, I18n.getMessage('preparingBackground', '准备背景'));
+                
+                // 根据背景类型选择图片URL
+                let bgUrl;
+                switch (this.settings.type) {
+                    case 'custom':
+                        // 使用自定义图片
+                        if (this.settings.customImageData) {
+                            bgUrl = this.settings.customImageData;
+                            Notification.updateLoadingProgress(60, I18n.getMessage('loadingCustomBackground', '加载自定义背景'));
+                        } else {
+                            // 如果没有自定义图片数据，则回退到必应
+                            bgUrl = await this.fetchBingImage();
+                        }
+                        break;
+                    case 'bing':
+                        // 使用必应每日图片
                         bgUrl = await this.fetchBingImage();
-                    }
-                    break;
-                case 'bing':
-                    // 使用必应每日图片
-                    bgUrl = await this.fetchBingImage();
-                    break;
-                case 'default':
-                default:
-                    // 使用纯白色背景
+                        break;
+                    case 'default':
+                    default:
+                        // 使用纯白色背景
+                        container.classList.add('bg-white');
+                        container.style.backgroundImage = 'none';
+                        
+                        Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete', '背景加载完成'));
+                        setTimeout(() => Notification.hideLoadingIndicator(), 500);
+                        return;
+                }
+
+                // 如果bgUrl为null（表示获取图像失败），回退到白色背景
+                if (bgUrl === null) {
+                    console.warn('Failed to load background image, fallback to white background');
                     container.classList.add('bg-white');
                     container.style.backgroundImage = 'none';
-                    
-                    Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete', '背景加载完成'));
-                    setTimeout(() => Notification.hideLoadingIndicator(), 500);
+                    Notification.hideLoadingIndicator();
                     return;
-            }
+                }
 
-            // 如果bgUrl为null（表示获取图像失败），回退到白色背景
-            if (bgUrl === null) {
-                console.warn('Failed to load background image, fallback to white background');
-                container.classList.add('bg-white');
-                container.style.backgroundImage = 'none';
-                Notification.hideLoadingIndicator();
-                return;
+                Notification.updateLoadingProgress(80, I18n.getMessage('applyingBackground', '应用背景'));
+                
+                // 移除白色背景类（如果有）
+                container.classList.remove('bg-white');
+                
+                // 预加载图片
+                Notification.updateLoadingProgress(70, I18n.getMessage('preloadingBackground', '预加载背景图片'));
+                const preloadSuccess = await this.preloadImage(bgUrl);
+                
+                if (!preloadSuccess) {
+                    console.warn('背景图片预加载失败，回退到白色背景');
+                    container.classList.add('bg-white');
+                    container.style.backgroundImage = 'none';
+                    Notification.hideLoadingIndicator();
+                    return;
+                }
+                
+                // 应用背景样式
+                container.style.backgroundImage = `url(${bgUrl})`;
+                
+                // 应用模糊和暗化效果
+                this.applyEffects();
+                
+                Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete', '背景加载完成'));
+                setTimeout(() => Notification.hideLoadingIndicator(), 500);
+            } catch (error) {
+                console.error('Failed to set background image:', error);
+                Notification.hideLoadingIndicator(true); // 强制关闭加载指示器
+                Notification.notify({
+                    title: I18n.getMessage('error', '错误'),
+                    message: I18n.getMessage('backgroundSetFailed', '设置背景失败'),
+                    type: 'error',
+                    duration: 5000
+                });
             }
-
-            Notification.updateLoadingProgress(80, I18n.getMessage('applyingBackground', '应用背景'));
-            
-            // 移除白色背景类（如果有）
-            container.classList.remove('bg-white');
-            
-            // 应用背景样式
-            container.style.backgroundImage = `url(${bgUrl})`;
-            
-            // 应用模糊和暗化效果
-            this.applyEffects();
-            
-            Notification.updateLoadingProgress(100, I18n.getMessage('backgroundLoadComplete', '背景加载完成'));
-            setTimeout(() => Notification.hideLoadingIndicator(), 500);        } catch (error) {
-            console.error('Failed to set background image:', error);
-            Notification.hideLoadingIndicator(true); // 强制关闭加载指示器
-            Notification.notify({
-                title: I18n.getMessage('error', '错误'),
-                message: I18n.getMessage('backgroundSetFailed', '设置背景失败'),
-                type: 'error',
-                duration: 5000
-            });
-        }
+        });
     }
 
+    /**
+     * 预加载图片
+     * @param {string} url - 图片URL
+     * @returns {Promise<boolean>} 加载是否成功
+     */
+    preloadImage(url) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(true);
+            img.onerror = () => {
+                console.error('图片预加载失败:', url);
+                resolve(false);
+            };
+            img.src = url;
+            
+            // 如果图片已经缓存，onload可能不会触发
+            if (img.complete) {
+                resolve(true);
+            }
+        });
+    }
+    
     /**
      * 应用模糊和暗化效果到背景
      */
@@ -389,6 +527,53 @@ class BackgroundManager {
     }
 
     /**
+     * 检查图片大小是否超出存储限制
+     * @param {string} imageData - 图片的base64数据
+     * @returns {boolean} 是否超出限制
+     */
+    isImageTooLarge(imageData) {
+        // 计算base64字符串的字节大小（每个base64字符约等于0.75字节）
+        const byteSize = (imageData.length * 3) / 4;
+        // 设置4MB的限制（留一些余量）
+        const MAX_SIZE = 4 * 1024 * 1024;
+        return byteSize > MAX_SIZE;
+    }
+    
+    /**
+     * 压缩图片
+     * @param {string} imageData - 图片的base64数据
+     * @param {number} quality - 压缩质量 (0-1)
+     * @returns {Promise<string>} 压缩后的图片base64数据
+     */
+    compressImage(imageData, quality = 0.7) {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            const img = new Image();
+            
+            img.onload = () => {
+                // 设置画布大小
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // 绘制图片
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                // 压缩并转换为base64
+                const compressedData = canvas.toDataURL('image/jpeg', quality);
+                resolve(compressedData);
+            };
+            
+            img.onerror = () => {
+                // 如果压缩失败，返回原始数据
+                resolve(imageData);
+            };
+            
+            img.src = imageData;
+        });
+    }
+    
+    /**
      * 处理自定义背景图片上传
      */
     handleCustomBackground() {
@@ -420,6 +605,30 @@ class BackgroundManager {
             onConfirm: async (imageData) => {
                 if (imageData) {
                     try {
+                        // 检查图片大小
+                        if (this.isImageTooLarge(imageData)) {
+                            // 压缩图片
+                            Notification.notify({
+                                title: I18n.getMessage('info', '提示'),
+                                message: '图片过大，正在压缩...',
+                                type: 'info',
+                                duration: 2000
+                            });
+                            
+                            imageData = await this.compressImage(imageData, 0.7);
+                            
+                            // 再次检查大小
+                            if (this.isImageTooLarge(imageData)) {
+                                Notification.notify({
+                                    title: I18n.getMessage('error', '错误'),
+                                    message: '图片仍然过大，请选择更小的图片',
+                                    type: 'error',
+                                    duration: 5000
+                                });
+                                return;
+                            }
+                        }
+                        
                         this.settings.customImageData = imageData;
                         this.settings.type = 'custom';  // 自动切换到自定义背景
                         
@@ -446,12 +655,23 @@ class BackgroundManager {
                         });
                     } catch (error) {
                         console.error(I18n.getMessage('localStorageError'), error);
-                        Notification.notify({
-                            title: I18n.getMessage('error', '错误'),
-                            message: I18n.getMessage('backgroundSetFailed', '背景图片设置失败'),
-                            type: 'error',
-                            duration: 5000
-                        });
+                        
+                        // 区分存储配额错误和其他错误
+                        if (error.message && error.message.includes('quota')) {
+                            Notification.notify({
+                                title: I18n.getMessage('error', '错误'),
+                                message: '存储配额不足，请选择更小的图片或清除其他数据',
+                                type: 'error',
+                                duration: 5000
+                            });
+                        } else {
+                            Notification.notify({
+                                title: I18n.getMessage('error', '错误'),
+                                message: I18n.getMessage('backgroundSetFailed', '背景图片设置失败'),
+                                type: 'error',
+                                duration: 5000
+                            });
+                        }
                     }
                 }
             }

@@ -8,6 +8,7 @@
     flex-direction: column;
     align-items: center;
     overflow-y: auto !important; /* 确保页面可以滚动 */
+    padding-bottom: var(--desktop-bottom-safe);
   }
   
   /* 确保主容器内的所有元素垂直排列 */
@@ -30,6 +31,7 @@
     max-height: none !important;
     width: 100% !important;
     max-width: 100% !important;
+    grid-column: auto !important;
   }
 
   /* 文件夹列表内容溢出时滚动 */
@@ -105,8 +107,27 @@
   /* 保持快捷方式按钮原比例和水平排列 */
   .shortcut-button {
     margin: 8px;
-    display: inline-block !important;
+    display: inline-flex !important;
     float: none !important;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    width: 80px !important;
+    height: 80px !important;
+  }
+
+  /* 小部件容器响应式调整 */
+  .widget-container {
+    margin: 8px;
+    display: inline-flex !important;
+    float: none !important;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    width: calc(50% - 16px) !important;
+    min-width: 160px !important;
+    max-width: 200px !important;
+    height: auto !important;
   }
 
   /* 书签容器调整 */
@@ -114,7 +135,17 @@
     order: 4;
     width: var(--element-width) !important; /* 强制使用统一宽度 */
     margin: 10px auto;
+    margin-bottom: var(--desktop-bottom-safe);
+    display: flex !important;
+    flex-direction: column !important;
+    height: 80vh !important;
     box-sizing: border-box; /* 确保内边距不会增加宽度 */
+  }
+  
+  /* 快捷方式列表容器调整 */
+  #shortcut-list {
+    flex: 1 !important;
+    min-height: 0 !important;
   }
 
   /* 调整时钟位置 */
@@ -191,9 +222,13 @@
 
   /* 快捷方式按钮略微缩小，但保持比例和水平排列 */
   .shortcut-button {
-    width: 70px;
+    width: 70px !important;
+    height: 70px !important;
     margin: 5px;
-    display: inline-block;
+    display: inline-flex !important;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
   }
   
   /* 超窄屏幕下背景切换按钮进一步缩小 */
@@ -211,6 +246,13 @@
     left: 10px !important; /* 减少左侧边距 */
   }
   
+  /* 超窄屏幕下小部件容器调整 */
+  .widget-container {
+    width: 100% !important;
+    min-width: 140px !important;
+    max-width: 180px !important;
+  }
+  
   /* 确保快捷方式列表在即将超出屏幕时才出现滚动条 */
   #shortcut-list {
     max-height: calc(100vh - 180px) !important; /* 更小的预留空间 */
@@ -226,8 +268,20 @@
   }
   
   .shortcut-button {
-    width: 60px; /* 更小的快捷方式按钮 */
+    width: 60px !important; /* 更小的快捷方式按钮 */
+    height: 60px !important;
     margin: 4px;
+    display: inline-flex !important;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+  }
+  
+  /* 极小屏幕下小部件容器调整 */
+  .widget-container {
+    width: 100% !important;
+    min-width: 120px !important;
+    max-width: 160px !important;
   }
   
   /* 极小屏幕下快捷方式列表高度再调整 */

@@ -10,6 +10,8 @@ import { I18n } from './i18n.js';
 
 // 核心数据结构
 const iconCache = new Map();
+const fallbackRetryCounts = new Map();
+const MAX_FALLBACK_RETRIES_PER_PAGE = 10;
 const DEFAULT_ICON = '../icons/default.png';
 const FETCH_TIMEOUT = 3000;
 // 添加替代图标标记前缀
@@ -92,7 +94,8 @@ export const IconManager = {
      * @param {string} domain - 网站域名
      * @returns {Promise<string>} 图标数据
      */
-    async fetchIconFromSources(url, domain) {
+    async fetchIconFromSources(url, domain, options = {}) {
+        const ignoreFallbackCache = options.ignoreFallbackCache === true;
         // 定义图标URL来源
         let iconUrls = [
             `${domain}/favicon.ico`,
@@ -104,7 +107,7 @@ export const IconManager = {
 
         // 首先检查是否已有生成的替代图标
         const domainCache = await chrome.storage.local.get(domain);
-        if (domainCache[domain] && domainCache[domain].startsWith(FALLBACK_ICON_PREFIX)) {
+        if (!ignoreFallbackCache && domainCache[domain] && domainCache[domain].startsWith(FALLBACK_ICON_PREFIX)) {
             console.debug(`使用已存储的替代图标: ${domain}`);
             await this.cacheIcon(domain, domainCache[domain]);
             return this.stripFallbackPrefix(domainCache[domain]);
@@ -351,6 +354,9 @@ export const IconManager = {
                 if (iconData) await this.cacheIcon(domain, iconData);
             }
 
+            const hasCache = !!iconData;
+            const isFallbackCache = hasCache && iconData.startsWith(FALLBACK_ICON_PREFIX);
+
             // 没有则用替代图标
             if (!iconData) {
                 iconData = this.generateInitialBasedIcon(domain);
@@ -358,13 +364,17 @@ export const IconManager = {
 
             img.src = this.stripFallbackPrefix(iconData);
 
-            // 异步尝试获取真实图标
-            this.fetchIconFromSources(url, domain).then(realIcon => {
-                if (realIcon && this.stripFallbackPrefix(realIcon) !== this.stripFallbackPrefix(iconData) && 
-                    img.isConnected && img.dataset.originalUrl === url) {
-                    img.src = this.stripFallbackPrefix(realIcon);
-                }
-            });
+            const retryCount = fallbackRetryCounts.get(domain) || 0;
+            const shouldRetry = (!hasCache || isFallbackCache) && retryCount < MAX_FALLBACK_RETRIES_PER_PAGE;
+            if (shouldRetry) {
+                fallbackRetryCounts.set(domain, retryCount + 1);
+                this.fetchIconFromSources(url, domain, { ignoreFallbackCache: true }).then(realIcon => {
+                    if (realIcon && this.stripFallbackPrefix(realIcon) !== this.stripFallbackPrefix(iconData) && 
+                        img.isConnected && img.dataset.originalUrl === url) {
+                        img.src = this.stripFallbackPrefix(realIcon);
+                    }
+                });
+            }
 
             delete img.dataset.processingUrl;
         } catch (error) {
