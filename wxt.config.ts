@@ -1,10 +1,7 @@
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "wxt";
-
-const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
 const packageJson = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8"),
@@ -46,7 +43,7 @@ export default defineConfig({
     },
     web_accessible_resources: [
       {
-        resources: ["html/*", "images/*", "css/*", "js/*", "fonts/*", "icons/icon128.png"],
+        resources: ["icons/*"],
         matches: ["<all_urls>"],
       },
     ],

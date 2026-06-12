@@ -1,18 +1,13 @@
 import { useState } from "react";
-import { Search, ChevronDown, Plus, Trash2, Edit3 } from "lucide-react";
+import { Search, ChevronDown, Plus, Trash2, Edit3, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAppSettings } from "@/lib/app-settings-store";
 import { getMessage } from "@/lib/i18n";
 import type { SearchEngine } from "@/lib/app-settings";
+import { AIAssistant } from "@/components/AIAssistant";
 
 function EngineEditor({
   open,
@@ -95,7 +90,8 @@ function EngineEditor({
 export function SearchBox() {
   const [query, setQuery] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
-  const { searchEngines, currentEngineIndex, setCurrentEngineIndex } = useAppSettings();
+  const [aiOpen, setAiOpen] = useState(false);
+  const { searchEngines, currentEngineIndex, setCurrentEngineIndex, aiEnabled } = useAppSettings();
 
   const currentEngine = searchEngines[currentEngineIndex] || searchEngines[0];
 
@@ -168,12 +164,25 @@ export function SearchBox() {
           />
         </div>
 
+        {aiEnabled && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+            onClick={() => setAiOpen(true)}
+            title="AI 助手"
+          >
+            <Bot className="w-5 h-5" />
+          </Button>
+        )}
         <Button type="submit" className="rounded-full bg-blue-500 hover:bg-blue-600">
           {getMessage("searchPlaceholder", "Search")}
         </Button>
       </form>
 
       <EngineEditor open={editorOpen} onOpenChange={setEditorOpen} />
+      <AIAssistant open={aiOpen} onOpenChange={setAiOpen} initialMessage={query} />
     </div>
   );
 }

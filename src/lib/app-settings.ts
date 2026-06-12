@@ -6,6 +6,18 @@ export interface SearchEngine {
   icon?: string;
 }
 
+export type BgType = "bing" | "custom" | "default";
+
+export interface AIProvider {
+  name: string;
+  apiUrl: string;
+  model: string;
+  apiKey: string;
+  isDefault: boolean;
+}
+
+export type SyncMode = "disabled" | "upload" | "download";
+
 export interface AppSettings {
   theme: AppTheme;
   searchEngines: SearchEngine[];
@@ -18,12 +30,40 @@ export interface AppSettings {
   showWidgets: boolean;
   backgroundImageUrl: string;
   backgroundEnabled: boolean;
+  bgType: BgType;
+  customImage: string | null;
+  backgroundBlur: number;
+  backgroundDark: number;
+  aiEnabled: boolean;
+  aiProviders: AIProvider[];
+  aiCurrentProviderIndex: number;
+  aiSystemPrompt: string;
+  aiQuickPrompts: string[];
+  syncMode: SyncMode;
+  syncInterval: number;
 }
 
 export const DEFAULT_SEARCH_ENGINES: SearchEngine[] = [
   { name: "Bing", url: "https://www.bing.com/search?q=" },
   { name: "Baidu", url: "https://www.baidu.com/s?wd=" },
   { name: "Google", url: "https://www.google.com/search?q=" },
+];
+
+export const DEFAULT_AI_PROVIDERS: AIProvider[] = [
+  {
+    name: "DeepSeek",
+    apiUrl: "https://api.deepseek.com/v1",
+    model: "deepseek-chat",
+    apiKey: "",
+    isDefault: true,
+  },
+  {
+    name: "OpenAI",
+    apiUrl: "https://api.openai.com/v1/chat/completions",
+    model: "gpt-3.5-turbo",
+    apiKey: "",
+    isDefault: false,
+  },
 ];
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -38,6 +78,17 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   showWidgets: true,
   backgroundImageUrl: "https://bing.img.run/1920x1080.php",
   backgroundEnabled: true,
+  bgType: "bing",
+  customImage: null,
+  backgroundBlur: 0,
+  backgroundDark: 0,
+  aiEnabled: false,
+  aiProviders: DEFAULT_AI_PROVIDERS,
+  aiCurrentProviderIndex: 0,
+  aiSystemPrompt: "你是一个有用的AI助手。",
+  aiQuickPrompts: [],
+  syncMode: "disabled",
+  syncInterval: 0,
 };
 
 export const APP_SETTINGS_STORAGE_KEY = "newtab:app-settings";
@@ -60,6 +111,19 @@ export function normalizeSearchEngines(engines: unknown): SearchEngine[] {
   );
 
   return valid.length > 0 ? valid : DEFAULT_SEARCH_ENGINES;
+}
+
+export function normalizeAIProviders(providers: unknown): AIProvider[] {
+  if (!Array.isArray(providers)) return DEFAULT_AI_PROVIDERS;
+  const valid = providers.filter(
+    (p): p is AIProvider =>
+      typeof p === "object" &&
+      p !== null &&
+      typeof (p as AIProvider).name === "string" &&
+      typeof (p as AIProvider).apiUrl === "string" &&
+      typeof (p as AIProvider).model === "string",
+  );
+  return valid.length > 0 ? valid : DEFAULT_AI_PROVIDERS;
 }
 
 export function normalizeAppSettings(value: unknown): AppSettings {
@@ -109,6 +173,44 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       typeof candidate.backgroundEnabled === "boolean"
         ? candidate.backgroundEnabled
         : DEFAULT_APP_SETTINGS.backgroundEnabled,
+    bgType: ["bing", "custom", "default"].includes(candidate.bgType || "")
+      ? candidate.bgType!
+      : DEFAULT_APP_SETTINGS.bgType,
+    customImage:
+      typeof candidate.customImage === "string" || candidate.customImage === null
+        ? candidate.customImage
+        : DEFAULT_APP_SETTINGS.customImage,
+    backgroundBlur:
+      typeof candidate.backgroundBlur === "number"
+        ? candidate.backgroundBlur
+        : DEFAULT_APP_SETTINGS.backgroundBlur,
+    backgroundDark:
+      typeof candidate.backgroundDark === "number"
+        ? candidate.backgroundDark
+        : DEFAULT_APP_SETTINGS.backgroundDark,
+    aiEnabled:
+      typeof candidate.aiEnabled === "boolean"
+        ? candidate.aiEnabled
+        : DEFAULT_APP_SETTINGS.aiEnabled,
+    aiProviders: normalizeAIProviders(candidate.aiProviders),
+    aiCurrentProviderIndex:
+      typeof candidate.aiCurrentProviderIndex === "number" && candidate.aiCurrentProviderIndex >= 0
+        ? candidate.aiCurrentProviderIndex
+        : DEFAULT_APP_SETTINGS.aiCurrentProviderIndex,
+    aiSystemPrompt:
+      typeof candidate.aiSystemPrompt === "string"
+        ? candidate.aiSystemPrompt
+        : DEFAULT_APP_SETTINGS.aiSystemPrompt,
+    aiQuickPrompts: Array.isArray(candidate.aiQuickPrompts)
+      ? candidate.aiQuickPrompts.filter((p): p is string => typeof p === "string")
+      : DEFAULT_APP_SETTINGS.aiQuickPrompts,
+    syncMode: ["disabled", "upload", "download"].includes(candidate.syncMode || "")
+      ? candidate.syncMode!
+      : DEFAULT_APP_SETTINGS.syncMode,
+    syncInterval:
+      typeof candidate.syncInterval === "number" && candidate.syncInterval >= 0
+        ? candidate.syncInterval
+        : DEFAULT_APP_SETTINGS.syncInterval,
   };
 }
 
