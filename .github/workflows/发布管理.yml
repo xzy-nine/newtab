@@ -31,74 +31,74 @@ jobs:
       release-url: ${{ steps.create-release.outputs.html_url }}
 
     steps:
-    - name: 检出代码
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
+      - name: 检出代码
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-    - uses: actions/setup-node@v6
-      with:
-        node-version: 24
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
 
-    - uses: oven-sh/setup-bun@v2
-      with:
-        bun-version: latest
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
-    - name: 安装依赖
-      run: bun install --frozen-lockfile
+      - name: 安装依赖
+        run: bun install --frozen-lockfile
 
-    - name: 设置环境变量
-      run: |
-        echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
-        echo "CHANGELOG=${{ inputs.changelog }}" >> $GITHUB_ENV
+      - name: 设置环境变量
+        run: |
+          echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+          echo "CHANGELOG=${{ inputs.changelog }}" >> $GITHUB_ENV
 
-    - name: 使用WXT创建构建包
-      run: |
-        echo "📦 使用WXT创建构建包..."
-        bun run build
-        bun run build:edge
-        bun run build:firefox
-        
-        bun run zip
-        bun run zip:edge
-        bun run zip:firefox
+      - name: 使用WXT创建构建包
+        run: |
+          echo "📦 使用WXT创建构建包..."
+          bun run build
+          bun run build:edge
+          bun run build:firefox
 
-    - name: 查看构建产物
-      run: |
-        echo "📁 构建产物目录:"
-        ls -la .output/
+          bun run zip
+          bun run zip:edge
+          bun run zip:firefox
 
-    - name: 创建Release
-      id: create-release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ env.VERSION }}
-        name: "发布 ${{ env.VERSION }}"
-        body: ${{ fromJson(env.CHANGELOG) }}
-        files: |
-          .output/*-chrome.zip
-          .output/*-edge.zip
-          .output/*-firefox.zip
-        draft: false
-        prerelease: false
-        generate_release_notes: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 查看构建产物
+        run: |
+          echo "📁 构建产物目录:"
+          ls -la .output/
 
-    - name: 验证发布结果
-      run: |
-        if [ -n "${{ steps.create-release.outputs.id }}" ]; then
-          echo "✅ Release创建成功"
-          echo "🔗 Release ID: ${{ steps.create-release.outputs.id }}"
-          echo "🌐 Release URL: ${{ steps.create-release.outputs.html_url }}"
-          
-          echo "## 🎉 发布成功" >> $GITHUB_STEP_SUMMARY
-          echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| 版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Release ID | \`${{ steps.create-release.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Release URL | [${{ steps.create-release.outputs.html_url }}](${{ steps.create-release.outputs.html_url }}) |" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "❌ Release创建失败"
-          exit 1
-        fi
+      - name: 创建Release
+        id: create-release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: "发布 ${{ env.VERSION }}"
+          body: ${{ fromJson(env.CHANGELOG) }}
+          files: |
+            .output/*-chrome.zip
+            .output/*-edge.zip
+            .output/*-firefox.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 验证发布结果
+        run: |
+          if [ -n "${{ steps.create-release.outputs.id }}" ]; then
+            echo "✅ Release创建成功"
+            echo "🔗 Release ID: ${{ steps.create-release.outputs.id }}"
+            echo "🌐 Release URL: ${{ steps.create-release.outputs.html_url }}"
+            
+            echo "## 🎉 发布成功" >> $GITHUB_STEP_SUMMARY
+            echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
+            echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
+            echo "| 版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| Release ID | \`${{ steps.create-release.outputs.id }}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| Release URL | [${{ steps.create-release.outputs.html_url }}](${{ steps.create-release.outputs.html_url }}) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Release创建失败"
+            exit 1
+          fi

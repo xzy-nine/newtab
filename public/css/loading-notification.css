@@ -8,18 +8,18 @@
   --error-color: #f44336;
   --warning-color: #fbbc05;
   --neutral-color: #eaeaea;
-  
+
   /* 尺寸与间距 */
   --notification-width: 220px;
   --notification-padding: 10px;
   --border-radius: 4px;
   --loader-size: 24px;
   --progress-height: 4px;
-  
+
   /* 动画与过渡 */
   --transition-speed: 0.3s;
   --animation-duration: 1.8s;
-  
+
   /* 阴影 */
   --shadow-default: 0 2px 8px rgba(0, 0, 0, 0.15);
   --shadow-strong: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -37,7 +37,9 @@
   overflow: hidden;
   z-index: 3000;
   transform: translateY(-100%);
-  transition: transform var(--transition-speed) ease, opacity var(--transition-speed) ease;
+  transition:
+    transform var(--transition-speed) ease,
+    opacity var(--transition-speed) ease;
   opacity: 0;
   border-left: 3px solid var(--neutral-color);
 }
@@ -52,18 +54,38 @@
 }
 
 /* 通知类型 */
-.notification-info { border-left-color: var(--neutral-color); }
-.notification-error { border-left-color: var(--error-color); }
-.notification-warning { border-left-color: var(--warning-color); }
-.notification-success { border-left-color: var(--success-color); }
+.notification-info {
+  border-left-color: var(--neutral-color);
+}
+.notification-error {
+  border-left-color: var(--error-color);
+}
+.notification-warning {
+  border-left-color: var(--warning-color);
+}
+.notification-success {
+  border-left-color: var(--success-color);
+}
 
 /* 通知位置调整 */
-.notification-offset-0 { top: 20px; }
-.notification-offset-1 { top: 90px; }
-.notification-offset-2 { top: 160px; }
-.notification-offset-3 { top: 230px; }
-.notification-offset-4 { top: 300px; }
-.notification-offset-5 { top: 370px; }
+.notification-offset-0 {
+  top: 20px;
+}
+.notification-offset-1 {
+  top: 90px;
+}
+.notification-offset-2 {
+  top: 160px;
+}
+.notification-offset-3 {
+  top: 230px;
+}
+.notification-offset-4 {
+  top: 300px;
+}
+.notification-offset-5 {
+  top: 370px;
+}
 
 /* 通知内容结构 */
 .notification-header {
@@ -134,7 +156,7 @@
   height: 100%;
   background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
   border-radius: 2px;
-  transition: width 0.5s cubic-bezier(0.1, 0.7, 1.0, 0.1);
+  transition: width 0.5s cubic-bezier(0.1, 0.7, 1, 0.1);
 }
 
 .notification-loading-message {
@@ -240,13 +262,22 @@
 
 /* 动画定义 */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes fade-in-out {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* 深色模式通知样式 */
@@ -301,11 +332,21 @@
   color: #4caf50;
 }
 
-[data-theme="dark"] .notification-info { border-left-color: #4a90e2; }
-[data-theme="dark"] .notification-success { border-left-color: #2ecc71; }
-[data-theme="dark"] .notification-warning { border-left-color: #f39c12; }
-[data-theme="dark"] .notification-error { border-left-color: #e74c3c; }
-[data-theme="dark"] .notification-confirm { background-color: #2a2a2a; }
+[data-theme="dark"] .notification-info {
+  border-left-color: #4a90e2;
+}
+[data-theme="dark"] .notification-success {
+  border-left-color: #2ecc71;
+}
+[data-theme="dark"] .notification-warning {
+  border-left-color: #f39c12;
+}
+[data-theme="dark"] .notification-error {
+  border-left-color: #e74c3c;
+}
+[data-theme="dark"] .notification-confirm {
+  background-color: #2a2a2a;
+}
 
 [data-theme="dark"] .notification-actions {
   border-top: 1px solid rgba(255, 255, 255, 0.15);

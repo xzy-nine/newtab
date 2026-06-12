@@ -2,7 +2,7 @@ name: 版本检查与构建
 on:
   push:
     branches:
-      - main  
+      - main
   workflow_call:
     inputs:
       manual_trigger:
@@ -46,7 +46,7 @@ on:
         description: "是否为手动触发"
         value: ${{ jobs.version-check-and-build.outputs.is_manual_trigger }}
 
-jobs:  
+jobs:
   version-check-and-build:
     name: 版本检查与构建
     runs-on: ubuntu-latest
@@ -60,203 +60,203 @@ jobs:
       version_change_type: ${{ steps.compare-versions.outputs.version_change_type }}
       is_manual_trigger: ${{ steps.manual-mode-check.outputs.is_manual_trigger }}
     steps:
-    - name: 检查手动触发模式
-      id: manual-mode-check
-      run: |
-        MANUAL_TRIGGER="${{ inputs.manual_trigger }}"
-        MANUAL_VERSION="${{ inputs.manual_version }}"
-        USE_LATEST="${{ inputs.use_latest_release }}"
-        
-        echo "🔍 触发模式检查:"
-        echo "   manual_trigger: $MANUAL_TRIGGER"
-        echo "   manual_version: $MANUAL_VERSION"
-        echo "   use_latest_release: $USE_LATEST"
-        
-        if [ "$MANUAL_TRIGGER" = "true" ]; then
-          echo "is_manual_trigger=true" >> $GITHUB_OUTPUT
-          echo "📝 手动触发模式"
-        else
-          echo "is_manual_trigger=false" >> $GITHUB_OUTPUT
-          echo "🤖 自动触发模式"
-        fi
+      - name: 检查手动触发模式
+        id: manual-mode-check
+        run: |
+          MANUAL_TRIGGER="${{ inputs.manual_trigger }}"
+          MANUAL_VERSION="${{ inputs.manual_version }}"
+          USE_LATEST="${{ inputs.use_latest_release }}"
 
-    - name: 检出代码
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
+          echo "🔍 触发模式检查:"
+          echo "   manual_trigger: $MANUAL_TRIGGER"
+          echo "   manual_version: $MANUAL_VERSION"
+          echo "   use_latest_release: $USE_LATEST"
 
-    - uses: actions/setup-node@v6
-      with:
-        node-version: 24
+          if [ "$MANUAL_TRIGGER" = "true" ]; then
+            echo "is_manual_trigger=true" >> $GITHUB_OUTPUT
+            echo "📝 手动触发模式"
+          else
+            echo "is_manual_trigger=false" >> $GITHUB_OUTPUT
+            echo "🤖 自动触发模式"
+          fi
 
-    - uses: oven-sh/setup-bun@v2
-      with:
-        bun-version: latest
+      - name: 检出代码
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-    - name: 安装依赖
-      run: bun install --frozen-lockfile
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
 
-    - name: Lint
-      run: bunx oxlint .
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
-    - name: Typecheck
-      run: bun run compile
+      - name: 安装依赖
+        run: bun install --frozen-lockfile
 
-    - name: 测试
-      run: bun run test:unit
+      - name: Lint
+        run: bunx oxlint .
 
-    - name: 从package.json获取版本信息
-      id: get-version
-      run: |
-        if [ "${{ inputs.manual_trigger }}" = "true" ] && [ -n "${{ inputs.manual_version }}" ]; then
-          VERSION="${{ inputs.manual_version }}"
-          echo "📋 使用手动指定的版本: $VERSION"
-        else
-          VERSION=$(jq -r '.version' package.json)
-          echo "📋 从package.json读取版本: $VERSION"
-        fi
-        
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Typecheck
+        run: bun run compile
 
-    - name: 获取最新发布版本
-      id: get-latest-release
-      run: |
-        LATEST_VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name // "0.0.0"')
-        echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
-        echo "📋 最新发布版本: $LATEST_VERSION"
+      - name: 测试
+        run: bun run test:unit
 
-    - name: 比较版本标签
-      id: compare-versions
-      run: |
-        echo "🔍 比较版本: 当前=$VERSION, 最新=$LATEST_VERSION"
-        
-        CURRENT_X=$(echo "$VERSION" | cut -d. -f1)
-        CURRENT_Y=$(echo "$VERSION" | cut -d. -f2)
-        CURRENT_Z=$(echo "$VERSION" | cut -d. -f3)
-        
-        LATEST_X=$(echo "$LATEST_VERSION" | cut -d. -f1)
-        LATEST_Y=$(echo "$LATEST_VERSION" | cut -d. -f2)
-        LATEST_Z=$(echo "$LATEST_VERSION" | cut -d. -f3)
-        
-        echo "📊 版本解析:"
-        echo "   当前版本: x=$CURRENT_X, y=$CURRENT_Y, z=$CURRENT_Z"
-        echo "   最新版本: x=$LATEST_X, y=$LATEST_Y, z=$LATEST_Z"
-        
-        if [ "$CURRENT_X" != "$LATEST_X" ]; then
-          VERSION_CHANGE_TYPE="major"
-          echo "🔴 版本变更类型: MAJOR"
-        elif [ "$CURRENT_Y" != "$LATEST_Y" ]; then
-          VERSION_CHANGE_TYPE="minor"
-          echo "🟡 版本变更类型: MINOR"
-        elif [ "$CURRENT_Z" != "$LATEST_Z" ]; then
-          VERSION_CHANGE_TYPE="patch"
-          echo "🟢 版本变更类型: PATCH"
-        else
-          VERSION_CHANGE_TYPE="none"
-          echo "⚪ 版本变更类型: NONE"
-        fi
-        
-        echo "version_change_type=$VERSION_CHANGE_TYPE" >> $GITHUB_OUTPUT
-        
-        if [ "$LATEST_VERSION" = "0.0.0" ] || [ -z "$LATEST_VERSION" ]; then
-            echo "is_new_version=true" >> $GITHUB_OUTPUT
-            echo "✅ 首次发布"
-        elif [ "$LATEST_VERSION" = "$VERSION" ]; then
-            echo "is_new_version=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ 版本未更新"
-        elif [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then
-            echo "is_new_version=true" >> $GITHUB_OUTPUT
-            echo "✅ 检测到新版本"
-        else
-            echo "is_new_version=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ 版本回退"
-        fi
+      - name: 从package.json获取版本信息
+        id: get-version
+        run: |
+          if [ "${{ inputs.manual_trigger }}" = "true" ] && [ -n "${{ inputs.manual_version }}" ]; then
+            VERSION="${{ inputs.manual_version }}"
+            echo "📋 使用手动指定的版本: $VERSION"
+          else
+            VERSION=$(jq -r '.version' package.json)
+            echo "📋 从package.json读取版本: $VERSION"
+          fi
 
-    - name: 检查标签是否存在
-      id: check-tag-exists
-      run: |
-        if git rev-parse "refs/tags/${{ env.VERSION }}" >/dev/null 2>&1; then
-          echo "tag_exists=true" >> $GITHUB_OUTPUT
-          echo "⚠️ 标签已存在"
-        else
-          echo "tag_exists=false" >> $GITHUB_OUTPUT
-          echo "✅ 标签不存在"
-        fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-    - name: 生成变更日志
-      id: generate-changelog
-      if: steps.compare-versions.outputs.is_new_version == 'true' && steps.check-tag-exists.outputs.tag_exists == 'false'
-      run: |
-        echo "📝 生成变更日志..."
-        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-        
-        if [ -z "$LAST_TAG" ]; then
-          CHANGELOG=$(git log --pretty=format:"%h - %s")
-        else
-          CHANGELOG=$(git log --pretty=format:"%h - %s" $LAST_TAG..HEAD)
-        fi
-        
-        if [ -z "$CHANGELOG" ]; then
-          CHANGELOG="没有新的变更记录"
-        fi
-        
-        CHANGELOG=$(echo "$CHANGELOG" | jq -R -s '.')
-        echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
-        echo "✅ 变更日志生成完成"
+      - name: 获取最新发布版本
+        id: get-latest-release
+        run: |
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name // "0.0.0"')
+          echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
+          echo "📋 最新发布版本: $LATEST_VERSION"
 
-    - name: 使用WXT创建构建包
-      id: create-build-package
-      if: steps.compare-versions.outputs.is_new_version == 'true' && steps.check-tag-exists.outputs.tag_exists == 'false'
-      run: |
-        echo "📦 使用WXT创建构建包..."
-        
-        bun run build
-        bun run build:edge
-        bun run build:firefox
-        
-        bun run zip
-        bun run zip:edge
-        bun run zip:firefox
-        
-        BUILD_PATH=".output"
-        echo "build_path=$BUILD_PATH" >> $GITHUB_OUTPUT
-        echo "✅ WXT构建完成"
+      - name: 比较版本标签
+        id: compare-versions
+        run: |
+          echo "🔍 比较版本: 当前=$VERSION, 最新=$LATEST_VERSION"
 
-    - name: 输出构建结果
-      id: output-summary
-      run: |
-        echo "## 🔍 构建结果摘要" >> $GITHUB_STEP_SUMMARY
-        echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
-        echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
-        echo "| 当前版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
-        echo "| 最新发布版本 | \`${{ env.LATEST_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
-        echo "| 是否新版本 | ${{ steps.compare-versions.outputs.is_new_version == 'true' && '✅ 是' || '❌ 否' }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| 标签是否存在 | ${{ steps.check-tag-exists.outputs.tag_exists == 'true' && '⚠️ 已存在' || '✅ 不存在' }} |" >> $GITHUB_STEP_SUMMARY
+          CURRENT_X=$(echo "$VERSION" | cut -d. -f1)
+          CURRENT_Y=$(echo "$VERSION" | cut -d. -f2)
+          CURRENT_Z=$(echo "$VERSION" | cut -d. -f3)
 
-    - name: 设置发布标志
-      id: set-release-flag
-      run: |
-        IS_NEW_VERSION="${{ steps.compare-versions.outputs.is_new_version }}"
-        TAG_EXISTS="${{ steps.check-tag-exists.outputs.tag_exists }}"
-        VERSION_CHANGE_TYPE="${{ steps.compare-versions.outputs.version_change_type }}"
-        IS_MANUAL="${{ steps.manual-mode-check.outputs.is_manual_trigger }}"
-        
-        if [ "$IS_MANUAL" = "true" ]; then
-          echo "should_release=true" >> $GITHUB_OUTPUT
-          echo "✅ 手动触发模式，强制发布"
-        elif [ "$IS_NEW_VERSION" = "true" ] && [ "$TAG_EXISTS" = "false" ]; then
-          if [ "$VERSION_CHANGE_TYPE" = "major" ] || [ "$VERSION_CHANGE_TYPE" = "minor" ]; then
+          LATEST_X=$(echo "$LATEST_VERSION" | cut -d. -f1)
+          LATEST_Y=$(echo "$LATEST_VERSION" | cut -d. -f2)
+          LATEST_Z=$(echo "$LATEST_VERSION" | cut -d. -f3)
+
+          echo "📊 版本解析:"
+          echo "   当前版本: x=$CURRENT_X, y=$CURRENT_Y, z=$CURRENT_Z"
+          echo "   最新版本: x=$LATEST_X, y=$LATEST_Y, z=$LATEST_Z"
+
+          if [ "$CURRENT_X" != "$LATEST_X" ]; then
+            VERSION_CHANGE_TYPE="major"
+            echo "🔴 版本变更类型: MAJOR"
+          elif [ "$CURRENT_Y" != "$LATEST_Y" ]; then
+            VERSION_CHANGE_TYPE="minor"
+            echo "🟡 版本变更类型: MINOR"
+          elif [ "$CURRENT_Z" != "$LATEST_Z" ]; then
+            VERSION_CHANGE_TYPE="patch"
+            echo "🟢 版本变更类型: PATCH"
+          else
+            VERSION_CHANGE_TYPE="none"
+            echo "⚪ 版本变更类型: NONE"
+          fi
+
+          echo "version_change_type=$VERSION_CHANGE_TYPE" >> $GITHUB_OUTPUT
+
+          if [ "$LATEST_VERSION" = "0.0.0" ] || [ -z "$LATEST_VERSION" ]; then
+              echo "is_new_version=true" >> $GITHUB_OUTPUT
+              echo "✅ 首次发布"
+          elif [ "$LATEST_VERSION" = "$VERSION" ]; then
+              echo "is_new_version=false" >> $GITHUB_OUTPUT
+              echo "ℹ️ 版本未更新"
+          elif [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then
+              echo "is_new_version=true" >> $GITHUB_OUTPUT
+              echo "✅ 检测到新版本"
+          else
+              echo "is_new_version=false" >> $GITHUB_OUTPUT
+              echo "ℹ️ 版本回退"
+          fi
+
+      - name: 检查标签是否存在
+        id: check-tag-exists
+        run: |
+          if git rev-parse "refs/tags/${{ env.VERSION }}" >/dev/null 2>&1; then
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ 标签已存在"
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+            echo "✅ 标签不存在"
+          fi
+
+      - name: 生成变更日志
+        id: generate-changelog
+        if: steps.compare-versions.outputs.is_new_version == 'true' && steps.check-tag-exists.outputs.tag_exists == 'false'
+        run: |
+          echo "📝 生成变更日志..."
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -z "$LAST_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"%h - %s")
+          else
+            CHANGELOG=$(git log --pretty=format:"%h - %s" $LAST_TAG..HEAD)
+          fi
+
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="没有新的变更记录"
+          fi
+
+          CHANGELOG=$(echo "$CHANGELOG" | jq -R -s '.')
+          echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "✅ 变更日志生成完成"
+
+      - name: 使用WXT创建构建包
+        id: create-build-package
+        if: steps.compare-versions.outputs.is_new_version == 'true' && steps.check-tag-exists.outputs.tag_exists == 'false'
+        run: |
+          echo "📦 使用WXT创建构建包..."
+
+          bun run build
+          bun run build:edge
+          bun run build:firefox
+
+          bun run zip
+          bun run zip:edge
+          bun run zip:firefox
+
+          BUILD_PATH=".output"
+          echo "build_path=$BUILD_PATH" >> $GITHUB_OUTPUT
+          echo "✅ WXT构建完成"
+
+      - name: 输出构建结果
+        id: output-summary
+        run: |
+          echo "## 🔍 构建结果摘要" >> $GITHUB_STEP_SUMMARY
+          echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| 当前版本 | \`${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 最新发布版本 | \`${{ env.LATEST_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 是否新版本 | ${{ steps.compare-versions.outputs.is_new_version == 'true' && '✅ 是' || '❌ 否' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 标签是否存在 | ${{ steps.check-tag-exists.outputs.tag_exists == 'true' && '⚠️ 已存在' || '✅ 不存在' }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: 设置发布标志
+        id: set-release-flag
+        run: |
+          IS_NEW_VERSION="${{ steps.compare-versions.outputs.is_new_version }}"
+          TAG_EXISTS="${{ steps.check-tag-exists.outputs.tag_exists }}"
+          VERSION_CHANGE_TYPE="${{ steps.compare-versions.outputs.version_change_type }}"
+          IS_MANUAL="${{ steps.manual-mode-check.outputs.is_manual_trigger }}"
+
+          if [ "$IS_MANUAL" = "true" ]; then
             echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "✅ MAJOR/MINOR 版本变更"
-          elif [ "$VERSION_CHANGE_TYPE" = "patch" ]; then
-            echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ PATCH 版本变更，仅构建"
+            echo "✅ 手动触发模式，强制发布"
+          elif [ "$IS_NEW_VERSION" = "true" ] && [ "$TAG_EXISTS" = "false" ]; then
+            if [ "$VERSION_CHANGE_TYPE" = "major" ] || [ "$VERSION_CHANGE_TYPE" = "minor" ]; then
+              echo "should_release=true" >> $GITHUB_OUTPUT
+              echo "✅ MAJOR/MINOR 版本变更"
+            elif [ "$VERSION_CHANGE_TYPE" = "patch" ]; then
+              echo "should_release=false" >> $GITHUB_OUTPUT
+              echo "ℹ️ PATCH 版本变更，仅构建"
+            else
+              echo "should_release=false" >> $GITHUB_OUTPUT
+              echo "ℹ️ 版本无变化"
+            fi
           else
             echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ 版本无变化"
+            echo "ℹ️ 不满足发布条件"
           fi
-        else
-          echo "should_release=false" >> $GITHUB_OUTPUT
-          echo "ℹ️ 不满足发布条件"
-        fi

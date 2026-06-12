@@ -5,58 +5,58 @@
 
 /* 标题编辑状态（特有功能） */
 .counter-title.editing {
-    padding: 0;
+  padding: 0;
 }
 
 .counter-title.editing input {
-    width: 100%;
-    padding: 2px;
-    font-size: inherit;
-    font-weight: bold;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
-    outline: none;
-    background-color: var(--widget-bg-solid);
-    color: var(--widget-text-color);
+  width: 100%;
+  padding: 2px;
+  font-size: inherit;
+  font-weight: bold;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  outline: none;
+  background-color: var(--widget-bg-solid);
+  color: var(--widget-text-color);
 }
 
 [data-theme="dark"] .counter-title.editing input {
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* 计数器特有的显示样式 */
 .counter-display {
-    flex: 1;
-    font-size: 24px;
-    margin: 0 5px;
-    min-width: 30px;
+  flex: 1;
+  font-size: 24px;
+  margin: 0 5px;
+  min-width: 30px;
 }
 
 /* 响应式适配 - 紧凑布局 */
 .counter-widget.compact-layout {
-    padding: 6px;
+  padding: 6px;
 }
 
 .counter-widget.compact-layout .counter-title {
-    font-size: 11px;
-    margin-bottom: 1px;
-    min-height: 13px;
+  font-size: 11px;
+  margin-bottom: 1px;
+  min-height: 13px;
 }
 
 .counter-widget.compact-layout .counter-display {
-    font-size: 16px;
-    margin: 0 3px;
+  font-size: 16px;
+  margin: 0 3px;
 }
 
 .counter-widget.compact-layout .widget-btn-round {
-    width: 22px;
-    height: 22px;
-    font-size: 14px;
+  width: 22px;
+  height: 22px;
+  font-size: 14px;
 }
 
 .counter-widget.compact-layout .widget-btn-small {
-    font-size: 9px;
-    padding: 2px 4px;
-    margin-top: 1px;
-    min-height: 16px;
+  font-size: 9px;
+  padding: 2px 4px;
+  margin-top: 1px;
+  min-height: 16px;
 }

@@ -10,7 +10,7 @@
   --container-padding: 15px;
   --grid-gap: 15px;
   --icon-size: 32px;
-  
+
   /* 动效参数 */
   --scale-hover: 1.05;
   --scale-active: 0.95;
@@ -19,7 +19,6 @@
 /*------------------------------------*\
   #COMMON-STYLES
 \*------------------------------------*/
-
 
 /*------------------------------------*
   #CONTAINERS
@@ -35,7 +34,9 @@
   box-shadow: inset 0 0 15px var(--container-shadow);
   backdrop-filter: blur(3px);
   border: none;
-  transition: opacity var(--transition-normal), visibility var(--transition-normal);
+  transition:
+    opacity var(--transition-normal),
+    visibility var(--transition-normal);
   display: block;
   grid-column: 3;
 }
@@ -52,7 +53,6 @@
   margin: 0;
   padding: 0;
 }
-
 
 .desktop-page-indicators {
   position: absolute;
@@ -79,20 +79,19 @@
   background: rgba(255, 255, 255, 0.95);
 }
 
-
 /*------------------------------------*\
   #SHORTCUT-ELEMENTS
 \*------------------------------------*/
 .shortcut-button {
-  background: var(--container-bg);  /* 使用统一的背景颜色变量 */
+  background: var(--container-bg); /* 使用统一的背景颜色变量 */
   border: none;
   border-radius: var(--shortcut-border-radius);
-  box-shadow: 0 2px 8px var(--container-shadow);  /* 使用统一的阴影变量 */
+  box-shadow: 0 2px 8px var(--container-shadow); /* 使用统一的阴影变量 */
   clip-path: inset(0 round 10px);
   cursor: pointer;
   overflow: hidden;
-  transition: 
-    box-shadow var(--transition-normal), 
+  transition:
+    box-shadow var(--transition-normal),
     background-color var(--transition-normal);
   /* 移除transform过渡，避免与拖动冲突 */
   /* 确保快捷方式与小部件在同一层级 */
@@ -103,7 +102,7 @@
 
 .shortcut-title {
   font-size: var(--font-size-small);
-  color: var(--color-text);  /* 统一使用全局变量 */
+  color: var(--color-text); /* 统一使用全局变量 */
   max-width: 100%;
   overflow: hidden;
   text-overflow: clip;
@@ -142,13 +141,13 @@
   transform: scale(var(--scale-hover));
   box-shadow: 0 4px 12px var(--container-shadow);
   overflow: visible;
-  background-color: rgba(200, 200, 200, 0.9);  /* 加深背景色 */
+  background-color: rgba(200, 200, 200, 0.9); /* 加深背景色 */
 }
 
 .shortcut-button:active {
   transform: scale(var(--scale-active));
-  background-color: var(--color-primary);  /* 按下时使用主题色 */
-  color: white;  /* 确保文字在主题色上可见 */
+  background-color: var(--color-primary); /* 按下时使用主题色 */
+  color: white; /* 确保文字在主题色上可见 */
 }
 
 /* 空位置样式 */
@@ -176,7 +175,7 @@
 /* 仅调整图标亮度，不改变定位方式 */
 [data-theme="dark"] .shortcut-button img,
 [data-theme="dark"] .shortcut-icon {
-  filter: brightness(1.9);  /* 略微提高图标亮度以增强可见度 */
+  filter: brightness(1.9); /* 略微提高图标亮度以增强可见度 */
 }
 
 [data-theme="dark"] .shortcut-title {

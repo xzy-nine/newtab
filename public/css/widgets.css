@@ -1,7 +1,7 @@
 /* 小部件系统样式 */
 
 /* 引入公共样式组件 */
-@import url('./widgets/widget-common.css');
+@import url("./widgets/widget-common.css");
 
 /* 1. 变量定义层 */
 :root {
@@ -33,21 +33,25 @@
   --widget-danger-color: var(--widget-danger-red);
   --widget-success-color: var(--widget-success-green);
   --widget-text-on-accent: var(--widget-white);
-  
+
   /* 控制元素颜色 */
   --widget-control-bg: rgba(0, 0, 0, 0.05);
   --widget-control-bg-hover: rgba(0, 120, 212, 0.15);
   --widget-indicator-color: rgba(0, 0, 0, 0.2);
   --widget-indicator-color-hover: rgba(0, 0, 0, 0.4);
-  
+
   /* 特殊元素颜色 */
   --widget-drag-handle-bg: linear-gradient(to right, rgba(0, 0, 0, 0.1), transparent);
   --widget-drag-handle-bg-hover: linear-gradient(to right, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.05));
-  --widget-drag-handle-bg-fixed: linear-gradient(to right, rgba(0, 120, 212, 0.15), rgba(0, 120, 212, 0.05));
+  --widget-drag-handle-bg-fixed: linear-gradient(
+    to right,
+    rgba(0, 120, 212, 0.15),
+    rgba(0, 120, 212, 0.05)
+  );
   --widget-resize-handle-color: rgba(0, 120, 212, 0.3);
   --widget-resize-handle-color-hover: rgba(0, 120, 212, 0.6);
   --widget-separator-color: var(--widget-primary-color);
-  
+
   /* 尺寸和间距 */
   --widget-min-width: 150px;
   --widget-min-height: 80px;
@@ -55,7 +59,7 @@
   --widget-padding: 10px;
   --widget-drag-handle-width: 10px;
   --widget-drag-handle-width-hover: 15px;
-  
+
   /* 动画与过渡 */
   --widget-transition-normal: 0.3s;
   --widget-transition-quick: 0.2s;
@@ -71,8 +75,10 @@
   border-radius: var(--widget-border-radius);
   box-shadow: 0 2px 10px var(--widget-shadow-color);
   display: flex;
-  overflow: hidden;  transition: box-shadow var(--widget-transition-normal), 
-              transform var(--widget-transition-quick);
+  overflow: hidden;
+  transition:
+    box-shadow var(--widget-transition-normal),
+    transform var(--widget-transition-quick);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   /* 小部件内容适应缩放 */
@@ -109,7 +115,9 @@
   height: 100%;
   background: var(--widget-drag-handle-bg);
   cursor: move;
-  transition: background-color var(--widget-transition-quick), width var(--widget-transition-normal);
+  transition:
+    background-color var(--widget-transition-quick),
+    width var(--widget-transition-normal);
   z-index: 10;
   pointer-events: auto;
 }
@@ -159,7 +167,9 @@
   left: 0;
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--widget-transition-normal) ease, visibility var(--widget-transition-normal) ease;
+  transition:
+    opacity var(--widget-transition-normal) ease,
+    visibility var(--widget-transition-normal) ease;
   z-index: 1;
   box-sizing: border-box;
   /* 小部件内容适应缩放 */
@@ -213,7 +223,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform var(--widget-transition-quick), background-color var(--widget-transition-quick);
+  transition:
+    transform var(--widget-transition-quick),
+    background-color var(--widget-transition-quick);
   margin: 10px auto;
   /* 确保按钮不受父容器变换影响 */
   transform: translate(0, 0) !important;
@@ -246,7 +258,9 @@
   cursor: pointer;
   font-size: 16px;
   z-index: 3;
-  transition: transform var(--widget-transition-quick), opacity var(--widget-transition-normal);
+  transition:
+    transform var(--widget-transition-quick),
+    opacity var(--widget-transition-normal);
   opacity: 0.7;
 }
 
@@ -348,7 +362,8 @@
 }
 
 /* 8. 特殊状态层 */
-.widget-loading, .widget-error {
+.widget-loading,
+.widget-error {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -382,9 +397,10 @@
   display: none;
 }
 
-
 /* 10. z-index 管理层 */
-#folder-list, #shortcut-list, #search-box {
+#folder-list,
+#shortcut-list,
+#search-box {
   position: relative;
 }
 
@@ -400,17 +416,25 @@
   --widget-shadow-color-active: rgba(0, 0, 0, 0.5);
   --widget-primary-color: #3a9fff;
   --widget-primary-color-hover: #4dabff;
-  
+
   /* 控制元素颜色 */
   --widget-control-bg: rgba(255, 255, 255, 0.08);
   --widget-control-bg-hover: rgba(58, 159, 255, 0.25);
   --widget-indicator-color: rgba(255, 255, 255, 0.2);
   --widget-indicator-color-hover: rgba(255, 255, 255, 0.4);
-  
+
   /* 特殊元素颜色 */
   --widget-drag-handle-bg: linear-gradient(to right, rgba(255, 255, 255, 0.1), transparent);
-  --widget-drag-handle-bg-hover: linear-gradient(to right, rgba(58, 159, 255, 0.25), rgba(58, 159, 255, 0.05));
-  --widget-drag-handle-bg-fixed: linear-gradient(to right, rgba(58, 159, 255, 0.2), rgba(58, 159, 255, 0.05));
+  --widget-drag-handle-bg-hover: linear-gradient(
+    to right,
+    rgba(58, 159, 255, 0.25),
+    rgba(58, 159, 255, 0.05)
+  );
+  --widget-drag-handle-bg-fixed: linear-gradient(
+    to right,
+    rgba(58, 159, 255, 0.2),
+    rgba(58, 159, 255, 0.05)
+  );
   --widget-resize-handle-color: rgba(58, 159, 255, 0.3);
   --widget-resize-handle-color-hover: rgba(58, 159, 255, 0.6);
 }
@@ -418,28 +442,32 @@
 /* 移除深色模式下的边框，改用阴影来突出效果 */
 [data-theme="dark"] .widget-container {
   border: none;
-  box-shadow: 0 2px 10px var(--widget-shadow-color), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 2px 10px var(--widget-shadow-color),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 [data-theme="dark"] .widget-container.widget-fixed {
-  box-shadow: 0 2px 8px var(--widget-shadow-color), 0 0 0 1px rgba(58, 159, 255, 0.15);
+  box-shadow:
+    0 2px 8px var(--widget-shadow-color),
+    0 0 0 1px rgba(58, 159, 255, 0.15);
 }
 
 /* 确保变换原点正确设置，使缩放从左上角开始 */
 .widget-container {
-    /* ... 现有样式 ... */
-    transform-origin: top left !important;
-    will-change: transform; /* 提升为合成层，优化渲染性能 */
-    backface-visibility: hidden; /* 防止渲染问题 */
-    -webkit-font-smoothing: subpixel-antialiased; /* 提高文字渲染质量 */
+  /* ... 现有样式 ... */
+  transform-origin: top left !important;
+  will-change: transform; /* 提升为合成层，优化渲染性能 */
+  backface-visibility: hidden; /* 防止渲染问题 */
+  -webkit-font-smoothing: subpixel-antialiased; /* 提高文字渲染质量 */
 }
 
 .widget-item {
-    /* ... 现有样式 ... */
-    transform-origin: top left !important;
+  /* ... 现有样式 ... */
+  transform-origin: top left !important;
 }
 
 /* 当使用变换时，确保内部元素的文本清晰度 */
 .widget-container[style*="transform"] .widget-item {
-    -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing: antialiased;
 }

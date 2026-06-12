@@ -7,7 +7,7 @@
   --folder-margin: 4px;
   --folder-min-height: 30px;
   --folder-indent-size: 20px;
-  
+
   --folder-bg: var(--color-white);
   --folder-border-color: var(--color-gray-300);
   --folder-text-color: var(--color-gray-900);
@@ -44,7 +44,10 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   cursor: pointer;
   margin: var(--folder-margin) 0;
-  transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.1s,
+    box-shadow 0.2s;
   overflow: hidden;
   box-sizing: border-box;
   width: 100%;
@@ -55,16 +58,46 @@
   margin-right: 0px;
 }
 
-.folder-button.folder-indent-1 { margin-left: calc(1 * var(--folder-indent-size)); width: calc(100% - 1 * var(--folder-indent-size)); }
-.folder-button.folder-indent-2 { margin-left: calc(2 * var(--folder-indent-size)); width: calc(100% - 2 * var(--folder-indent-size)); }
-.folder-button.folder-indent-3 { margin-left: calc(3 * var(--folder-indent-size)); width: calc(100% - 3 * var(--folder-indent-size)); }
-.folder-button.folder-indent-4 { margin-left: calc(4 * var(--folder-indent-size)); width: calc(100% - 4 * var(--folder-indent-size)); }
-.folder-button.folder-indent-5 { margin-left: calc(5 * var(--folder-indent-size)); width: calc(100% - 5 * var(--folder-indent-size)); }
-.folder-button.folder-indent-6 { margin-left: calc(6 * var(--folder-indent-size)); width: calc(100% - 6 * var(--folder-indent-size)); }
-.folder-button.folder-indent-7 { margin-left: calc(7 * var(--folder-indent-size)); width: calc(100% - 7 * var(--folder-indent-size)); }
-.folder-button.folder-indent-8 { margin-left: calc(8 * var(--folder-indent-size)); width: calc(100% - 8 * var(--folder-indent-size)); }
-.folder-button.folder-indent-9 { margin-left: calc(9 * var(--folder-indent-size)); width: calc(100% - 9 * var(--folder-indent-size)); }
-.folder-button.folder-indent-10 { margin-left: calc(10 * var(--folder-indent-size)); width: calc(100% - 10 * var(--folder-indent-size)); }
+.folder-button.folder-indent-1 {
+  margin-left: calc(1 * var(--folder-indent-size));
+  width: calc(100% - 1 * var(--folder-indent-size));
+}
+.folder-button.folder-indent-2 {
+  margin-left: calc(2 * var(--folder-indent-size));
+  width: calc(100% - 2 * var(--folder-indent-size));
+}
+.folder-button.folder-indent-3 {
+  margin-left: calc(3 * var(--folder-indent-size));
+  width: calc(100% - 3 * var(--folder-indent-size));
+}
+.folder-button.folder-indent-4 {
+  margin-left: calc(4 * var(--folder-indent-size));
+  width: calc(100% - 4 * var(--folder-indent-size));
+}
+.folder-button.folder-indent-5 {
+  margin-left: calc(5 * var(--folder-indent-size));
+  width: calc(100% - 5 * var(--folder-indent-size));
+}
+.folder-button.folder-indent-6 {
+  margin-left: calc(6 * var(--folder-indent-size));
+  width: calc(100% - 6 * var(--folder-indent-size));
+}
+.folder-button.folder-indent-7 {
+  margin-left: calc(7 * var(--folder-indent-size));
+  width: calc(100% - 7 * var(--folder-indent-size));
+}
+.folder-button.folder-indent-8 {
+  margin-left: calc(8 * var(--folder-indent-size));
+  width: calc(100% - 8 * var(--folder-indent-size));
+}
+.folder-button.folder-indent-9 {
+  margin-left: calc(9 * var(--folder-indent-size));
+  width: calc(100% - 9 * var(--folder-indent-size));
+}
+.folder-button.folder-indent-10 {
+  margin-left: calc(10 * var(--folder-indent-size));
+  width: calc(100% - 10 * var(--folder-indent-size));
+}
 
 /* 文件夹内容布局 */
 .folder-content {
@@ -94,7 +127,9 @@
   color: var(--folder-text-color);
   font-weight: bold;
   border-radius: 4px;
-  transition: background-color 0.2s ease, transform 0.3s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.3s ease;
   flex-shrink: 0;
   margin-right: 4px;
   cursor: pointer;
@@ -106,7 +141,7 @@
   margin-right: 4px;
   flex-shrink: 0;
   font-size: 16px;
-  color: #FFD700; /* 亮黄色 */
+  color: #ffd700; /* 亮黄色 */
 }
 
 .folder-name {
@@ -143,7 +178,7 @@
 
 /* 选中状态时文件夹图标保持亮黄色 */
 .folder-button.selected .folder-icon {
-  color: #FFD700;
+  color: #ffd700;
 }
 
 /* 文件夹展开/收缩 */
@@ -199,17 +234,17 @@
 }
 
 #folder-list::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 3px;
 }
 
 #folder-list::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.3);
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 3px;
 }
 
 #folder-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
 }
 
 /* 深色模式 */
@@ -240,6 +275,5 @@
 
 /* 深色主题下选中状态时文件夹图标保持亮黄色 */
 [data-theme="dark"] .folder-button.selected .folder-icon {
-  color: #FFD700;
+  color: #ffd700;
 }
-

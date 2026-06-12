@@ -10,7 +10,7 @@
       "collapse_start": "\n<details>\n<summary>查看原始提交记录</summary>\n\n",
       "collapse_end": "\n\n</details>\n"
     },
-    
+
     "basic_generated": {
       "header": "# 版本 {version} 更新摘要 [AI生成的变更日志摘要]",
       "overview": "## 📋 更新概览\n基于规则分析的版本更新",
@@ -21,7 +21,7 @@
       "collapse_end": "\n\n</details>\n"
     }
   },
-  
+
   "categories": {
     "FEATURE": ["🚀 功能新增", 1],
     "FIX": ["🐛 问题修复", 2],
@@ -32,7 +32,7 @@
     "BUILD": ["🏗️ 构建相关", 6],
     "OTHER": ["🔧 其他改进", 7]
   },
-  
+
   "importance_icons": {
     "5": "🔥",
     "4": "⭐",
@@ -40,7 +40,7 @@
     "2": "📌",
     "1": "📍"
   },
-  
+
   "commit_patterns": {
     "FEATURE": "^(feat|feature|新增|添加)",
     "FIX": "^(fix|bug|修复|解决)",
@@ -51,10 +51,10 @@
     "BUILD": "^(build|版本|构建)",
     "OTHER": ".*"
   },
-  
+
   "cleanup_patterns": [
     "^feat[:\\s]*",
-    "^fix[:\\s]*", 
+    "^fix[:\\s]*",
     "^style[:\\s]*",
     "^refactor[:\\s]*",
     "^perf[:\\s]*",

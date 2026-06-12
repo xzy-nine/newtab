@@ -78,7 +78,8 @@
   "extensionInstalledDesc": {
     "message": "新标签页扩展已成功安装并可以使用了！",
     "description": "扩展安装成功通知描述"
-  },  "notificationSystemError": {
+  },
+  "notificationSystemError": {
     "message": "通知系统错误",
     "description": "通知系统错误标题"
   },
@@ -95,7 +96,8 @@
         "example": "5"
       }
     }
-  },  "timeHoursAgo": {
+  },
+  "timeHoursAgo": {
     "message": "$1小时前",
     "description": "时间显示-小时前",
     "placeholders": {
@@ -104,7 +106,8 @@
         "example": "2"
       }
     }
-  },  "conversationCount": {
+  },
+  "conversationCount": {
     "message": "条",
     "description": "对话数量单位"
   },
@@ -135,7 +138,8 @@
   "timerCountdown": {
     "message": "倒计时",
     "description": "倒计时模式标题"
-  },  "timerStopwatch": {
+  },
+  "timerStopwatch": {
     "message": "秒表",
     "description": "秒表模式标题"
   },
@@ -217,11 +221,13 @@
   },
   "externalNotificationsApiEnabledDesc": {
     "message": "其他网页现在可以使用扩展的通知功能",
-    "description": "外部通知API启用成功通知消息"  },
+    "description": "外部通知API启用成功通知消息"
+  },
   "externalNotificationsStats": {
     "message": "外部通知统计",
     "description": "外部通知统计选项标签"
-  },  "externalNotificationsStatsDesc": {
+  },
+  "externalNotificationsStatsDesc": {
     "message": "查看和管理外部通知请求的统计信息",
     "description": "外部通知统计选项描述"
   },
@@ -454,4 +460,3 @@
     "description": "新对话开始通知描述（包含历史）"
   }
 }
-

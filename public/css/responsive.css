@@ -10,7 +10,7 @@
     overflow-y: auto !important; /* 确保页面可以滚动 */
     padding-bottom: var(--desktop-bottom-safe);
   }
-  
+
   /* 确保主容器内的所有元素垂直排列 */
   #main-container {
     display: flex !important; /* 强制应用flex布局 */
@@ -22,7 +22,7 @@
     overflow: hidden !important; /* 强制隐藏溢出内容 */
     box-sizing: border-box;
   }
-  
+
   /* 文件夹列表和快捷方式容器自适应填充剩余空间 */
   #folder-list,
   #shortcut-list {
@@ -43,9 +43,9 @@
   #shortcut-list {
     overflow-y: auto !important;
   }
-  
+
   /* 调整水平容器为垂直布局 */
-  .container-row, 
+  .container-row,
   .folder-shortcut-container,
   #folder-shortcut-wrapper {
     display: flex !important;
@@ -141,7 +141,7 @@
     height: 80vh !important;
     box-sizing: border-box; /* 确保内边距不会增加宽度 */
   }
-  
+
   /* 快捷方式列表容器调整 */
   #shortcut-list {
     flex: 1 !important;
@@ -163,9 +163,9 @@
     left: auto !important;
     z-index: 1000 !important; /* 确保按钮在最上层 */
   }
-  
+
   /* 强制覆盖可能影响布局的样式 */
-  #folder-list, 
+  #folder-list,
   #bookmark-box {
     display: block !important;
     float: none !important;
@@ -175,18 +175,18 @@
     right: auto !important;
     clear: both !important; /* 清除浮动 */
   }
-  
+
   /* 重要：确保容器元素不会导致水平排列 */
-  .row, 
-  .col, 
-  .container, 
-  .flex-container, 
+  .row,
+  .col,
+  .container,
+  .flex-container,
   [class*="flex-"]:not(#shortcut-list) {
     display: block !important;
     width: 100% !important;
     float: none !important;
   }
-  
+
   /* 通知系统响应式调整 */
   .notification {
     top: 20px !important;
@@ -200,7 +200,7 @@
     font-size: 0.9em !important; /* 稍微减小字体大小 */
     z-index: 3000 !important; /* 确保在其他元素上方 */
   }
-  
+
   .notification-content {
     word-wrap: break-word !important; /* 确保文字换行 */
     overflow-wrap: break-word !important;
@@ -230,14 +230,14 @@
     left: auto !important;
     top: auto !important;
   }
-  
+
   /* 超窄屏幕下背景切换按钮进一步缩小 */
   #background-button {
     transform: scale(0.7) !important;
     top: 5px !important;
     right: 5px !important;
   }
-  
+
   /* 超窄屏幕下通知进一步调整 */
   .notification {
     transform: scale(0.9) !important; /* 稍微缩小通知 */
@@ -245,14 +245,14 @@
     font-size: 0.85em !important; /* 更小的字体 */
     left: 10px !important; /* 减少左侧边距 */
   }
-  
+
   /* 超窄屏幕下小部件容器调整 */
   .widget-container {
     width: 100% !important;
     min-width: 140px !important;
     max-width: 180px !important;
   }
-  
+
   /* 确保快捷方式列表在即将超出屏幕时才出现滚动条 */
   #shortcut-list {
     max-height: calc(100vh - 180px) !important; /* 更小的预留空间 */
@@ -266,7 +266,7 @@
     transform: scale(0.85) !important; /* 进一步缩小通知 */
     font-size: 0.8em !important; /* 更小的字体 */
   }
-  
+
   .shortcut-button {
     width: 60px !important; /* 更小的快捷方式按钮 */
     height: 60px !important;
@@ -276,14 +276,14 @@
     left: auto !important;
     top: auto !important;
   }
-  
+
   /* 极小屏幕下小部件容器调整 */
   .widget-container {
     width: 100% !important;
     min-width: 120px !important;
     max-width: 160px !important;
   }
-  
+
   /* 极小屏幕下快捷方式列表高度再调整 */
   #shortcut-list {
     max-height: calc(100vh - 150px) !important; /* 更小的预留空间 */
@@ -295,15 +295,15 @@
   .notification.loading-notification {
     width: 200px;
   }
-  
+
   #loading-message {
     font-size: 11px;
   }
-  
+
   .notification {
     width: 180px;
   }
-  
+
   .notification-confirm {
     width: 250px;
   }

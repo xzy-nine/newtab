@@ -2,7 +2,8 @@
   "appName": {
     "message": "Bookmark New Tab Extension",
     "description": "应用程序的名称"
-  },  "appDescription": {
+  },
+  "appDescription": {
     "message": "A clean and brutify new tab extension with search engine switching, bookmark shortcuts, and background switching.",
     "description": "应用程序的描述"
   },
@@ -29,7 +30,8 @@
   "noNotifications": {
     "message": "No notifications",
     "description": "无通知提示"
-  },  "openNewTab": {
+  },
+  "openNewTab": {
     "message": "Open New Tab",
     "description": "打开新标签页按钮"
   },
@@ -92,7 +94,8 @@
   "cancel": {
     "message": "Cancel",
     "description": "取消按钮文本"
-  },  "confirm": {
+  },
+  "confirm": {
     "message": "Confirm",
     "description": "确认按钮文本"
   },
@@ -855,7 +858,8 @@
   "addWidgetTitle": {
     "message": "Add Widget",
     "description": "添加小部件对话框标题"
-  },  "counterWidget": {
+  },
+  "counterWidget": {
     "message": "Counter",
     "description": "计数器小部件名称"
   },
@@ -982,7 +986,8 @@
   "enterPrompt": {
     "message": "Enter prompt...",
     "description": "输入提示词"
-  },  "addPrompt": {
+  },
+  "addPrompt": {
     "message": "Add Prompt",
     "description": "添加提示词"
   },
@@ -1059,7 +1064,8 @@
   "extensionUpdated": {
     "message": "Extension Updated",
     "description": "扩展更新通知标题"
-  },  "extensionUpdatedDesc": {
+  },
+  "extensionUpdatedDesc": {
     "message": "New Tab Extension has been updated to version $1",
     "description": "扩展更新通知描述",
     "placeholders": {
@@ -1082,7 +1088,8 @@
         "example": "5"
       }
     }
-  },  "timeHoursAgo": {
+  },
+  "timeHoursAgo": {
     "message": "$1 hours ago",
     "description": "时间显示-小时前",
     "placeholders": {
@@ -1091,7 +1098,8 @@
         "example": "2"
       }
     }
-  },  "conversationCount": {
+  },
+  "conversationCount": {
     "message": " items",
     "description": "对话数量单位"
   },
@@ -1122,7 +1130,8 @@
   "timerCountdown": {
     "message": "Countdown",
     "description": "倒计时模式标题"
-  },  "timerStopwatch": {
+  },
+  "timerStopwatch": {
     "message": "Stopwatch",
     "description": "秒表模式标题"
   },
@@ -1137,7 +1146,8 @@
   "retry": {
     "message": "Retry",
     "description": "重试按钮"
-  },  "remove": {
+  },
+  "remove": {
     "message": "Remove",
     "description": "移除按钮"
   },
@@ -1160,10 +1170,12 @@
   "externalNotificationsApiEnabledDesc": {
     "message": "Other websites can now use the extension's notification features",
     "description": "外部通知API启用成功通知消息"
-  },  "externalNotificationsStats": {
+  },
+  "externalNotificationsStats": {
     "message": "External Notification Statistics",
     "description": "外部通知统计选项标签"
-  },  "externalNotificationsStatsDesc": {
+  },
+  "externalNotificationsStatsDesc": {
     "message": "View and manage statistics for external notification requests",
     "description": "外部通知统计选项描述"
   },

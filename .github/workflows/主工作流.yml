@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run（只预览版本和 changelog，不实际发布）'
+        description: "Dry run（只预览版本和 changelog，不实际发布）"
         type: boolean
         default: false
 

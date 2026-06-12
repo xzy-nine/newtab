@@ -1,37 +1,59 @@
 /* 主CSS文件 - 导入所有拆分的CSS模块 */
-@import 'search.css';              /* 搜索框相关样式 */
-@import 'clock.css';               /* 时钟相关样式 */
-@import 'folders.css';             /* 文件夹相关样式 */
-@import 'shortcuts.css';           /* 快捷方式按钮相关样式 */
-@import 'modals.css';              /* 模态框相关样式 */
-@import 'widgets.css';             /* 小部件系统相关样式 */
-@import 'responsive.css';          /* 响应式设计相关样式 */
-@import url('./loading-notification.css'); /* 加载，通知样式 */
-@import 'widgets/counter-widget.css';      /* 计数器小部件样式 */
-@import 'widgets/timer-widget.css';        /* 计时器小部件样式 */
-@import 'settings.css';            /* 设置页面样式 */
-@import 'ai.css';                  /* AI助手样式 */
+@import "search.css"; /* 搜索框相关样式 */
+@import "clock.css"; /* 时钟相关样式 */
+@import "folders.css"; /* 文件夹相关样式 */
+@import "shortcuts.css"; /* 快捷方式按钮相关样式 */
+@import "modals.css"; /* 模态框相关样式 */
+@import "widgets.css"; /* 小部件系统相关样式 */
+@import "responsive.css"; /* 响应式设计相关样式 */
+@import url("./loading-notification.css"); /* 加载，通知样式 */
+@import "widgets/counter-widget.css"; /* 计数器小部件样式 */
+@import "widgets/timer-widget.css"; /* 计时器小部件样式 */
+@import "settings.css"; /* 设置页面样式 */
+@import "ai.css"; /* AI助手样式 */
 /* Segoe MDL2 Assets字体图标样式 */
 @font-face {
-    font-family: 'Segoe MDL2 Assets Local';
-    src: url('../fonts/SegMDL2.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
+  font-family: "Segoe MDL2 Assets Local";
+  src: url("../fonts/SegMDL2.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
 }
 
 .segoe-icon {
-    font-family: 'Segoe MDL2 Assets Local', 'Segoe MDL2 Assets', 'Segoe UI Symbol';
+  font-family: "Segoe MDL2 Assets Local", "Segoe MDL2 Assets", "Segoe UI Symbol";
 }
 
 /* 确保所有图标元素使用Segoe字体 */
-.tab-icon, .clear-btn, .empty-icon, .coming-soon-icon, .footer-btn span, .notification-type span, 
-.folder-icon, .ai-markdown-toggle, .ai-regenerate-btn, .ai-new-chat-btn, .ai-model-panel-refresh, 
-.ai-conversation-delete, .settings-icon, .category-icon, .engine-icon, .eye-icon, 
-.grid-hint-icon, .shortcut-icon, .widget-pin-button, .widget-indicator, 
-.modal-close, .sync-check-btn, .sync-upload-btn, .sync-download-btn, 
-.sync-clear-btn, [class*="icon"], [class*="btn"][class*="icon"], 
-[class*="-icon"], [class*="icon-"] {
-    font-family: 'Segoe MDL2 Assets Local', 'Segoe MDL2 Assets', 'Segoe UI Symbol';
+.tab-icon,
+.clear-btn,
+.empty-icon,
+.coming-soon-icon,
+.footer-btn span,
+.notification-type span,
+.folder-icon,
+.ai-markdown-toggle,
+.ai-regenerate-btn,
+.ai-new-chat-btn,
+.ai-model-panel-refresh,
+.ai-conversation-delete,
+.settings-icon,
+.category-icon,
+.engine-icon,
+.eye-icon,
+.grid-hint-icon,
+.shortcut-icon,
+.widget-pin-button,
+.widget-indicator,
+.modal-close,
+.sync-check-btn,
+.sync-upload-btn,
+.sync-download-btn,
+.sync-clear-btn,
+[class*="icon"],
+[class*="btn"][class*="icon"],
+[class*="-icon"],
+[class*="icon-"] {
+  font-family: "Segoe MDL2 Assets Local", "Segoe MDL2 Assets", "Segoe UI Symbol";
 }
 
 /* ===== 1. 变量定义层 ===== */
@@ -40,29 +62,29 @@
   /* 基础色 */
   --color-white: #ffffff;
   --color-black: #000000;
-  
+
   /* 主题色 */
-  --color-primary: #0078d4;  /* 主蓝色 */
+  --color-primary: #0078d4; /* 主蓝色 */
   --color-primary-light: #42a5f5;
   --color-primary-dark: #005a9e;
-  
+
   /* 灰度阶梯 - 简化为5个层次 */
-  --color-gray-100: #f0f0f0;  /* 最浅 */
+  --color-gray-100: #f0f0f0; /* 最浅 */
   --color-gray-300: #d0d0d0;
-  --color-gray-500: #9e9e9e;  /* 中性 */
+  --color-gray-500: #9e9e9e; /* 中性 */
   --color-gray-700: #616161;
-  --color-gray-900: #333333;  /* 最深 */
-  
+  --color-gray-900: #333333; /* 最深 */
+
   /* 透明度系统 - 简化为3个主要层次 */
-  --opacity-light: 0.2;     /* 轻微透明 */
-  --opacity-medium: 0.5;    /* 中等透明 */
-  --opacity-high: 0.8;      /* 高透明度 */
-  
+  --opacity-light: 0.2; /* 轻微透明 */
+  --opacity-medium: 0.5; /* 中等透明 */
+  --opacity-high: 0.8; /* 高透明度 */
+
   /* === 统一容器颜色变量 === */
-  --container-bg: rgba(240, 240, 240, var(--opacity-medium));      /* 浅色模式 */
+  --container-bg: rgba(240, 240, 240, var(--opacity-medium)); /* 浅色模式 */
   --container-border: rgba(0, 0, 0, var(--opacity-light));
   --container-shadow: rgba(0, 0, 0, var(--opacity-light));
-  
+
   /* === 设置页面专用变量 === */
   --bg-card: #ffffff;
   --bg-secondary: #f8f9fa;
@@ -73,7 +95,7 @@
   --text-secondary: #666666;
   --border-color: #e0e0e0;
   --border-light: #f0f0f0;
-  
+
   /* 其他缺失的变量 */
   --hover-bg: rgba(0, 0, 0, 0.1);
 
@@ -91,7 +113,7 @@
   --container-bg: rgba(40, 40, 40, var(--opacity-high));
   --container-border: rgba(255, 255, 255, var(--opacity-light));
   --container-shadow: rgba(0, 0, 0, var(--opacity-medium));
-  
+
   /* 设置页面需要的变量 */
   --bg-primary: #121212;
   --bg-secondary: #1e1e1e;
@@ -104,7 +126,7 @@
   --border-color: #404040;
   --border-light: #333333;
   --hover-bg: rgba(255, 255, 255, 0.1);
-  
+
   /* 其余深色模式变量保持不变... */
 }
 
@@ -240,8 +262,6 @@ body {
   transition: transform var(--transition-fast);
 }
 
-
-
 /* ===== 7. 加载指示器 ===== */
 #loading-overlay {
   position: fixed;
@@ -283,7 +303,7 @@ body {
   height: 100%;
   background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
   border-radius: var(--radius-sm);
-  transition: width var(--time-slow) cubic-bezier(0.1, 0.7, 1.0, 0.1);
+  transition: width var(--time-slow) cubic-bezier(0.1, 0.7, 1, 0.1);
   box-shadow: 0 0 8px rgba(0, 120, 212, var(--opacity-medium));
   width: 0;
 }
@@ -344,13 +364,22 @@ input:-webkit-autofill:active {
 
 /* ===== 10. 动画定义 ===== */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes fade-in-out {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* ===== 深色模式全局变量 ===== */
@@ -361,16 +390,16 @@ input:-webkit-autofill:active {
   --color-border-light: #444;
   --color-surface-light: #333;
   --color-overlay: rgba(0, 0, 0, 0.4);
-  
+
   /* 深色模式调整主色 */
   --color-primary-500: #3aa0ff;
-  
+
   /* 深色模式特有功能变量 */
   --shadow-normal: 0 2px 10px rgba(0, 0, 0, 0.4);
   --shadow-soft: 0 0 10px rgba(0, 0, 0, 0.5);
   --shadow-focus: 0 0 8px var(--color-primary-500);
 }
-  
+
 [data-theme="dark"] #background-container {
   filter: brightness(0.85);
 }
@@ -384,46 +413,48 @@ input:-webkit-autofill:active {
 [data-theme="dark"] #background-button {
   background: var(--color-primary);
   color: var(--color-white);
-    box-shadow: 0 0 10px rgba(0, 0, 0, var(--opacity-medium));
-  }
-  
-  #background-button:hover {
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, var(--opacity-light)), 0 0 15px var(--color-primary);
-  }
-  
-  /* 加载指示器深色模式 */
-  #loading-overlay {
-    background-color: rgba(30, 30, 30, var(--opacity-95));
-  }
-  
-  #loading-progress {
-    background-color: var(--color-gray-900);
-  }
-  
-  #loading-message {
-    color: var(--color-gray-100);
-  }
-  
-  #loading-screen {
-    background: rgba(30, 30, 30, var(--opacity-70));
-  }
-  
-  #loading-progress-bar {
-    background-color: var(--color-primary);
-    box-shadow: 0 0 8px var(--color-primary);
-  }
-  
-  /* 文本选择深色模式 */
-  ::selection {
-    background: var(--color-primary);
-    color: white;
-  }
-  
-  /* 深色模式滚动条 */
-  ::-webkit-scrollbar-track {
-    background: rgba(80, 80, 80, 0.3);
-  }
-  
+  box-shadow: 0 0 10px rgba(0, 0, 0, var(--opacity-medium));
+}
+
+#background-button:hover {
+  box-shadow:
+    inset 0 0 10px rgba(0, 0, 0, var(--opacity-light)),
+    0 0 15px var(--color-primary);
+}
+
+/* 加载指示器深色模式 */
+#loading-overlay {
+  background-color: rgba(30, 30, 30, var(--opacity-95));
+}
+
+#loading-progress {
+  background-color: var(--color-gray-900);
+}
+
+#loading-message {
+  color: var(--color-gray-100);
+}
+
+#loading-screen {
+  background: rgba(30, 30, 30, var(--opacity-70));
+}
+
+#loading-progress-bar {
+  background-color: var(--color-primary);
+  box-shadow: 0 0 8px var(--color-primary);
+}
+
+/* 文本选择深色模式 */
+::selection {
+  background: var(--color-primary);
+  color: white;
+}
+
+/* 深色模式滚动条 */
+::-webkit-scrollbar-track {
+  background: rgba(80, 80, 80, 0.3);
+}
+
 * {
   scrollbar-color: var(--color-primary) rgba(80, 80, 80, 0.3);
 }

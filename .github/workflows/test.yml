@@ -5,28 +5,28 @@ on:
     branches:
       - main
     paths:
-      - 'src/**'
-      - 'public/**'
-      - '.oxfmtrc.json'
-      - '.oxlintrc.json'
-      - 'package.json'
-      - 'vitest.config.ts'
-      - 'tsconfig.json'
-      - 'wxt.config.ts'
+      - "src/**"
+      - "public/**"
+      - ".oxfmtrc.json"
+      - ".oxlintrc.json"
+      - "package.json"
+      - "vitest.config.ts"
+      - "tsconfig.json"
+      - "wxt.config.ts"
   pull_request:
     types:
       - opened
       - synchronize
       - reopened
     paths:
-      - 'src/**'
-      - 'public/**'
-      - '.oxfmtrc.json'
-      - '.oxlintrc.json'
-      - 'package.json'
-      - 'vitest.config.ts'
-      - 'tsconfig.json'
-      - 'wxt.config.ts'
+      - "src/**"
+      - "public/**"
+      - ".oxfmtrc.json"
+      - ".oxlintrc.json"
+      - "package.json"
+      - "vitest.config.ts"
+      - "tsconfig.json"
+      - "wxt.config.ts"
   workflow_call:
 
 concurrency:

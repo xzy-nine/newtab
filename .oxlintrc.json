@@ -13,7 +13,5 @@
   "env": {
     "builtin": true
   },
-  "ignorePatterns": [
-    "public/**"
-  ]
+  "ignorePatterns": ["public/**"]
 }
