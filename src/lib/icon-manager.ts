@@ -13,12 +13,32 @@ interface IconResult {
 export async function getIconUrl(url: string): Promise<string> {
   if (!url) return "";
 
-  const domain = getDomain(url);
+  try {
+    const domain = getDomain(url);
 
-  if (iconCache.has(domain)) {
-    return stripFallbackPrefix(iconCache.get(domain)!.data);
+    if (iconCache.has(domain)) {
+      return stripFallbackPrefix(iconCache.get(domain)!.data);
+    }
+
+    try {
+      const cached = (await chrome.storage.local.get([url, domain])) as Record<
+        string,
+        string | undefined
+      >;
+      const iconData = cached[url] || cached[domain];
+      if (iconData && !iconData.startsWith("data:text/html")) {
+        iconCache.set(domain, { data: iconData, timestamp: Date.now() });
+        return stripFallbackPrefix(iconData);
+      }
+    } catch {}
+
+    return generateInitialBasedIcon(domain);
+  } catch {
+    return "";
   }
+}
 
+export async function fetchIconFromSources(url: string, domain: string): Promise<string | null> {
   try {
     const cached = (await chrome.storage.local.get([url, domain])) as Record<
       string,
@@ -31,16 +51,12 @@ export async function getIconUrl(url: string): Promise<string> {
     }
   } catch {}
 
-  return generateInitialBasedIcon(domain);
-}
-
-export async function fetchIconFromSources(url: string, domain: string): Promise<string | null> {
   const iconUrls = [
-    `${domain}/favicon.ico`,
     `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${url}&size=64`,
     `https://api.faviconkit.com/${new URL(url).hostname}/64`,
     `https://favicon.yandex.net/favicon/${new URL(url).hostname}`,
     `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}`,
+    `${domain}/favicon.ico`,
   ];
 
   let htmlIconUrls: string[] = [];
@@ -65,10 +81,7 @@ export async function fetchIconFromSources(url: string, domain: string): Promise
     return finalIconData;
   }
 
-  const fallbackIcon = generateInitialBasedIcon(domain);
-  iconCache.set(domain, { data: fallbackIcon, timestamp: Date.now() });
-  await chrome.storage.local.set({ [url]: fallbackIcon });
-  return fallbackIcon;
+  return null;
 }
 
 async function extractIconUrlsFromHtml(url: string): Promise<string[]> {
@@ -162,33 +175,38 @@ function addPaddingToSmallIcon(iconData: string): Promise<string> {
 }
 
 export function generateInitialBasedIcon(domain: string): string {
-  const cleanDomain = domain
-    .replace(/^.*?:\/\//, "")
-    .split("?")[0]
-    .split("#")[0];
-  const keyword = extractKeyword(cleanDomain) || "?";
-  const prefix =
-    keyword.length <= 2
-      ? keyword.toUpperCase()
-      : keyword.charAt(0).toUpperCase() + keyword.slice(1, 4).toLowerCase();
-  const bgColor = `hsl(${Math.abs(hashCode(domain)) % 360}, 70%, 60%)`;
+  try {
+    const cleanDomain = domain
+      .replace(/^.*?:\/\//, "")
+      .split("?")[0]
+      .split("#")[0];
+    const keyword = extractKeyword(cleanDomain) || "?";
+    const prefix =
+      keyword.length <= 2
+        ? keyword.toUpperCase()
+        : keyword.charAt(0).toUpperCase() + keyword.slice(1, 4).toLowerCase();
+    const bgColor = `hsl(${Math.abs(hashCode(domain)) % 360}, 70%, 60%)`;
 
-  const canvas = document.createElement("canvas");
-  canvas.width = 64;
-  canvas.height = 64;
-  const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = bgColor;
-  ctx.beginPath();
-  ctx.arc(32, 32, 32, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#FFFFFF";
-  const fontSize = prefix.length <= 2 ? 36 : prefix.length === 3 ? 26 : 20;
-  ctx.font = `bold ${fontSize}px Arial`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(prefix, 32, 32);
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.arc(32, 32, 32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FFFFFF";
+    const fontSize = prefix.length <= 2 ? 36 : prefix.length === 3 ? 26 : 20;
+    ctx.font = `bold ${fontSize}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(prefix, 32, 32);
 
-  return canvas.toDataURL("image/png");
+    return canvas.toDataURL("image/png");
+  } catch {
+    return "";
+  }
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {

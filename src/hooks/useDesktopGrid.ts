@@ -107,15 +107,34 @@ export function useDesktopGrid(folderId?: string) {
         const layouts = (result.desktopLayouts || {}) as Record<string, unknown>;
         layouts[folderId] = {
           grid: { cols: currentGrid.cols, rows: currentGrid.rows },
-          items: currentItems.map((it) => ({
-            id: it.id,
-            type: it.type,
-            x: it.x,
-            y: it.y,
-            w: it.type === "shortcut" ? 1 : it.w,
-            h: it.type === "shortcut" ? 1 : it.h,
-            page: it.page,
-          })),
+          items: currentItems.map((it) => {
+            const base = {
+              id: it.id,
+              type: it.type,
+              x: it.x,
+              y: it.y,
+              page: it.page,
+            };
+            if (it.type === "shortcut") {
+              return {
+                ...base,
+                w: 1,
+                h: 1,
+                name: it.name,
+                url: it.url,
+                color: it.color,
+                icon: it.icon,
+              };
+            }
+            return {
+              ...base,
+              w: it.w,
+              h: it.h,
+              widgetType: it.widgetType,
+              title: it.title,
+              data: it.data,
+            };
+          }),
         };
         await chrome.storage.local.set({ desktopLayouts: layouts });
       } catch (e) {

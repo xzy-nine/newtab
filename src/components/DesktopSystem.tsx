@@ -10,7 +10,7 @@ import { getMessage } from "@/lib/i18n";
 import { useContextMenu, type ContextMenuItem } from "@/hooks/useContextMenu";
 import { WidgetAddDialog } from "@/components/WidgetSystem";
 import { Plus, GripVertical } from "lucide-react";
-import { getIconUrl, fetchIconFromSources, getDomain } from "@/lib/icon-manager";
+import { fetchIconFromSources, getDomain, generateInitialBasedIcon } from "@/lib/icon-manager";
 
 interface DesktopSystemProps {
   folderId: string;
@@ -53,19 +53,30 @@ function isWidgetItem(item: DesktopItem): item is WidgetItemData {
 function ShortcutIcon({ url, name, color }: { url: string; name: string; color?: string }) {
   const [iconSrc, setIconSrc] = useState<string | null>(null);
 
+  const handleImgError = useCallback(() => {
+    setIconSrc(null);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       if (!url) {
-        setIconSrc(null);
+        if (!cancelled) setIconSrc(null);
         return;
       }
-      const cached = await getIconUrl(url);
-      if (cancelled) return;
-      if (cached) setIconSrc(cached);
-      const realIcon = await fetchIconFromSources(url, getDomain(url));
-      if (cancelled || !realIcon) return;
-      setIconSrc(realIcon);
+      try {
+        const realIcon = await fetchIconFromSources(url, getDomain(url));
+        if (!cancelled && realIcon) {
+          setIconSrc(realIcon);
+          return;
+        }
+      } catch {
+        /* 忽略 */
+      }
+      if (!cancelled) {
+        const fallback = generateInitialBasedIcon(getDomain(url));
+        setIconSrc(fallback || null);
+      }
     };
     load();
     return () => {
@@ -76,7 +87,7 @@ function ShortcutIcon({ url, name, color }: { url: string; name: string; color?:
   return (
     <div className="desktop-shortcut-icon" style={{ backgroundColor: color || "#3b82f6" }}>
       {iconSrc ? (
-        <img src={iconSrc} alt={name} className="desktop-shortcut-img" />
+        <img src={iconSrc} alt={name} className="desktop-shortcut-img" onError={handleImgError} />
       ) : (
         <span className="desktop-shortcut-letter">{name?.[0] || "?"}</span>
       )}
@@ -105,7 +116,9 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
       startY: number;
       origX: number;
       origY: number;
+      dragged: boolean;
     } | null>(null);
+    const wasDragged = useRef(false);
     const { show: showCtxMenu, hide: hideCtxMenu, menuRef, state: ctxMenuState } = useContextMenu();
 
     useImperativeHandle(ref, () => ({
@@ -120,7 +133,17 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
         const layout = await loadLayout();
         if (cancelled) return;
         if (layout?.items && layout.items.length > 0) {
-          setItems(layout.items);
+          const hasInvalidShortcut = layout.items.some(
+            (it: DesktopItem) => it.type === "shortcut" && !it.url,
+          );
+          if (hasInvalidShortcut) {
+            const bookmarks = await getFolderBookmarks(folderId);
+            if (!cancelled && bookmarks.length > 0) {
+              setItemsFromBookmarks(bookmarks);
+            }
+          } else {
+            setItems(layout.items);
+          }
         } else {
           const bookmarks = await getFolderBookmarks(folderId);
           if (cancelled) return;
@@ -141,17 +164,25 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
 
     const handlePointerDown = useCallback(
       (e: React.PointerEvent, item: DesktopItem) => {
-        e.preventDefault();
+        wasDragged.current = false;
         dragState.current = {
           id: item.id,
           startX: e.clientX,
           startY: e.clientY,
           origX: item.x,
           origY: item.y,
+          dragged: false,
         };
         const handleMove = (ev: PointerEvent) => {
           if (!dragState.current) return;
           const ds = dragState.current;
+          const moved =
+            Math.abs(ev.clientX - ds.startX) > 5 || Math.abs(ev.clientY - ds.startY) > 5;
+          if (moved) {
+            ds.dragged = true;
+            wasDragged.current = true;
+          }
+          if (!ds.dragged) return;
           const cellWithGap = grid.cellSize + grid.gap;
           const dx = ev.clientX - ds.startX;
           const dy = ev.clientY - ds.startY;
@@ -333,7 +364,12 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
                   height: style.height,
                   transition: "all 0.2s ease",
                 }}
-                onClick={() => isShortcutItem(item) && handleShortcutClick(item)}
+                onClick={() => {
+                  if (isShortcutItem(item) && !wasDragged.current) {
+                    handleShortcutClick(item);
+                  }
+                  wasDragged.current = false;
+                }}
                 onPointerDown={(e) => handlePointerDown(e, item)}
                 onContextMenu={(e) => handleItemContextMenu(e, item)}
               >
