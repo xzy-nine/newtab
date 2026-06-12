@@ -61,3 +61,314 @@ body {
   --color-input: oklch(0.2448 0.0036 257.41);
   --color-ring: oklch(0.6333 0.286 264.24);
 }
+
+/* 桌面容器 - 参考 public/ 的 #shortcut-list 风格 */
+.desktop-box {
+  width: 100%;
+  height: 100%;
+  min-height: 250px;
+  background: var(--container-bg, rgba(240, 240, 240, 0.5));
+  border-radius: 12px;
+  position: relative;
+  overflow-y: auto;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 15px var(--container-shadow, rgba(0, 0, 0, 0.1));
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .desktop-box {
+  --container-bg: rgba(40, 40, 40, 0.7);
+  --container-shadow: rgba(146, 146, 146, 0.15);
+}
+
+/* 桌面项目 - 绝对定位网格单元 */
+.desktop-item {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  z-index: 10;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.desktop-item:hover {
+  z-index: 20;
+}
+
+/* 快捷方式内部 */
+.desktop-shortcut-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.desktop-shortcut-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.desktop-item:hover .desktop-shortcut-icon {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.desktop-shortcut-letter {
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.desktop-shortcut-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.desktop-shortcut-name {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.9);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  padding: 0 2px;
+  width: 100%;
+}
+
+/* 页面指示器 */
+.desktop-pages {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.2);
+  z-index: 5;
+}
+
+.desktop-page-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s;
+}
+
+.desktop-page-dot.active {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.desktop-page-dot:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+/* 拖拽手柄 */
+.desktop-item-drag-handle {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 2px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  pointer-events: none;
+}
+
+.desktop-item:hover .desktop-item-drag-handle {
+  opacity: 1;
+}
+
+/* 文件夹选择器 - 层级树 */
+.folder-picker {
+  max-height: 260px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.folder-tree-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.folder-tree-item-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.folder-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  cursor: default;
+  transition: background 0.15s;
+  border-radius: 6px;
+  margin: 1px 4px;
+  user-select: none;
+  min-height: 30px;
+}
+
+.folder-tree-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.folder-tree-item.selectable {
+  cursor: pointer;
+}
+
+.folder-tree-item.selected {
+  background: rgba(59, 130, 246, 0.25);
+  color: white;
+}
+
+.folder-tree-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.15s;
+}
+
+.folder-tree-arrow:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.folder-tree-arrow-placeholder {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.folder-tree-icon {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.folder-tree-item.selected .folder-tree-icon {
+  color: #60a5fa;
+}
+
+.folder-tree-name {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.folder-tree-item.selected .folder-tree-name {
+  color: white;
+  font-weight: 500;
+}
+
+/* Dock 容器 */
+.dock-container {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding: 8px 16px 12px;
+  pointer-events: none;
+}
+
+.dock-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px;
+  border-radius: 20px;
+  background: rgba(30, 30, 30, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  min-width: 200px;
+  justify-content: space-between;
+}
+
+[data-theme="dark"] .dock-inner {
+  background: rgba(20, 20, 20, 0.85);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dock-left,
+.dock-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dock-pages {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.dock-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+  transform: scale(1.05);
+}
+
+.dock-btn:active {
+  transform: scale(0.92);
+}
+
+.dock-icon {
+  width: 18px;
+  height: 18px;
+}

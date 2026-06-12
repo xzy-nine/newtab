@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
 import {
   Settings,
   Image,
@@ -67,11 +67,16 @@ const CATEGORIES: Category[] = [
   { id: "about", label: "关于", icon: Info },
 ];
 
-export function SettingsPanel() {
+export const SettingsPanel = forwardRef<{ open: () => void }>(function SettingsPanel(_, ref) {
   const [activeCategory, setActiveCategory] = useState<CategoryId>("general");
+  const [open, setOpen] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    open: () => setOpen(true),
+  }));
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -123,8 +128,7 @@ export function SettingsPanel() {
       </DialogContent>
     </Dialog>
   );
-}
-
+});
 function SettingCard({
   children,
   className = "",

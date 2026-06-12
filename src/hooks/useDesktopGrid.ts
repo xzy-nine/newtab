@@ -196,6 +196,19 @@ export function useDesktopGrid(folderId?: string) {
     [grid, scheduleSave],
   );
 
+  const updateItemData = useCallback(
+    (id: string, data: Record<string, unknown>) => {
+      setItems((prev) => {
+        const next = prev.map((it) =>
+          it.type === "widget" && it.id === id ? { ...it, data: { ...it.data, ...data } } : it,
+        );
+        scheduleSave(next, grid);
+        return next;
+      });
+    },
+    [grid, scheduleSave],
+  );
+
   const addItem = useCallback(
     (item: DesktopItem) => {
       setItems((prev) => {
@@ -249,6 +262,7 @@ export function useDesktopGrid(folderId?: string) {
     resizeItem,
     removeItem,
     addItem,
+    updateItemData,
     setItemsFromBookmarks,
     loadLayout,
     recalcGrid,

@@ -200,7 +200,7 @@ async function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-function getDomain(url: string): string {
+export function getDomain(url: string): string {
   try {
     const { protocol, hostname } = new URL(url);
     return `${protocol}//${hostname}`;
