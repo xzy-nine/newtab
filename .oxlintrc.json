@@ -1,9 +1,19 @@
 {
-  "extends": ["oxlint:react"],
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "react-perf"],
+  "categories": {
+    "correctness": "error"
+  },
   "rules": {
     "no-debugger": "warn",
     "no-unused-vars": "warn",
-    "prefer-const": "error",
+    "prefer-const": "warn",
     "no-var": "error"
-  }
+  },
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": [
+    "public/**"
+  ]
 }
