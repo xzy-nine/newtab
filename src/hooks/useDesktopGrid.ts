@@ -45,9 +45,9 @@ export function isWithinBounds(item: DesktopItem, grid: GridConfig): boolean {
 }
 
 export function calculateGridConfig(width: number, height: number): GridConfig {
-  const gap = width < 768 ? 12 : 14;
-  const minCell = width < 768 ? 48 : 64;
-  const maxCell = width < 768 ? 80 : 100;
+  const gap = width < 768 ? 12 : 16;
+  const minCell = width < 768 ? 52 : 76;
+  const maxCell = width < 768 ? 88 : 140;
   const aspect = width / height;
   let cols: number, rows: number;
   if (aspect > 1.5) {

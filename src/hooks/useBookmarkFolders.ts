@@ -66,6 +66,7 @@ export function useBookmarkFolders() {
   const [folders, setFolders] = useState<{ id: string; title: string }[]>([]);
   const [folderTree, setFolderTree] = useState<FolderNode[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(loadExpanded);
+  const [pinnedFolders, setPinnedFolders] = useState<string[]>([]);
 
   useEffect(() => {
     saveExpanded(expandedFolders);
@@ -84,6 +85,9 @@ export function useBookmarkFolders() {
         const saved = await chrome.storage.local.get("selectedFolder");
         const stored = saved.selectedFolder;
         setCurrentFolder(typeof stored === "string" ? stored : null);
+
+        const pinned = await chrome.storage.local.get("pinnedFolders");
+        setPinnedFolders((pinned.pinnedFolders as string[]) || []);
       } catch (e) {
         console.error("加载书签失败:", e);
       }
@@ -108,6 +112,23 @@ export function useBookmarkFolders() {
     await chrome.storage.local.set({ selectedFolder: folderId });
   }, []);
 
+  const pinFolder = useCallback(async (folderId: string) => {
+    setPinnedFolders((prev) => {
+      if (prev.includes(folderId)) return prev;
+      const next = [...prev, folderId];
+      chrome.storage.local.set({ pinnedFolders: next }).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const unpinFolder = useCallback(async (folderId: string) => {
+    setPinnedFolders((prev) => {
+      const next = prev.filter((id) => id !== folderId);
+      chrome.storage.local.set({ pinnedFolders: next }).catch(() => {});
+      return next;
+    });
+  }, []);
+
   const getFolderBookmarks = useCallback(async (folderId: string): Promise<BookmarkItem[]> => {
     try {
       const [folder] = await browser.bookmarks.getSubTree(folderId);
@@ -127,8 +148,11 @@ export function useBookmarkFolders() {
     folders,
     folderTree,
     expandedFolders,
+    pinnedFolders,
     toggleFolder,
     selectFolder,
     getFolderBookmarks,
+    pinFolder,
+    unpinFolder,
   };
 }
