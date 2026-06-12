@@ -63,7 +63,7 @@ body {
   --color-ring: oklch(0.6333 0.286 264.24);
 }
 
-/* 桌面容器 - 参考 public/ 的 #shortcut-list 风格 */
+/* 桌面容器 - 瀑布流布局 */
 .desktop-box {
   width: 100%;
   height: 100%;
@@ -72,6 +72,7 @@ body {
   border-radius: 12px;
   position: relative;
   overflow-y: auto;
+  overflow-x: hidden;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: inset 0 0 15px var(--container-shadow, rgba(0, 0, 0, 0.1));
@@ -84,22 +85,29 @@ body {
   --container-shadow: rgba(146, 146, 146, 0.15);
 }
 
-/* 桌面项目 - 绝对定位网格单元 */
+/* 瀑布流容器 */
+.desktop-waterfall {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+
+/* 桌面项目 */
 .desktop-item {
-  position: absolute;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   user-select: none;
-  z-index: 10;
   border-radius: 12px;
   overflow: hidden;
+  transition: opacity 0.2s ease;
 }
 
-.desktop-item:hover {
-  z-index: 20;
+.desktop-item[draggable="true"]:active {
+  opacity: 0.6;
 }
 
 /* 快捷方式内部 */
@@ -194,7 +202,39 @@ body {
   background: rgba(255, 255, 255, 0.75);
 }
 
-/* 拖拽手柄 */
+.desktop-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.desktop-page-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.desktop-page-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.desktop-page-btn:disabled:hover {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* 排序拖拽手柄 */
 .desktop-item-drag-handle {
   position: absolute;
   top: 2px;
@@ -206,6 +246,8 @@ body {
   background: rgba(0, 0, 0, 0.3);
   color: white;
   pointer-events: none;
+  cursor: grab;
+  z-index: 5;
 }
 
 .desktop-item:hover .desktop-item-drag-handle {
@@ -223,7 +265,7 @@ body {
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.3);
   color: white;
-  cursor: nwse-resize;
+  cursor: ew-resize;
   z-index: 5;
   pointer-events: auto;
   line-height: 0;

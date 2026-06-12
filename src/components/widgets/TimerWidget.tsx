@@ -78,18 +78,6 @@ export function TimerWidget({
     setTime(t);
   }, []);
 
-  const updateDigits = useCallback(
-    (d: Record<DigitPos, number>) => {
-      digitsRef.current = d;
-      const t = timeFromDigits(d);
-      setTime(t);
-      timeRef.current = t;
-      checkCountdownMode(t);
-      saveState(t, isRunningRef.current, isCountdownRef.current, initialTimeRef.current);
-    },
-    [saveState, checkCountdownMode],
-  );
-
   const checkCountdownMode = useCallback((t: number) => {
     if (t > 0) {
       if (!isCountdownRef.current) {
@@ -107,6 +95,18 @@ export function TimerWidget({
       }
     }
   }, []);
+
+  const updateDigits = useCallback(
+    (d: Record<DigitPos, number>) => {
+      digitsRef.current = d;
+      const t = timeFromDigits(d);
+      setTime(t);
+      timeRef.current = t;
+      checkCountdownMode(t);
+      saveState(t, isRunningRef.current, isCountdownRef.current, initialTimeRef.current);
+    },
+    [saveState, checkCountdownMode],
+  );
 
   const toggleTimer = useCallback(() => {
     if (isRunningRef.current) {

@@ -1,8 +1,6 @@
 import { useCallback, useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import {
   useDesktopGrid,
-  checkCollision,
-  findNearestFreePosition,
   type DesktopItem,
   type ShortcutItem,
   type WidgetItemData,
@@ -102,36 +100,27 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
     const {
       items,
       setItems,
-      grid,
-      containerRef,
-      itemPositionStyle,
       addItem,
       updateItemData,
       loadLayout,
       setItemsFromBookmarks,
       removeItem,
       scheduleSave,
+      moveItemIndex,
     } = useDesktopGrid(folderId);
     const [currentPage, setCurrentPage] = useState(0);
     const [showAddWidget, setShowAddWidget] = useState(false);
-    const dragState = useRef<{
-      id: string;
-      startX: number;
-      startY: number;
-      origX: number;
-      origY: number;
-      dragged: boolean;
-    } | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [cols, setCols] = useState(6);
+    const [containerWidth, setContainerWidth] = useState(800);
+    const gap = 14;
+    const dragIndexRef = useRef<number | null>(null);
     const resizeState = useRef<{
       id: string;
       startX: number;
-      startY: number;
       origW: number;
-      origH: number;
-      origX: number;
-      origY: number;
     } | null>(null);
-    const wasDragged = useRef(false);
+
     const { show: showCtxMenu, hide: hideCtxMenu, menuRef, state: ctxMenuState } = useContextMenu();
 
     useImperativeHandle(ref, () => ({
@@ -171,82 +160,23 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
       };
     }, [folderId, loadLayout, setItems, setItemsFromBookmarks]);
 
-    const pageSize = grid.cols * grid.rows;
-    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
-    const pageItems = items.filter((_, idx) => Math.floor(idx / pageSize) === currentPage);
+    useEffect(() => {
+      const el = containerRef.current;
+      if (!el) return;
+      const calc = () => {
+        const w = el.clientWidth;
+        setContainerWidth(w);
+        setCols(Math.max(2, Math.min(10, Math.floor(w / 100))));
+      };
+      calc();
+      const ro = new ResizeObserver(calc);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, []);
 
-    const handlePointerDown = useCallback(
-      (e: React.PointerEvent, item: DesktopItem) => {
-        wasDragged.current = false;
-        dragState.current = {
-          id: item.id,
-          startX: e.clientX,
-          startY: e.clientY,
-          origX: item.x,
-          origY: item.y,
-          dragged: false,
-        };
-        const handleMove = (ev: PointerEvent) => {
-          if (!dragState.current) return;
-          const ds = dragState.current;
-          const moved =
-            Math.abs(ev.clientX - ds.startX) > 5 || Math.abs(ev.clientY - ds.startY) > 5;
-          if (moved) {
-            ds.dragged = true;
-            wasDragged.current = true;
-          }
-          if (!ds.dragged) return;
-          const cellWithGap = grid.cellSize + grid.gap;
-          const dx = ev.clientX - ds.startX;
-          const dy = ev.clientY - ds.startY;
-          const nx = Math.max(
-            0,
-            Math.min(grid.cols - item.w, Math.round((ds.origX * cellWithGap + dx) / cellWithGap)),
-          );
-          const ny = Math.max(
-            0,
-            Math.min(grid.rows - item.h, Math.round((ds.origY * cellWithGap + dy) / cellWithGap)),
-          );
-          setItems((prev) => prev.map((it) => (it.id === ds.id ? { ...it, x: nx, y: ny } : it)));
-        };
-        const handleUp = () => {
-          const ds = dragState.current;
-          if (ds && ds.dragged) {
-            setItems((prev) => {
-              const target = prev.find((it) => it.id === ds.id);
-              if (!target) {
-                scheduleSave(prev, grid);
-                return prev;
-              }
-              const others = prev.filter((it) => it.id !== ds.id);
-              if (others.some((o) => checkCollision(target, o))) {
-                const freePos = findNearestFreePosition(target, prev, grid);
-                if (freePos) {
-                  const next = prev.map((it) =>
-                    it.id === ds.id ? { ...it, x: freePos.x, y: freePos.y } : it,
-                  );
-                  scheduleSave(next, grid);
-                  return next;
-                }
-                const next = prev.map((it) =>
-                  it.id === ds.id ? { ...it, x: ds.origX, y: ds.origY } : it,
-                );
-                scheduleSave(next, grid);
-                return next;
-              }
-              scheduleSave(prev, grid);
-              return prev;
-            });
-          }
-          dragState.current = null;
-          window.removeEventListener("pointermove", handleMove);
-          window.removeEventListener("pointerup", handleUp);
-        };
-        window.addEventListener("pointermove", handleMove);
-        window.addEventListener("pointerup", handleUp);
-      },
-      [grid, setItems, scheduleSave],
-    );
+    const itemsPerPage = Math.max(cols * 8, 48);
+    const totalPages = Math.max(1, Math.ceil(items.length / itemsPerPage));
+    const pageItems = items.filter((_, idx) => Math.floor(idx / itemsPerPage) === currentPage);
 
     const handleRemoveItem = useCallback(
       (id: string) => {
@@ -262,54 +192,49 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
       }
     }, []);
 
+    const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+      dragIndexRef.current = index;
+      e.dataTransfer.effectAllowed = "move";
+    }, []);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    }, []);
+
+    const handleDrop = useCallback(
+      (e: React.DragEvent, toIndex: number) => {
+        e.preventDefault();
+        const from = dragIndexRef.current;
+        if (from !== null && from !== toIndex) {
+          moveItemIndex(from, toIndex);
+        }
+        dragIndexRef.current = null;
+      },
+      [moveItemIndex],
+    );
+
+    const handleDragEnd = useCallback(() => {
+      dragIndexRef.current = null;
+    }, []);
+
     const handleResizeStart = useCallback(
-      (e: React.PointerEvent, item: DesktopItem) => {
-        if (item.type !== "widget") return;
+      (e: React.PointerEvent, item: WidgetItemData) => {
         e.stopPropagation();
         e.preventDefault();
-        resizeState.current = {
-          id: item.id,
-          startX: e.clientX,
-          startY: e.clientY,
-          origW: item.w,
-          origH: item.h,
-          origX: item.x,
-          origY: item.y,
-        };
+        const unitWidth = (containerWidth - gap * (cols - 1)) / cols;
+        resizeState.current = { id: item.id, startX: e.clientX, origW: item.w };
         const handleMove = (ev: PointerEvent) => {
           const rs = resizeState.current;
           if (!rs) return;
-          const cellWithGap = grid.cellSize + grid.gap;
           const dx = ev.clientX - rs.startX;
-          const dy = ev.clientY - rs.startY;
-          const nw = Math.max(
-            1,
-            Math.min(grid.cols - rs.origX, Math.round((rs.origW * cellWithGap + dx) / cellWithGap)),
-          );
-          const nh = Math.max(
-            1,
-            Math.min(grid.rows - rs.origY, Math.round((rs.origH * cellWithGap + dy) / cellWithGap)),
-          );
-          setItems((prev) => prev.map((it) => (it.id === rs.id ? { ...it, w: nw, h: nh } : it)));
+          const nw = Math.max(1, Math.min(cols, Math.round(rs.origW + dx / unitWidth)));
+          setItems((prev) => prev.map((it) => (it.id === rs.id ? { ...it, w: nw } : it)));
         };
         const handleUp = () => {
-          const rs = resizeState.current;
-          if (rs) {
+          if (resizeState.current) {
             setItems((prev) => {
-              const target = prev.find((it) => it.id === rs.id);
-              if (!target) {
-                scheduleSave(prev, grid);
-                return prev;
-              }
-              const others = prev.filter((it) => it.id !== rs.id);
-              if (others.some((o) => checkCollision(target, o))) {
-                const next = prev.map((it) =>
-                  it.id === rs.id ? { ...it, w: rs.origW, h: rs.origH } : it,
-                );
-                scheduleSave(next, grid);
-                return next;
-              }
-              scheduleSave(prev, grid);
+              scheduleSave(prev);
               return prev;
             });
           }
@@ -320,7 +245,7 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
         window.addEventListener("pointermove", handleMove);
         window.addEventListener("pointerup", handleUp);
       },
-      [grid, setItems, scheduleSave],
+      [containerWidth, cols, gap, setItems, scheduleSave],
     );
 
     const handleItemContextMenu = useCallback(
@@ -376,29 +301,14 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
           widgetType,
           title: widgetType,
           data: {},
-          x: 0,
-          y: 0,
           w: 2,
           h: 2,
-          page: currentPage,
         };
-        const freePos = findNearestFreePosition(newItem, items, grid);
-        if (freePos) {
-          newItem.x = freePos.x;
-          newItem.y = freePos.y;
-        }
         addItem(newItem);
         setShowAddWidget(false);
       },
-      [addItem, currentPage, items, grid],
+      [addItem],
     );
-
-    const containerStyle: React.CSSProperties = {
-      position: "relative",
-      width: "100%",
-      height: "100%",
-      boxSizing: "border-box",
-    };
 
     const ctxMenuEl = ctxMenuState.isOpen && (
       <div
@@ -428,12 +338,7 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
 
     if (items.length === 0) {
       return (
-        <div
-          ref={containerRef}
-          className="desktop-box"
-          style={containerStyle}
-          onContextMenu={handleContainerContextMenu}
-        >
+        <div ref={containerRef} className="desktop-box" onContextMenu={handleContainerContextMenu}>
           <div className="flex flex-col items-center justify-center h-full text-white/50 gap-3">
             <Plus className="w-10 h-10 opacity-40" />
             <p className="text-sm">{getMessage("rightClickAddWidget", "右键添加小部件")}</p>
@@ -450,62 +355,75 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
       );
     }
 
+    const baseItemWidth = `calc((100% - ${gap * (cols - 1)}px) / ${cols})`;
+
     return (
       <>
-        <div
-          ref={containerRef}
-          className="desktop-box"
-          style={containerStyle}
-          onContextMenu={handleContainerContextMenu}
-        >
-          {pageItems.map((item) => {
-            const style = itemPositionStyle(item);
-            return (
-              <div
-                key={item.id}
-                className="desktop-item"
-                style={{
-                  left: style.left,
-                  top: style.top,
-                  width: style.width,
-                  height: style.height,
-                  transition: "all 0.2s ease",
-                }}
-                onClick={() => {
-                  if (isShortcutItem(item) && !wasDragged.current) {
-                    handleShortcutClick(item);
-                  }
-                  wasDragged.current = false;
-                }}
-                onPointerDown={(e) => handlePointerDown(e, item)}
-                onContextMenu={(e) => handleItemContextMenu(e, item)}
-              >
-                {isShortcutItem(item) && (
-                  <div className="desktop-shortcut-inner">
-                    <ShortcutIcon url={item.url} name={item.name} color={item.color} />
-                    <span className="desktop-shortcut-name">{item.name}</span>
-                  </div>
-                )}
-                {isWidgetItem(item) && (
-                  <>
-                    <WidgetGridItem item={item} onDataChange={handleDataChange} grid={grid} />
-                    <div
-                      className="desktop-resize-handle"
-                      onPointerDown={(e) => handleResizeStart(e, item)}
-                    >
-                      <Maximize2 className="w-3 h-3" />
+        <div ref={containerRef} className="desktop-box" onContextMenu={handleContainerContextMenu}>
+          <div className="desktop-waterfall" style={{ gap: `${gap}px` }}>
+            {pageItems.map((item, idx) => {
+              const globalIdx = Math.floor(idx / itemsPerPage) * itemsPerPage + idx;
+              const itemWidth =
+                item.w === 1
+                  ? baseItemWidth
+                  : `calc(${baseItemWidth} * ${item.w} + ${gap * (item.w - 1)}px)`;
+              return (
+                <div
+                  key={item.id}
+                  className="desktop-item"
+                  style={{ width: itemWidth }}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, globalIdx)}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, globalIdx)}
+                  onDragEnd={handleDragEnd}
+                  onClick={() => {
+                    if (isShortcutItem(item)) {
+                      handleShortcutClick(item);
+                    }
+                  }}
+                  onContextMenu={(e) => handleItemContextMenu(e, item)}
+                >
+                  {isShortcutItem(item) && (
+                    <div className="desktop-shortcut-inner">
+                      <ShortcutIcon url={item.url} name={item.name} color={item.color} />
+                      <span className="desktop-shortcut-name">{item.name}</span>
                     </div>
-                  </>
-                )}
-                <div className="desktop-item-drag-handle">
-                  <GripVertical className="w-3 h-3 opacity-40" />
+                  )}
+                  {isWidgetItem(item) && (
+                    <>
+                      <WidgetGridItem
+                        item={item}
+                        onDataChange={handleDataChange}
+                        containerWidth={containerWidth}
+                        gap={gap}
+                        cols={cols}
+                      />
+                      <div
+                        className="desktop-resize-handle"
+                        onPointerDown={(e) => handleResizeStart(e, item)}
+                      >
+                        <Maximize2 className="w-3 h-3" />
+                      </div>
+                    </>
+                  )}
+                  <div className="desktop-item-drag-handle">
+                    <GripVertical className="w-3 h-3 opacity-40" />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
 
           {totalPages > 1 && (
             <div className="desktop-pages">
+              <button
+                className="desktop-page-btn"
+                onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+              >
+                −
+              </button>
               {Array.from({ length: totalPages }, (_, i) => (
                 <button
                   key={i}
@@ -513,6 +431,13 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
                   onClick={() => setCurrentPage(i)}
                 />
               ))}
+              <button
+                className="desktop-page-btn"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage === totalPages - 1}
+              >
+                +
+              </button>
             </div>
           )}
 
@@ -532,10 +457,12 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
 interface WidgetGridItemProps {
   item: WidgetItemData;
   onDataChange: (itemId: string, data: Record<string, unknown>) => void;
-  grid: { cellSize: number; gap: number };
+  containerWidth: number;
+  gap: number;
+  cols: number;
 }
 
-function WidgetGridItem({ item, onDataChange, grid }: WidgetGridItemProps) {
+function WidgetGridItem({ item, onDataChange, containerWidth, gap, cols }: WidgetGridItemProps) {
   const definition = getWidget(item.widgetType);
   const WidgetComponent = definition?.component;
 
@@ -547,21 +474,19 @@ function WidgetGridItem({ item, onDataChange, grid }: WidgetGridItemProps) {
     );
   }
 
-  const w = Math.max(1, item.w);
-  const h = Math.max(1, item.h);
-  const cellW = w * grid.cellSize + (w - 1) * grid.gap;
-  const cellH = h * grid.cellSize + (h - 1) * grid.gap;
+  const unitWidth = (containerWidth - gap * (cols - 1)) / cols;
+  const cellW = item.w * unitWidth + (item.w - 1) * gap - 8;
 
   return (
     <div
-      className="w-full h-full overflow-hidden rounded-xl bg-white/75 dark:bg-[rgba(33,33,33,0.75)] border border-white/20 dark:border-white/5 shadow-md"
+      className="w-full overflow-hidden rounded-xl bg-white/75 dark:bg-[rgba(33,33,33,0.75)] border border-white/20 dark:border-white/5 shadow-md"
       style={{ pointerEvents: "auto" }}
     >
       <WidgetComponent
         data={item.data}
         onDataChange={(data) => onDataChange(item.id, data)}
-        containerWidth={cellW - 8}
-        containerHeight={cellH - 8}
+        containerWidth={cellW}
+        containerHeight={300}
       />
     </div>
   );
