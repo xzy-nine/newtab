@@ -1,0 +1,11 @@
+{
+  "style": {
+    "arrowParens": "always",
+    "bracketSpacing": true,
+    "printWidth": 100,
+    "quoteStyle": "single",
+    "semicolons": false,
+    "tabWidth": 2,
+    "trailingComma": "es5"
+  }
+}
