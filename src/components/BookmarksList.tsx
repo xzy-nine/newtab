@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Folder, Bookmark, ChevronRight } from 'lucide-react'
 
+interface BookmarkTreeNode {
+  id: string
+  title: string
+  url?: string
+  children?: BookmarkTreeNode[]
+}
+
 interface BookmarkItem {
   id: string
   title: string
@@ -24,14 +31,14 @@ export function BookmarksList() {
         const tree = await browser.bookmarks.getTree()
         const folders: BookmarkFolder[] = []
         
-        const processNode = (node: chrome.bookmarks.BookmarkTreeNode, parentTitle?: string): void => {
+        const processNode = (node: BookmarkTreeNode, parentTitle?: string): void => {
           if (node.children) {
             const folderTitle = parentTitle ? `${parentTitle} / ${node.title}` : node.title
             
-            if (node.title && node.children.some(c => c.url)) {
+            if (node.title && node.children.some((c: BookmarkTreeNode) => c.url)) {
               const items: BookmarkItem[] = node.children
-                .filter((c): c is chrome.bookmarks.BookmarkTreeNode & { url: string } => !!c.url)
-                .map(c => ({
+                .filter((c: BookmarkTreeNode): c is BookmarkTreeNode & { url: string } => !!c.url)
+                .map((c: BookmarkTreeNode & { url: string }) => ({
                   id: c.id,
                   title: c.title || c.url,
                   url: c.url,
@@ -46,11 +53,11 @@ export function BookmarksList() {
               }
             }
             
-            node.children.forEach(child => processNode(child, folderTitle))
+            node.children.forEach((child: BookmarkTreeNode) => processNode(child, folderTitle))
           }
         }
         
-        tree.forEach(root => processNode(root))
+        tree.forEach((root: BookmarkTreeNode) => processNode(root))
         setBookmarks(folders.slice(0, 3))
       } catch (error) {
         console.error('Failed to load bookmarks:', error)

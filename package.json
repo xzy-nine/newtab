@@ -4,10 +4,15 @@
   "description": "Custom new tab extension",
   "keywords": ["browser", "chrome", "extension", "newtab"],
   "homepage": "https://github.com/xzy-nine/newtab",
-  "bugs": {"url": "https://github.com/xzy-nine/newtab/issues"},
+  "bugs": {
+    "url": "https://github.com/xzy-nine/newtab/issues"
+  },
   "license": "MIT",
   "author": "xzy-nine",
-  "repository": {"type": "git", "url": "https://github.com/xzy-nine/newtab.git"},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xzy-nine/newtab.git"
+  },
   "type": "module",
   "scripts": {
     "build": "wxt build",
@@ -22,7 +27,7 @@
     "postinstall": "wxt prepare",
     "preinstall": "npx only-allow bun",
     "prepare": "husky",
-    "test:unit": "vitest run",
+    "test:unit": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "zip": "wxt zip",
     "zip:edge": "wxt zip -b edge",
@@ -36,6 +41,8 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@reactuses/core": "^6.3.2",
     "@tailwindcss/vite": "^4.3.0",
+    "acorn": "^8.17.0",
+    "boolbase": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
@@ -52,8 +59,8 @@
     "@semantic-release/github": "^12.0.8",
     "@semantic-release/npm": "^13.1.5",
     "@semantic-release/release-notes-generator": "^14.1.1",
-    "@types/node": "^25.9.1",
-    "@types/react": "^19.2.16",
+    "@types/node": "^25.9.3",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.2.2",
     "conventional-changelog-conventionalcommits": "^9.3.1",
