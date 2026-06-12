@@ -176,21 +176,32 @@ jobs:
         echo "🚀 开始执行AI变更日志生成..."
         echo "==========================================​============================="
         
-        # 根据触发方式设置参数
-        if [ "${{ github.event_name }}" = "workflow_call" ]; then
+        # 调试：输出接收到的参数
+        echo "📋 接收到的参数:"
+        echo "   github.event_name: ${{ github.event_name }}"
+        echo "   inputs.version: ${{ inputs.version }}"
+        echo "   inputs.release-id: ${{ inputs.release-id }}"
+        echo "   inputs.target: ${{ inputs.target }}"
+        echo "============================================​========================="
+        
+        # 检查是否通过 workflow_call 调用且有有效参数
+        # workflow_call 模式: 有 version 和 release-id
+        if [ "${{ github.event_name }}" = "workflow_call" ] && \
+           [ -n "${{ inputs.version }}" ] && \
+           [ -n "${{ inputs.release-id }}" ]; then
           # 自动触发模式
           echo "🤖 执行模式: 自动触发 (workflow_call)"
           echo "📋 版本号: ${{ inputs.version }}"
           echo "🏷️ Release ID: ${{ inputs.release-id }}"
           echo "============================================​========================="
-            python changelog.py \
+          python changelog.py \
             --version "${{ inputs.version }}" \
             --release-id "${{ inputs.release-id }}" \
             --event-name "workflow_call" \
             --repo "${{ github.repository }}" \
             --github-token "${{ secrets.PAT }}" \
             --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
-        else
+        elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           # 手动触发模式
           echo "📝 执行模式: 手动触发 (workflow_dispatch)"
           echo "🎯 目标参数: ${{ inputs.target }}"
@@ -207,12 +218,38 @@ jobs:
           fi
           
           echo "============================================​========================="
-            python changelog.py \
+          python changelog.py \
             --target "${{ inputs.target }}" \
             --event-name "workflow_dispatch" \
             --repo "${{ github.repository }}" \
             --github-token "${{ secrets.PAT }}" \
             --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
+        else
+          # 未知模式，尝试使用传入的参数
+          echo "⚠️ 未知执行模式，尝试使用传入的参数..."
+          if [ -n "${{ inputs.version }}" ] && [ -n "${{ inputs.release-id }}" ]; then
+            echo "🤖 使用自动模式参数"
+            python changelog.py \
+              --version "${{ inputs.version }}" \
+              --release-id "${{ inputs.release-id }}" \
+              --event-name "workflow_call" \
+              --repo "${{ github.repository }}" \
+              --github-token "${{ secrets.PAT }}" \
+              --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
+          elif [ -n "${{ inputs.target }}" ]; then
+            echo "📝 使用手动模式参数"
+            python changelog.py \
+              --target "${{ inputs.target }}" \
+              --event-name "workflow_dispatch" \
+              --repo "${{ github.repository }}" \
+              --github-token "${{ secrets.PAT }}" \
+              --deepseek-api-key "${{ secrets.DEEPSEEK_API_KEY }}"
+          else
+            echo "❌ 错误: 无法确定执行模式且缺少必要参数"
+            echo "   workflow_call 模式需要: version, release-id"
+            echo "   workflow_dispatch 模式需要: target"
+            exit 1
+          fi
         fi
         
         # 捕获退出码
