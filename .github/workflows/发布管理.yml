@@ -22,9 +22,6 @@ on:
         description: "Release页面URL"
         value: ${{ jobs.release-management.outputs.release-url }}
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   release-management:
     name: 发布管理
@@ -61,7 +58,7 @@ jobs:
         echo "✅ 权限检查通过"
 
     - name: 检出代码
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 

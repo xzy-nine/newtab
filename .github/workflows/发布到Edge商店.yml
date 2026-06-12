@@ -11,9 +11,6 @@ on:
         required: true
         type: string
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   publish-to-edge:
     name: 发布到Microsoft Edge Add-ons
@@ -22,7 +19,7 @@ jobs:
       contents: read
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 下载构建工件
         uses: actions/download-artifact@v4
@@ -48,7 +45,7 @@ jobs:
           echo "BUILD_FILE=$BUILD_FILE" >> $GITHUB_ENV
 
       - name: 安装 Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
 

@@ -46,9 +46,6 @@ on:
         description: "是否为手动触发"
         value: ${{ jobs.version-check-and-build.outputs.is_manual_trigger }}
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:  
   version-check-and-build:
     name: 版本检查与构建
@@ -85,7 +82,7 @@ jobs:
         fi
 
     - name: 检出代码
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
