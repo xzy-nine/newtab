@@ -3,6 +3,23 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      manual_trigger:
+        description: "手动触发发布"
+        required: true
+        type: boolean
+        default: false
+      manual_version:
+        description: "指定版本号 (留空则使用manifest.json)"
+        required: false
+        type: string
+        default: ""
+      use_latest_release:
+        description: "使用最新release的构建包"
+        required: false
+        type: boolean
+        default: false
 
 # 完整的权限设置
 permissions:
@@ -18,6 +35,10 @@ jobs:
   version-check-and-build:
     name: 版本检查与构建
     uses: ./.github/workflows/版本检查与构建.yml
+    with:
+      manual_trigger: ${{ github.event.inputs.manual_trigger || false }}
+      manual_version: ${{ github.event.inputs.manual_version || '' }}
+      use_latest_release: ${{ github.event.inputs.use_latest_release || false }}
     secrets: inherit
     # 明确传递权限
     permissions:
@@ -28,8 +49,7 @@ jobs:
     name: 发布管理
     needs: version-check-and-build
     if: |
-      needs.version-check-and-build.outputs.is_new_version == 'true' && 
-      needs.version-check-and-build.outputs.tag_exists == 'false' &&
+      needs.version-check-and-build.outputs.should_release == 'true' &&
       needs.version-check-and-build.result == 'success'
     uses: ./.github/workflows/发布管理.yml
     with:
@@ -61,8 +81,7 @@ jobs:
     name: 发布到Edge商店
     needs: [version-check-and-build, release-management]
     if: |
-      needs.version-check-and-build.outputs.is_new_version == 'true' && 
-      needs.version-check-and-build.outputs.tag_exists == 'false' &&
+      needs.version-check-and-build.outputs.should_release == 'true' &&
       needs.release-management.result == 'success'
     uses: ./.github/workflows/发布到Edge商店.yml
     with:
@@ -83,6 +102,16 @@ jobs:
       run: |
         echo "## 🚀 主工作流执行总结" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # 触发模式
+        IS_MANUAL="${{ needs.version-check-and-build.outputs.is_manual_trigger }}"
+        if [ "$IS_MANUAL" = "true" ]; then
+          echo "### 📝 触发模式: 手动触发" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### 🤖 触发模式: 自动触发 (推送代码)" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 执行状态" >> $GITHUB_STEP_SUMMARY
         echo "| 作业 | 状态 | 结果 |" >> $GITHUB_STEP_SUMMARY
         echo "|------|------|------|" >> $GITHUB_STEP_SUMMARY
@@ -97,7 +126,8 @@ jobs:
           echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
           echo "| 当前版本 | \`${{ needs.version-check-and-build.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| 是否新版本 | ${{ needs.version-check-and-build.outputs.is_new_version == 'true' && '✅ 是' || '❌ 否' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 版本变更类型 | \`${{ needs.version-check-and-build.outputs.version_change_type }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 是否自动发布 | ${{ needs.version-check-and-build.outputs.should_release == 'true' && '✅ 是' || '❌ 否' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 标签是否存在 | ${{ needs.version-check-and-build.outputs.tag_exists == 'true' && '⚠️ 已存在' || '✅ 不存在' }} |" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.release-management.result }}" == "success" ]; then
             echo "| Release ID | \`${{ needs.release-management.outputs.release-id }}\` |" >> $GITHUB_STEP_SUMMARY
@@ -107,7 +137,8 @@ jobs:
         fi
         
         echo "### 🎯 执行结果" >> $GITHUB_STEP_SUMMARY
-        if [ "${{ needs.version-check-and-build.outputs.is_new_version }}" == "true" ] && [ "${{ needs.version-check-and-build.outputs.tag_exists }}" == "false" ]; then
+        SHOULD_RELEASE="${{ needs.version-check-and-build.outputs.should_release }}"
+        if [ "$SHOULD_RELEASE" = "true" ]; then
           if [ "${{ needs.release-management.result }}" == "success" ]; then
             echo "🎉 **发布成功！**" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ 版本检查通过" >> $GITHUB_STEP_SUMMARY
@@ -131,6 +162,13 @@ jobs:
             echo "- ✅ 构建包创建成功" >> $GITHUB_STEP_SUMMARY
             echo "- ❌ Release发布失败" >> $GITHUB_STEP_SUMMARY
           fi
+        elif [ "${{ needs.version-check-and-build.outputs.version_change_type }}" = "patch" ]; then
+          echo "ℹ️ **PATCH 版本变更，仅构建，不自动发布**" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ 版本检查通过" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ 构建包创建成功" >> $GITHUB_STEP_SUMMARY
+          echo "- ⏭️ 发布管理跳过 (PATCH版本不自动发布)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "如需发布此版本，请在 Actions 页面手动触发工作流并启用 `manual_trigger`。" >> $GITHUB_STEP_SUMMARY
         else
           echo "ℹ️ **无需发布**" >> $GITHUB_STEP_SUMMARY
           echo "- 版本未更新或标签已存在" >> $GITHUB_STEP_SUMMARY
@@ -149,11 +187,12 @@ jobs:
         echo "- tag_exists: ${{ needs.version-check-and-build.outputs.tag_exists }}"
         echo "- result: ${{ needs.version-check-and-build.result }}"
         echo "- build_path: ${{ needs.version-check-and-build.outputs.build_path }}"
-        echo "- changelog length: $(echo '${{ needs.version-check-and-build.outputs.changelog }}' | wc -c)"
+        echo "- should_release: ${{ needs.version-check-and-build.outputs.should_release }}"
+        echo "- version_change_type: ${{ needs.version-check-and-build.outputs.version_change_type }}"
+        echo "- is_manual_trigger: ${{ needs.version-check-and-build.outputs.is_manual_trigger }}"
         echo ""
         echo "条件判断:"
-        echo "- is_new_version == 'true': ${{ needs.version-check-and-build.outputs.is_new_version == 'true' }}"
-        echo "- tag_exists == 'false': ${{ needs.version-check-and-build.outputs.tag_exists == 'false' }}"
+        echo "- should_release == 'true': ${{ needs.version-check-and-build.outputs.should_release == 'true' }}"
         echo "- result == 'success': ${{ needs.version-check-and-build.result == 'success' }}"
         echo ""
-        echo "完整条件: ${{ needs.version-check-and-build.outputs.is_new_version == 'true' && needs.version-check-and-build.outputs.tag_exists == 'false' && needs.version-check-and-build.result == 'success' }}"
+        echo "完整发布条件: ${{ needs.version-check-and-build.outputs.should_release == 'true' && needs.version-check-and-build.result == 'success' }}"

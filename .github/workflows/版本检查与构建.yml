@@ -4,6 +4,22 @@ on:
     branches:
       - main  
   workflow_call:
+    inputs:
+      manual_trigger:
+        description: "手动触发模式"
+        required: false
+        type: boolean
+        default: false
+      manual_version:
+        description: "手动指定的版本号"
+        required: false
+        type: string
+        default: ""
+      use_latest_release:
+        description: "使用最新release的包"
+        required: false
+        type: boolean
+        default: false
     outputs:
       version:
         description: "当前版本号"
@@ -20,6 +36,15 @@ on:
       build_path:
         description: "构建包的路径"
         value: ${{ jobs.version-check-and-build.outputs.build_path }}
+      should_release:
+        description: "是否应该发布"
+        value: ${{ jobs.version-check-and-build.outputs.should_release }}
+      version_change_type:
+        description: "版本变更类型 (major/minor/patch/none)"
+        value: ${{ jobs.version-check-and-build.outputs.version_change_type }}
+      is_manual_trigger:
+        description: "是否为手动触发"
+        value: ${{ jobs.version-check-and-build.outputs.is_manual_trigger }}
 
 jobs:  
   version-check-and-build:
@@ -32,7 +57,30 @@ jobs:
       changelog: ${{ steps.generate-changelog.outputs.changelog }}
       build_path: ${{ steps.create-build-package.outputs.build_path }}
       should_release: ${{ steps.set-release-flag.outputs.should_release }}
+      version_change_type: ${{ steps.compare-versions.outputs.version_change_type }}
+      is_manual_trigger: ${{ steps.manual-mode-check.outputs.is_manual_trigger }}
     steps:
+    # 手动触发模式检查
+    - name: 检查手动触发模式
+      id: manual-mode-check
+      run: |
+        MANUAL_TRIGGER="${{ inputs.manual_trigger }}"
+        MANUAL_VERSION="${{ inputs.manual_version }}"
+        USE_LATEST="${{ inputs.use_latest_release }}"
+        
+        echo "🔍 触发模式检查:"
+        echo "   manual_trigger: $MANUAL_TRIGGER"
+        echo "   manual_version: $MANUAL_VERSION"
+        echo "   use_latest_release: $USE_LATEST"
+        
+        if [ "$MANUAL_TRIGGER" = "true" ]; then
+          echo "is_manual_trigger=true" >> $GITHUB_OUTPUT
+          echo "📝 手动触发模式"
+        else
+          echo "is_manual_trigger=false" >> $GITHUB_OUTPUT
+          echo "🤖 自动触发模式"
+        fi
+
     - name: 检出代码
       uses: actions/checkout@v4
       with:
@@ -41,10 +89,17 @@ jobs:
     - name: 从manifest.json获取版本信息
       id: get-version
       run: |
-        VERSION=$(jq -r '.version' manifest.json)
+        # 优先使用手动指定的版本号
+        if [ "${{ inputs.manual_trigger }}" = "true" ] && [ -n "${{ inputs.manual_version }}" ]; then
+          VERSION="${{ inputs.manual_version }}"
+          echo "📋 使用手动指定的版本: $VERSION"
+        else
+          VERSION=$(jq -r '.version' manifest.json)
+          echo "📋 从manifest.json读取版本: $VERSION"
+        fi
+        
         echo "VERSION=$VERSION" >> $GITHUB_ENV
         echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "📋 当前版本: $VERSION"
 
     - name: 获取最新发布版本
       id: get-latest-release
@@ -57,6 +112,36 @@ jobs:
       id: compare-versions
       run: |
         echo "🔍 比较版本: 当前=$VERSION, 最新=$LATEST_VERSION"
+        
+        # 解析版本号 (x.y.z)
+        CURRENT_X=$(echo "$VERSION" | cut -d. -f1)
+        CURRENT_Y=$(echo "$VERSION" | cut -d. -f2)
+        CURRENT_Z=$(echo "$VERSION" | cut -d. -f3)
+        
+        LATEST_X=$(echo "$LATEST_VERSION" | cut -d. -f1)
+        LATEST_Y=$(echo "$LATEST_VERSION" | cut -d. -f2)
+        LATEST_Z=$(echo "$LATEST_VERSION" | cut -d. -f3)
+        
+        echo "📊 版本解析:"
+        echo "   当前版本: x=$CURRENT_X, y=$CURRENT_Y, z=$CURRENT_Z"
+        echo "   最新版本: x=$LATEST_X, y=$LATEST_Y, z=$LATEST_Z"
+        
+        # 确定版本变更类型
+        if [ "$CURRENT_X" != "$LATEST_X" ]; then
+          VERSION_CHANGE_TYPE="major"
+          echo "🔴 版本变更类型: MAJOR (x 位变化: $LATEST_X → $CURRENT_X)"
+        elif [ "$CURRENT_Y" != "$LATEST_Y" ]; then
+          VERSION_CHANGE_TYPE="minor"
+          echo "🟡 版本变更类型: MINOR (y 位变化: $LATEST_Y → $CURRENT_Y)"
+        elif [ "$CURRENT_Z" != "$LATEST_Z" ]; then
+          VERSION_CHANGE_TYPE="patch"
+          echo "🟢 版本变更类型: PATCH (z 位变化: $LATEST_Z → $CURRENT_Z)"
+        else
+          VERSION_CHANGE_TYPE="none"
+          echo "⚪ 版本变更类型: NONE (无变化)"
+        fi
+        
+        echo "version_change_type=$VERSION_CHANGE_TYPE" >> $GITHUB_OUTPUT
         
         # 处理首次发布的情况
         if [ "$LATEST_VERSION" = "0.0.0" ] || [ -z "$LATEST_VERSION" ]; then
@@ -174,10 +259,35 @@ jobs:
     - name: 设置发布标志
       id: set-release-flag
       run: |
-        if [ "${{ steps.compare-versions.outputs.is_new_version }}" == "true" ] && [ "${{ steps.check-tag-exists.outputs.tag_exists }}" == "false" ]; then
+        IS_NEW_VERSION="${{ steps.compare-versions.outputs.is_new_version }}"
+        TAG_EXISTS="${{ steps.check-tag-exists.outputs.tag_exists }}"
+        VERSION_CHANGE_TYPE="${{ steps.compare-versions.outputs.version_change_type }}"
+        IS_MANUAL="${{ steps.manual-mode-check.outputs.is_manual_trigger }}"
+        
+        echo "📋 发布决策检查:"
+        echo "   is_new_version: $IS_NEW_VERSION"
+        echo "   tag_exists: $TAG_EXISTS"
+        echo "   version_change_type: $VERSION_CHANGE_TYPE"
+        echo "   is_manual_trigger: $IS_MANUAL"
+        
+        # 手动触发模式：总是需要发布
+        if [ "$IS_MANUAL" = "true" ]; then
           echo "should_release=true" >> $GITHUB_OUTPUT
-          echo "✅ 需要发布新版本"
+          echo "✅ 手动触发模式，强制发布"
+        elif [ "$IS_NEW_VERSION" = "true" ] && [ "$TAG_EXISTS" = "false" ]; then
+          # 自动模式：根据版本变更类型决定
+          if [ "$VERSION_CHANGE_TYPE" = "major" ] || [ "$VERSION_CHANGE_TYPE" = "minor" ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "✅ MAJOR/MINOR 版本变更，自动发布"
+          elif [ "$VERSION_CHANGE_TYPE" = "patch" ]; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ PATCH 版本变更，仅构建，不自动发布"
+            echo "   如需发布，请手动触发"
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ 版本无变化，不发布"
+          fi
         else
           echo "should_release=false" >> $GITHUB_OUTPUT
-          echo "ℹ️ 不需要发布"
+          echo "ℹ️ 不满足发布条件（版本未更新或标签已存在）"
         fi
