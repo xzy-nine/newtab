@@ -26,105 +26,48 @@ jobs:
   release-management:
     name: 发布管理
     runs-on: ubuntu-latest
-    # 修复条件 - 移除不必要的条件，workflow_call 时直接执行
     outputs:
       release-id: ${{ steps.create-release.outputs.id }}
       release-url: ${{ steps.create-release.outputs.html_url }}
 
     steps:
-    - name: 检查权限和 Token
-      id: check-permissions
-      run: |
-        echo "🔍 检查 GitHub Token 权限..."
-        
-        # 检查 Token 是否存在
-        if [ -z "${{ secrets.PAT }}" ]; then
-          echo "❌ PAT token 未配置"
-          exit 1
-        fi
-        
-        # 检查仓库访问权限
-        REPO_INFO=$(curl -s -H "Authorization: token ${{ secrets.PAT }}" \
-          "https://api.github.com/repos/${{ github.repository }}")
-        
-        if echo "$REPO_INFO" | jq -e '.permissions.push' > /dev/null; then
-          echo "✅ Token 有推送权限"
-        else
-          echo "❌ Token 缺少推送权限"
-          echo "Token info: $(echo "$REPO_INFO" | jq '.permissions // "无权限信息"')"
-          exit 1
-        fi
-        
-        echo "✅ 权限检查通过"
-
     - name: 检出代码
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
-    - name: 设置输入参数
-      id: set-input-params
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 24
+
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: 安装依赖
+      run: bun install --frozen-lockfile
+
+    - name: 设置环境变量
       run: |
         echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
-        echo "✅ 使用工作流调用参数，版本: ${{ inputs.version }}"
+        echo "CHANGELOG=${{ inputs.changelog }}" >> $GITHUB_ENV
 
-    - name: 生成发布变更日志
-      id: generate-release-changelog
+    - name: 使用WXT创建构建包
       run: |
-        # 使用传入的变更日志，确保正确解析JSON
-        CHANGELOG='${{ inputs.changelog }}'
-        echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-        echo "$CHANGELOG" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
-        echo "✅ 发布变更日志准备完成"
+        echo "📦 使用WXT创建构建包..."
+        bun run build
+        bun run build:edge
+        bun run build:firefox
+        
+        bun run zip
+        bun run zip:edge
+        bun run zip:firefox
 
-    # 修改工件获取策略 - 使用传入的构建路径
-    - name: 获取构建工件信息
-      id: get-artifact-info
+    - name: 查看构建产物
       run: |
-        echo "🔍 使用传入的构建路径: ${{ inputs.build-path }}"
-        
-        # 从构建路径提取文件名
-        BUILD_FILENAME=$(basename "${{ inputs.build-path }}")
-        echo "BUILD_FILENAME=$BUILD_FILENAME" >> $GITHUB_ENV
-        
-        # 推导工件名称（去掉 build/ 前缀）
-        ARTIFACT_NAME="newtab-构建包-${{ inputs.version }}"
-        echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
-        
-        echo "✅ 工件信息: $ARTIFACT_NAME -> $BUILD_FILENAME"
+        echo "📁 构建产物目录:"
+        ls -la .output/
 
-    - name: 下载构建工件
-      uses: actions/download-artifact@v4
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ./artifacts
-
-    - name: 验证构建包
-      id: verify-build-package
-      run: |
-        echo "📁 工件目录内容:"
-        find ./artifacts -type f -ls
-        
-        # 查找构建包文件
-        BUILD_FILE=$(find ./artifacts -name "${{ env.BUILD_FILENAME }}" | head -1)
-        
-        if [ -z "$BUILD_FILE" ]; then
-          echo "❌ 未找到指定的构建包: ${{ env.BUILD_FILENAME }}"
-          
-          # 尝试查找任何ZIP文件
-          BUILD_FILE=$(find ./artifacts -name "*.zip" | head -1)
-          if [ -n "$BUILD_FILE" ]; then
-            echo "⚠️ 使用找到的ZIP文件: $BUILD_FILE"
-          else
-            echo "❌ 工件目录中没有ZIP文件"
-            exit 1
-          fi
-        fi
-        
-        FILE_SIZE=$(ls -lh "$BUILD_FILE" | awk '{print $5}')
-        echo "✅ 构建包验证成功: $BUILD_FILE (大小: $FILE_SIZE)"
-        echo "BUILD_FILE=$BUILD_FILE" >> $GITHUB_ENV    
     - name: 创建Release
       id: create-release
       uses: softprops/action-gh-release@v1
@@ -132,15 +75,17 @@ jobs:
         tag_name: ${{ env.VERSION }}
         name: "发布 ${{ env.VERSION }}"
         body: ${{ fromJson(env.CHANGELOG) }}
-        files: ${{ env.BUILD_FILE }}
+        files: |
+          .output/*-chrome.zip
+          .output/*-edge.zip
+          .output/*-firefox.zip
         draft: false
-        prerelease: true
+        prerelease: false
         generate_release_notes: false
       env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: 验证发布结果
-      id: verify-release-result
       run: |
         if [ -n "${{ steps.create-release.outputs.id }}" ]; then
           echo "✅ Release创建成功"

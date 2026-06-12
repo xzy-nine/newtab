@@ -60,7 +60,6 @@ jobs:
       version_change_type: ${{ steps.compare-versions.outputs.version_change_type }}
       is_manual_trigger: ${{ steps.manual-mode-check.outputs.is_manual_trigger }}
     steps:
-    # 手动触发模式检查
     - name: 检查手动触发模式
       id: manual-mode-check
       run: |
@@ -82,20 +81,39 @@ jobs:
         fi
 
     - name: 检出代码
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
-    - name: 从manifest.json获取版本信息
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 24
+
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: 安装依赖
+      run: bun install --frozen-lockfile
+
+    - name: Lint
+      run: bunx oxlint .
+
+    - name: Typecheck
+      run: bun run compile
+
+    - name: 测试
+      run: bun run test:unit
+
+    - name: 从package.json获取版本信息
       id: get-version
       run: |
-        # 优先使用手动指定的版本号
         if [ "${{ inputs.manual_trigger }}" = "true" ] && [ -n "${{ inputs.manual_version }}" ]; then
           VERSION="${{ inputs.manual_version }}"
           echo "📋 使用手动指定的版本: $VERSION"
         else
-          VERSION=$(jq -r '.version' manifest.json)
-          echo "📋 从manifest.json读取版本: $VERSION"
+          VERSION=$(jq -r '.version' package.json)
+          echo "📋 从package.json读取版本: $VERSION"
         fi
         
         echo "VERSION=$VERSION" >> $GITHUB_ENV
@@ -113,7 +131,6 @@ jobs:
       run: |
         echo "🔍 比较版本: 当前=$VERSION, 最新=$LATEST_VERSION"
         
-        # 解析版本号 (x.y.z)
         CURRENT_X=$(echo "$VERSION" | cut -d. -f1)
         CURRENT_Y=$(echo "$VERSION" | cut -d. -f2)
         CURRENT_Z=$(echo "$VERSION" | cut -d. -f3)
@@ -126,36 +143,34 @@ jobs:
         echo "   当前版本: x=$CURRENT_X, y=$CURRENT_Y, z=$CURRENT_Z"
         echo "   最新版本: x=$LATEST_X, y=$LATEST_Y, z=$LATEST_Z"
         
-        # 确定版本变更类型
         if [ "$CURRENT_X" != "$LATEST_X" ]; then
           VERSION_CHANGE_TYPE="major"
-          echo "🔴 版本变更类型: MAJOR (x 位变化: $LATEST_X → $CURRENT_X)"
+          echo "🔴 版本变更类型: MAJOR"
         elif [ "$CURRENT_Y" != "$LATEST_Y" ]; then
           VERSION_CHANGE_TYPE="minor"
-          echo "🟡 版本变更类型: MINOR (y 位变化: $LATEST_Y → $CURRENT_Y)"
+          echo "🟡 版本变更类型: MINOR"
         elif [ "$CURRENT_Z" != "$LATEST_Z" ]; then
           VERSION_CHANGE_TYPE="patch"
-          echo "🟢 版本变更类型: PATCH (z 位变化: $LATEST_Z → $CURRENT_Z)"
+          echo "🟢 版本变更类型: PATCH"
         else
           VERSION_CHANGE_TYPE="none"
-          echo "⚪ 版本变更类型: NONE (无变化)"
+          echo "⚪ 版本变更类型: NONE"
         fi
         
         echo "version_change_type=$VERSION_CHANGE_TYPE" >> $GITHUB_OUTPUT
         
-        # 处理首次发布的情况
         if [ "$LATEST_VERSION" = "0.0.0" ] || [ -z "$LATEST_VERSION" ]; then
             echo "is_new_version=true" >> $GITHUB_OUTPUT
-            echo "✅ 首次发布，版本: $VERSION"
+            echo "✅ 首次发布"
         elif [ "$LATEST_VERSION" = "$VERSION" ]; then
             echo "is_new_version=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ 版本未更新，当前版本: $VERSION"
+            echo "ℹ️ 版本未更新"
         elif [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -rV | head -n1)" = "$VERSION" ]; then
             echo "is_new_version=true" >> $GITHUB_OUTPUT
-            echo "✅ 检测到新版本: $VERSION (前版本: $LATEST_VERSION)"
+            echo "✅ 检测到新版本"
         else
             echo "is_new_version=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ 版本回退，当前版本: $VERSION < 最新版本: $LATEST_VERSION"
+            echo "ℹ️ 版本回退"
         fi
 
     - name: 检查标签是否存在
@@ -163,24 +178,22 @@ jobs:
       run: |
         if git rev-parse "refs/tags/${{ env.VERSION }}" >/dev/null 2>&1; then
           echo "tag_exists=true" >> $GITHUB_OUTPUT
-          echo "⚠️ 标签 ${{ env.VERSION }} 已存在"
+          echo "⚠️ 标签已存在"
         else
           echo "tag_exists=false" >> $GITHUB_OUTPUT
-          echo "✅ 标签 ${{ env.VERSION }} 不存在，可以创建"
+          echo "✅ 标签不存在"
         fi
 
     - name: 生成变更日志
       id: generate-changelog
       if: steps.compare-versions.outputs.is_new_version == 'true' && steps.check-tag-exists.outputs.tag_exists == 'false'
       run: |
-        echo "📝 开始生成变更日志..."
+        echo "📝 生成变更日志..."
         LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
         
         if [ -z "$LAST_TAG" ]; then
-          echo "📋 首次发布，获取所有提交记录"
           CHANGELOG=$(git log --pretty=format:"%h - %s")
         else
-          echo "📋 获取自 $LAST_TAG 以来的提交记录"
           CHANGELOG=$(git log --pretty=format:"%h - %s" $LAST_TAG..HEAD)
         fi
         
@@ -188,57 +201,27 @@ jobs:
           CHANGELOG="没有新的变更记录"
         fi
         
-        # 格式化变更日志
-        CHANGELOG=$(echo "$CHANGELOG" | sed 's/ \([0-9a-f]\{7\} - \)/\n\1/g' | sed 's/\(fix\|add\|style\|update\)/\n\1/g')
         CHANGELOG=$(echo "$CHANGELOG" | jq -R -s '.')
         echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
         echo "✅ 变更日志生成完成"
 
-    - name: 创建构建包
+    - name: 使用WXT创建构建包
       id: create-build-package
       if: steps.compare-versions.outputs.is_new_version == 'true' && steps.check-tag-exists.outputs.tag_exists == 'false'
       run: |
-        echo "📦 开始创建构建包..."
+        echo "📦 使用WXT创建构建包..."
         
-        # 创建构建目录
-        mkdir -p build
+        bun run build
+        bun run build:edge
+        bun run build:firefox
         
-        # 创建zip包，排除不需要的文件
-        zip -r "newtab-${{ env.VERSION }}.zip" . \
-          -x ".*" \
-          -x "*/.*" \
-          -x "build/*" \
-          -x "README.md" \
-          -x ".github/*" \
-          -x "doc/*" \
-          -x "examples/*" \
-          -x "*.log" \
-          -x "node_modules/*"
+        bun run zip
+        bun run zip:edge
+        bun run zip:firefox
         
-        # 移动到构建目录
-        mv "newtab-${{ env.VERSION }}.zip" "build/"
-        
-        # 设置构建包路径
-        BUILD_PATH="build/newtab-${{ env.VERSION }}.zip"
+        BUILD_PATH=".output"
         echo "build_path=$BUILD_PATH" >> $GITHUB_OUTPUT
-        
-        # 验证文件
-        if [ -f "$BUILD_PATH" ]; then
-          FILE_SIZE=$(ls -lh "$BUILD_PATH" | awk '{print $5}')
-          echo "✅ 构建包创建成功: $BUILD_PATH (大小: $FILE_SIZE)"
-        else
-          echo "❌ 构建包创建失败"
-          exit 1
-        fi
-
-    - name: 上传构建包为工件
-      id: upload-artifact
-      if: steps.compare-versions.outputs.is_new_version == 'true' && steps.check-tag-exists.outputs.tag_exists == 'false'
-      uses: actions/upload-artifact@v4
-      with:
-        name: newtab-构建包-${{ env.VERSION }}
-        path: build/newtab-${{ env.VERSION }}.zip
-        retention-days: 30
+        echo "✅ WXT构建完成"
 
     - name: 输出构建结果
       id: output-summary
@@ -250,11 +233,6 @@ jobs:
         echo "| 最新发布版本 | \`${{ env.LATEST_VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
         echo "| 是否新版本 | ${{ steps.compare-versions.outputs.is_new_version == 'true' && '✅ 是' || '❌ 否' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| 标签是否存在 | ${{ steps.check-tag-exists.outputs.tag_exists == 'true' && '⚠️ 已存在' || '✅ 不存在' }} |" >> $GITHUB_STEP_SUMMARY
-        if [ "${{ steps.compare-versions.outputs.is_new_version }}" == "true" ] && [ "${{ steps.check-tag-exists.outputs.tag_exists }}" == "false" ]; then
-          echo "| 构建包 | ✅ 已创建 |" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "| 构建包 | ❌ 未创建（不满足条件） |" >> $GITHUB_STEP_SUMMARY
-        fi
 
     - name: 设置发布标志
       id: set-release-flag
@@ -264,30 +242,21 @@ jobs:
         VERSION_CHANGE_TYPE="${{ steps.compare-versions.outputs.version_change_type }}"
         IS_MANUAL="${{ steps.manual-mode-check.outputs.is_manual_trigger }}"
         
-        echo "📋 发布决策检查:"
-        echo "   is_new_version: $IS_NEW_VERSION"
-        echo "   tag_exists: $TAG_EXISTS"
-        echo "   version_change_type: $VERSION_CHANGE_TYPE"
-        echo "   is_manual_trigger: $IS_MANUAL"
-        
-        # 手动触发模式：总是需要发布
         if [ "$IS_MANUAL" = "true" ]; then
           echo "should_release=true" >> $GITHUB_OUTPUT
           echo "✅ 手动触发模式，强制发布"
         elif [ "$IS_NEW_VERSION" = "true" ] && [ "$TAG_EXISTS" = "false" ]; then
-          # 自动模式：根据版本变更类型决定
           if [ "$VERSION_CHANGE_TYPE" = "major" ] || [ "$VERSION_CHANGE_TYPE" = "minor" ]; then
             echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "✅ MAJOR/MINOR 版本变更，自动发布"
+            echo "✅ MAJOR/MINOR 版本变更"
           elif [ "$VERSION_CHANGE_TYPE" = "patch" ]; then
             echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ PATCH 版本变更，仅构建，不自动发布"
-            echo "   如需发布，请手动触发"
+            echo "ℹ️ PATCH 版本变更，仅构建"
           else
             echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ 版本无变化，不发布"
+            echo "ℹ️ 版本无变化"
           fi
         else
           echo "should_release=false" >> $GITHUB_OUTPUT
-          echo "ℹ️ 不满足发布条件（版本未更新或标签已存在）"
+          echo "ℹ️ 不满足发布条件"
         fi
