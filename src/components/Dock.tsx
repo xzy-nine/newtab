@@ -1,9 +1,8 @@
-import { Settings, Plus, RefreshCw, Sun, Moon } from "lucide-react";
+import { Settings, RefreshCw, Sun, Moon } from "lucide-react";
 import { useAppSettings } from "@/lib/app-settings-store";
 
 interface DockProps {
   onOpenSettings?: () => void;
-  onAddWidget?: () => void;
   onRefreshBackground?: () => void;
   pageCount?: number;
   currentPage?: number;
@@ -13,7 +12,6 @@ interface DockProps {
 
 export function Dock({
   onOpenSettings,
-  onAddWidget,
   onRefreshBackground,
   pageCount = 1,
   currentPage = 0,
@@ -30,12 +28,6 @@ export function Dock({
   return (
     <div className="dock-container">
       <div className="dock-inner">
-        <div className="dock-left">
-          <button className="dock-btn" title="添加小部件" onClick={onAddWidget}>
-            <Plus className="dock-icon" />
-          </button>
-        </div>
-
         {pageCount > 1 && (
           <div className="dock-pages">
             {Array.from({ length: pageCount }, (_, i) => (
