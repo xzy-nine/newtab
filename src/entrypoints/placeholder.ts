@@ -1,4 +1,3 @@
-import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script'
+import { defineUnlistedScript } from "wxt/utils/define-unlisted-script";
 
-export default defineUnlistedScript(() => {
-})
+export default defineUnlistedScript(() => {});

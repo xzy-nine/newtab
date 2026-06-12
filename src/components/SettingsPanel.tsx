@@ -1,21 +1,16 @@
-import { Settings } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Checkbox, CheckboxIndicator } from '@/components/ui/checkbox'
-import { useAppSettings } from '@/lib/app-settings-store'
-import { getMessage } from '@/lib/i18n'
+} from "@/components/ui/select";
+import { Checkbox, CheckboxIndicator } from "@/components/ui/checkbox";
+import { useAppSettings } from "@/lib/app-settings-store";
+import { getMessage } from "@/lib/i18n";
 
 export function SettingsPanel() {
   const {
@@ -25,17 +20,21 @@ export function SettingsPanel() {
     setShowBookmarks,
     showClock,
     setShowClock,
+    use12hClock,
+    setUse12hClock,
+    showSeconds,
+    setShowSeconds,
     showWidgets,
     setShowWidgets,
     backgroundEnabled,
     setBackgroundEnabled,
-  } = useAppSettings()
+  } = useAppSettings();
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="icon"
           className="fixed top-4 right-4 z-50 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white"
         >
@@ -44,22 +43,25 @@ export function SettingsPanel() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <div className="text-center mb-4">
-          <DialogTitle>{getMessage('settingsTitle', 'Settings')}</DialogTitle>
+          <DialogTitle>{getMessage("settingsTitle", "Settings")}</DialogTitle>
         </div>
-        
+
         <div className="space-y-6 mt-4">
           <div>
             <h3 className="text-sm font-medium text-gray-700 mb-3">
-              {getMessage('settingsGeneral', 'General')}
+              {getMessage("settingsGeneral", "General")}
             </h3>
-            
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">主题模式</p>
                   <p className="text-xs text-gray-500">选择外观主题</p>
                 </div>
-                <Select value={theme} onValueChange={(v) => setTheme(v as 'system' | 'light' | 'dark')}>
+                <Select
+                  value={theme}
+                  onValueChange={(v) => setTheme(v as "system" | "light" | "dark")}
+                >
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
@@ -70,17 +72,20 @@ export function SettingsPanel() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">显示书签</p>
                   <p className="text-xs text-gray-500">在新标签页显示书签文件夹</p>
                 </div>
-                <Checkbox checked={showBookmarks} onCheckedChange={(v) => setShowBookmarks(v as boolean)}>
+                <Checkbox
+                  checked={showBookmarks}
+                  onCheckedChange={(v) => setShowBookmarks(v as boolean)}
+                >
                   <CheckboxIndicator />
                 </Checkbox>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">显示时钟</p>
@@ -90,39 +95,76 @@ export function SettingsPanel() {
                   <CheckboxIndicator />
                 </Checkbox>
               </div>
-              
+
+              {showClock && (
+                <>
+                  <div className="flex items-center justify-between pl-4">
+                    <div>
+                      <p className="text-sm font-medium">12小时制</p>
+                      <p className="text-xs text-gray-500">使用12小时制显示时间</p>
+                    </div>
+                    <Checkbox
+                      checked={use12hClock}
+                      onCheckedChange={(v) => setUse12hClock(v as boolean)}
+                    >
+                      <CheckboxIndicator />
+                    </Checkbox>
+                  </div>
+                  <div className="flex items-center justify-between pl-4">
+                    <div>
+                      <p className="text-sm font-medium">显示秒数</p>
+                      <p className="text-xs text-gray-500">在时钟上显示秒数</p>
+                    </div>
+                    <Checkbox
+                      checked={showSeconds}
+                      onCheckedChange={(v) => setShowSeconds(v as boolean)}
+                    >
+                      <CheckboxIndicator />
+                    </Checkbox>
+                  </div>
+                </>
+              )}
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">显示小部件</p>
                   <p className="text-xs text-gray-500">在新标签页显示小部件区域</p>
                 </div>
-                <Checkbox checked={showWidgets} onCheckedChange={(v) => setShowWidgets(v as boolean)}>
+                <Checkbox
+                  checked={showWidgets}
+                  onCheckedChange={(v) => setShowWidgets(v as boolean)}
+                >
                   <CheckboxIndicator />
                 </Checkbox>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">背景图片</p>
                   <p className="text-xs text-gray-500">使用 Bing 每日壁纸作为背景</p>
                 </div>
-                <Checkbox checked={backgroundEnabled} onCheckedChange={(v) => setBackgroundEnabled(v as boolean)}>
+                <Checkbox
+                  checked={backgroundEnabled}
+                  onCheckedChange={(v) => setBackgroundEnabled(v as boolean)}
+                >
                   <CheckboxIndicator />
                 </Checkbox>
               </div>
             </div>
           </div>
-          
+
           <div>
             <h3 className="text-sm font-medium text-gray-700 mb-3">
-              {getMessage('settingsAbout', 'About')}
+              {getMessage("settingsAbout", "About")}
             </h3>
             <div className="text-xs text-gray-500">
-              <p>{getMessage('settingsVersion', 'Version')}: {browser.runtime.getManifest().version}</p>
+              <p>
+                {getMessage("settingsVersion", "Version")}: {browser.runtime.getManifest().version}
+              </p>
             </div>
           </div>
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

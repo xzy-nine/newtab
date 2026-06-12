@@ -1,22 +1,22 @@
-import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const Dialog = DialogPrimitive.Root
+const Dialog = DialogPrimitive.Root;
 
-const DialogTrigger = DialogPrimitive.Trigger
+const DialogTrigger = DialogPrimitive.Trigger;
 
-const DialogPortal = DialogPrimitive.Portal
+const DialogPortal = DialogPrimitive.Portal;
 
-const DialogClose = DialogPrimitive.Close
+const DialogClose = DialogPrimitive.Close;
 
-const DialogOverlay = DialogPrimitive.Overlay
+const DialogOverlay = DialogPrimitive.Overlay;
 
-const DialogContent = DialogPrimitive.Content
+const DialogContent = DialogPrimitive.Content;
 
-const DialogTitle = DialogPrimitive.Title
+const DialogTitle = DialogPrimitive.Title;
 
-const DialogDescription = DialogPrimitive.Description
+const DialogDescription = DialogPrimitive.Description;
 
 export {
   Dialog,
@@ -27,4 +27,4 @@ export {
   DialogTitle,
   DialogDescription,
   DialogClose,
-}
+};
