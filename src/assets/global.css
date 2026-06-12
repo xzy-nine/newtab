@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: oklch(0.9789 0.0012 264.54);
+  --color-foreground: oklch(0.1448 0 0);
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.1448 0 0);
+  --color-popover: oklch(1 0 0);
+  --color-popover-foreground: oklch(0.1448 0 0);
+  --color-primary: oklch(0.5333 0.286 264.24);
+  --color-primary-foreground: oklch(1 0 0);
+  --color-secondary: oklch(0.9689 0.001 264.54);
+  --color-secondary-foreground: oklch(0.1448 0 0);
+  --color-muted: oklch(0.9689 0.001 264.54);
+  --color-muted-foreground: oklch(0.5544 0.0407 257.41);
+  --color-accent: oklch(0.9689 0.001 264.54);
+  --color-accent-foreground: oklch(0.1448 0 0);
+  --color-destructive: oklch(0.6368 0.2078 25.33);
+  --color-destructive-foreground: oklch(1 0 0);
+  --color-border: oklch(0.9288 0.0069 255.56);
+  --color-input: oklch(0.9288 0.0069 255.56);
+  --color-ring: oklch(0.5333 0.286 264.24);
+  
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.dark body {
+  --color-background: oklch(0.1448 0 0);
+  --color-foreground: oklch(0.9789 0.0012 264.54);
+  --color-card: oklch(0.1908 0.002 106.59);
+  --color-card-foreground: oklch(0.9789 0.0012 264.54);
+  --color-popover: oklch(0.1908 0.002 106.59);
+  --color-popover-foreground: oklch(0.9789 0.0012 264.54);
+  --color-secondary: oklch(0.2448 0.0036 257.41);
+  --color-secondary-foreground: oklch(0.9789 0.0012 264.54);
+  --color-muted: oklch(0.2448 0.0036 257.41);
+  --color-muted-foreground: oklch(0.6487 0.0411 257.41);
+  --color-accent: oklch(0.2448 0.0036 257.41);
+  --color-accent-foreground: oklch(0.9789 0.0012 264.54);
+  --color-border: oklch(0.2868 0.0051 257.41);
+  --color-input: oklch(0.2448 0.0036 257.41);
+  --color-ring: oklch(0.6333 0.286 264.24);
+}
