@@ -212,6 +212,27 @@ body {
   opacity: 1;
 }
 
+/* 调整大小手柄 */
+.desktop-resize-handle {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 3px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  cursor: nwse-resize;
+  z-index: 5;
+  pointer-events: auto;
+  line-height: 0;
+}
+
+.desktop-item:hover .desktop-resize-handle {
+  opacity: 1;
+}
+
 /* 文件夹选择器 - 层级树 */
 .folder-picker {
   max-height: 260px;

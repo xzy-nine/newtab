@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import {
   useDesktopGrid,
+  checkCollision,
+  findNearestFreePosition,
   type DesktopItem,
   type ShortcutItem,
   type WidgetItemData,
@@ -9,7 +11,7 @@ import { getWidget } from "@/lib/widget-registry";
 import { getMessage } from "@/lib/i18n";
 import { useContextMenu, type ContextMenuItem } from "@/hooks/useContextMenu";
 import { WidgetAddDialog } from "@/components/WidgetSystem";
-import { Plus, GripVertical } from "lucide-react";
+import { Plus, GripVertical, Maximize2 } from "lucide-react";
 import { fetchIconFromSources, getDomain, generateInitialBasedIcon } from "@/lib/icon-manager";
 
 interface DesktopSystemProps {
@@ -107,6 +109,8 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
       updateItemData,
       loadLayout,
       setItemsFromBookmarks,
+      removeItem,
+      scheduleSave,
     } = useDesktopGrid(folderId);
     const [currentPage, setCurrentPage] = useState(0);
     const [showAddWidget, setShowAddWidget] = useState(false);
@@ -117,6 +121,15 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
       origX: number;
       origY: number;
       dragged: boolean;
+    } | null>(null);
+    const resizeState = useRef<{
+      id: string;
+      startX: number;
+      startY: number;
+      origW: number;
+      origH: number;
+      origX: number;
+      origY: number;
     } | null>(null);
     const wasDragged = useRef(false);
     const { show: showCtxMenu, hide: hideCtxMenu, menuRef, state: ctxMenuState } = useContextMenu();
@@ -197,6 +210,34 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
           setItems((prev) => prev.map((it) => (it.id === ds.id ? { ...it, x: nx, y: ny } : it)));
         };
         const handleUp = () => {
+          const ds = dragState.current;
+          if (ds && ds.dragged) {
+            setItems((prev) => {
+              const target = prev.find((it) => it.id === ds.id);
+              if (!target) {
+                scheduleSave(prev, grid);
+                return prev;
+              }
+              const others = prev.filter((it) => it.id !== ds.id);
+              if (others.some((o) => checkCollision(target, o))) {
+                const freePos = findNearestFreePosition(target, prev, grid);
+                if (freePos) {
+                  const next = prev.map((it) =>
+                    it.id === ds.id ? { ...it, x: freePos.x, y: freePos.y } : it,
+                  );
+                  scheduleSave(next, grid);
+                  return next;
+                }
+                const next = prev.map((it) =>
+                  it.id === ds.id ? { ...it, x: ds.origX, y: ds.origY } : it,
+                );
+                scheduleSave(next, grid);
+                return next;
+              }
+              scheduleSave(prev, grid);
+              return prev;
+            });
+          }
           dragState.current = null;
           window.removeEventListener("pointermove", handleMove);
           window.removeEventListener("pointerup", handleUp);
@@ -204,15 +245,15 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
         window.addEventListener("pointermove", handleMove);
         window.addEventListener("pointerup", handleUp);
       },
-      [grid, setItems],
+      [grid, setItems, scheduleSave],
     );
 
     const handleRemoveItem = useCallback(
       (id: string) => {
-        setItems((prev) => prev.filter((it) => it.id !== id));
+        removeItem(id);
         hideCtxMenu();
       },
-      [setItems, hideCtxMenu],
+      [removeItem, hideCtxMenu],
     );
 
     const handleShortcutClick = useCallback((item: ShortcutItem) => {
@@ -220,6 +261,67 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
         chrome.tabs.create({ url: item.url });
       }
     }, []);
+
+    const handleResizeStart = useCallback(
+      (e: React.PointerEvent, item: DesktopItem) => {
+        if (item.type !== "widget") return;
+        e.stopPropagation();
+        e.preventDefault();
+        resizeState.current = {
+          id: item.id,
+          startX: e.clientX,
+          startY: e.clientY,
+          origW: item.w,
+          origH: item.h,
+          origX: item.x,
+          origY: item.y,
+        };
+        const handleMove = (ev: PointerEvent) => {
+          const rs = resizeState.current;
+          if (!rs) return;
+          const cellWithGap = grid.cellSize + grid.gap;
+          const dx = ev.clientX - rs.startX;
+          const dy = ev.clientY - rs.startY;
+          const nw = Math.max(
+            1,
+            Math.min(grid.cols - rs.origX, Math.round((rs.origW * cellWithGap + dx) / cellWithGap)),
+          );
+          const nh = Math.max(
+            1,
+            Math.min(grid.rows - rs.origY, Math.round((rs.origH * cellWithGap + dy) / cellWithGap)),
+          );
+          setItems((prev) => prev.map((it) => (it.id === rs.id ? { ...it, w: nw, h: nh } : it)));
+        };
+        const handleUp = () => {
+          const rs = resizeState.current;
+          if (rs) {
+            setItems((prev) => {
+              const target = prev.find((it) => it.id === rs.id);
+              if (!target) {
+                scheduleSave(prev, grid);
+                return prev;
+              }
+              const others = prev.filter((it) => it.id !== rs.id);
+              if (others.some((o) => checkCollision(target, o))) {
+                const next = prev.map((it) =>
+                  it.id === rs.id ? { ...it, w: rs.origW, h: rs.origH } : it,
+                );
+                scheduleSave(next, grid);
+                return next;
+              }
+              scheduleSave(prev, grid);
+              return prev;
+            });
+          }
+          resizeState.current = null;
+          window.removeEventListener("pointermove", handleMove);
+          window.removeEventListener("pointerup", handleUp);
+        };
+        window.addEventListener("pointermove", handleMove);
+        window.addEventListener("pointerup", handleUp);
+      },
+      [grid, setItems, scheduleSave],
+    );
 
     const handleItemContextMenu = useCallback(
       (e: React.MouseEvent, item: DesktopItem) => {
@@ -268,7 +370,7 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
     const handleAddWidget = useCallback(
       (widgetType: string) => {
         const id = generateId();
-        addItem({
+        const newItem: WidgetItemData = {
           id,
           type: "widget",
           widgetType,
@@ -279,10 +381,16 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
           w: 2,
           h: 2,
           page: currentPage,
-        });
+        };
+        const freePos = findNearestFreePosition(newItem, items, grid);
+        if (freePos) {
+          newItem.x = freePos.x;
+          newItem.y = freePos.y;
+        }
+        addItem(newItem);
         setShowAddWidget(false);
       },
-      [addItem, currentPage],
+      [addItem, currentPage, items, grid],
     );
 
     const containerStyle: React.CSSProperties = {
@@ -379,7 +487,15 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
                   </div>
                 )}
                 {isWidgetItem(item) && (
-                  <WidgetGridItem item={item} onDataChange={handleDataChange} grid={grid} />
+                  <>
+                    <WidgetGridItem item={item} onDataChange={handleDataChange} grid={grid} />
+                    <div
+                      className="desktop-resize-handle"
+                      onPointerDown={(e) => handleResizeStart(e, item)}
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                    </div>
+                  </>
                 )}
                 <div className="desktop-item-drag-handle">
                   <GripVertical className="w-3 h-3 opacity-40" />
@@ -437,7 +553,10 @@ function WidgetGridItem({ item, onDataChange, grid }: WidgetGridItemProps) {
   const cellH = h * grid.cellSize + (h - 1) * grid.gap;
 
   return (
-    <div className="w-full h-full overflow-hidden rounded-xl" style={{ pointerEvents: "auto" }}>
+    <div
+      className="w-full h-full overflow-hidden rounded-xl bg-white/75 dark:bg-[rgba(33,33,33,0.75)] border border-white/20 dark:border-white/5 shadow-md"
+      style={{ pointerEvents: "auto" }}
+    >
       <WidgetComponent
         data={item.data}
         onDataChange={(data) => onDataChange(item.id, data)}
