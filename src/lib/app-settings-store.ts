@@ -20,8 +20,8 @@ interface AppSettingsStore extends AppSettings {
   setBackgroundEnabled: (enabled: boolean) => void;
   setBgType: (type: AppSettings["bgType"]) => void;
   setCustomImage: (image: string | null) => void;
-  setBackgroundBlur: (blur: number) => void;
-  setBackgroundDark: (dark: number) => void;
+  setGlassOpacity: (opacity: number) => void;
+  setGlassBlur: (blur: number) => void;
   setAiEnabled: (enabled: boolean) => void;
   setAiProviders: (providers: AppSettings["aiProviders"]) => void;
   setAiCurrentProviderIndex: (index: number) => void;
@@ -100,13 +100,13 @@ export const useAppSettings = create<AppSettingsStore>((set, get) => ({
     persistAppSettings(get());
   },
 
-  setBackgroundBlur: (backgroundBlur) => {
-    set({ backgroundBlur });
+  setGlassOpacity: (glassOpacity) => {
+    set({ glassOpacity });
     persistAppSettings(get());
   },
 
-  setBackgroundDark: (backgroundDark) => {
-    set({ backgroundDark });
+  setGlassBlur: (glassBlur) => {
+    set({ glassBlur });
     persistAppSettings(get());
   },
 

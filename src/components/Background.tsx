@@ -12,8 +12,7 @@ function preloadImage(url: string): Promise<boolean> {
 }
 
 export function Background() {
-  const { backgroundEnabled, bgType, customImage, backgroundBlur, backgroundDark } =
-    useAppSettings();
+  const { backgroundEnabled, bgType, customImage } = useAppSettings();
 
   const bgUrl = useMemo(() => {
     if (bgType === "custom" && customImage) return customImage;
@@ -58,15 +57,6 @@ export function Background() {
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
               imageLoaded ? "opacity-100" : "opacity-0"
             }`}
-            style={{
-              filter: backgroundBlur > 0 ? `blur(${backgroundBlur}px)` : undefined,
-            }}
-          />
-          <div
-            className="absolute inset-0 transition-colors duration-500"
-            style={{
-              backgroundColor: `rgba(0, 0, 0, ${backgroundDark})`,
-            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/50" />
         </>

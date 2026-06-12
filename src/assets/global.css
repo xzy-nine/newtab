@@ -31,10 +31,89 @@
   --radius-xl: 0.75rem;
 }
 
+/* 玻璃效果 */
+.xb-glass {
+  backdrop-filter: blur(var(--xb-glass-blur));
+  -webkit-backdrop-filter: blur(var(--xb-glass-blur));
+}
+
+.xb-glass-card {
+  background: color-mix(
+    in oklch,
+    var(--color-background) calc(100% - (100% - var(--xb-glass-opacity))),
+    transparent
+  );
+  backdrop-filter: blur(var(--xb-glass-blur));
+  -webkit-backdrop-filter: blur(var(--xb-glass-blur));
+  border: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+}
+
+.xb-glass-popover {
+  background: color-mix(
+    in oklch,
+    var(--color-popover) calc(100% - (100% - var(--xb-glass-opacity))),
+    transparent
+  );
+  backdrop-filter: blur(var(--xb-glass-blur));
+  -webkit-backdrop-filter: blur(var(--xb-glass-blur));
+  border: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+}
+
 html {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* 玻璃效果 CSS 变量默认值 */
+  --xb-glass-opacity: 80%;
+  --xb-glass-blur: 12px;
+}
+
+/* data-glass 属性选择器 - 浮动组件玻璃效果 */
+[data-glass] [data-slot="dialog-content"] {
+  background-color: color-mix(
+    in srgb,
+    var(--color-background) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--xb-glass-blur));
+  -webkit-backdrop-filter: blur(var(--xb-glass-blur));
+  border-color: color-mix(
+    in srgb,
+    var(--color-border) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+}
+
+[data-glass] [data-slot="dialog-overlay"] {
+  background-color: color-mix(
+    in srgb,
+    black calc((1 - var(--xb-glass-opacity)) * 60% + var(--xb-glass-opacity) * 30%),
+    transparent
+  );
+}
+
+[data-glass] [data-slot="select-content"] {
+  background-color: color-mix(
+    in srgb,
+    var(--color-popover) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--xb-glass-blur));
+  -webkit-backdrop-filter: blur(var(--xb-glass-blur));
+  border-color: color-mix(
+    in srgb,
+    var(--color-border) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+}
+
+[data-glass] .xb-glass-popover {
+  background-color: color-mix(
+    in srgb,
+    var(--color-popover) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
 }
 
 body {
@@ -43,9 +122,12 @@ body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
+  transition:
+    background-color 300ms ease,
+    color 300ms ease;
 }
 
-.dark body {
+html.dark {
   --color-background: oklch(0.1448 0 0);
   --color-foreground: oklch(0.9789 0.0012 264.54);
   --color-card: oklch(0.1908 0.002 106.59);

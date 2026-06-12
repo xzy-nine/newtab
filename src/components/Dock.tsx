@@ -41,13 +41,25 @@ export function Dock({
         )}
 
         <div className="dock-right">
-          <button className="dock-btn" title="切换主题" onClick={handleToggleTheme}>
+          <button
+            className="dock-btn active:scale-90 transition-all duration-150"
+            title="切换主题"
+            onClick={handleToggleTheme}
+          >
             {isDark ? <Sun className="dock-icon" /> : <Moon className="dock-icon" />}
           </button>
-          <button className="dock-btn" title="更换背景" onClick={onRefreshBackground}>
+          <button
+            className="dock-btn active:scale-90 transition-all duration-150"
+            title="更换背景"
+            onClick={onRefreshBackground}
+          >
             <RefreshCw className="dock-icon" />
           </button>
-          <button className="dock-btn" title="设置" onClick={onOpenSettings}>
+          <button
+            className="dock-btn active:scale-90 transition-all duration-150"
+            title="设置"
+            onClick={onOpenSettings}
+          >
             <Settings className="dock-icon" />
           </button>
         </div>

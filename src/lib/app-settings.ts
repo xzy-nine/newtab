@@ -32,8 +32,8 @@ export interface AppSettings {
   backgroundEnabled: boolean;
   bgType: BgType;
   customImage: string | null;
-  backgroundBlur: number;
-  backgroundDark: number;
+  glassOpacity: number;
+  glassBlur: number;
   aiEnabled: boolean;
   aiProviders: AIProvider[];
   aiCurrentProviderIndex: number;
@@ -80,8 +80,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   backgroundEnabled: true,
   bgType: "bing",
   customImage: null,
-  backgroundBlur: 0,
-  backgroundDark: 0,
+  glassOpacity: 80,
+  glassBlur: 12,
   aiEnabled: false,
   aiProviders: DEFAULT_AI_PROVIDERS,
   aiCurrentProviderIndex: 0,
@@ -180,14 +180,18 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       typeof candidate.customImage === "string" || candidate.customImage === null
         ? candidate.customImage
         : DEFAULT_APP_SETTINGS.customImage,
-    backgroundBlur:
-      typeof candidate.backgroundBlur === "number"
-        ? candidate.backgroundBlur
-        : DEFAULT_APP_SETTINGS.backgroundBlur,
-    backgroundDark:
-      typeof candidate.backgroundDark === "number"
-        ? candidate.backgroundDark
-        : DEFAULT_APP_SETTINGS.backgroundDark,
+    glassOpacity:
+      typeof candidate.glassOpacity === "number" &&
+      candidate.glassOpacity >= 0 &&
+      candidate.glassOpacity <= 100
+        ? candidate.glassOpacity
+        : DEFAULT_APP_SETTINGS.glassOpacity,
+    glassBlur:
+      typeof candidate.glassBlur === "number" &&
+      candidate.glassBlur >= 0 &&
+      candidate.glassBlur <= 20
+        ? candidate.glassBlur
+        : DEFAULT_APP_SETTINGS.glassBlur,
     aiEnabled:
       typeof candidate.aiEnabled === "boolean"
         ? candidate.aiEnabled

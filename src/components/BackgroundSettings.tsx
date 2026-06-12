@@ -36,12 +36,12 @@ export function BackgroundSettings() {
   const {
     bgType,
     customImage,
-    backgroundBlur,
-    backgroundDark,
+    glassOpacity,
+    glassBlur,
     setBgType,
     setCustomImage,
-    setBackgroundBlur,
-    setBackgroundDark,
+    setGlassOpacity,
+    setGlassBlur,
     backgroundEnabled,
     setBackgroundEnabled,
   } = useAppSettings();
@@ -137,33 +137,32 @@ export function BackgroundSettings() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm">{getMessage("blurEffect", "模糊效果")}</p>
-              <span className="text-xs text-gray-500 w-8 text-right">{backgroundBlur}px</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={20}
-              value={backgroundBlur}
-              onChange={(e) => setBackgroundBlur(Number(e.target.value))}
-              className="w-full"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm">{getMessage("darkEffect", "暗化效果")}</p>
-              <span className="text-xs text-gray-500 w-8 text-right">
-                {Math.round(backgroundDark * 100)}%
-              </span>
+              <p className="text-sm">{getMessage("glassOpacity", "玻璃透明度")}</p>
+              <span className="text-xs text-gray-500 w-8 text-right">{glassOpacity}%</span>
             </div>
             <input
               type="range"
               min={0}
               max={100}
-              value={Math.round(backgroundDark * 100)}
-              onChange={(e) => setBackgroundDark(Number(e.target.value) / 100)}
-              className="w-full"
+              step={5}
+              value={glassOpacity}
+              onChange={(e) => setGlassOpacity(Number(e.target.value))}
+              className="w-full accent-blue-500"
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm">{getMessage("glassBlur", "玻璃模糊")}</p>
+              <span className="text-xs text-gray-500 w-8 text-right">{glassBlur}px</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={20}
+              step={1}
+              value={glassBlur}
+              onChange={(e) => setGlassBlur(Number(e.target.value))}
+              className="w-full accent-blue-500"
             />
           </div>
         </>

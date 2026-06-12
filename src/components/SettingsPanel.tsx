@@ -25,7 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox, CheckboxIndicator } from "@/components/ui/checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { useAppSettings } from "@/lib/app-settings-store";
 import { BackgroundSettings } from "@/components/BackgroundSettings";
 import {
@@ -149,16 +151,13 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
   );
 }
 
-function SettingCard({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function SettingCard({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-lg border border-border bg-card p-4 hover:shadow-sm transition-shadow ${className}`}
+      className={cn(
+        "rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-sm",
+        className,
+      )}
     >
       {children}
     </div>
@@ -183,6 +182,35 @@ function SettingRow({
         )}
       </div>
       <div className="flex-shrink-0">{control}</div>
+    </div>
+  );
+}
+
+function OptionPills({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="bg-muted inline-flex rounded-lg p-0.5">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          type="button"
+          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            value === opt.value
+              ? "bg-background text-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -214,19 +242,15 @@ function GeneralSettings() {
             label="主题模式"
             description="选择外观主题"
             control={
-              <Select
+              <OptionPills
                 value={theme}
-                onValueChange={(v) => setTheme(v as "system" | "light" | "dark")}
-              >
-                <SelectTrigger className="w-28">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="system">系统</SelectItem>
-                  <SelectItem value="light">浅色</SelectItem>
-                  <SelectItem value="dark">深色</SelectItem>
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "system", label: "系统" },
+                  { value: "light", label: "浅色" },
+                  { value: "dark", label: "深色" },
+                ]}
+                onChange={(v) => setTheme(v as "system" | "light" | "dark")}
+              />
             }
           />
           <SettingRow
@@ -254,21 +278,17 @@ function GeneralSettings() {
             label="显示书签"
             description="在新标签页显示书签文件夹"
             control={
-              <Checkbox
+              <Switch
                 checked={showBookmarks}
                 onCheckedChange={(v) => setShowBookmarks(v as boolean)}
-              >
-                <CheckboxIndicator />
-              </Checkbox>
+              />
             }
           />
           <SettingRow
             label="显示时钟"
             description="在新标签页显示时间和日期"
             control={
-              <Checkbox checked={showClock} onCheckedChange={(v) => setShowClock(v as boolean)}>
-                <CheckboxIndicator />
-              </Checkbox>
+              <Switch checked={showClock} onCheckedChange={(v) => setShowClock(v as boolean)} />
             }
           />
           {showClock && (
@@ -279,9 +299,7 @@ function GeneralSettings() {
                   <Checkbox
                     checked={use12hClock}
                     onCheckedChange={(v) => setUse12hClock(v as boolean)}
-                  >
-                    <CheckboxIndicator />
-                  </Checkbox>
+                  />
                 }
               />
               <SettingRow
@@ -290,9 +308,7 @@ function GeneralSettings() {
                   <Checkbox
                     checked={showSeconds}
                     onCheckedChange={(v) => setShowSeconds(v as boolean)}
-                  >
-                    <CheckboxIndicator />
-                  </Checkbox>
+                  />
                 }
               />
             </div>
@@ -301,9 +317,7 @@ function GeneralSettings() {
             label="显示小部件"
             description="在新标签页显示小部件区域"
             control={
-              <Checkbox checked={showWidgets} onCheckedChange={(v) => setShowWidgets(v as boolean)}>
-                <CheckboxIndicator />
-              </Checkbox>
+              <Switch checked={showWidgets} onCheckedChange={(v) => setShowWidgets(v as boolean)} />
             }
           />
         </SettingCard>
@@ -519,9 +533,7 @@ function AISettings() {
             label="启用 AI 助手"
             description="在搜索框旁显示 AI 助手按钮"
             control={
-              <Checkbox checked={aiEnabled} onCheckedChange={(v) => setAiEnabled(v as boolean)}>
-                <CheckboxIndicator />
-              </Checkbox>
+              <Switch checked={aiEnabled} onCheckedChange={(v) => setAiEnabled(v as boolean)} />
             }
           />
         </SettingCard>

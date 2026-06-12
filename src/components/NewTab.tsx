@@ -14,7 +14,7 @@ import { getMessage } from "@/lib/i18n";
 import { Folder, ChevronRight, ChevronDown, Pin, PinOff } from "lucide-react";
 
 export function NewTab() {
-  const { hydrate, showClock, showWidgets } = useAppSettings();
+  const { hydrate, showClock, showWidgets, glassOpacity, glassBlur } = useAppSettings();
   useTheme();
   useWidgetRegistration();
 
@@ -48,6 +48,19 @@ export function NewTab() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
+
+  // 玻璃效果同步：将设置值应用到 documentElement 的 CSS 变量和 data 属性
+  useEffect(() => {
+    const el = document.documentElement;
+    const isGlassActive = glassBlur > 0 || glassOpacity < 100;
+    if (isGlassActive) {
+      el.setAttribute("data-glass", "");
+    } else {
+      el.removeAttribute("data-glass");
+    }
+    el.style.setProperty("--xb-glass-opacity", `${glassOpacity / 100}`);
+    el.style.setProperty("--xb-glass-blur", `${glassBlur}px`);
+  }, [glassOpacity, glassBlur]);
 
   const handleFolderSelect = useCallback(
     async (fid: string) => {
@@ -133,8 +146,15 @@ export function NewTab() {
 
               {showFolderPicker && (
                 <>
-                  <div className="fixed inset-0 z-30" onClick={() => setShowFolderPicker(false)} />
-                  <div className="absolute left-0 top-full z-40 mt-1 w-72 max-h-[70vh] overflow-y-auto rounded-xl border border-white/20 bg-black/60 backdrop-blur-2xl shadow-2xl">
+                  <div
+                    className="fixed inset-0"
+                    style={{ zIndex: 50 }}
+                    onClick={() => setShowFolderPicker(false)}
+                  />
+                  <div
+                    className="absolute left-0 top-full mt-1 w-72 max-h-[70vh] overflow-y-auto rounded-xl xb-glass-popover shadow-2xl"
+                    style={{ zIndex: 51 }}
+                  >
                     <FolderTreeView
                       nodes={folderTree}
                       currentFolder={currentFolder}
