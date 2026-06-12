@@ -27,6 +27,7 @@ on:
       - 'vitest.config.ts'
       - 'tsconfig.json'
       - 'wxt.config.ts'
+  workflow_call:
 
 concurrency:
   group: test-${{ github.ref }}
