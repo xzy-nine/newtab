@@ -11,7 +11,7 @@ import { NotificationCenter } from "@/components/NotificationCenter";
 import { Dock } from "@/components/Dock";
 import { useWidgetRegistration } from "@/components/WidgetSystem";
 import { getMessage } from "@/lib/i18n";
-import { Folder, ChevronRight, ChevronDown } from "lucide-react";
+import { Folder, ChevronRight, ChevronDown, Settings } from "lucide-react";
 
 export function NewTab() {
   const { hydrate, showClock, showWidgets } = useAppSettings();
@@ -21,10 +21,10 @@ export function NewTab() {
   const { currentFolder, folders, folderTree, expandedFolders, toggleFolder, selectFolder } =
     useBookmarkFolders();
   const desktopRef = useRef<DesktopSystemHandle>(null);
-  const settingsRef = useRef<{ open: () => void }>(null);
 
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     hydrate();
@@ -66,6 +66,14 @@ export function NewTab() {
     <div className="min-h-screen relative flex flex-col">
       <NotificationCenter />
       <Background />
+
+      <button
+        onClick={() => setSettingsOpen(true)}
+        className="fixed top-4 right-4 z-50 flex items-center justify-center w-10 h-10 rounded-md bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white transition-colors"
+        title="设置"
+      >
+        <Settings className="w-5 h-5" />
+      </button>
 
       <div className="relative z-10 flex-1 flex flex-col">
         <header className="flex flex-col items-center justify-center pt-12 pb-4">
@@ -118,12 +126,12 @@ export function NewTab() {
 
       <Dock
         isDark={isDark}
-        onOpenSettings={() => settingsRef.current?.open()}
+        onOpenSettings={() => setSettingsOpen(true)}
         onAddWidget={() => desktopRef.current?.openAddWidget()}
         onRefreshBackground={handleRefreshBackground}
       />
 
-      <SettingsPanel ref={settingsRef} />
+      <SettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

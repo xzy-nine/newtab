@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Settings,
   Image,
@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/select";
 import { Checkbox, CheckboxIndicator } from "@/components/ui/checkbox";
 import { useAppSettings } from "@/lib/app-settings-store";
-import { getMessage } from "@/lib/i18n";
 import { BackgroundSettings } from "@/components/BackgroundSettings";
 import {
   showNotification,
@@ -67,45 +66,40 @@ const CATEGORIES: Category[] = [
   { id: "about", label: "关于", icon: Info },
 ];
 
-export const SettingsPanel = forwardRef<{ open: () => void }>(function SettingsPanel(_, ref) {
-  const [activeCategory, setActiveCategory] = useState<CategoryId>("general");
-  const [open, setOpen] = useState(false);
+interface SettingsPanelProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
 
-  useImperativeHandle(ref, () => ({
-    open: () => setOpen(true),
-  }));
+export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
+  const [activeCategory, setActiveCategory] = useState<CategoryId>("general");
+  const settingsMainRef = useRef<HTMLDivElement>(null);
+  const [version, setVersion] = useState("");
+
+  useEffect(() => {
+    if (typeof browser !== "undefined" && browser.runtime?.getManifest) {
+      setVersion(browser.runtime.getManifest().version);
+    }
+  }, []);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="fixed top-4 right-4 z-50 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white"
-        >
-          <Settings className="w-5 h-5" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl w-[90vw] h-[80vh] max-h-[700px] p-0 gap-0 overflow-hidden rounded-xl">
-        <div className="flex h-full">
-          <div className="w-48 flex-shrink-0 bg-muted/30 border-r border-border overflow-y-auto">
-            <div className="p-4 border-b border-border">
-              <DialogTitle className="text-lg font-semibold">
-                {getMessage("settingsTitle", "设置")}
-              </DialogTitle>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex h-[560px] max-w-[680px] flex-col gap-0 overflow-hidden p-0 rounded-xl">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <aside className="w-[180px] shrink-0 overflow-y-auto border-r border-border p-3">
+            <div className="mb-3 px-3 pt-1 pb-2 border-b border-border">
+              <DialogTitle className="text-base font-semibold tracking-tight">设置</DialogTitle>
             </div>
-            <nav className="p-2 space-y-1">
+            <nav className="flex flex-col gap-0.5">
               {CATEGORIES.map((cat) => {
                 const Icon = cat.icon;
                 return (
                   <button
                     key={cat.id}
+                    type="button"
                     onClick={() => setActiveCategory(cat.id)}
-                    className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                      activeCategory === cat.id
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                    }`}
+                    data-active={activeCategory === cat.id || undefined}
+                    className="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent/50 data-[active]:bg-primary data-[active]:text-primary-foreground data-[active]:font-medium"
                   >
                     <Icon className="w-4 h-4" />
                     <span>{cat.label}</span>
@@ -113,8 +107,9 @@ export const SettingsPanel = forwardRef<{ open: () => void }>(function SettingsP
                 );
               })}
             </nav>
-          </div>
-          <div className="flex-1 overflow-y-auto p-6">
+          </aside>
+
+          <main ref={settingsMainRef} className="flex-1 overflow-y-auto p-6">
             {activeCategory === "general" && <GeneralSettings />}
             {activeCategory === "background" && <BackgroundSettings />}
             {activeCategory === "notifications" && <NotificationSettings />}
@@ -123,12 +118,37 @@ export const SettingsPanel = forwardRef<{ open: () => void }>(function SettingsP
             {activeCategory === "widgets" && <WidgetListSettings />}
             {activeCategory === "sync" && <SyncSettings />}
             {activeCategory === "about" && <AboutSection />}
-          </div>
+          </main>
         </div>
+
+        {version && (
+          <div className="flex shrink-0 items-center justify-between border-t border-border px-6 py-3">
+            <span className="text-muted-foreground font-mono text-[11px]">newtab v{version}</span>
+            <div className="flex items-center gap-4">
+              <a
+                href="https://github.com/xzy-nine/newtab"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground text-[11px] transition-colors"
+              >
+                GitHub
+              </a>
+              <a
+                href="https://microsoftedge.microsoft.com/addons/detail/lpdhbhkcbnhldcpcbocplhgeooabhbme"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground text-[11px] transition-colors"
+              >
+                Edge 商店
+              </a>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
-});
+}
+
 function SettingCard({
   children,
   className = "",
@@ -155,10 +175,12 @@ function SettingRow({
   control: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">{label}</p>
-        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+    <div className="flex items-center justify-between gap-4 py-[11px] first:pt-0 last:pb-0">
+      <div className="flex-1 min-w-0 max-w-[65%]">
+        <p className="text-sm font-medium leading-snug">{label}</p>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+        )}
       </div>
       <div className="flex-shrink-0">{control}</div>
     </div>
@@ -187,7 +209,7 @@ function GeneralSettings() {
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold mb-4">外观与显示</h3>
-        <SettingCard className="space-y-1">
+        <SettingCard className="divide-y divide-border">
           <SettingRow
             label="主题模式"
             description="选择外观主题"
@@ -227,7 +249,7 @@ function GeneralSettings() {
 
       <div>
         <h3 className="text-base font-semibold mb-4">内容显示</h3>
-        <SettingCard className="space-y-1">
+        <SettingCard className="divide-y divide-border">
           <SettingRow
             label="显示书签"
             description="在新标签页显示书签文件夹"
@@ -979,7 +1001,7 @@ function SyncSettings() {
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold mb-4">同步模式</h3>
-        <SettingCard>
+        <SettingCard className="divide-y divide-border">
           <SettingRow
             label="同步模式"
             description="选择数据同步方式"
@@ -1073,42 +1095,40 @@ function AboutSection() {
     <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold mb-4">关于</h3>
-        <SettingCard>
-          <div className="space-y-3">
-            <SettingRow
-              label="版本号"
-              control={
-                <span className="text-sm font-mono text-muted-foreground">{manifest.version}</span>
-              }
-            />
-            <SettingRow
-              label="GitHub 开源地址"
-              control={
-                <button
-                  onClick={() => window.open("https://github.com/xzy-nine/newtab", "_blank")}
-                  className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
-                >
-                  GitHub <ExternalLink className="w-3 h-3" />
-                </button>
-              }
-            />
-            <SettingRow
-              label="Edge 商店地址"
-              control={
-                <button
-                  onClick={() =>
-                    window.open(
-                      "https://microsoftedge.microsoft.com/addons/detail/lpdhbhkcbnhldcpcbocplhgeooabhbme",
-                      "_blank",
-                    )
-                  }
-                  className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
-                >
-                  商店 <ExternalLink className="w-3 h-3" />
-                </button>
-              }
-            />
-          </div>
+        <SettingCard className="divide-y divide-border">
+          <SettingRow
+            label="版本号"
+            control={
+              <span className="text-sm font-mono text-muted-foreground">{manifest.version}</span>
+            }
+          />
+          <SettingRow
+            label="GitHub 开源地址"
+            control={
+              <button
+                onClick={() => window.open("https://github.com/xzy-nine/newtab", "_blank")}
+                className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
+              >
+                GitHub <ExternalLink className="w-3 h-3" />
+              </button>
+            }
+          />
+          <SettingRow
+            label="Edge 商店地址"
+            control={
+              <button
+                onClick={() =>
+                  window.open(
+                    "https://microsoftedge.microsoft.com/addons/detail/lpdhbhkcbnhldcpcbocplhgeooabhbme",
+                    "_blank",
+                  )
+                }
+                className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 transition-colors"
+              >
+                商店 <ExternalLink className="w-3 h-3" />
+              </button>
+            }
+          />
         </SettingCard>
       </div>
     </div>
