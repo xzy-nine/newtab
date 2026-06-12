@@ -1,8 +1,13 @@
 {
   "name": "newtab",
-  "version": "1.5.8",
+  "version": "1.0.0",
   "description": "Custom new tab extension",
-  "keywords": ["browser", "chrome", "extension", "newtab"],
+  "keywords": [
+    "browser",
+    "chrome",
+    "extension",
+    "newtab"
+  ],
   "homepage": "https://github.com/xzy-nine/newtab",
   "bugs": {
     "url": "https://github.com/xzy-nine/newtab/issues"
