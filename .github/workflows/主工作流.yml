@@ -57,10 +57,26 @@ jobs:
       contents: write
       actions: read
 
+  publish-to-edge:
+    name: 发布到Edge商店
+    needs: [version-check-and-build, release-management]
+    if: |
+      needs.version-check-and-build.outputs.is_new_version == 'true' && 
+      needs.version-check-and-build.outputs.tag_exists == 'false' &&
+      needs.release-management.result == 'success'
+    uses: ./.github/workflows/发布到Edge商店.yml
+    with:
+      version: ${{ needs.version-check-and-build.outputs.version }}
+      build-path: ${{ needs.version-check-and-build.outputs.build_path }}
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+
   workflow-summary:
     name: 工作流总结
     runs-on: ubuntu-latest
-    needs: [version-check-and-build, release-management, ai-changelog-generation]
+    needs: [version-check-and-build, release-management, ai-changelog-generation, publish-to-edge]
     if: always()
     steps:
     - name: 生成工作流执行总结
@@ -68,11 +84,12 @@ jobs:
         echo "## 🚀 主工作流执行总结" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 执行状态" >> $GITHUB_STEP_SUMMARY
-        echo "| 作业 | 状态 |,结果 |" >> $GITHUB_STEP_SUMMARY
+        echo "| 作业 | 状态 | 结果 |" >> $GITHUB_STEP_SUMMARY
         echo "|------|------|------|" >> $GITHUB_STEP_SUMMARY
         echo "| 版本检查与构建 | ${{ needs.version-check-and-build.result }} | ${{ needs.version-check-and-build.result == 'success' && '✅ 成功' || '❌ 失败' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| 发布管理 | ${{ needs.release-management.result }} | ${{ needs.release-management.result == 'success' && '✅ 成功' || needs.release-management.result == 'skipped' && '⏭️ 跳过' || '❌ 失败' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| AI变更日志生成 | ${{ needs.ai-changelog-generation.result }} | ${{ needs.ai-changelog-generation.result == 'success' && '✅ 成功' || needs.ai-changelog-generation.result == 'skipped' && '⏭️ 跳过' || '❌ 失败' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Edge商店发布 | ${{ needs.publish-to-edge.result }} | ${{ needs.publish-to-edge.result == 'success' && '✅ 成功' || needs.publish-to-edge.result == 'skipped' && '⏭️ 跳过' || '❌ 失败' }} |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
         if [ "${{ needs.version-check-and-build.outputs.is_new_version }}" == "true" ]; then
@@ -100,6 +117,13 @@ jobs:
               echo "- ✅ AI变更日志生成成功" >> $GITHUB_STEP_SUMMARY
             else
               echo "- ⚠️ AI变更日志生成失败或跳过" >> $GITHUB_STEP_SUMMARY
+            fi
+            if [ "${{ needs.publish-to-edge.result }}" == "success" ]; then
+              echo "- ✅ Edge商店发布成功" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.publish-to-edge.result }}" == "skipped" ]; then
+              echo "- ⏭️ Edge商店发布跳过" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- ❌ Edge商店发布失败" >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "❌ **发布失败！**" >> $GITHUB_STEP_SUMMARY

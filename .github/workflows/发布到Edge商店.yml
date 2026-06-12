@@ -1,0 +1,99 @@
+name: 发布到Edge商店
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "版本号"
+        required: true
+        type: string
+      build-path:
+        description: "构建包路径"
+        required: true
+        type: string
+
+jobs:
+  publish-to-edge:
+    name: 发布到Microsoft Edge Add-ons
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 下载构建工件
+        uses: actions/download-artifact@v4
+        with:
+          name: newtab-构建包-${{ inputs.version }}
+          path: ./artifacts
+
+      - name: 验证构建包
+        id: verify-build-package
+        run: |
+          echo "📁 工件目录内容:"
+          find ./artifacts -type f -ls
+
+          BUILD_FILE=$(find ./artifacts -name "*.zip" | head -1)
+
+          if [ -z "$BUILD_FILE" ]; then
+            echo "❌ 未找到构建包"
+            exit 1
+          fi
+
+          FILE_SIZE=$(ls -lh "$BUILD_FILE" | awk '{print $5}')
+          echo "✅ 构建包验证成功: $BUILD_FILE (大小: $FILE_SIZE)"
+          echo "BUILD_FILE=$BUILD_FILE" >> $GITHUB_ENV
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安装 edge-webstore-upload
+        run: npm install -g edge-webstore-upload
+
+      - name: 提交到 Edge 商店
+        env:
+          PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
+          CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          API_KEY: ${{ secrets.EDGE_API_KEY }}
+        run: |
+          echo "🚀 开始提交到 Microsoft Edge Add-ons..."
+
+          # 检查必要的密钥
+          if [ -z "$PRODUCT_ID" ]; then
+            echo "❌ EDGE_PRODUCT_ID 未配置"
+            exit 1
+          fi
+          if [ -z "$CLIENT_ID" ]; then
+            echo "❌ EDGE_CLIENT_ID 未配置"
+            exit 1
+          fi
+          if [ -z "$API_KEY" ]; then
+            echo "❌ EDGE_API_KEY 未配置"
+            exit 1
+          fi
+
+          echo "📦 扩展包路径: $BUILD_FILE"
+          echo "📦 Product ID: $PRODUCT_ID"
+
+          # edge-webstore-upload 使用 npx 调用
+          # workflow 命令: 上传 -> 等待 -> 发布
+          npx edge-webstore-upload workflow "$BUILD_FILE" \
+            --product-id "$PRODUCT_ID" \
+            --client-id "$CLIENT_ID" \
+            --api-key "$API_KEY" \
+            --notes "Version ${{ inputs.version }}" \
+            --retry-limit 30 \
+            --retry-delay 10
+
+          echo "✅ Edge 商店提交成功"
+
+      - name: 输出结果
+        run: |
+          echo "## 🚀 Edge商店发布结果" >> $GITHUB_STEP_SUMMARY
+          echo "| 项目 | 值 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| 版本 | \`${{ inputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 构建包 | \`${{ env.BUILD_FILE }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 状态 | ✅ 提交成功 |" >> $GITHUB_STEP_SUMMARY
