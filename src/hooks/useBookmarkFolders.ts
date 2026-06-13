@@ -16,6 +16,7 @@ export interface FolderNode {
 }
 
 const EXPANDED_KEY = "newtab:expandedFolders";
+const LEGACY_EXPANDED_KEY = "expandedFolders";
 
 function loadExpanded(): Set<string> {
   try {
@@ -28,6 +29,21 @@ function loadExpanded(): Set<string> {
 
 function saveExpanded(set: Set<string>) {
   localStorage.setItem(EXPANDED_KEY, JSON.stringify([...set]));
+}
+
+async function migrateLegacyExpanded(): Promise<Set<string> | null> {
+  try {
+    const result = await chrome.storage.local.get(LEGACY_EXPANDED_KEY);
+    const legacy = result[LEGACY_EXPANDED_KEY];
+    if (Array.isArray(legacy) && legacy.length > 0) {
+      const expanded = new Set<string>(legacy.filter((id): id is string => typeof id === "string"));
+      if (expanded.size > 0) {
+        saveExpanded(expanded);
+        return expanded;
+      }
+    }
+  } catch {}
+  return null;
 }
 
 function buildFolderTree(nodes: BNode[]): FolderNode[] {
@@ -82,12 +98,26 @@ export function useBookmarkFolders() {
         setFolderTree(treeData);
         setFolders(flattenFolderTree(treeData));
 
-        const saved = await chrome.storage.local.get("selectedFolder");
-        const stored = saved.selectedFolder;
+        const saved = await chrome.storage.local.get([
+          "selectedFolder",
+          "folder",
+          LEGACY_EXPANDED_KEY,
+        ]);
+        const stored = saved.selectedFolder || saved.folder;
         setCurrentFolder(typeof stored === "string" ? stored : null);
 
         const pinned = await chrome.storage.local.get("pinnedFolders");
         setPinnedFolders((pinned.pinnedFolders as string[]) || []);
+
+        try {
+          const legacyRaw = localStorage.getItem(EXPANDED_KEY);
+          if (!legacyRaw || JSON.parse(legacyRaw).length === 0) {
+            const legacyExpanded = await migrateLegacyExpanded();
+            if (legacyExpanded) {
+              setExpandedFolders(legacyExpanded);
+            }
+          }
+        } catch {}
       } catch (e) {
         console.error("加载书签失败:", e);
       }

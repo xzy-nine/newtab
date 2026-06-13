@@ -34,13 +34,48 @@ interface WidgetStore {
 
 const WIDGETS_KEY = "widgetsData";
 
+const LEGACY_WIDGETS_KEY = "widgets";
+
+function normalizeLegacyWidgetContainer(raw: unknown): WidgetContainerData | null {
+  if (!raw || typeof raw !== "object") return null;
+  const c = raw as Record<string, unknown>;
+  if (typeof c.id !== "string") return null;
+  const items: WidgetItemData[] = Array.isArray(c.items)
+    ? c.items.filter((it: unknown): it is WidgetItemData => {
+        if (!it || typeof it !== "object") return false;
+        const i = it as Record<string, unknown>;
+        return typeof i.type === "string" && typeof i.id === "string";
+      })
+    : [];
+  return {
+    id: c.id,
+    folderId: typeof c.folderId === "string" ? c.folderId : undefined,
+    fixed: typeof c.fixed === "boolean" ? c.fixed : false,
+    activeIndex: typeof c.activeIndex === "number" ? c.activeIndex : 0,
+    items,
+    x: typeof c.x === "number" ? c.x : 0,
+    y: typeof c.y === "number" ? c.y : 0,
+    width: typeof c.width === "number" ? c.width : 1,
+    height: typeof c.height === "number" ? c.height : 1,
+  };
+}
+
 export const useWidgetStore = create<WidgetStore>((set, get) => ({
   containers: [],
 
   hydrate: async (folderId?: string) => {
     try {
-      const result = (await chrome.storage.local.get(WIDGETS_KEY)) as Record<string, unknown>;
-      const raw = result[WIDGETS_KEY];
+      const result = (await chrome.storage.local.get([WIDGETS_KEY, LEGACY_WIDGETS_KEY])) as Record<
+        string,
+        unknown
+      >;
+      let raw = result[WIDGETS_KEY];
+      if (!Array.isArray(raw)) {
+        const legacyRaw = result[LEGACY_WIDGETS_KEY];
+        if (Array.isArray(legacyRaw)) {
+          raw = legacyRaw.map(normalizeLegacyWidgetContainer).filter(Boolean);
+        }
+      }
       const allContainers: WidgetContainerData[] = Array.isArray(raw)
         ? (raw as WidgetContainerData[])
         : [];

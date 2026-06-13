@@ -107,6 +107,7 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
       removeItem,
       scheduleSave,
       moveItemIndex,
+      tryMigrateLegacyWidgets,
     } = useDesktopGrid(folderId);
     const [currentPage, setCurrentPage] = useState(0);
     const [showAddWidget, setShowAddWidget] = useState(false);
@@ -147,6 +148,12 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
             setItems(layout.items);
           }
         } else {
+          const legacyWidgets = await tryMigrateLegacyWidgets();
+          if (cancelled) return;
+          if (legacyWidgets && legacyWidgets.length > 0) {
+            setItems(legacyWidgets);
+            return;
+          }
           const bookmarks = await getFolderBookmarks(folderId);
           if (cancelled) return;
           if (bookmarks.length > 0) {
@@ -158,7 +165,7 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
       return () => {
         cancelled = true;
       };
-    }, [folderId, loadLayout, setItems, setItemsFromBookmarks]);
+    }, [folderId, loadLayout, setItems, setItemsFromBookmarks, tryMigrateLegacyWidgets]);
 
     useEffect(() => {
       const el = containerRef.current;

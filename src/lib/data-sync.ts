@@ -1,5 +1,10 @@
 import { getMessage } from "@/lib/i18n";
-import { type AppSettings, APP_SETTINGS_STORAGE_KEY, persistAppSettings } from "@/lib/app-settings";
+import {
+  type AppSettings,
+  type BgType,
+  APP_SETTINGS_STORAGE_KEY,
+  persistAppSettings,
+} from "@/lib/app-settings";
 import { useAppSettings } from "@/lib/app-settings-store";
 
 export interface CloudDataInfo {
@@ -50,9 +55,55 @@ function createDataSyncService() {
     await chrome.storage.sync.set({ [APP_SETTINGS_STORAGE_KEY]: dataToSync });
   }
 
+  /**
+   * 尝试从旧版平铺键中读取云端同步数据（兼容 public→src 升级）
+   */
+  async function tryDownloadLegacySyncData(): Promise<Partial<AppSettings> | null> {
+    const legacyKeys = [
+      "language",
+      "theme",
+      "background-type",
+      "background-image",
+      "search-engines",
+      "current-engine-index",
+      "ai-enabled",
+      "clock-format",
+      "clock-show-seconds",
+      "widgets",
+    ];
+    const result = await chrome.storage.sync.get(legacyKeys);
+    const hasAny = legacyKeys.some((k) => result[k] !== undefined);
+    if (!hasAny) return null;
+
+    const legacy: Partial<AppSettings> = {};
+    if (result.language === "zh" || result.language === "en") legacy.language = result.language;
+    if (result.theme === "auto") legacy.theme = "system";
+    else if (result.theme === "light" || result.theme === "dark") legacy.theme = result.theme;
+    if (result["clock-format"] !== undefined) legacy.use12hClock = result["clock-format"] === "12h";
+    if (result["clock-show-seconds"] !== undefined)
+      legacy.showSeconds = result["clock-show-seconds"] === "true";
+    legacy.backgroundEnabled = true;
+    if (
+      result["background-type"] === "bing" ||
+      result["background-type"] === "custom" ||
+      result["background-type"] === "default"
+    ) {
+      legacy.bgType = result["background-type"] as BgType;
+    }
+
+    return legacy;
+  }
+
   async function download(): Promise<void> {
     const result = await chrome.storage.sync.get(APP_SETTINGS_STORAGE_KEY);
-    const cloudData = result[APP_SETTINGS_STORAGE_KEY] as Partial<AppSettings> | undefined;
+    let cloudData = result[APP_SETTINGS_STORAGE_KEY] as Partial<AppSettings> | undefined;
+
+    if (!cloudData || Object.keys(cloudData).length === 0) {
+      const legacyData = await tryDownloadLegacySyncData();
+      if (legacyData) {
+        cloudData = legacyData;
+      }
+    }
 
     if (!cloudData || Object.keys(cloudData).length === 0) {
       throw new Error(getMessage("noCloudData", "云端没有找到数据"));

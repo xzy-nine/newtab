@@ -133,10 +133,13 @@ export function normalizeAppSettings(value: unknown): AppSettings {
 
   const candidate = value as Partial<AppSettings>;
 
+  const rawTheme = candidate.theme || "";
   return {
-    theme: ["system", "light", "dark"].includes(candidate.theme || "")
-      ? candidate.theme!
-      : DEFAULT_APP_SETTINGS.theme,
+    theme: ["system", "light", "dark"].includes(rawTheme)
+      ? (rawTheme as AppTheme)
+      : (rawTheme as string) === "auto"
+        ? "system"
+        : DEFAULT_APP_SETTINGS.theme,
     searchEngines: normalizeSearchEngines(candidate.searchEngines),
     currentEngineIndex:
       typeof candidate.currentEngineIndex === "number" && candidate.currentEngineIndex >= 0
@@ -218,9 +221,174 @@ export function normalizeAppSettings(value: unknown): AppSettings {
   };
 }
 
+/**
+ * 从旧版分散存储键迁移到新版统一存储
+ * 兼容 public/ 升级到 src/ 时的数据继承
+ */
+async function migrateFromLegacyStorage(): Promise<AppSettings> {
+  const legacyKeys = [
+    "bgType",
+    "customImage",
+    "backgroundBlur",
+    "backgroundDark",
+    "lastNonCustomBgType",
+    "clockEnabled",
+    "clockFormat24h",
+    "clockShowSeconds",
+    "searchEngines",
+    "engine",
+    "aiConfig",
+    "desktopLayouts",
+    "expandedFolders",
+    "folder",
+  ];
+  const result = await browser.storage.local.get(legacyKeys);
+
+  const hasLegacyData = legacyKeys.some((k) => result[k] !== undefined);
+  if (!hasLegacyData) {
+    return { ...DEFAULT_APP_SETTINGS };
+  }
+
+  let searchEngines: SearchEngine[] = DEFAULT_SEARCH_ENGINES;
+  let currentEngineIndex = 0;
+  if (Array.isArray(result.searchEngines) && result.searchEngines.length > 0) {
+    searchEngines = (result.searchEngines as unknown[]).filter(
+      (e: unknown): e is SearchEngine =>
+        typeof e === "object" &&
+        e !== null &&
+        typeof (e as SearchEngine).name === "string" &&
+        typeof (e as SearchEngine).url === "string",
+    );
+    if (searchEngines.length === 0) searchEngines = DEFAULT_SEARCH_ENGINES;
+    const engineObj = result.engine;
+    if (
+      engineObj &&
+      typeof engineObj === "object" &&
+      "name" in (engineObj as Record<string, unknown>)
+    ) {
+      const engineName = (engineObj as Record<string, unknown>).name;
+      if (typeof engineName === "string") {
+        const idx = searchEngines.findIndex((e) => e.name === engineName);
+        currentEngineIndex = idx >= 0 ? idx : 0;
+      }
+    }
+  }
+
+  const legacyTheme = (() => {
+    try {
+      const t = localStorage.getItem("theme");
+      if (t === "auto") return "system" as const;
+      if (t === "light" || t === "dark") return t;
+    } catch {}
+    return undefined;
+  })();
+
+  let legacySyncMode: SyncMode = "disabled";
+  let legacySyncInterval = 0;
+  try {
+    const sm = localStorage.getItem("sync-mode");
+    if (sm === "upload" || sm === "download") legacySyncMode = sm;
+    const si = localStorage.getItem("sync-interval");
+    if (si) legacySyncInterval = parseInt(si, 10) || 0;
+  } catch {}
+
+  let aiEnabled = false;
+  let aiProviders: AIProvider[] = DEFAULT_AI_PROVIDERS;
+  let aiCurrentProviderIndex = 0;
+  let aiSystemPrompt = "你是一个有用的AI助手。";
+  let aiQuickPrompts: string[] = [];
+  if (result.aiConfig && typeof result.aiConfig === "object") {
+    const cfg = result.aiConfig as Record<string, unknown>;
+    aiEnabled = typeof cfg.enabled === "boolean" ? cfg.enabled : false;
+    if (Array.isArray(cfg.providers)) {
+      const valid = cfg.providers.filter(
+        (p: unknown): p is AIProvider =>
+          typeof p === "object" &&
+          p !== null &&
+          typeof (p as AIProvider).name === "string" &&
+          typeof (p as AIProvider).apiUrl === "string",
+      );
+      aiProviders = valid.length > 0 ? valid : DEFAULT_AI_PROVIDERS;
+    }
+    if (cfg.currentProvider && typeof cfg.currentProvider === "object") {
+      const cp = cfg.currentProvider as { name?: string };
+      if (cp.name) {
+        const idx = aiProviders.findIndex((p) => p.name === cp.name);
+        aiCurrentProviderIndex = idx >= 0 ? idx : 0;
+      }
+    }
+    aiSystemPrompt = typeof cfg.systemPrompt === "string" ? cfg.systemPrompt : aiSystemPrompt;
+    if (Array.isArray(cfg.quickPrompts)) {
+      aiQuickPrompts = cfg.quickPrompts
+        .filter((q: unknown): q is { text?: string } => typeof q === "object" && q !== null)
+        .map((q: { text?: string }) => q.text || "")
+        .filter(Boolean);
+    }
+  }
+
+  const migrated: AppSettings = {
+    theme: legacyTheme ?? DEFAULT_APP_SETTINGS.theme,
+    searchEngines,
+    currentEngineIndex,
+    language: DEFAULT_APP_SETTINGS.language,
+    showBookmarks:
+      typeof result.clockEnabled === "boolean"
+        ? result.clockEnabled
+        : DEFAULT_APP_SETTINGS.showBookmarks,
+    showClock:
+      typeof result.clockEnabled === "boolean"
+        ? result.clockEnabled
+        : DEFAULT_APP_SETTINGS.showClock,
+    use12hClock:
+      typeof result.clockFormat24h === "boolean"
+        ? !result.clockFormat24h
+        : DEFAULT_APP_SETTINGS.use12hClock,
+    showSeconds:
+      typeof result.clockShowSeconds === "boolean"
+        ? result.clockShowSeconds
+        : DEFAULT_APP_SETTINGS.showSeconds,
+    showWidgets: DEFAULT_APP_SETTINGS.showWidgets,
+    backgroundImageUrl: DEFAULT_APP_SETTINGS.backgroundImageUrl,
+    backgroundEnabled: true,
+    bgType: ["bing", "custom", "default"].includes(result.bgType as string)
+      ? (result.bgType as BgType)
+      : DEFAULT_APP_SETTINGS.bgType,
+    customImage:
+      typeof result.customImage === "string"
+        ? result.customImage
+        : DEFAULT_APP_SETTINGS.customImage,
+    glassOpacity:
+      typeof result.backgroundBlur === "number" &&
+      result.backgroundBlur >= 0 &&
+      result.backgroundBlur <= 100
+        ? result.backgroundBlur
+        : DEFAULT_APP_SETTINGS.glassOpacity,
+    glassBlur:
+      typeof result.backgroundDark === "number" &&
+      result.backgroundDark >= 0 &&
+      result.backgroundDark <= 20
+        ? result.backgroundDark
+        : DEFAULT_APP_SETTINGS.glassBlur,
+    aiEnabled,
+    aiProviders,
+    aiCurrentProviderIndex,
+    aiSystemPrompt,
+    aiQuickPrompts,
+    syncMode: legacySyncMode,
+    syncInterval: legacySyncInterval,
+  };
+
+  const normalized = normalizeAppSettings(migrated);
+  await browser.storage.local.set({ [APP_SETTINGS_STORAGE_KEY]: normalized });
+  return normalized;
+}
+
 export async function loadAppSettings(): Promise<AppSettings> {
   const stored = await browser.storage.local.get(APP_SETTINGS_STORAGE_KEY);
-  return normalizeAppSettings(stored[APP_SETTINGS_STORAGE_KEY]);
+  if (stored[APP_SETTINGS_STORAGE_KEY]) {
+    return normalizeAppSettings(stored[APP_SETTINGS_STORAGE_KEY]);
+  }
+  return migrateFromLegacyStorage();
 }
 
 export async function persistAppSettings(nextValue: AppSettings): Promise<AppSettings> {

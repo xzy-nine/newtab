@@ -26,6 +26,60 @@ export interface WidgetItemData extends BaseItem {
 
 export type DesktopItem = ShortcutItem | WidgetItemData;
 
+const LEGACY_WIDGETS_KEY = "widgets";
+
+interface LegacyContainerItem {
+  type: string;
+  id: string;
+  data?: Record<string, unknown>;
+}
+
+interface LegacyWidgetContainer {
+  id: string;
+  folderId?: string;
+  fixed?: boolean;
+  activeIndex?: number;
+  items?: LegacyContainerItem[];
+}
+
+function parseLegacyWidgetItem(id: string, item: LegacyContainerItem): WidgetItemData {
+  return {
+    id: `${id}-${item.id}`,
+    type: "widget",
+    widgetType: item.type,
+    title: item.type,
+    data: item.data || {},
+    w: 2,
+    h: 2,
+  };
+}
+
+/**
+ * 从旧版 widgets 键读取指定文件夹的小部件数据，转为新版 DesktopItem 格式
+ */
+async function loadLegacyWidgetsForFolder(folderId: string): Promise<WidgetItemData[]> {
+  try {
+    const result = await chrome.storage.local.get(LEGACY_WIDGETS_KEY);
+    const containers = result[LEGACY_WIDGETS_KEY] as LegacyWidgetContainer[] | undefined;
+    if (!Array.isArray(containers) || containers.length === 0) return [];
+
+    const items: WidgetItemData[] = [];
+    for (const container of containers) {
+      const cFolderId = container.folderId || undefined;
+      if (cFolderId !== folderId) continue;
+      if (!Array.isArray(container.items)) continue;
+      for (const item of container.items) {
+        if (item && typeof item.type === "string") {
+          items.push(parseLegacyWidgetItem(container.id, item));
+        }
+      }
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+
 export function useDesktopGrid(folderId?: string) {
   const [items, setItems] = useState<DesktopItem[]>([]);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -78,6 +132,15 @@ export function useDesktopGrid(folderId?: string) {
     } catch {
       return null;
     }
+  }, [folderId]);
+
+  /**
+   * 尝试从旧版 widgets 键迁移小部件数据到当前文件夹
+   * 供 DesktopSystem 初始化时调用
+   */
+  const tryMigrateLegacyWidgets = useCallback(async (): Promise<WidgetItemData[] | null> => {
+    if (!folderId) return null;
+    return loadLegacyWidgetsForFolder(folderId);
   }, [folderId]);
 
   const removeItem = useCallback(
@@ -155,5 +218,6 @@ export function useDesktopGrid(folderId?: string) {
     loadLayout,
     scheduleSave,
     moveItemIndex,
+    tryMigrateLegacyWidgets,
   };
 }
