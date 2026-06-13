@@ -58,17 +58,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: 读取当前版本号
-        id: get_version
-        run: |
-          VERSION=$(jq -r '.version' package.json)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: 抓取所有 tags（确保最新）
+        run: git fetch --tags origin
 
-      - name: 获取最新 tag（发布前）
-        id: before_tag
+      - name: 获取发布前的 tag 和当前版本
         run: |
-          TAG="$(git tag --sort=-version:refname | head -n 1)"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          BEFORE_TAG="$(git tag --sort=-version:refname | head -n 1)"
+          echo "BEFORE_TAG=$BEFORE_TAG" >> "$GITHUB_ENV"
+          echo "PKG_VERSION=$(jq -r '.version' package.json)" >> "$GITHUB_ENV"
 
       - name: Release（semantic-release）
         if: ${{ !inputs.force_publish }}
@@ -85,42 +82,36 @@ jobs:
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
-      - name: 获取发布后的最新 tag
-        id: after_tag
+      - name: 获取发布后的 tag
         run: |
-          TAG="$(git tag --sort=-version:refname | head -n 1)"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          AFTER_TAG="$(git tag --sort=-version:refname | head -n 1)"
+          echo "AFTER_TAG=$AFTER_TAG" >> "$GITHUB_ENV"
 
       - name: 设置发布标志和输出
         id: set_outputs
         run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          BEFORE="${{ steps.before_tag.outputs.tag }}"
-          AFTER="${{ steps.after_tag.outputs.tag }}"
+          echo "🔍 BEFORE_TAG=$BEFORE_TAG  AFTER_TAG=$AFTER_TAG  PKG_VERSION=$PKG_VERSION"
 
           if [ "${{ inputs.force_publish }}" = "true" ] && [ "${{ inputs.dry_run }}" != "true" ]; then
-            echo "📦 强制发布模式：版本 $VERSION"
-
-            if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
-              echo "🏷️ 创建 tag $VERSION..."
-              git tag "$VERSION"
-              git push origin "$VERSION"
+            echo "📦 强制发布模式：版本 $PKG_VERSION"
+            if ! git rev-parse "$PKG_VERSION" >/dev/null 2>&1; then
+              echo "🏷️ 创建 tag $PKG_VERSION..."
+              git tag "$PKG_VERSION"
+              git push origin "$PKG_VERSION"
             fi
-
-            if ! gh release view "$VERSION" >/dev/null 2>&1; then
-              echo "🚀 创建 release $VERSION..."
-              gh release create "$VERSION" --title "发布 $VERSION" --generate-notes
+            if ! gh release view "$PKG_VERSION" >/dev/null 2>&1; then
+              echo "🚀 创建 release $PKG_VERSION..."
+              gh release create "$PKG_VERSION" --title "发布 $PKG_VERSION" --generate-notes
             fi
-
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            echo "release_git_tag=$VERSION" >> "$GITHUB_OUTPUT"
-            echo "release_version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "release_git_tag=$PKG_VERSION" >> "$GITHUB_OUTPUT"
+            echo "release_version=$PKG_VERSION" >> "$GITHUB_OUTPUT"
 
-          elif [ "${{ inputs.dry_run }}" != "true" ] && [ -n "$AFTER" ] && [ "$AFTER" != "$BEFORE" ]; then
-            echo "✅ 检测到新版本：$AFTER"
+          elif [ "${{ inputs.dry_run }}" != "true" ] && [ -n "$AFTER_TAG" ] && [ "$AFTER_TAG" != "$BEFORE_TAG" ]; then
+            echo "✅ 检测到新版本：$AFTER_TAG"
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            echo "release_git_tag=$AFTER" >> "$GITHUB_OUTPUT"
-            echo "release_version=$AFTER" >> "$GITHUB_OUTPUT"
+            echo "release_git_tag=$AFTER_TAG" >> "$GITHUB_OUTPUT"
+            echo "release_version=$AFTER_TAG" >> "$GITHUB_OUTPUT"
 
           else
             echo "ℹ️ 无需发布"
