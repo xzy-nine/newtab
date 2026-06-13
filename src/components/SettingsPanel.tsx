@@ -229,6 +229,8 @@ function GeneralSettings() {
     setUse12hClock,
     showSeconds,
     setShowSeconds,
+    showDate,
+    setShowDate,
     showWidgets,
     setShowWidgets,
   } = useAppSettings();
@@ -309,6 +311,12 @@ function GeneralSettings() {
                     checked={showSeconds}
                     onCheckedChange={(v) => setShowSeconds(v as boolean)}
                   />
+                }
+              />
+              <SettingRow
+                label="显示日期"
+                control={
+                  <Checkbox checked={showDate} onCheckedChange={(v) => setShowDate(v as boolean)} />
                 }
               />
             </div>

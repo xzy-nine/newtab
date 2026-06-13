@@ -15,6 +15,7 @@ interface AppSettingsStore extends AppSettings {
   setShowClock: (show: boolean) => void;
   setUse12hClock: (use12h: boolean) => void;
   setShowSeconds: (show: boolean) => void;
+  setShowDate: (show: boolean) => void;
   setShowWidgets: (show: boolean) => void;
   setBackgroundImageUrl: (url: string) => void;
   setBackgroundEnabled: (enabled: boolean) => void;
@@ -72,6 +73,11 @@ export const useAppSettings = create<AppSettingsStore>((set, get) => ({
 
   setShowSeconds: (showSeconds) => {
     set({ showSeconds });
+    persistAppSettings(get());
+  },
+
+  setShowDate: (showDate) => {
+    set({ showDate });
     persistAppSettings(get());
   },
 

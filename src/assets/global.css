@@ -1,6 +1,267 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* 数码管时钟样式 */
+.time {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 450px;
+  height: 80px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow: visible;
+  text-align: center;
+  margin: 0 auto;
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+.time-inner-container {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.hour-group,
+.minute-group,
+.second-group {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.digit {
+  position: relative;
+  width: 40px;
+  height: 80px;
+  margin: 0 2px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.segment {
+  position: absolute;
+  background-color: #000000;
+  box-shadow:
+    0 0 10px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(255, 255, 255, 0.3);
+  opacity: 0.15;
+  transition: opacity 0.1s;
+}
+
+.segment-h {
+  width: 30px;
+  height: 6px;
+  left: 5px;
+  background-color: #000000;
+  border-radius: 3px;
+}
+
+.segment-v {
+  width: 6px;
+  height: 34px;
+  border-radius: 3px;
+}
+
+.segment-a { top: 0; left: 5px; }
+.segment-b { top: 3px; right: 0; }
+.segment-c { bottom: 3px; right: 0; }
+.segment-d { bottom: 0; left: 5px; }
+.segment-e { bottom: 3px; left: 0; }
+.segment-f { top: 3px; left: 0; }
+.segment-g { top: 37px; left: 5px; }
+
+.split {
+  height: 80px;
+  margin: 0 5px;
+  position: relative;
+  width: 10px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.split::before,
+.split::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background-color: #000000;
+  box-shadow:
+    0 0 5px rgba(0, 0, 0, 0.5),
+    0 0 10px rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+}
+
+.split::before { top: 20px; }
+.split::after { bottom: 20px; }
+
+.digit-0 .segment-a,
+.digit-0 .segment-b,
+.digit-0 .segment-c,
+.digit-0 .segment-d,
+.digit-0 .segment-e,
+.digit-0 .segment-f { opacity: 1; }
+.digit-0 .segment-g { opacity: 0.15; }
+
+.digit-1 .segment-b,
+.digit-1 .segment-c { opacity: 1; }
+.digit-1 .segment-a,
+.digit-1 .segment-d,
+.digit-1 .segment-e,
+.digit-1 .segment-f,
+.digit-1 .segment-g { opacity: 0.15; }
+
+.digit-2 .segment-a,
+.digit-2 .segment-b,
+.digit-2 .segment-g,
+.digit-2 .segment-e,
+.digit-2 .segment-d { opacity: 1; }
+.digit-2 .segment-f,
+.digit-2 .segment-c { opacity: 0.15; }
+
+.digit-3 .segment-a,
+.digit-3 .segment-b,
+.digit-3 .segment-g,
+.digit-3 .segment-c,
+.digit-3 .segment-d { opacity: 1; }
+.digit-3 .segment-f,
+.digit-3 .segment-e { opacity: 0.15; }
+
+.digit-4 .segment-f,
+.digit-4 .segment-g,
+.digit-4 .segment-b,
+.digit-4 .segment-c { opacity: 1; }
+.digit-4 .segment-a,
+.digit-4 .segment-d,
+.digit-4 .segment-e { opacity: 0.15; }
+
+.digit-5 .segment-a,
+.digit-5 .segment-f,
+.digit-5 .segment-g,
+.digit-5 .segment-c,
+.digit-5 .segment-d { opacity: 1; }
+.digit-5 .segment-b,
+.digit-5 .segment-e { opacity: 0.15; }
+
+.digit-6 .segment-a,
+.digit-6 .segment-f,
+.digit-6 .segment-g,
+.digit-6 .segment-c,
+.digit-6 .segment-d,
+.digit-6 .segment-e { opacity: 1; }
+.digit-6 .segment-b { opacity: 0.15; }
+
+.digit-7 .segment-a,
+.digit-7 .segment-b,
+.digit-7 .segment-c { opacity: 1; }
+.digit-7 .segment-d,
+.digit-7 .segment-e,
+.digit-7 .segment-f,
+.digit-7 .segment-g { opacity: 0.15; }
+
+.digit-8 .segment-a,
+.digit-8 .segment-b,
+.digit-8 .segment-c,
+.digit-8 .segment-d,
+.digit-8 .segment-e,
+.digit-8 .segment-f,
+.digit-8 .segment-g { opacity: 1; }
+
+.digit-9 .segment-a,
+.digit-9 .segment-b,
+.digit-9 .segment-c,
+.digit-9 .segment-d,
+.digit-9 .segment-f,
+.digit-9 .segment-g { opacity: 1; }
+.digit-9 .segment-e { opacity: 0.15; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.split.blink::before,
+.split.blink::after {
+  animation: blink 1s infinite;
+}
+
+/* 激活状态的数码管段 - 浅色主题白色泛光 */
+.digit-0 .segment-a,
+.digit-0 .segment-b,
+.digit-0 .segment-c,
+.digit-0 .segment-d,
+.digit-0 .segment-e,
+.digit-0 .segment-f,
+.digit-1 .segment-b,
+.digit-1 .segment-c,
+.digit-2 .segment-a,
+.digit-2 .segment-b,
+.digit-2 .segment-g,
+.digit-2 .segment-e,
+.digit-2 .segment-d,
+.digit-3 .segment-a,
+.digit-3 .segment-b,
+.digit-3 .segment-g,
+.digit-3 .segment-c,
+.digit-3 .segment-d,
+.digit-4 .segment-f,
+.digit-4 .segment-g,
+.digit-4 .segment-b,
+.digit-4 .segment-c,
+.digit-5 .segment-a,
+.digit-5 .segment-f,
+.digit-5 .segment-g,
+.digit-5 .segment-c,
+.digit-5 .segment-d,
+.digit-6 .segment-a,
+.digit-6 .segment-f,
+.digit-6 .segment-g,
+.digit-6 .segment-c,
+.digit-6 .segment-d,
+.digit-6 .segment-e,
+.digit-7 .segment-a,
+.digit-7 .segment-b,
+.digit-7 .segment-c,
+.digit-8 .segment-a,
+.digit-8 .segment-b,
+.digit-8 .segment-c,
+.digit-8 .segment-d,
+.digit-8 .segment-e,
+.digit-8 .segment-f,
+.digit-8 .segment-g,
+.digit-9 .segment-a,
+.digit-9 .segment-b,
+.digit-9 .segment-c,
+.digit-9 .segment-d,
+.digit-9 .segment-f,
+.digit-9 .segment-g {
+  box-shadow:
+    0 0 10px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(255, 255, 255, 0.5),
+    0 0 30px rgba(255, 255, 255, 0.3);
+}
+
+html.dark .segment {
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 0 10px rgba(58, 160, 255, 0.7),
+    0 0 20px rgba(58, 160, 255, 0.3);
+}
+
+html.dark .split::before,
+html.dark .split::after {
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 0 5px rgba(58, 160, 255, 0.7),
+    0 0 10px rgba(58, 160, 255, 0.3);
+}
+
 @theme {
   --color-background: oklch(0.9789 0.0012 264.54);
   --color-foreground: oklch(0.1448 0 0);
@@ -125,6 +386,18 @@ body {
   transition:
     background-color 300ms ease,
     color 300ms ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-select: none;
 }
 
 html.dark {
@@ -239,7 +512,7 @@ html.dark {
 
 .desktop-shortcut-name {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-foreground);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -249,6 +522,10 @@ html.dark {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   padding: 0 2px;
   width: 100%;
+}
+
+html.light .desktop-shortcut-name {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 /* 页面指示器 */
@@ -416,7 +693,7 @@ html.dark {
 }
 
 .folder-tree-item:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
 }
 
 .folder-tree-item.selectable {
@@ -425,7 +702,7 @@ html.dark {
 
 .folder-tree-item.selected {
   background: rgba(59, 130, 246, 0.25);
-  color: white;
+  color: var(--color-foreground);
 }
 
 .folder-tree-arrow {
@@ -436,7 +713,7 @@ html.dark {
   height: 18px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-muted-foreground);
   cursor: pointer;
   border-radius: 4px;
   flex-shrink: 0;
@@ -445,8 +722,8 @@ html.dark {
 }
 
 .folder-tree-arrow:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.9);
+  background: color-mix(in oklch, var(--color-foreground) 15%, transparent);
+  color: var(--color-foreground);
 }
 
 .folder-tree-arrow-placeholder {
@@ -456,7 +733,7 @@ html.dark {
 
 .folder-tree-icon {
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-muted-foreground);
 }
 
 .folder-tree-item.selected .folder-tree-icon {
@@ -468,7 +745,7 @@ html.dark {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-foreground);
 }
 
 .folder-tree-item.selected .folder-tree-name {

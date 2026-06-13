@@ -102,7 +102,7 @@ export function NewTab() {
             <div className="relative flex items-center gap-1.5 px-1 z-30 flex-wrap">
               {/* 主选择按钮 */}
               <button
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-colors"
                 onClick={() => setShowFolderPicker(!showFolderPicker)}
               >
                 <Folder className="w-3.5 h-3.5" />
@@ -122,8 +122,8 @@ export function NewTab() {
                     <button
                       className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors ${
                         isActive
-                          ? "bg-white/15 text-white"
-                          : "text-white/50 hover:text-white hover:bg-white/10"
+                          ? "bg-foreground/15 text-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-foreground/10"
                       }`}
                       onClick={() => handleFolderSelect(pid)}
                     >
@@ -131,7 +131,7 @@ export function NewTab() {
                       <span className="max-w-[120px] truncate">{pf.title}</span>
                     </button>
                     <button
-                      className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-black/70 text-white/40 hover:text-white/80 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-background/70 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
                         unpinFolder(pid);
@@ -256,7 +256,7 @@ function FolderTreeView({
               <span className="folder-tree-name">{node.title}</span>
               {canSelect && (
                 <button
-                  className="ml-auto p-0.5 rounded hover:bg-white/10 text-white/30 hover:text-white/70 flex-shrink-0"
+                  className="ml-auto p-0.5 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground flex-shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isPinned) onUnpin(node.id);
@@ -268,7 +268,9 @@ function FolderTreeView({
                       : getMessage("pinFolder", "固定文件夹")
                   }
                 >
-                  <Pin className={`w-3 h-3 ${isPinned ? "fill-white/60 text-white/60" : ""}`} />
+                  <Pin
+                    className={`w-3 h-3 ${isPinned ? "fill-foreground/60 text-foreground/60" : ""}`}
+                  />
                 </button>
               )}
             </div>

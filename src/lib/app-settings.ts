@@ -27,6 +27,7 @@ export interface AppSettings {
   showClock: boolean;
   use12hClock: boolean;
   showSeconds: boolean;
+  showDate: boolean;
   showWidgets: boolean;
   backgroundImageUrl: string;
   backgroundEnabled: boolean;
@@ -75,6 +76,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   showClock: true,
   use12hClock: false,
   showSeconds: false,
+  showDate: true,
   showWidgets: true,
   backgroundImageUrl: "https://bing.img.run/1920x1080.php",
   backgroundEnabled: true,
@@ -164,6 +166,8 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       typeof candidate.showSeconds === "boolean"
         ? candidate.showSeconds
         : DEFAULT_APP_SETTINGS.showSeconds,
+    showDate:
+      typeof candidate.showDate === "boolean" ? candidate.showDate : DEFAULT_APP_SETTINGS.showDate,
     showWidgets:
       typeof candidate.showWidgets === "boolean"
         ? candidate.showWidgets
@@ -347,6 +351,7 @@ async function migrateFromLegacyStorage(): Promise<AppSettings> {
       typeof result.clockShowSeconds === "boolean"
         ? result.clockShowSeconds
         : DEFAULT_APP_SETTINGS.showSeconds,
+    showDate: DEFAULT_APP_SETTINGS.showDate,
     showWidgets: DEFAULT_APP_SETTINGS.showWidgets,
     backgroundImageUrl: DEFAULT_APP_SETTINGS.backgroundImageUrl,
     backgroundEnabled: true,
