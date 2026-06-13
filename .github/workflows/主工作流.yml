@@ -39,10 +39,9 @@ jobs:
     permissions:
       contents: write
     outputs:
-      new_release: ${{ steps.force_publish.outputs.new_release || steps.release_meta.outputs.new_release || 'false' }}
-      release_version: ${{ steps.force_publish.outputs.release_version || steps.release_meta.outputs.release_version }}
-      release_git_tag: ${{ steps.force_publish.outputs.release_git_tag || steps.release_meta.outputs.release_git_tag }}
-      should_publish: ${{ steps.publish_flag.outputs.should_publish }}
+      release_version: ${{ steps.set_outputs.outputs.release_version }}
+      release_git_tag: ${{ steps.set_outputs.outputs.release_git_tag }}
+      should_publish: ${{ steps.set_outputs.outputs.should_publish }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -59,33 +58,20 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build
-        run: |
-          bun run build
-          bun run build:firefox
-
-      - name: Zip extensions
-        run: |
-          bun run zip
-          bun run zip:edge
-          bun run zip:firefox
-
-      - name: 捕获当前最新 tag
-        id: release_base
-        run: |
-          latest_tag="$(git tag --sort=-version:refname | head -n 1)"
-          echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
-
       - name: 读取当前版本号
-        id: current_version
+        id: get_version
         run: |
           VERSION=$(jq -r '.version' package.json)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "version_tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: 获取最新 tag（发布前）
+        id: before_tag
+        run: |
+          TAG="$(git tag --sort=-version:refname | head -n 1)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Release（semantic-release）
         if: ${{ !inputs.force_publish }}
-        id: semantic_release
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             bunx semantic-release --dry-run
@@ -99,68 +85,51 @@ jobs:
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
-      - name: 手动强制发布
-        if: ${{ inputs.force_publish && !inputs.dry_run }}
-        id: force_publish
+      - name: 获取发布后的最新 tag
+        id: after_tag
         run: |
-          VERSION="${{ steps.current_version.outputs.version }}"
-          TAG="${{ steps.current_version.outputs.version_tag }}"
-          echo "📦 强制发布模式：版本 $VERSION（tag: $TAG）"
+          TAG="$(git tag --sort=-version:refname | head -n 1)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "🏷️ 创建 tag $TAG..."
-            git tag "$TAG"
-            git push origin "$TAG"
-          fi
+      - name: 设置发布标志和输出
+        id: set_outputs
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          BEFORE="${{ steps.before_tag.outputs.tag }}"
+          AFTER="${{ steps.after_tag.outputs.tag }}"
 
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            echo "🚀 创建 release $TAG..."
-            gh release create "$TAG" \
-              --title "发布 $VERSION" \
-              --generate-notes
+          if [ "${{ inputs.force_publish }}" = "true" ] && [ "${{ inputs.dry_run }}" != "true" ]; then
+            echo "📦 强制发布模式：版本 $VERSION"
+
+            if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
+              echo "🏷️ 创建 tag $VERSION..."
+              git tag "$VERSION"
+              git push origin "$VERSION"
+            fi
+
+            if ! gh release view "$VERSION" >/dev/null 2>&1; then
+              echo "🚀 创建 release $VERSION..."
+              gh release create "$VERSION" --title "发布 $VERSION" --generate-notes
+            fi
+
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "release_git_tag=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "release_version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          elif [ "${{ inputs.dry_run }}" != "true" ] && [ -n "$AFTER" ] && [ "$AFTER" != "$BEFORE" ]; then
+            echo "✅ 检测到新版本：$AFTER"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "release_git_tag=$AFTER" >> "$GITHUB_OUTPUT"
+            echo "release_version=$AFTER" >> "$GITHUB_OUTPUT"
+
           else
-            echo "✅ release $TAG 已存在，将更新 assets"
+            echo "ℹ️ 无需发布"
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "release_git_tag=" >> "$GITHUB_OUTPUT"
+            echo "release_version=" >> "$GITHUB_OUTPUT"
           fi
-
-          echo "new_release=true" >> "$GITHUB_OUTPUT"
-          echo "release_git_tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "release_version=$VERSION" >> "$GITHUB_OUTPUT"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Capture release metadata
-        if: ${{ !inputs.dry_run && !inputs.force_publish }}
-        id: release_meta
-        run: |
-          latest_tag="$(git tag --sort=-version:refname | head -n 1)"
-          before_tag="${{ steps.release_base.outputs.latest_tag }}"
-
-          if [ -n "$latest_tag" ] && [ "$latest_tag" != "$before_tag" ]; then
-            echo "new_release=true" >> "$GITHUB_OUTPUT"
-            echo "release_git_tag=$latest_tag" >> "$GITHUB_OUTPUT"
-            echo "release_version=${latest_tag#v}" >> "$GITHUB_OUTPUT"
-          else
-            echo "new_release=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: 设置发布标志
-        id: publish_flag
-        run: |
-          if [ "${{ inputs.force_publish }}" = "true" ] && [ "${{ inputs.dry_run }}" != "true" ]; then
-            echo "should_publish=true" >> "$GITHUB_OUTPUT"
-          elif [ "${{ steps.release_meta.outputs.new_release }}" = "true" ]; then
-            echo "should_publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_publish=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: 上传构建产物（Artifact）
-        if: ${{ steps.publish_flag.outputs.should_publish == 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          path: .output/*.zip
-          retention-days: 7
 
   publish-stores:
     name: 发布到应用商店
@@ -185,11 +154,23 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: 从 Artifact 恢复构建产物
-        uses: actions/download-artifact@v4
+      - name: Build
+        run: |
+          bun run build
+          bun run build:firefox
+
+      - name: Zip extensions
+        run: |
+          bun run zip
+          bun run zip:edge
+          bun run zip:firefox
+
+      - name: 上传构建产物（Artifact）
+        uses: actions/upload-artifact@v4
         with:
           name: build-output
-          path: .output/
+          path: .output/*.zip
+          retention-days: 7
 
       - name: 上传构建产物到 Release
         env:
