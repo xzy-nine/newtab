@@ -64,6 +64,12 @@ jobs:
           bun run build
           bun run build:firefox
 
+      - name: Zip extensions
+        run: |
+          bun run zip
+          bun run zip:edge
+          bun run zip:firefox
+
       - name: 捕获当前最新 tag
         id: release_base
         run: |
@@ -153,7 +159,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-output
-          path: .output/
+          path: .output/*.zip
           retention-days: 7
 
   publish-stores:
@@ -184,12 +190,6 @@ jobs:
         with:
           name: build-output
           path: .output/
-
-      - name: Zip extensions
-        run: |
-          bun run zip
-          bun run zip:edge
-          bun run zip:firefox
 
       - name: 上传构建产物到 Release
         env:
