@@ -77,7 +77,14 @@ export default defineConfig({
     },
     version: extensionVersion,
     version_name: extensionVersion,
-    permissions: ["storage", "bookmarks", "activeTab", "tabs"],
+    permissions: [
+      "storage",
+      "bookmarks",
+      "activeTab",
+      "tabs",
+      "sidePanel",
+      "declarativeNetRequestWithHostAccess",
+    ],
     host_permissions: ["https://*/*", "http://*/*"],
     action: {
       default_title: "__MSG_extensionTitle__",

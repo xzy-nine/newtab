@@ -133,39 +133,68 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
       setItems([]);
       let cancelled = false;
       const init = async () => {
-        const layout = await loadLayout();
+        const [layout, bookmarks] = await Promise.all([loadLayout(), getFolderBookmarks(folderId)]);
         if (cancelled) return;
+
         if (layout?.items && layout.items.length > 0) {
-          const hasInvalidShortcut = layout.items.some(
-            (it: DesktopItem) => it.type === "shortcut" && !it.url,
-          );
-          if (hasInvalidShortcut) {
-            const bookmarks = await getFolderBookmarks(folderId);
-            if (!cancelled && bookmarks.length > 0) {
-              setItemsFromBookmarks(bookmarks);
+          const existingShortcuts = layout.items.filter(isShortcutItem) as ShortcutItem[];
+          const existingWidgets = layout.items.filter(isWidgetItem) as WidgetItemData[];
+
+          const bookmarkMap = new Map(bookmarks.map((b) => [b.url, b]));
+          const seenUrls = new Set<string>();
+
+          const mergedShortcuts: ShortcutItem[] = [];
+          for (const s of existingShortcuts) {
+            if (bookmarkMap.has(s.url)) {
+              mergedShortcuts.push(s);
+              seenUrls.add(s.url);
             }
-          } else {
-            setItems(layout.items);
           }
-        } else {
-          const legacyWidgets = await tryMigrateLegacyWidgets();
-          if (cancelled) return;
-          if (legacyWidgets && legacyWidgets.length > 0) {
-            setItems(legacyWidgets);
-            return;
+          for (const bm of bookmarks) {
+            if (!seenUrls.has(bm.url)) {
+              mergedShortcuts.push({
+                id: bm.id,
+                type: "shortcut",
+                name: bm.title || "未命名",
+                url: bm.url,
+                color: "rgba(59, 130, 246, 0.2)",
+                w: 1,
+                h: 1,
+              });
+            }
           }
-          const bookmarks = await getFolderBookmarks(folderId);
-          if (cancelled) return;
-          if (bookmarks.length > 0) {
-            setItemsFromBookmarks(bookmarks);
+
+          const merged = [...mergedShortcuts, ...existingWidgets];
+          if (!cancelled) {
+            setItems(merged);
+            scheduleSave(merged);
           }
+          return;
+        }
+
+        const legacyWidgets = await tryMigrateLegacyWidgets();
+        if (cancelled) return;
+        if (legacyWidgets && legacyWidgets.length > 0) {
+          setItems(legacyWidgets);
+          return;
+        }
+
+        if (bookmarks.length > 0) {
+          setItemsFromBookmarks(bookmarks);
         }
       };
       init();
       return () => {
         cancelled = true;
       };
-    }, [folderId, loadLayout, setItems, setItemsFromBookmarks, tryMigrateLegacyWidgets]);
+    }, [
+      folderId,
+      loadLayout,
+      setItems,
+      setItemsFromBookmarks,
+      tryMigrateLegacyWidgets,
+      scheduleSave,
+    ]);
 
     useEffect(() => {
       const el = containerRef.current;
@@ -195,7 +224,13 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
 
     const handleShortcutClick = useCallback((item: ShortcutItem) => {
       if (item.url) {
-        chrome.tabs.create({ url: item.url });
+        if ((window as any).__IN_SIDEPANEL__) {
+          chrome.storage.local.set({ currentUrl: "" }, () => {
+            chrome.storage.local.set({ currentUrl: item.url });
+          });
+        } else {
+          chrome.tabs.create({ url: item.url });
+        }
       }
     }, []);
 
@@ -259,19 +294,26 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
       (e: React.MouseEvent, item: DesktopItem) => {
         e.preventDefault();
         e.stopPropagation();
-        const menuItems: ContextMenuItem[] = [
-          {
-            label: isShortcutItem(item)
-              ? getMessage("removeShortcut", "删除快捷方式")
-              : getMessage("removeWidget", "删除小部件"),
+        const menuItems: ContextMenuItem[] = [];
+        if (isShortcutItem(item) && item.url) {
+          menuItems.push({
+            label: getMessage("openInNewTab", "在新标签页打开"),
+            onSelect: () => {
+              if ((window as any).__IN_SIDEPANEL__) {
+                chrome.storage.local.set({ currentUrl: "" }, () => {
+                  chrome.storage.local.set({ currentUrl: item.url });
+                });
+              } else {
+                chrome.tabs.create({ url: item.url });
+              }
+            },
+          });
+        }
+        if (isWidgetItem(item)) {
+          menuItems.push({
+            label: getMessage("removeWidget", "删除小部件"),
             onSelect: () => handleRemoveItem(item.id),
             className: "text-red-400",
-          },
-        ];
-        if (isShortcutItem(item) && item.url) {
-          menuItems.unshift({
-            label: getMessage("openInNewTab", "在新标签页打开"),
-            onSelect: () => chrome.tabs.create({ url: item.url }),
           });
         }
         showCtxMenu(e.nativeEvent, menuItems);

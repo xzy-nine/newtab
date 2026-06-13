@@ -1,5 +1,40 @@
 import { defineBackground } from "wxt/utils/define-background";
 
+const MOBILE_UA =
+  "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36";
+const UA_RULE_ID = 102;
+
+async function updateMobileUaRule(enabled: boolean) {
+  try {
+    if (enabled) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [UA_RULE_ID],
+        addRules: [
+          {
+            id: UA_RULE_ID,
+            priority: 1,
+            action: {
+              type: "modifyHeaders",
+              requestHeaders: [{ header: "User-Agent", operation: "set", value: MOBILE_UA }],
+            },
+            condition: {
+              resourceTypes: ["sub_frame"],
+            },
+          },
+        ],
+      });
+    } else {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [UA_RULE_ID],
+        addRules: [],
+      });
+    }
+    await chrome.storage.local.set({ mobileUaEnabled: enabled });
+  } catch (err) {
+    console.error("更新移动端UA规则失败:", err);
+  }
+}
+
 export default defineBackground({
   main() {
     chrome.runtime.onInstalled.addListener(() => {
@@ -11,6 +46,42 @@ export default defineBackground({
       console.log("浏览器启动，新标签页扩展正在初始化");
       setupExtensionPage();
     });
+
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((err) => {
+      console.error("设置侧边栏点击行为失败:", err);
+    });
+
+    setupSidepanelRules();
+
+    async function setupSidepanelRules() {
+      try {
+        await chrome.declarativeNetRequest.updateDynamicRules({
+          removeRuleIds: [101],
+          addRules: [
+            {
+              id: 101,
+              priority: 1,
+              action: {
+                type: "modifyHeaders",
+                responseHeaders: [
+                  { header: "x-frame-options", operation: "remove" },
+                  { header: "content-security-policy", operation: "remove" },
+                  { header: "x-content-type-options", operation: "remove" },
+                ],
+              },
+              condition: {
+                resourceTypes: ["sub_frame"],
+              },
+            },
+          ],
+        });
+        const { mobileUaEnabled } = await chrome.storage.local.get("mobileUaEnabled");
+        await updateMobileUaRule(mobileUaEnabled !== false);
+        console.log("侧边栏iframe规则已设置");
+      } catch (err) {
+        console.error("设置侧边栏iframe规则失败:", err);
+      }
+    }
 
     function setupExtensionPage() {
       const extensionPageUrl = chrome.runtime.getURL("newtab.html");
@@ -58,6 +129,21 @@ export default defineBackground({
         if (request.action === "notificationsCleared") {
           chrome.action.setBadgeText({ text: "" });
           sendResponse({ success: true });
+          return true;
+        }
+
+        if (request.action === "toggleMobileUa") {
+          updateMobileUaRule(request.enabled as boolean)
+            .then(() => sendResponse({ success: true }))
+            .catch((err) => sendResponse({ success: false, error: err.message }));
+          return true;
+        }
+
+        if (request.action === "getMobileUaState") {
+          chrome.storage.local
+            .get("mobileUaEnabled")
+            .then((r) => sendResponse({ enabled: r.mobileUaEnabled !== false }))
+            .catch(() => sendResponse({ enabled: true }));
           return true;
         }
       },

@@ -146,7 +146,11 @@ export function SearchBox() {
     e.preventDefault();
     if (query.trim()) {
       const searchUrl = currentEngine.url + encodeURIComponent(query.trim());
-      window.open(searchUrl, "_blank");
+      if ((window as any).__IN_SIDEPANEL__) {
+        chrome.storage.local.set({ currentUrl: searchUrl });
+      } else {
+        window.open(searchUrl, "_blank");
+      }
     }
   };
 
@@ -205,7 +209,7 @@ export function SearchBox() {
           />
         </div>
 
-        {aiEnabled && (
+        {aiEnabled && !(window as any).__IN_SIDEPANEL__ && (
           <button
             type="button"
             onClick={() => setAiOpen(true)}
