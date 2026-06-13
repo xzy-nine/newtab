@@ -63,7 +63,7 @@ jobs:
 
       - name: 获取发布前的 tag 和当前版本
         run: |
-          BEFORE_TAG="$(git tag --sort=-version:refname | head -n 1)"
+          BEFORE_TAG="$(git tag -l | sort -V | tail -1)"
           echo "BEFORE_TAG=$BEFORE_TAG" >> "$GITHUB_ENV"
           echo "PKG_VERSION=$(jq -r '.version' package.json)" >> "$GITHUB_ENV"
 
@@ -84,7 +84,7 @@ jobs:
 
       - name: 获取发布后的 tag
         run: |
-          AFTER_TAG="$(git tag --sort=-version:refname | head -n 1)"
+          AFTER_TAG="$(git tag -l | sort -V | tail -1)"
           echo "AFTER_TAG=$AFTER_TAG" >> "$GITHUB_ENV"
 
       - name: 设置发布标志和输出
