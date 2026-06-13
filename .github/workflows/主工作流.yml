@@ -9,6 +9,14 @@ on:
         description: "Dry run（只预览版本和 changelog，不实际发布）"
         type: boolean
         default: false
+      force_publish:
+        description: "强制发布（即使无新 commit，也重新构建并上传到 release）"
+        type: boolean
+        default: false
+      publish_to_edge:
+        description: "强制发布时也发布到 Edge 商店"
+        type: boolean
+        default: false
 
 concurrency:
   group: release
@@ -31,9 +39,10 @@ jobs:
     permissions:
       contents: write
     outputs:
-      new_release: ${{ steps.release_meta.outputs.new_release || 'false' }}
-      release_version: ${{ steps.release_meta.outputs.release_version }}
-      release_git_tag: ${{ steps.release_meta.outputs.release_git_tag }}
+      new_release: ${{ steps.force_publish.outputs.new_release || steps.release_meta.outputs.new_release || 'false' }}
+      release_version: ${{ steps.force_publish.outputs.release_version || steps.release_meta.outputs.release_version }}
+      release_git_tag: ${{ steps.force_publish.outputs.release_git_tag || steps.release_meta.outputs.release_git_tag }}
+      should_publish: ${{ steps.publish_flag.outputs.should_publish }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -55,13 +64,21 @@ jobs:
           bun run build
           bun run build:firefox
 
-      - name: Capture current release tag
+      - name: 捕获当前最新 tag
         id: release_base
         run: |
           latest_tag="$(git tag --sort=-version:refname | head -n 1)"
           echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
 
-      - name: Release
+      - name: 读取当前版本号
+        id: current_version
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Release（semantic-release）
+        if: ${{ !inputs.force_publish }}
         id: semantic_release
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
@@ -76,25 +93,73 @@ jobs:
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
+      - name: 手动强制发布
+        if: ${{ inputs.force_publish && !inputs.dry_run }}
+        id: force_publish
+        run: |
+          VERSION="${{ steps.current_version.outputs.version }}"
+          TAG="${{ steps.current_version.outputs.version_tag }}"
+          echo "📦 强制发布模式：版本 $VERSION（tag: $TAG）"
+
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "🏷️ 创建 tag $TAG..."
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "🚀 创建 release $TAG..."
+            gh release create "$TAG" \
+              --title "发布 $VERSION" \
+              --generate-notes
+          else
+            echo "✅ release $TAG 已存在，将更新 assets"
+          fi
+
+          echo "new_release=true" >> "$GITHUB_OUTPUT"
+          echo "release_git_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "release_version=$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Capture release metadata
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && !inputs.force_publish }}
         id: release_meta
         run: |
+          latest_tag="$(git tag --sort=-version:refname | head -n 1)"
           before_tag="${{ steps.release_base.outputs.latest_tag }}"
-          after_tag="$(git tag --sort=-version:refname | head -n 1)"
 
-          if [ -n "$after_tag" ] && [ "$after_tag" != "$before_tag" ]; then
+          if [ -n "$latest_tag" ] && [ "$latest_tag" != "$before_tag" ]; then
             echo "new_release=true" >> "$GITHUB_OUTPUT"
-            echo "release_git_tag=$after_tag" >> "$GITHUB_OUTPUT"
-            echo "release_version=${after_tag#v}" >> "$GITHUB_OUTPUT"
+            echo "release_git_tag=$latest_tag" >> "$GITHUB_OUTPUT"
+            echo "release_version=${latest_tag#v}" >> "$GITHUB_OUTPUT"
           else
             echo "new_release=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: 设置发布标志
+        id: publish_flag
+        run: |
+          if [ "${{ inputs.force_publish }}" = "true" ] && [ "${{ inputs.dry_run }}" != "true" ]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.release_meta.outputs.new_release }}" = "true" ]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 上传构建产物（Artifact）
+        if: ${{ steps.publish_flag.outputs.should_publish == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: .output/
+          retention-days: 7
+
   publish-stores:
     name: 发布到应用商店
     needs: release
-    if: needs.release.outputs.new_release == 'true'
+    if: needs.release.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -114,23 +179,32 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: 从 Artifact 恢复构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .output/
+
       - name: Zip extensions
         run: |
           bun run zip
           bun run zip:edge
           bun run zip:firefox
 
-      - name: Upload release assets
+      - name: 上传构建产物到 Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "📤 上传 assets 到 ${{ needs.release.outputs.release_git_tag }}"
           gh release upload "${{ needs.release.outputs.release_git_tag }}" \
             .output/*-chrome.zip \
             .output/*-edge.zip \
             .output/*-firefox.zip \
             --clobber
+          echo "✅ assets 上传完成"
 
       - name: Submit to Edge store
+        if: ${{ !inputs.force_publish || inputs.publish_to_edge }}
         env:
           EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
