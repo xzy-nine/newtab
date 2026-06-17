@@ -1,6 +1,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAppSettings } from "@/lib/app-settings-store";
 
+/**
+ * 预加载图片，返回是否加载成功
+ * @param url 图片地址
+ * @returns Promise<boolean>
+ */
 function preloadImage(url: string): Promise<boolean> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -11,7 +16,13 @@ function preloadImage(url: string): Promise<boolean> {
   });
 }
 
-export function Background() {
+/**
+ * 背景样式 hook
+ * 返回根容器应使用的 inline style，把背景图直接 inline 到 NewTab / SidePanelHome 根 div 上。
+ * 这样 desktop-box 的 backdrop-filter 就能在同一 stacking context 内正确采样到背景图。
+ * @returns React.CSSProperties
+ */
+export function useBackgroundStyle(): React.CSSProperties {
   const { backgroundEnabled, bgType, customImage } = useAppSettings();
 
   const bgUrl = useMemo(() => {
@@ -42,25 +53,19 @@ export function Background() {
 
   const showDefault = !backgroundEnabled || bgType === "default" || error;
 
-  return (
-    <div className="fixed inset-0 z-0">
-      {showDefault ? (
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900" />
-      ) : (
-        <>
-          {!imageLoaded && (
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900" />
-          )}
-          <img
-            src={bgUrl!}
-            alt="Background"
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-              imageLoaded ? "opacity-100" : "opacity-0"
-            }`}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/50" />
-        </>
-      )}
-    </div>
-  );
+  // 关闭背景 / 无 URL / 加载失败 → 纯色兜底（不绘制图片）
+  if (showDefault || !bgUrl) {
+    return { backgroundColor: "oklch(0.1448 0 0)" };
+  }
+
+  // 正常情况：背景图 inline 到根容器上，backgroundAttachment: fixed 让背景稳定
+  return {
+    backgroundImage: `url(${bgUrl})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundAttachment: "fixed",
+    backgroundRepeat: "no-repeat",
+    opacity: imageLoaded ? 1 : 0,
+    transition: "opacity 1000ms",
+  };
 }

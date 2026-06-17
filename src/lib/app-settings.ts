@@ -34,7 +34,6 @@ export interface AppSettings {
   bgType: BgType;
   customImage: string | null;
   glassOpacity: number;
-  glassBlur: number;
   aiEnabled: boolean;
   aiProviders: AIProvider[];
   aiCurrentProviderIndex: number;
@@ -83,7 +82,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   bgType: "bing",
   customImage: null,
   glassOpacity: 80,
-  glassBlur: 12,
   aiEnabled: false,
   aiProviders: DEFAULT_AI_PROVIDERS,
   aiCurrentProviderIndex: 0,
@@ -193,12 +191,6 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       candidate.glassOpacity <= 100
         ? candidate.glassOpacity
         : DEFAULT_APP_SETTINGS.glassOpacity,
-    glassBlur:
-      typeof candidate.glassBlur === "number" &&
-      candidate.glassBlur >= 0 &&
-      candidate.glassBlur <= 20
-        ? candidate.glassBlur
-        : DEFAULT_APP_SETTINGS.glassBlur,
     aiEnabled:
       typeof candidate.aiEnabled === "boolean"
         ? candidate.aiEnabled
@@ -368,12 +360,6 @@ async function migrateFromLegacyStorage(): Promise<AppSettings> {
       result.backgroundBlur <= 100
         ? result.backgroundBlur
         : DEFAULT_APP_SETTINGS.glassOpacity,
-    glassBlur:
-      typeof result.backgroundDark === "number" &&
-      result.backgroundDark >= 0 &&
-      result.backgroundDark <= 20
-        ? result.backgroundDark
-        : DEFAULT_APP_SETTINGS.glassBlur,
     aiEnabled,
     aiProviders,
     aiCurrentProviderIndex,

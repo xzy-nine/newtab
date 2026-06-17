@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useAppSettings } from "@/lib/app-settings-store";
 import { useTheme } from "@/hooks/useTheme";
 import { useBookmarkFolders } from "@/hooks/useBookmarkFolders";
-import { Background } from "@/components/Background";
+import { useBackgroundStyle } from "@/components/Background";
 import { ClockWidget } from "@/components/ClockWidget";
 import { SearchBox } from "@/components/SearchBox";
 import { DesktopSystem, type DesktopSystemHandle } from "@/components/DesktopSystem";
@@ -13,9 +13,11 @@ import { getMessage } from "@/lib/i18n";
 import { Folder } from "lucide-react";
 
 export function SidePanelHome() {
-  const { hydrate, showClock, showWidgets, glassOpacity, glassBlur } = useAppSettings();
+  const { hydrate, showClock, showWidgets, glassOpacity, backgroundEnabled, bgType, customImage } =
+    useAppSettings();
   useTheme();
   useWidgetRegistration();
+  const backgroundStyle = useBackgroundStyle();
 
   const {
     currentFolder,
@@ -36,17 +38,17 @@ export function SidePanelHome() {
     hydrate();
   }, [hydrate]);
 
+  // 玻璃效果同步：将设置值应用到 documentElement 的 CSS 变量和 data 属性
   useEffect(() => {
     const el = document.documentElement;
-    const isGlassActive = glassBlur > 0 || glassOpacity < 100;
+    const isGlassActive = glassOpacity < 100;
     if (isGlassActive) {
       el.setAttribute("data-glass", "");
     } else {
       el.removeAttribute("data-glass");
     }
     el.style.setProperty("--xb-glass-opacity", `${glassOpacity / 100}`);
-    el.style.setProperty("--xb-glass-blur", `${glassBlur}px`);
-  }, [glassOpacity, glassBlur]);
+  }, [glassOpacity]);
 
   const handleFolderSelect = useCallback(
     async (fid: string) => {
@@ -57,13 +59,13 @@ export function SidePanelHome() {
   );
 
   return (
-    <div className="h-full w-full overflow-hidden flex flex-col bg-background text-foreground relative">
+    <div
+      className="h-full w-full overflow-hidden flex flex-col bg-background text-foreground relative"
+      style={backgroundStyle}
+    >
       <NotificationCenter />
-      <div className="absolute inset-0 pointer-events-none">
-        <Background />
-      </div>
 
-      <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         <header className="flex flex-col items-center pt-2 pb-0 px-3 gap-1">
           {showClock && (
             <div className="scale-[0.6] origin-top -mb-6">
@@ -126,8 +128,8 @@ export function SidePanelHome() {
           )}
         </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden px-3 pb-2">
-          <div className="flex-1 overflow-hidden rounded-xl">
+        <div className="flex-1 flex flex-col px-3 pb-2">
+          <div className="flex-1 rounded-xl">
             {showWidgets && currentFolder ? (
               <DesktopSystem ref={desktopRef} folderId={currentFolder} />
             ) : (

@@ -37,11 +37,9 @@ export function BackgroundSettings() {
     bgType,
     customImage,
     glassOpacity,
-    glassBlur,
     setBgType,
     setCustomImage,
     setGlassOpacity,
-    setGlassBlur,
     backgroundEnabled,
     setBackgroundEnabled,
   } = useAppSettings();
@@ -147,21 +145,6 @@ export function BackgroundSettings() {
               step={5}
               value={glassOpacity}
               onChange={(e) => setGlassOpacity(Number(e.target.value))}
-              className="w-full accent-blue-500"
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm">{getMessage("glassBlur", "玻璃模糊")}</p>
-              <span className="text-xs text-gray-500 w-8 text-right">{glassBlur}px</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={20}
-              step={1}
-              value={glassBlur}
-              onChange={(e) => setGlassBlur(Number(e.target.value))}
               className="w-full accent-blue-500"
             />
           </div>

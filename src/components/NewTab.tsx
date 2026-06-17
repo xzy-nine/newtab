@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useAppSettings } from "@/lib/app-settings-store";
 import { useTheme } from "@/hooks/useTheme";
 import { useBookmarkFolders } from "@/hooks/useBookmarkFolders";
-import { Background } from "@/components/Background";
+import { useBackgroundStyle } from "@/components/Background";
 import { ClockWidget } from "@/components/ClockWidget";
 import { SearchBox } from "@/components/SearchBox";
 import { DesktopSystem, type DesktopSystemHandle } from "@/components/DesktopSystem";
@@ -15,9 +15,10 @@ import { getMessage } from "@/lib/i18n";
 import { Folder, Pin, PinOff } from "lucide-react";
 
 export function NewTab() {
-  const { hydrate, showClock, showWidgets, glassOpacity, glassBlur } = useAppSettings();
+  const { hydrate, showClock, showWidgets, glassOpacity } = useAppSettings();
   useTheme();
   useWidgetRegistration();
+  const backgroundStyle = useBackgroundStyle();
 
   const {
     currentFolder,
@@ -50,18 +51,17 @@ export function NewTab() {
     return () => observer.disconnect();
   }, []);
 
-  // 玻璃效果同步：将设置值应用到 documentElement 的 CSS 变量和 data 属性
+  // 玻璃效果同步：将设置值应用到 documentElement 的 CSS 变量
   useEffect(() => {
     const el = document.documentElement;
-    const isGlassActive = glassBlur > 0 || glassOpacity < 100;
+    const isGlassActive = glassOpacity < 100;
     if (isGlassActive) {
       el.setAttribute("data-glass", "");
     } else {
       el.removeAttribute("data-glass");
     }
     el.style.setProperty("--xb-glass-opacity", `${glassOpacity / 100}`);
-    el.style.setProperty("--xb-glass-blur", `${glassBlur}px`);
-  }, [glassOpacity, glassBlur]);
+  }, [glassOpacity]);
 
   const handleFolderSelect = useCallback(
     async (fid: string) => {
@@ -86,9 +86,8 @@ export function NewTab() {
   }, []);
 
   return (
-    <div className="min-h-screen relative flex flex-col">
+    <div className="min-h-screen relative flex flex-col" style={backgroundStyle}>
       <NotificationCenter />
-      <Background />
 
       <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
         <header className="flex flex-col items-center justify-center pt-1 pb-0">
