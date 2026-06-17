@@ -94,7 +94,7 @@ export function SidePanelHome() {
             return (
               <button
                 key={pid}
-                className={`flex items-center gap-1 px-1.5 py-1 rounded-md text-xs transition-colors ${
+                className={`pinned-folder-btn flex items-center gap-1 px-1.5 py-1 rounded-md text-xs transition-colors ${
                   isActive
                     ? "bg-foreground/15 text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-foreground/10"

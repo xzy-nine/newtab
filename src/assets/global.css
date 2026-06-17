@@ -821,6 +821,17 @@ html.light .desktop-shortcut-name {
   font-weight: 500;
 }
 
+.folder-tree-item.selected {
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+}
+
+.pinned-folder-btn.bg-foreground\/15 {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+}
+
 /* Dock 容器 */
 .dock-container {
   position: relative;
