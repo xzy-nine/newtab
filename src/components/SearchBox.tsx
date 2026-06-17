@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, Plus, Trash2, Edit3, Bot, Check } from "lucide-react";
+import { Search, Plus, Trash2, Edit3, Bot, Check, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -8,6 +8,13 @@ import { getMessage } from "@/lib/i18n";
 import type { SearchEngine } from "@/lib/app-settings";
 import { AIAssistant } from "@/components/AIAssistant";
 import { cn } from "@/lib/utils";
+import {
+  getSearchSuggestions,
+  type SearchSuggestion,
+  getFaviconUrl,
+  getInitialFromUrl,
+} from "@/lib/search-suggestions";
+import { debounce } from "@/lib/utils";
 
 function EngineEditor({
   open,
@@ -96,12 +103,35 @@ export function SearchBox() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const iconRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
   const { searchEngines, currentEngineIndex, setCurrentEngineIndex, aiEnabled } = useAppSettings();
 
   const currentEngine = searchEngines[currentEngineIndex] || searchEngines[0];
+
+  // 防抖获取搜索建议
+  const debouncedFetchSuggestions = debounce(async (raw: unknown) => {
+    const input = raw as string;
+    if (!input.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      const results = await getSearchSuggestions(input);
+      setSuggestions(results);
+      setShowSuggestions(results.length > 0);
+    } catch (error) {
+      console.error("获取搜索建议失败:", error);
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, 300);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -112,6 +142,15 @@ export function SearchBox() {
         !iconRef.current.contains(e.target as Node)
       ) {
         setMenuOpen(false);
+      }
+
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -151,6 +190,7 @@ export function SearchBox() {
       } else {
         window.open(searchUrl, "_blank");
       }
+      setShowSuggestions(false);
     }
   };
 
@@ -203,7 +243,16 @@ export function SearchBox() {
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setQuery(value);
+              debouncedFetchSuggestions(value);
+            }}
+            onFocus={() => {
+              if (query.trim() && suggestions.length > 0) {
+                setShowSuggestions(true);
+              }
+            }}
             placeholder={getMessage("searchPlaceholder", "搜索...")}
             className="flex-1 bg-transparent border-none outline-none shadow-none px-2.5 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 text-base h-full min-w-0 focus:ring-0"
           />
@@ -228,6 +277,60 @@ export function SearchBox() {
           <Search className="w-[18px] h-[18px]" />
         </button>
       </form>
+
+      {/* 搜索建议下拉菜单 */}
+      {showSuggestions && suggestions.length > 0 && (
+        <div
+          ref={suggestionsRef}
+          className="absolute top-full mt-2 left-0 right-0 w-full max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1.5 z-40 overflow-hidden"
+        >
+          <div className="max-h-96 overflow-y-auto">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion.id}
+                type="button"
+                onClick={() => {
+                  if ((window as any).__IN_SIDEPANEL__) {
+                    chrome.storage.local.set({ currentUrl: suggestion.url });
+                  } else {
+                    window.open(suggestion.url, "_blank");
+                  }
+                  setShowSuggestions(false);
+                  setQuery("");
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50"
+              >
+                {/* 图标 */}
+                <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
+                  <img
+                    src={getFaviconUrl(suggestion.url)}
+                    alt=""
+                    className="w-5 h-5 object-contain"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = "none";
+                      img.parentElement!.innerHTML = `<div class="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white text-xs flex items-center justify-center font-medium">${getInitialFromUrl(suggestion.url)}</div>`;
+                    }}
+                  />
+                </div>
+
+                {/* 书签信息 */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {suggestion.title}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {suggestion.url}
+                  </div>
+                </div>
+
+                {/* 书签图标指示 */}
+                <Bookmark className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {menuOpen && (
         <div
