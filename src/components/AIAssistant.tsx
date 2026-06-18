@@ -669,6 +669,7 @@ export function AIAssistant({ open, onOpenChange, initialMessage }: AIAssistantP
       <DialogContent
         className="max-w-5xl w-[95vw] p-0 gap-0 overflow-hidden rounded-xl"
         onPointerDownOutside={(e) => e.preventDefault()}
+        hideCloseButton
       >
         <DialogTitle className="sr-only">AI助手</DialogTitle>
         <AIModalContent initialMessage={initialMessage} onClose={() => onOpenChange(false)} />
