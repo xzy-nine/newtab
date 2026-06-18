@@ -399,36 +399,37 @@ html {
 }
 
 /* data-glass 属性选择器 - 浮动组件玻璃效果 */
-[data-glass] [data-slot="dialog-content"] {
+:root[data-glass] [data-slot="dialog-content"] {
   background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
   border-color: rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.1));
 }
 
-[data-glass] [data-slot="dialog-overlay"] {
+:root[data-glass] [data-slot="dialog-overlay"] {
   background-color: rgba(0, 0, 0, 0.6);
 }
 
-[data-glass] [data-slot="select-content"] {
-  background-color: rgba(0, 0, 0, var(--xb-glass-opacity));
-  border-color: rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.2));
+:root[data-glass] [data-slot="select-content"] {
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+  border-color: rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.15));
 }
 
-[data-glass] .xb-glass-popover {
+:root[data-glass] .xb-glass-popover {
   background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
 }
 
-[data-glass] .dark .xb-glass-popover {
-  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
-}
-
-html.dark [data-glass] [data-slot="dialog-content"] {
+/* data-glass + dark 同时存在时切换为深色 */
+:root.dark[data-glass] [data-slot="dialog-content"] {
   background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
   border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
 }
 
-html.dark [data-glass] [data-slot="select-content"] {
+:root.dark[data-glass] [data-slot="select-content"] {
   background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
   border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+:root.dark[data-glass] .xb-glass-popover {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
 }
 
 /* 文件夹按钮栏背景块 */
