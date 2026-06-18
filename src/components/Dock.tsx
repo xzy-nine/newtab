@@ -20,9 +20,24 @@ export function Dock({
 }: DockProps) {
   const { theme, setTheme } = useAppSettings();
 
+  const themeOrder: Array<"system" | "light" | "dark"> = ["system", "light", "dark"];
+
   const handleToggleTheme = () => {
-    const next = theme === "dark" ? "light" : theme === "light" ? "dark" : "light";
+    const idx = themeOrder.indexOf(theme);
+    const next = themeOrder[(idx + 1) % themeOrder.length];
     setTheme(next);
+  };
+
+  const themeIcon = () => {
+    if (theme === "system") return <span className="dock-icon dock-icon-text">Auto</span>;
+    if (theme === "dark") return <Moon className="dock-icon" />;
+    return <Sun className="dock-icon" />;
+  };
+
+  const themeLabel = () => {
+    if (theme === "system") return "自动";
+    if (theme === "dark") return "深色";
+    return "浅色";
   };
 
   return (
@@ -43,10 +58,10 @@ export function Dock({
         <div className="dock-right">
           <button
             className="dock-btn active:scale-90 transition-all duration-150"
-            title="切换主题"
+            title={`主题: ${themeLabel()}`}
             onClick={handleToggleTheme}
           >
-            {isDark ? <Sun className="dock-icon" /> : <Moon className="dock-icon" />}
+            {themeIcon()}
           </button>
           <button
             className="dock-btn active:scale-90 transition-all duration-150"
