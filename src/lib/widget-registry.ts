@@ -33,7 +33,7 @@ const registry = new Map<string, WidgetDefinition>();
 
 export function registerWidget(type: string, def: WidgetDefinition) {
   if (registry.has(type)) {
-    console.warn(`小部件类型 "${type}" 已注册，将被覆盖`);
+    console.warn(`小部件 "${type}" 已注册，将被覆盖`);
   }
   registry.set(type, def);
 }

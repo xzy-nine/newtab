@@ -65,7 +65,7 @@ export function WidgetAddDialog({ open, onOpenChange, onSelect }: WidgetAddDialo
       <DialogContent>
         <DialogTitle>{getMessage("addWidget", "添加小部件")}</DialogTitle>
         <DialogDescription>
-          {getMessage("selectWidgetType", "选择要添加的小部件类型")}
+          {getMessage("selectWidgetType", "选择要添加的小部件")}
         </DialogDescription>
         <div className="flex flex-col gap-2 mt-2">
           {getAllTypes().map((type) => (
