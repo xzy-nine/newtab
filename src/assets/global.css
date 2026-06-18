@@ -371,8 +371,22 @@ html.dark .split::after {
 }
 
 .xb-glass-popover {
-  background-color: rgba(0, 0, 0, var(--xb-glass-opacity));
-  border: 1px solid rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.2));
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+  border: 1px solid rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.15));
+}
+
+.dark .xb-glass-popover {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+.dark .xb-glass {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+}
+
+.dark .xb-glass-card {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
 }
 
 html {
@@ -400,7 +414,36 @@ html {
 }
 
 [data-glass] .xb-glass-popover {
-  background-color: rgba(0, 0, 0, var(--xb-glass-opacity));
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+}
+
+[data-glass] .dark .xb-glass-popover {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+}
+
+html.dark [data-glass] [data-slot="dialog-content"] {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+html.dark [data-glass] [data-slot="select-content"] {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+/* 文件夹按钮栏背景块 */
+.xb-folder-bar {
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+  border: 1px solid rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.08));
+  border-radius: 10px;
+  padding: 4px 8px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dark .xb-folder-bar {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.08));
 }
 
 body {
@@ -442,6 +485,11 @@ html.dark {
   --color-border: oklch(0.2868 0.0051 257.41);
   --color-input: oklch(0.2448 0.0036 257.41);
   --color-ring: oklch(0.6333 0.286 264.24);
+}
+
+html.dark .desktop-box {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
 }
 
 /* 桌面容器 - 瀑布流布局 */

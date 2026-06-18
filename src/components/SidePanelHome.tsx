@@ -77,9 +77,9 @@ export function SidePanelHome() {
           </div>
         </header>
 
-        <div className="flex items-center gap-1 py-1 flex-wrap relative px-3">
+        <div className="xb-folder-bar inline-flex items-center gap-1 flex-wrap relative mb-2 self-start">
           <button
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-foreground hover:bg-foreground/10 transition-colors"
             onClick={() => setShowFolderPicker(!showFolderPicker)}
           >
             <Folder className="w-3 h-3" />
@@ -99,7 +99,7 @@ export function SidePanelHome() {
                 className={`pinned-folder-btn flex items-center gap-1 px-1.5 py-1 rounded-md text-xs transition-colors ${
                   isActive
                     ? "bg-foreground/15 text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-foreground/10"
+                    : "text-foreground hover:bg-foreground/10"
                 }`}
                 onClick={() => handleFolderSelect(pid)}
               >

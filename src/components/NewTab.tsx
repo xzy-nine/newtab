@@ -99,10 +99,10 @@ export function NewTab() {
 
         <main className="flex-1 flex flex-col items-center px-4 pb-0" style={{ minHeight: 0 }}>
           <div className="w-full flex-1 flex flex-col" style={{ minHeight: 0 }}>
-            <div className="relative flex items-center gap-1.5 px-1 z-30 flex-wrap">
+            <div className="xb-folder-bar relative inline-flex items-center gap-1.5 z-30 flex-wrap mb-3 self-start">
               {/* 主选择按钮 */}
               <button
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-foreground/10 transition-colors"
                 onClick={() => setShowFolderPicker(!showFolderPicker)}
               >
                 <Folder className="w-3.5 h-3.5" />
@@ -123,7 +123,7 @@ export function NewTab() {
                       className={`pinned-folder-btn flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors ${
                         isActive
                           ? "bg-foreground/15 text-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-foreground/10"
+                          : "text-foreground hover:bg-foreground/10"
                       }`}
                       onClick={() => handleFolderSelect(pid)}
                     >
@@ -131,7 +131,7 @@ export function NewTab() {
                       <span className="max-w-[120px] truncate">{pf.title}</span>
                     </button>
                     <button
-                      className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-background/70 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-background/70 text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
                         unpinFolder(pid);
