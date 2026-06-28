@@ -94,9 +94,9 @@ function isLikelyUrl(input) {
     new URL(input);
     console.log(new URL(input));
     return input;
-  } catch (e) {
+  } catch {
     return false;
-    // å¦‚æžœæŠ¥é”™ï¼Œå†å°è¯•åŠ ä¸Š https:// å‰ç¼€
+
     // try {
     //     new URL("https://" + input);
     //     return true;

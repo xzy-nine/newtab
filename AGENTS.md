@@ -75,13 +75,13 @@ src/
 `useAppSettings` 选择性订阅；开关与默认值以 `app-settings.ts` 为准。
 
 ```typescript
-const theme = useAppSettings((s) => s.theme)
-const setTheme = useAppSettings((s) => s.setTheme)
+const theme = useAppSettings((s) => s.theme);
+const setTheme = useAppSettings((s) => s.setTheme);
 
 // 使用前需要 hydrate
 useEffect(() => {
-  hydrate()
-}, [hydrate])
+  hydrate();
+}, [hydrate]);
 ```
 
 ### Widget Registration
@@ -90,7 +90,7 @@ useEffect(() => {
 
 ```typescript
 // 在组件中注册小组件
-useWidgetRegistration()
+useWidgetRegistration();
 ```
 
 ### Theme Management
@@ -98,7 +98,7 @@ useWidgetRegistration()
 使用 `useTheme` hook 管理主题，自动响应系统主题变化。
 
 ```typescript
-useTheme() // 在根组件中调用
+useTheme(); // 在根组件中调用
 ```
 
 ### Bookmark Folders
@@ -116,7 +116,7 @@ const {
   selectFolder,
   pinFolder,
   unpinFolder,
-} = useBookmarkFolders()
+} = useBookmarkFolders();
 ```
 
 ## 测试

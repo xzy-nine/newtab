@@ -13,8 +13,7 @@ import { getMessage } from "@/lib/i18n";
 import { Folder } from "lucide-react";
 
 export function SidePanelHome() {
-  const { hydrate, showClock, showWidgets, glassOpacity, backgroundEnabled, bgType, customImage } =
-    useAppSettings();
+  const { hydrate, showClock, showWidgets, glassOpacity } = useAppSettings();
   useTheme();
   useWidgetRegistration();
   const backgroundStyle = useBackgroundStyle();

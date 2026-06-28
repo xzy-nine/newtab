@@ -7,7 +7,6 @@ interface DockProps {
   pageCount?: number;
   currentPage?: number;
   onPageChange?: (page: number) => void;
-  isDark?: boolean;
 }
 
 export function Dock({
@@ -16,7 +15,6 @@ export function Dock({
   pageCount = 1,
   currentPage = 0,
   onPageChange,
-  isDark = false,
 }: DockProps) {
   const { theme, setTheme } = useAppSettings();
 

@@ -178,7 +178,7 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [showSidebar, setShowSidebar] = useState(true);
-  const [selectedTemperature, setSelectedTemperature] = useState(1.0);
+  const [_selectedTemperature, setSelectedTemperature] = useState(1.0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

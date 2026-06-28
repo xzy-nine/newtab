@@ -31,7 +31,7 @@ export default defineConfig({
       const localesDir = path.join(wxt.config.root, "public", "_locales");
       if (fs.existsSync(localesDir)) {
         const localeFiles = fs.readdirSync(localesDir, { recursive: true });
-        localeFiles.forEach((file) => {
+        localeFiles.forEach((file: string) => {
           const fullPath = path.join(localesDir, file);
           if (fs.statSync(fullPath).isFile()) {
             const dest = path.join("_locales", file);
@@ -48,7 +48,7 @@ export default defineConfig({
       const iconsDir = path.join(wxt.config.root, "public", "icons");
       if (fs.existsSync(iconsDir)) {
         const iconFiles = fs.readdirSync(iconsDir);
-        iconFiles.forEach((file) => {
+        iconFiles.forEach((file: string) => {
           const fullPath = path.join(iconsDir, file);
           if (fs.statSync(fullPath).isFile()) {
             const dest = path.join("icons", file);

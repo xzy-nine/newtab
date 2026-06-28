@@ -34,22 +34,11 @@ export function NewTab() {
   const desktopRef = useRef<DesktopSystemHandle>(null);
 
   const [showFolderPicker, setShowFolderPicker] = useState(false);
-  const [isDark, setIsDark] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
-
-  useEffect(() => {
-    const checkTheme = () => {
-      setIsDark(document.documentElement.classList.contains("dark"));
-    };
-    checkTheme();
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
 
   // 玻璃效果同步：将设置值应用到 documentElement 的 CSS 变量
   useEffect(() => {
@@ -185,7 +174,6 @@ export function NewTab() {
       </div>
 
       <Dock
-        isDark={isDark}
         onOpenSettings={() => setSettingsOpen(true)}
         onRefreshBackground={handleRefreshBackground}
       />
