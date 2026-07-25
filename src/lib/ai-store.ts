@@ -27,11 +27,11 @@ function generateId(): string {
 function buildChatUrl(apiUrl: string): string {
   const trimmed = apiUrl.trim();
   if (trimmed.includes("/chat/completions")) return trimmed;
-  if (trimmed.includes("/v1")) {
-    return trimmed.endsWith("/") ? trimmed + "chat/completions" : trimmed + "/chat/completions";
-  }
   const base = trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
-  return base + "/v1/chat/completions";
+  if (/deepseek/i.test(base)) {
+    return base.replace(/\/v1$/, "") + "/chat/completions";
+  }
+  return base + "/chat/completions";
 }
 
 function handleApiError(status: number, responseText: string): string {
@@ -70,32 +70,40 @@ function handleApiError(status: number, responseText: string): string {
   }
 }
 
-function isReasoningModel(model: string): boolean {
-  return /reason|think|o[13]|deepseek[-_]?reasoner/i.test(model);
+function isReasoningModel(model: string, provider?: { thinkingMode?: string }): boolean {
+  if (/reason|think|o[13]/i.test(model)) return true;
+  if (/deepseek[-_]?(v4|reasoner)/i.test(model)) {
+    return provider?.thinkingMode === "enabled";
+  }
+  return false;
 }
 
 async function generateTitleWithAI(context: string, provider: AIProvider): Promise<string> {
   const chatUrl = buildChatUrl(provider.apiUrl);
+  const body: Record<string, unknown> = {
+    model: provider.model,
+    messages: [
+      {
+        role: "system",
+        content:
+          "请为以下对话生成一个简洁、准确的标题。标题应该：\n1. 不超过20个字符\n2. 准确概括对话的主要内容\n3. 使用中文（如果对话是中文）或英文（如果对话是英文）\n4. 不要包含引号或特殊符号\n5. 直接输出标题，不要其他解释\n\n对话内容：",
+      },
+      { role: "user", content: context },
+    ],
+    max_tokens: 100,
+    temperature: 0.3,
+    stream: false,
+  };
+  if (/deepseek/i.test(chatUrl)) {
+    body.thinking = { type: "disabled" };
+  }
   const response = await fetch(chatUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${provider.apiKey}`,
     },
-    body: JSON.stringify({
-      model: provider.model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "请为以下对话生成一个简洁、准确的标题。标题应该：\n1. 不超过20个字符\n2. 准确概括对话的主要内容\n3. 使用中文（如果对话是中文）或英文（如果对话是英文）\n4. 不要包含引号或特殊符号\n5. 直接输出标题，不要其他解释\n\n对话内容：",
-        },
-        { role: "user", content: context },
-      ],
-      max_tokens: 100,
-      temperature: 0.3,
-      stream: false,
-    }),
+    body: JSON.stringify(body),
   });
   if (!response.ok) {
     const text = await response.text();
@@ -105,9 +113,13 @@ async function generateTitleWithAI(context: string, provider: AIProvider): Promi
   return data.choices?.[0]?.message?.content?.trim() || "";
 }
 
+function isTitleTriggerRound(roundCount: number): boolean {
+  const n = Math.round(Math.sqrt(roundCount));
+  return n * n - n + 1 === roundCount;
+}
+
 function buildTitleContext(messages: AIMessage[]): string {
-  const maxMessages = 6;
-  const sliced = messages.slice(0, maxMessages);
+  const sliced = messages.slice(-8);
   let context = "";
   for (let i = 0; i < sliced.length; i += 2) {
     if (i + 1 < sliced.length) {
@@ -126,10 +138,10 @@ function buildTitleContext(messages: AIMessage[]): string {
 }
 
 function getTitleProvider(providers: AIProvider[]): AIProvider | null {
-  const nonReasoning = providers.filter((p) => p.apiKey && !isReasoningModel(p.model));
+  const nonReasoning = providers.filter((p) => p.apiKey && !isReasoningModel(p.model, p));
   if (nonReasoning.length === 0) return providers[0] || null;
   const fast = nonReasoning.find((p) =>
-    /gpt-3\.5|deepseek-chat|claude-3-haiku|gemini.*flash/i.test(p.model),
+    /gpt-3\.5|deepseek-chat|deepseek-v4-flash|claude-3-haiku|gemini.*flash/i.test(p.model),
   );
   return fast || nonReasoning[0];
 }
@@ -247,16 +259,25 @@ export const useAIStore = create<AIStore>((set, get) => ({
     ];
 
     const chatUrl = buildChatUrl(provider.apiUrl);
-    const isDeepSeekReasoner = provider.model === "deepseek-reasoner";
-    const temperature = isDeepSeekReasoner ? undefined : 1.0;
+    const thinkingEnabled = provider.thinkingMode === "enabled";
 
-    const requestBody = {
+    const requestBody: Record<string, unknown> = {
       model: provider.model,
       messages: apiMessages,
-      max_tokens: isDeepSeekReasoner ? 32000 : 1000,
       stream: true,
-      ...(temperature !== undefined ? { temperature } : {}),
     };
+
+    if (!thinkingEnabled) {
+      requestBody.temperature = 1.0;
+    }
+
+    const isDeepSeek = /deepseek/i.test(provider.apiUrl) || /deepseek/i.test(provider.name);
+    if (isDeepSeek) {
+      requestBody.thinking = { type: thinkingEnabled ? "enabled" : "disabled" };
+      if (thinkingEnabled) {
+        requestBody.reasoning_effort = provider.reasoningEffort || "high";
+      }
+    }
 
     set({
       isStreaming: true,
@@ -306,20 +327,33 @@ export const useAIStore = create<AIStore>((set, get) => ({
           const data = line.slice(6);
           if (data === "[DONE]") break;
 
+          let streamError: string | null = null;
+
           try {
             const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta;
 
-            if (delta?.content) {
-              fullContent += delta.content;
-              callbacks?.onContent?.(delta.content);
-            }
+            if (parsed.error) {
+              streamError = parsed.error.message || "API 返回错误";
+            } else {
+              const delta = parsed.choices?.[0]?.delta;
 
-            if (delta?.reasoning_content) {
-              reasoning += delta.reasoning_content;
-              callbacks?.onReasoning?.(delta.reasoning_content);
+              if (delta?.content) {
+                fullContent += delta.content;
+                callbacks?.onContent?.(delta.content);
+                set({ streamingContent: fullContent });
+              }
+
+              if (delta?.reasoning_content) {
+                reasoning += delta.reasoning_content;
+                callbacks?.onReasoning?.(delta.reasoning_content);
+                set({ streamingReasoning: reasoning });
+              }
             }
           } catch {}
+
+          if (streamError) {
+            throw new Error(streamError);
+          }
         }
       }
 
@@ -338,11 +372,11 @@ export const useAIStore = create<AIStore>((set, get) => ({
       let title = conversation.title;
       const roundCount = Math.floor(finalMessages.filter((m) => m.role === "user").length);
 
-      if (roundCount === 1) {
+      if (roundCount === 1 || (settings.aiAutoRename && isTitleTriggerRound(roundCount))) {
         const titleCfg = settings;
         if (titleCfg.aiSystemPrompt) {
           try {
-            const ctx = buildTitleContext(finalMessages.slice(0, 2));
+            const ctx = buildTitleContext(finalMessages);
             const titleProvider = getTitleProvider(settings.aiProviders);
             if (titleProvider) {
               const generated = await generateTitleWithAI(ctx, titleProvider);

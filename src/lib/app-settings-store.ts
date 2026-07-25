@@ -27,6 +27,7 @@ interface AppSettingsStore extends AppSettings {
   setAiCurrentProviderIndex: (index: number) => void;
   setAiSystemPrompt: (prompt: string) => void;
   setAiQuickPrompts: (prompts: string[]) => void;
+  setAiAutoRename: (enabled: boolean) => void;
   setSyncMode: (mode: AppSettings["syncMode"]) => void;
   setSyncInterval: (interval: number) => void;
   hydrate: () => Promise<void>;
@@ -132,6 +133,11 @@ export const useAppSettings = create<AppSettingsStore>((set, get) => ({
 
   setAiQuickPrompts: (aiQuickPrompts) => {
     set({ aiQuickPrompts });
+    persistAppSettings(get());
+  },
+
+  setAiAutoRename: (aiAutoRename) => {
+    set({ aiAutoRename });
     persistAppSettings(get());
   },
 

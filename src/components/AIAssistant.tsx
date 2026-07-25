@@ -168,8 +168,13 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
     sendMessage,
   } = useAIStore();
 
-  const { aiProviders, aiCurrentProviderIndex, setAiCurrentProviderIndex, aiQuickPrompts } =
-    useAppSettings();
+  const {
+    aiProviders,
+    aiCurrentProviderIndex,
+    setAiCurrentProviderIndex,
+    setAiProviders,
+    aiQuickPrompts,
+  } = useAppSettings();
 
   const [inputValue, setInputValue] = useState(initialMessage || "");
   const [activePromptId, setActivePromptId] = useState<number | null>(null);
@@ -179,6 +184,7 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [showSidebar, setShowSidebar] = useState(true);
   const [_selectedTemperature, setSelectedTemperature] = useState(1.0);
+  const [error, setError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -242,6 +248,8 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
     setInputValue("");
     setActivePromptId(null);
 
+    setError(null);
+
     try {
       if (!currentConversationId) {
         createConversation(text);
@@ -249,11 +257,12 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
 
       await sendMessage(text, {
         onError: (err) => {
-          console.error("发送消息失败:", err);
+          setError(err.message || "发送消息失败");
         },
       });
     } catch (err) {
-      console.error("发送消息失败:", err);
+      const msg = err instanceof Error ? err.message : "发送消息失败";
+      setError(msg);
     }
   }, [inputValue, isStreaming, currentConversationId, createConversation, sendMessage]);
 
@@ -501,6 +510,14 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
                   </div>
                 </div>
               )}
+              {error && (
+                <div className="flex mb-4 justify-center">
+                  <div className="max-w-[85%] rounded-2xl px-4 py-2.5 bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+                    <p className="text-xs font-medium mb-0.5">发送失败</p>
+                    <p className="text-xs opacity-80">{error}</p>
+                  </div>
+                </div>
+              )}
             </>
           )}
           <div ref={messagesEndRef} />
@@ -529,6 +546,27 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
           )}
 
           <div className="flex items-end gap-2">
+            <button
+              onClick={() => {
+                const updated = [...aiProviders];
+                const newMode = currentProvider.thinkingMode === "enabled" ? "disabled" : "enabled";
+                updated[aiCurrentProviderIndex] = {
+                  ...updated[aiCurrentProviderIndex],
+                  thinkingMode: newMode,
+                };
+                setAiProviders(updated);
+              }}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1.5 text-[10px] rounded-md border transition-colors",
+                currentProvider.thinkingMode === "enabled"
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground hover:bg-muted",
+              )}
+              title="思考模式"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {currentProvider.thinkingMode === "enabled" ? "思考" : "快速"}
+            </button>
             <div className="relative">
               <button
                 onClick={() => setIsModelPanelOpen(!isModelPanelOpen)}
@@ -603,7 +641,7 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
                             }}
                           >
                             <span className="flex-1 truncate">{m}</span>
-                            {/reason|think|o3|deepseek-reasoner/i.test(m) && (
+                            {/reason|think|o3|deepseek[-_]?(v4|reasoner)/i.test(m) && (
                               <span className="text-[10px] px-1 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
                                 推理
                               </span>

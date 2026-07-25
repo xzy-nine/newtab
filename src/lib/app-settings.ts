@@ -14,6 +14,8 @@ export interface AIProvider {
   model: string;
   apiKey: string;
   isDefault: boolean;
+  thinkingMode?: "enabled" | "disabled";
+  reasoningEffort?: "high" | "max";
 }
 
 export type SyncMode = "disabled" | "upload" | "download";
@@ -39,6 +41,7 @@ export interface AppSettings {
   aiCurrentProviderIndex: number;
   aiSystemPrompt: string;
   aiQuickPrompts: string[];
+  aiAutoRename: boolean;
   syncMode: SyncMode;
   syncInterval: number;
 }
@@ -52,10 +55,12 @@ export const DEFAULT_SEARCH_ENGINES: SearchEngine[] = [
 export const DEFAULT_AI_PROVIDERS: AIProvider[] = [
   {
     name: "DeepSeek",
-    apiUrl: "https://api.deepseek.com/v1",
-    model: "deepseek-chat",
+    apiUrl: "https://api.deepseek.com",
+    model: "deepseek-v4-flash",
     apiKey: "",
     isDefault: true,
+    thinkingMode: "enabled",
+    reasoningEffort: "high",
   },
   {
     name: "OpenAI",
@@ -87,6 +92,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   aiCurrentProviderIndex: 0,
   aiSystemPrompt: "你是一个有用的AI助手。",
   aiQuickPrompts: [],
+  aiAutoRename: false,
   syncMode: "disabled",
   syncInterval: 0,
 };
@@ -115,14 +121,28 @@ export function normalizeSearchEngines(engines: unknown): SearchEngine[] {
 
 export function normalizeAIProviders(providers: unknown): AIProvider[] {
   if (!Array.isArray(providers)) return DEFAULT_AI_PROVIDERS;
-  const valid = providers.filter(
-    (p): p is AIProvider =>
-      typeof p === "object" &&
-      p !== null &&
-      typeof (p as AIProvider).name === "string" &&
-      typeof (p as AIProvider).apiUrl === "string" &&
-      typeof (p as AIProvider).model === "string",
-  );
+  const valid = providers
+    .filter(
+      (p): p is AIProvider =>
+        typeof p === "object" &&
+        p !== null &&
+        typeof (p as AIProvider).name === "string" &&
+        typeof (p as AIProvider).apiUrl === "string" &&
+        typeof (p as AIProvider).model === "string",
+    )
+    .map((p) => {
+      let { apiUrl, model } = p;
+      if (/deepseek/i.test(apiUrl) && apiUrl.endsWith("/v1")) {
+        apiUrl = apiUrl.replace(/\/v1$/, "");
+      }
+      if (model === "deepseek-chat" || model === "deepseek-reasoner") {
+        model = "deepseek-v4-flash";
+      }
+      if (apiUrl !== p.apiUrl || model !== p.model) {
+        return { ...p, apiUrl, model };
+      }
+      return p;
+    });
   return valid.length > 0 ? valid : DEFAULT_AI_PROVIDERS;
 }
 
@@ -207,6 +227,10 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     aiQuickPrompts: Array.isArray(candidate.aiQuickPrompts)
       ? candidate.aiQuickPrompts.filter((p): p is string => typeof p === "string")
       : DEFAULT_APP_SETTINGS.aiQuickPrompts,
+    aiAutoRename:
+      typeof candidate.aiAutoRename === "boolean"
+        ? candidate.aiAutoRename
+        : DEFAULT_APP_SETTINGS.aiAutoRename,
     syncMode: ["disabled", "upload", "download"].includes(candidate.syncMode || "")
       ? candidate.syncMode!
       : DEFAULT_APP_SETTINGS.syncMode,
@@ -365,6 +389,7 @@ async function migrateFromLegacyStorage(): Promise<AppSettings> {
     aiCurrentProviderIndex,
     aiSystemPrompt,
     aiQuickPrompts,
+    aiAutoRename: DEFAULT_APP_SETTINGS.aiAutoRename,
     syncMode: legacySyncMode,
     syncInterval: legacySyncInterval,
   };

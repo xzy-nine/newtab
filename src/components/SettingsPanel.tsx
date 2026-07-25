@@ -469,6 +469,8 @@ function AISettings() {
     setAiSystemPrompt,
     aiQuickPrompts,
     setAiQuickPrompts,
+    aiAutoRename,
+    setAiAutoRename,
   } = useAppSettings();
 
   const [editingProvider, setEditingProvider] = useState<{
@@ -618,12 +620,12 @@ function AISettings() {
               onChange={(e) => setNewProvider({ ...newProvider, name: e.target.value })}
             />
             <Input
-              placeholder="API URL (如 https://api.deepseek.com/v1)"
+              placeholder="API URL (如 https://api.deepseek.com)"
               value={newProvider.apiUrl}
               onChange={(e) => setNewProvider({ ...newProvider, apiUrl: e.target.value })}
             />
             <Input
-              placeholder="模型 (如 deepseek-chat)"
+              placeholder="模型 (如 deepseek-v4-flash)"
               value={newProvider.model}
               onChange={(e) => setNewProvider({ ...newProvider, model: e.target.value })}
             />
@@ -697,6 +699,22 @@ function AISettings() {
             rows={3}
             className="w-full bg-transparent border border-input rounded-md p-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring"
             placeholder="输入系统提示词..."
+          />
+        </SettingCard>
+      </div>
+
+      <div>
+        <h3 className="text-base font-semibold mb-4">会话自动重命名</h3>
+        <SettingCard>
+          <SettingRow
+            label="后续轮次自动更新标题"
+            description="在第 3、7、13、21… 轮对话时自动重新生成标题（仅最新 4 轮为上下文）"
+            control={
+              <Switch
+                checked={aiAutoRename}
+                onCheckedChange={(v) => setAiAutoRename(v as boolean)}
+              />
+            }
           />
         </SettingCard>
       </div>
