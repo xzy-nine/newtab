@@ -112,24 +112,35 @@ export function BackgroundSettings() {
           </div>
 
           {bgType === "custom" && (
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="w-4 h-4 mr-1" />
-                {getMessage("uploadImage", "上传图片")}
-              </Button>
-              {customImage && (
-                <Button variant="outline" size="sm" onClick={handleClearCustom}>
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  {getMessage("reset", "重置")}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="url"
+                  placeholder="https://example.com/bg.jpg"
+                  value={customImage || ""}
+                  onChange={(e) => setCustomImage(e.target.value || null)}
+                  className="flex-1 h-8 rounded-md border px-3 text-sm"
+                />
+                {customImage && (
+                  <Button variant="outline" size="sm" onClick={handleClearCustom}>
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    {getMessage("reset", "重置")}
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="w-4 h-4 mr-1" />
+                  {getMessage("uploadImage", "上传图片")}
                 </Button>
-              )}
+              </div>
             </div>
           )}
 
