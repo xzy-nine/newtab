@@ -47,7 +47,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SEARCH_ENGINES: SearchEngine[] = [
-  { name: "Bing", url: "https://www.bing.com/search?q=" },
+  { name: "Bing", url: "https://bing.com/search?q=" },
   { name: "Baidu", url: "https://www.baidu.com/s?wd=" },
   { name: "Google", url: "https://www.google.com/search?q=" },
 ];
