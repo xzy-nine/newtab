@@ -48,16 +48,17 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+          cache: pnpm
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: 获取发布前的 tag 和当前版本
         run: |
@@ -69,9 +70,9 @@ jobs:
         if: ${{ !inputs.force_publish }}
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            bunx semantic-release --dry-run
+            pnpm dlx semantic-release --dry-run
           else
-            bunx semantic-release
+            pnpm dlx semantic-release
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -132,27 +133,28 @@ jobs:
         with:
           ref: ${{ needs.release.outputs.release_git_tag }}
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+          cache: pnpm
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: |
-          bun run build
-          bun run build:firefox
+          pnpm run build
+          pnpm run build:firefox
 
       - name: Zip extensions
         run: |
-          bun run zip
-          bun run zip:edge
-          bun run zip:firefox
+          pnpm run zip
+          pnpm run zip:edge
+          pnpm run zip:firefox
 
       - name: 上传构建产物（Artifact）
         uses: actions/upload-artifact@v4
@@ -180,5 +182,5 @@ jobs:
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
           EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
         run: |
-          bunx wxt submit \
+          pnpm dlx wxt submit \
             --edge-zip .output/*-chrome.zip

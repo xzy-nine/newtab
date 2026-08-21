@@ -39,13 +39,14 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+          cache: pnpm
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: 11.21.0
 
       - name: 安装依赖
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: 设置环境变量
         run: |
@@ -55,13 +56,13 @@ jobs:
       - name: 使用WXT创建构建包
         run: |
           echo "📦 使用WXT创建构建包..."
-          bun run build
-          bun run build:edge
-          bun run build:firefox
+          pnpm run build
+          pnpm run build:edge
+          pnpm run build:firefox
 
-          bun run zip
-          bun run zip:edge
-          bun run zip:firefox
+          pnpm run zip
+          pnpm run zip:edge
+          pnpm run zip:firefox
 
       - name: 查看构建产物
         run: |

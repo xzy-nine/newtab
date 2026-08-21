@@ -9,23 +9,23 @@ newtab 是一个浏览器新标签页扩展，提供自定义桌面、AI 助手�
 ## 开发者命令
 
 ```bash
-bun run dev           # Start dev server (Chrome)
-bun run dev:edge      # Start dev server (Edge)
-bun run dev:firefox   # Start dev server (Firefox)
-bun run build         # Build for Chrome/Chromium
-bun run build:edge    # Build for Edge
-bun run build:firefox # Build for Firefox
-bun run test:unit     # Run unit tests (Vitest + jsdom)
-bun run test:watch    # Run tests in watch mode
-bun run compile       # TypeScript type check only
-bun run lint          # Format + lint with oxfmt/oxlint
-bun run knip          # Find unused files/exports/dependencies
-bun run zip           # Package as .zip (Chrome)
-bun run zip:edge      # Package as .zip (Edge)
-bun run zip:firefox   # Package as .zip (Firefox)
+pnpm run dev           # Start dev server (Chrome)
+pnpm run dev:edge      # Start dev server (Edge)
+pnpm run dev:firefox   # Start dev server (Firefox)
+pnpm run build         # Build for Chrome/Chromium
+pnpm run build:edge    # Build for Edge
+pnpm run build:firefox # Build for Firefox
+pnpm run test:unit     # Run unit tests (Vitest + jsdom)
+pnpm run test:watch    # Run tests in watch mode
+pnpm run compile       # TypeScript type check only
+pnpm run lint          # Format + lint with oxfmt/oxlint
+pnpm run knip          # Find unused files/exports/dependencies
+pnpm run zip           # Package as .zip (Chrome)
+pnpm run zip:edge      # Package as .zip (Edge)
+pnpm run zip:firefox   # Package as .zip (Firefox)
 ```
 
-- 包管理器使用 **bun**（项目已配置 `only-allow bun`）
+- 包管理器使用 **pnpm**（项目已配置 `only-allow pnpm`）
 
 ## 验证顺序
 
