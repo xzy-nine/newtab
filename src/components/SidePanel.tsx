@@ -16,24 +16,26 @@ export function SidePanel() {
   const [browseSeq, setBrowseSeq] = useState(0);
   const [mobileUa, setMobileUa] = useState(true);
 
-  const openModeRef = useRef(openMode);
-  openModeRef.current = openMode;
-
   // 统一入口：按 openMode 决定"侧边栏打开"或"主窗口打开"。
-  const openInSidebar = useCallback((targetUrl: string) => {
-    if (!targetUrl) return;
-    if (openModeRef.current === "main-window") {
-      chrome.tabs.create({ url: targetUrl });
-      return;
-    }
-    setBrowseUrl(targetUrl);
-    setBrowseSeq((s) => s + 1);
-    setPanelMode("browse");
-  }, []);
+  const openInSidebar = useCallback(
+    (targetUrl: string) => {
+      if (!targetUrl) return;
+      if (openMode === "main-window") {
+        chrome.tabs.create({ url: targetUrl });
+        return;
+      }
+      setBrowseUrl(targetUrl);
+      setBrowseSeq((s) => s + 1);
+      setPanelMode("browse");
+    },
+    [openMode],
+  );
 
   // 供事件回调以最新 openMode 调用。
   const openInSidebarRef = useRef(openInSidebar);
-  openInSidebarRef.current = openInSidebar;
+  useEffect(() => {
+    openInSidebarRef.current = openInSidebar;
+  }, [openInSidebar]);
 
   const goHome = useCallback(() => {
     setPanelMode("home");

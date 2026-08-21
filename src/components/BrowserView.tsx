@@ -79,30 +79,22 @@ export const BrowserView = forwardRef<BrowserViewHandle, BrowserViewProps>(funct
     });
   }, []);
 
-  const probe = useCallback((target: string) => {
-    let cancelled = false;
-    setEmbedBlocked(null);
-    setForceEmbed(false);
-    chrome.runtime
-      .sendMessage({ action: "browserProbe", url: target })
-      .then((probeResult: BrowserProbeResult | undefined) => {
-        if (!cancelled && probeResult && embeddabilityOf(probeResult) === "blocked") {
-          setEmbedBlocked(target);
-        }
-      })
-      .catch(() => {
-        /* 不可达：保留普通 iframe */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   // 每次 URL 导航都会重新探测嵌入性。
   useEffect(() => {
     if (url === null) return;
-    return probe(url);
-  }, [url, probe]);
+    let cancelled = false;
+    chrome.runtime
+      .sendMessage({ action: "browserProbe", url })
+      .then((probeResult: BrowserProbeResult | undefined) => {
+        if (!cancelled && probeResult && embeddabilityOf(probeResult) === "blocked") {
+          setEmbedBlocked(url);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
 
   /** 把合法 URL 推入地址栏历史并加载。 */
   const goTo = useCallback(
@@ -112,6 +104,8 @@ export const BrowserView = forwardRef<BrowserViewHandle, BrowserViewProps>(funct
       setUrl(next);
       setInput(next);
       setMessage(null);
+      setEmbedBlocked(null);
+      setForceEmbed(false);
       setHistory((previous) => [...previous.slice(0, cursor + 1), next]);
       setCursor((previous) => previous + 1);
       setReloadKey((key) => key + 1);

@@ -76,13 +76,12 @@ interface SettingsPanelProps {
 export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
   const [activeCategory, setActiveCategory] = useState<CategoryId>("general");
   const settingsMainRef = useRef<HTMLDivElement>(null);
-  const [version, setVersion] = useState("");
-
-  useEffect(() => {
+  const [version] = useState(() => {
     if (typeof browser !== "undefined" && browser.runtime?.getManifest) {
-      setVersion(browser.runtime.getManifest().version);
+      return browser.runtime.getManifest().version;
     }
-  }, []);
+    return "";
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -953,16 +952,31 @@ function WidgetListSettings() {
 
 function SyncSettings() {
   const { syncMode, setSyncMode, syncInterval, setSyncInterval } = useAppSettings();
-  const [status, setStatus] = useState<CloudDataInfo | null | "loading">(null);
+  const [status, setStatus] = useState<CloudDataInfo | null | "loading">("loading");
 
   const refreshStatus = useCallback(async () => {
-    setStatus("loading");
     try {
       const info = await dataSync.check();
       setStatus(info);
     } catch {
       setStatus(null);
     }
+  }, []);
+
+  // 组件挂载时获取一次状态
+  useEffect(() => {
+    let active = true;
+    dataSync.check().then(
+      (info) => {
+        if (active) setStatus(info);
+      },
+      () => {
+        if (active) setStatus(null);
+      },
+    );
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleUpload = async () => {
@@ -1032,8 +1046,19 @@ function SyncSettings() {
   };
 
   useEffect(() => {
-    refreshStatus();
-  }, [refreshStatus]);
+    let active = true;
+    dataSync.check().then(
+      (info) => {
+        if (active) setStatus(info);
+      },
+      () => {
+        if (active) setStatus(null);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-6">

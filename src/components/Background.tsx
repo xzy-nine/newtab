@@ -15,47 +15,44 @@ export function useBackgroundStyle(): React.CSSProperties {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [error, setError] = useState(false);
 
+  // 异步获取缓存图片 — rawBgUrl 变化时 effect 重新执行
   useEffect(() => {
-    setCachedUrl(null);
-    setImageLoaded(false);
-    setError(false);
-
-    if (!rawBgUrl) {
-      setImageLoaded(true);
-      return;
-    }
-
+    if (!rawBgUrl) return;
+    let cancelled = false;
     getCachedImageUrl(rawBgUrl)
       .then((url) => {
-        setCachedUrl(url);
+        if (!cancelled) setCachedUrl(url);
       })
       .catch(() => {
-        setError(true);
-        setImageLoaded(true);
+        if (!cancelled) setError(true);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [rawBgUrl]);
 
+  // 预加载图片
   useEffect(() => {
     if (!cachedUrl) return;
-    setImageLoaded(false);
+    let cancelled = false;
     const img = new Image();
     img.onload = () => {
-      setImageLoaded(true);
+      if (!cancelled) setImageLoaded(true);
     };
     img.onerror = () => {
-      setError(true);
-      setImageLoaded(true);
+      if (!cancelled) {
+        setError(true);
+        setImageLoaded(true);
+      }
     };
     img.src = cachedUrl;
-    if (img.complete) {
-      setImageLoaded(true);
-    }
     return () => {
+      cancelled = true;
       img.src = "";
     };
   }, [cachedUrl]);
 
-  const showDefault = !backgroundEnabled || bgType === "default" || error;
+  const showDefault = !backgroundEnabled || bgType === "default" || error || !rawBgUrl;
 
   if (showDefault || !cachedUrl) {
     return { backgroundColor: "oklch(0.1448 0 0)" };
