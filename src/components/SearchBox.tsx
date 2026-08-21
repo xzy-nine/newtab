@@ -8,6 +8,7 @@ import { getMessage } from "@/lib/i18n";
 import type { SearchEngine } from "@/lib/app-settings";
 import { AIAssistant } from "@/components/AIAssistant";
 import { cn } from "@/lib/utils";
+import { emitSidebarNavigate } from "@/lib/sidebar-nav";
 import {
   getSearchSuggestions,
   type SearchSuggestion,
@@ -186,7 +187,7 @@ export function SearchBox() {
     if (query.trim()) {
       const searchUrl = currentEngine.url + encodeURIComponent(query.trim());
       if ((window as any).__IN_SIDEPANEL__) {
-        chrome.storage.local.set({ currentUrl: searchUrl });
+        emitSidebarNavigate(searchUrl);
       } else {
         window.open(searchUrl, "_blank");
       }
@@ -291,7 +292,7 @@ export function SearchBox() {
                 type="button"
                 onClick={() => {
                   if ((window as any).__IN_SIDEPANEL__) {
-                    chrome.storage.local.set({ currentUrl: suggestion.url });
+                    emitSidebarNavigate(suggestion.url);
                   } else {
                     window.open(suggestion.url, "_blank");
                   }
