@@ -143,6 +143,11 @@ export default defineBackground({
             signal: controller.signal,
           });
         }
+        // 重定向后重新校验 URL，防止重定向到回环地址
+        const finalUrl = new URL(response.url);
+        if (isLoopbackHostname(finalUrl.hostname)) {
+          return { reachable: false };
+        }
         const csp = response.headers.get("content-security-policy");
         const frameAncestors = extractFrameAncestors(csp);
         const xFrameOptions = response.headers.get("x-frame-options");

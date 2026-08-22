@@ -296,7 +296,9 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
         const menuItems: ContextMenuItem[] = [];
         if (isShortcutItem(item) && item.url) {
           menuItems.push({
-            label: getMessage("openInNewTab", "在新标签页打开"),
+            label: (window as any).__IN_SIDEPANEL__
+              ? getMessage("openInSidebar", "在侧边栏打开")
+              : getMessage("openInNewTab", "在新标签页打开"),
             onSelect: () => {
               if ((window as any).__IN_SIDEPANEL__) {
                 emitSidebarNavigate(item.url);

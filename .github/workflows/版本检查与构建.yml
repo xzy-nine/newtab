@@ -85,20 +85,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.21.0
-
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm dlx oxlint .
+        run: pnpm exec oxlint .
 
       - name: Typecheck
         run: pnpm run compile

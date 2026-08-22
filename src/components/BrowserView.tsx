@@ -58,12 +58,26 @@ export const BrowserView = forwardRef<BrowserViewHandle, BrowserViewProps>(funct
   { initialUrl },
   ref,
 ) {
-  const [url, setUrl] = useState<string | null>(initialUrl || null);
+  // 校验 initialUrl，仅 http/https 且非回环地址才加载
+  const initialUrlValidation = initialUrl ? normalizeBrowserUrl(initialUrl) : null;
+  const [url, setUrl] = useState<string | null>(
+    initialUrlValidation?.kind === "ok" ? initialUrlValidation.url : null,
+  );
   const [input, setInput] = useState<string>(initialUrl || "");
   /** 地址栏提示（非法/被拒）。 */
-  const [message, setMessage] = useState<string | null>(null);
-  const [history, setHistory] = useState<string[]>(initialUrl ? [initialUrl] : []);
-  const [cursor, setCursor] = useState<number>(initialUrl ? 0 : -1);
+  const [message, setMessage] = useState<string | null>(
+    initialUrl && initialUrlValidation?.kind !== "ok"
+      ? initialUrlValidation?.kind === "invalid"
+        ? "无效的网址"
+        : initialUrlValidation?.reason === "scheme"
+          ? "已阻止：仅支持 http/https 链接"
+          : "已阻止：不允许在侧边栏访问本机或内部地址"
+      : null,
+  );
+  const [history, setHistory] = useState<string[]>(
+    initialUrlValidation?.kind === "ok" ? [initialUrlValidation.url] : [],
+  );
+  const [cursor, setCursor] = useState<number>(initialUrlValidation?.kind === "ok" ? 0 : -1);
   const [reloadKey, setReloadKey] = useState(0);
   /** 该站点拒绝被嵌入的 URL（显示解释面板）。 */
   const [embedBlocked, setEmbedBlocked] = useState<string | null>(null);
@@ -78,6 +92,11 @@ export const BrowserView = forwardRef<BrowserViewHandle, BrowserViewProps>(funct
       setSandbox(r.browserSandbox === true);
     });
   }, []);
+
+  // 保存沙箱偏好到 storage。
+  useEffect(() => {
+    chrome.storage.local.set({ browserSandbox: sandbox });
+  }, [sandbox]);
 
   // 每次 URL 导航都会重新探测嵌入性。
   useEffect(() => {
@@ -166,7 +185,6 @@ export const BrowserView = forwardRef<BrowserViewHandle, BrowserViewProps>(funct
   const toggleSandbox = useCallback(() => {
     setSandbox((prev) => {
       const next = !prev;
-      chrome.storage.local.set({ browserSandbox: next });
       return next;
     });
     setReloadKey((key) => key + 1);
@@ -180,11 +198,15 @@ export const BrowserView = forwardRef<BrowserViewHandle, BrowserViewProps>(funct
 
   const loadAnyway = useCallback(() => {
     if (embedBlocked) {
-      setForceEmbed(true);
       chrome.runtime
         .sendMessage({ action: "forceEmbedUrl", url: embedBlocked, enabled: true })
+        .then((response: { success?: boolean }) => {
+          if (response?.success) {
+            setForceEmbed(true);
+            setReloadKey((key) => key + 1);
+          }
+        })
         .catch(() => {});
-      setReloadKey((key) => key + 1);
     }
   }, [embedBlocked]);
 
@@ -328,7 +350,7 @@ export const BrowserView = forwardRef<BrowserViewHandle, BrowserViewProps>(funct
             key={`${reloadKey}:${sandbox ? "sb" : "ns"}`}
             src={url}
             sandbox={sandbox ? IFRAME_SANDBOX_ISOLATED : IFRAME_SANDBOX_SAME_SESSION}
-            allow="camera; microphone; geolocation; fullscreen; autoplay; clipboard-read; clipboard-write"
+            allow="fullscreen; autoplay"
             className="absolute inset-0 w-full h-full border-0"
           />
         )}

@@ -16,26 +16,23 @@ export function SidePanel() {
   const [browseSeq, setBrowseSeq] = useState(0);
   const [mobileUa, setMobileUa] = useState(true);
 
-  // 统一入口：按 openMode 决定"侧边栏打开"或"主窗口打开"。
-  const openInSidebar = useCallback(
-    (targetUrl: string) => {
-      if (!targetUrl) return;
-      if (openMode === "main-window") {
-        chrome.tabs.create({ url: targetUrl });
-        return;
-      }
-      setBrowseUrl(targetUrl);
-      setBrowseSeq((s) => s + 1);
-      setPanelMode("browse");
-    },
-    [openMode],
-  );
-
   // 供事件回调以最新 openMode 调用。
-  const openInSidebarRef = useRef(openInSidebar);
+  const openModeRef = useRef(openMode);
   useEffect(() => {
-    openInSidebarRef.current = openInSidebar;
-  }, [openInSidebar]);
+    openModeRef.current = openMode;
+  }, [openMode]);
+
+  // 统一入口：按 openMode 决定"侧边栏打开"或"主窗口打开"。
+  const openInSidebar = useCallback((targetUrl: string) => {
+    if (!targetUrl) return;
+    if (openModeRef.current === "main-window") {
+      chrome.tabs.create({ url: targetUrl });
+      return;
+    }
+    setBrowseUrl(targetUrl);
+    setBrowseSeq((s) => s + 1);
+    setPanelMode("browse");
+  }, []);
 
   const goHome = useCallback(() => {
     setPanelMode("home");
@@ -56,26 +53,26 @@ export function SidePanel() {
   useEffect(() => {
     return registerLinkInterception({
       takeoverEnabled: () => true,
-      openInSidebar: (url) => openInSidebarRef.current(url),
+      openInSidebar,
       selfOrigin: window.location.origin,
     });
-  }, []);
+  }, [openInSidebar]);
 
   // 主页各处（搜索/桌面/书签）通过导航通道请求打开 → 侧边栏。
   useEffect(() => {
-    return onSidebarNavigate((url) => openInSidebarRef.current(url));
-  }, []);
+    return onSidebarNavigate(openInSidebar);
+  }, [openInSidebar]);
 
   // 后台在 iframe 内点击 target=_blank / window.open 后，把 URL 重定向回侧边栏。
   useEffect(() => {
     const handler = (request: { action?: string; url?: string }) => {
       if (request.action === "xbOpenInSidebar" && request.url) {
-        openInSidebarRef.current(request.url);
+        openInSidebar(request.url);
       }
     };
     chrome.runtime.onMessage.addListener(handler);
     return () => chrome.runtime.onMessage.removeListener(handler);
-  }, []);
+  }, [openInSidebar]);
 
   const toggleMobileUa = useCallback(() => {
     const next = !mobileUa;

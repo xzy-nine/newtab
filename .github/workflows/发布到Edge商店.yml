@@ -46,7 +46,7 @@ jobs:
         run: |
           echo "🚀 开始提交到 Microsoft Edge Add-ons..."
 
-          pnpm dlx wxt submit \
+          pnpm exec wxt submit \
             --edge-zip .output/*-chrome.zip
 
       - name: 输出结果

@@ -70,9 +70,9 @@ jobs:
         if: ${{ !inputs.force_publish }}
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            pnpm dlx semantic-release --dry-run
+            pnpm exec semantic-release --dry-run
           else
-            pnpm dlx semantic-release
+            pnpm exec semantic-release
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -182,5 +182,5 @@ jobs:
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
           EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
         run: |
-          pnpm dlx wxt submit \
+          pnpm exec wxt submit \
             --edge-zip .output/*-chrome.zip

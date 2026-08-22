@@ -54,8 +54,11 @@ export function embeddabilityOf(probe: BrowserProbeResult): Embeddability {
 /** loopback 主机名（localhost、IPv6 ::1、127.0.0.0/8、0.0.0.0）。 */
 export function isLoopbackHostname(hostname: string): boolean {
   const host = hostname.replace(/^\[|\]$/g, "").toLowerCase();
-  if (host === "localhost" || host === "::1" || host === "0.0.0.0") return true;
-  const parts = host.split(".");
+  // 移除 DNS 尾随点，防止 localhost. 绕过检测
+  const normalizedHost = host.endsWith(".") ? host.slice(0, -1) : host;
+  if (normalizedHost === "localhost" || normalizedHost === "::1" || normalizedHost === "0.0.0.0")
+    return true;
+  const parts = normalizedHost.split(".");
   return (
     parts.length === 4 &&
     parts[0] === "127" &&
