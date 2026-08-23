@@ -11,6 +11,7 @@ import { useContextMenu, type ContextMenuItem } from "@/hooks/useContextMenu";
 import { WidgetAddDialog } from "@/components/WidgetSystem";
 import { Plus, GripVertical, Maximize2 } from "lucide-react";
 import { fetchIconFromSources, getDomain, generateInitialBasedIcon } from "@/lib/icon-manager";
+import { emitSidebarNavigate } from "@/lib/sidebar-nav";
 
 interface DesktopSystemProps {
   folderId: string;
@@ -225,9 +226,7 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
     const handleShortcutClick = useCallback((item: ShortcutItem) => {
       if (item.url) {
         if ((window as any).__IN_SIDEPANEL__) {
-          chrome.storage.local.set({ currentUrl: "" }, () => {
-            chrome.storage.local.set({ currentUrl: item.url });
-          });
+          emitSidebarNavigate(item.url);
         } else {
           chrome.tabs.create({ url: item.url });
         }
@@ -297,12 +296,12 @@ export const DesktopSystem = forwardRef<DesktopSystemHandle, DesktopSystemProps>
         const menuItems: ContextMenuItem[] = [];
         if (isShortcutItem(item) && item.url) {
           menuItems.push({
-            label: getMessage("openInNewTab", "在新标签页打开"),
+            label: (window as any).__IN_SIDEPANEL__
+              ? getMessage("openInSidebar", "在侧边栏打开")
+              : getMessage("openInNewTab", "在新标签页打开"),
             onSelect: () => {
               if ((window as any).__IN_SIDEPANEL__) {
-                chrome.storage.local.set({ currentUrl: "" }, () => {
-                  chrome.storage.local.set({ currentUrl: item.url });
-                });
+                emitSidebarNavigate(item.url);
               } else {
                 chrome.tabs.create({ url: item.url });
               }

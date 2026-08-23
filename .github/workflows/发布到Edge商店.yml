@@ -21,21 +21,22 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v6
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+          cache: pnpm
 
       - name: 安装依赖
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: 使用WXT创建构建包
         run: |
-          bun run build
-          bun run zip
+          pnpm run build
+          pnpm run zip
 
       - name: 使用WXT提交到Edge商店
         env:
@@ -45,7 +46,7 @@ jobs:
         run: |
           echo "🚀 开始提交到 Microsoft Edge Add-ons..."
 
-          bunx wxt submit \
+          pnpm exec wxt submit \
             --edge-zip .output/*-chrome.zip
 
       - name: 输出结果

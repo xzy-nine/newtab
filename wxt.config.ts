@@ -84,6 +84,7 @@ export default defineConfig({
       "tabs",
       "sidePanel",
       "declarativeNetRequestWithHostAccess",
+      "webNavigation",
     ],
     host_permissions: ["https://*/*", "http://*/*"],
     action: {
@@ -117,6 +118,10 @@ export default defineConfig({
   },
   vite: () => ({
     plugins: [tailwindcss()],
+    build: {
+      // 扩展页面中 modulepreload 会产生跨 world 不匹配警告，禁用自动注入
+      modulePreload: false,
+    },
   }),
   dev: {
     server: {

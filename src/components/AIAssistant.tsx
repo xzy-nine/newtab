@@ -30,17 +30,18 @@ import {
 
 function RenderMarkdown({ content }: { content: string }) {
   if (!content) return null;
+  let html: string;
   try {
-    const html = marked.parse(content, { async: false }) as string;
-    return (
-      <div
-        className="prose prose-sm dark:prose-invert max-w-none break-words"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
+    html = marked.parse(content, { async: false }) as string;
   } catch {
     return <span className="whitespace-pre-wrap break-words">{content}</span>;
   }
+  return (
+    <div
+      className="prose prose-sm dark:prose-invert max-w-none break-words"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }
 
 function formatTime(ts: number): string {
@@ -217,7 +218,26 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
   }, [isModelPanelOpen]);
 
   useEffect(() => {
-    setSelectedModel(currentProvider?.model || "");
+    if (!currentProvider?.apiUrl || !currentProvider?.apiKey) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const baseUrl = new URL(currentProvider.apiUrl);
+        const modelsUrl = new URL("/v1/models", baseUrl.origin);
+        const res = await fetch(modelsUrl.toString(), {
+          headers: { Authorization: `Bearer ${currentProvider.apiKey}` },
+        });
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          if (Array.isArray(data.data)) {
+            setAvailableModels(data.data.map((m: { id: string }) => m.id));
+          }
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [currentProvider]);
 
   const refreshModels = useCallback(async () => {
@@ -236,10 +256,6 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
       }
     } catch {}
   }, [currentProvider]);
-
-  useEffect(() => {
-    refreshModels();
-  }, [refreshModels]);
 
   const handleSend = useCallback(async () => {
     const text = inputValue.trim();
@@ -573,9 +589,11 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
                 className="flex items-center gap-1 px-2 py-1.5 text-[10px] rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 title="切换AI模型"
               >
-                {selectedModel ? (
+                {selectedModel || currentProvider?.model ? (
                   <>
-                    <span className="truncate max-w-[60px]">{selectedModel}</span>
+                    <span className="truncate max-w-[60px]">
+                      {selectedModel || currentProvider?.model}
+                    </span>
                     <ChevronDown className="w-2.5 h-2.5" />
                   </>
                 ) : (

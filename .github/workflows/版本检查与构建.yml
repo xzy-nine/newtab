@@ -85,25 +85,26 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+          cache: pnpm
 
       - name: 安装依赖
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: bunx oxlint .
+        run: pnpm exec oxlint .
 
       - name: Typecheck
-        run: bun run compile
+        run: pnpm run compile
 
       - name: 测试
-        run: bun run test:unit
+        run: pnpm run test:unit
 
       - name: 从package.json获取版本信息
         id: get-version
@@ -211,13 +212,13 @@ jobs:
         run: |
           echo "📦 使用WXT创建构建包..."
 
-          bun run build
-          bun run build:edge
-          bun run build:firefox
+          pnpm run build
+          pnpm run build:edge
+          pnpm run build:firefox
 
-          bun run zip
-          bun run zip:edge
-          bun run zip:firefox
+          pnpm run zip
+          pnpm run zip:edge
+          pnpm run zip:firefox
 
           BUILD_PATH=".output"
           echo "build_path=$BUILD_PATH" >> $GITHUB_OUTPUT
