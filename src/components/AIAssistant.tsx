@@ -143,10 +143,32 @@ interface QuickPrompt {
 }
 
 function normalizeQuickPrompts(prompts: (string | QuickPrompt)[]): QuickPrompt[] {
-  return prompts.map((p) => {
-    if (typeof p === "string") return { text: p, temperature: 1.0, category: "general" };
-    return p;
-  });
+  return prompts
+    .map((p) => {
+      if (typeof p === "string") {
+        // 设置里新增的提示词以 JSON 字符串存储，这里解析回对象；纯文本则按通用处理。
+        try {
+          const parsed: unknown = JSON.parse(p);
+          if (
+            parsed &&
+            typeof parsed === "object" &&
+            typeof (parsed as { text?: unknown }).text === "string"
+          ) {
+            const obj = parsed as QuickPrompt;
+            return {
+              text: obj.text,
+              temperature: obj.temperature ?? 1.0,
+              category: obj.category || "general",
+            };
+          }
+        } catch {
+          // 不是 JSON，按纯文本处理。
+        }
+        return { text: p, temperature: 1.0, category: "general" };
+      }
+      return p;
+    })
+    .filter((p): p is QuickPrompt => p.text.trim() !== "");
 }
 
 interface AIModalContentProps {
@@ -193,7 +215,18 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
 
   const currentConversation = conversations.find((c) => c.id === currentConversationId);
   const messages = useMemo(() => currentConversation?.messages || [], [currentConversation]);
-  const validProviders = aiProviders.filter((p) => p.apiKey && p.apiKey.trim() !== "");
+  // 保留提供商在全量数组中的真实索引，避免用过滤后列表的索引去索引全量数组导致错位。
+  // 若当前选中的提供商被过滤掉（无 API Key），仍把它展示出来，避免下拉显示空白。
+  const rawValid = aiProviders
+    .map((provider, index) => ({ provider, index }))
+    .filter(({ provider }) => provider.apiKey && provider.apiKey.trim() !== "");
+  const currentIndex = aiCurrentProviderIndex;
+  const validProviders =
+    rawValid.length > 0 &&
+    aiProviders[currentIndex] &&
+    !rawValid.some((v) => v.index === currentIndex)
+      ? [...rawValid, { provider: aiProviders[currentIndex]!, index: currentIndex }]
+      : rawValid;
   const currentProvider = aiProviders[aiCurrentProviderIndex] || aiProviders[0];
 
   const scrollToBottom = useCallback(() => {
@@ -446,9 +479,9 @@ function AIModalContent({ initialMessage, onClose }: AIModalContentProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {validProviders.map((p, i) => (
-                    <SelectItem key={p.name} value={String(i)} className="text-xs">
-                      {p.name}
+                  {validProviders.map(({ provider, index }) => (
+                    <SelectItem key={provider.name} value={String(index)} className="text-xs">
+                      {provider.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

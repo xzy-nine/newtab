@@ -32,9 +32,9 @@ export interface WidgetDefinition {
 const registry = new Map<string, WidgetDefinition>();
 
 export function registerWidget(type: string, def: WidgetDefinition) {
-  if (registry.has(type)) {
-    console.warn(`小部件 "${type}" 已注册，将被覆盖`);
-  }
+  // 幂等注册：同一类型已注册则直接跳过，避免 StrictMode 双调用或页面间重复
+  // 注册时反复触发"已注册"警告并覆盖定义。相同类型使用同一实现，无覆盖必要。
+  if (registry.has(type)) return;
   registry.set(type, def);
 }
 

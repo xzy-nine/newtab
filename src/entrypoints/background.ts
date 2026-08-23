@@ -41,11 +41,6 @@ async function updateMobileUaRule(enabled: boolean) {
 
 export default defineBackground({
   main() {
-    chrome.runtime.onInstalled.addListener(() => {
-      console.log("新标签页扩展已安装或更新");
-      setupExtensionPage();
-    });
-
     chrome.runtime.onStartup.addListener(() => {
       console.log("浏览器启动，新标签页扩展正在初始化");
       setupExtensionPage();
