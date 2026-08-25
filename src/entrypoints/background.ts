@@ -257,11 +257,21 @@ export default defineBackground({
     // 让侧边栏在 iframe 内打开该 URL（替代旧的 storage sidepanelNavUrl 轮询）。
     // 仅拦截子框架发起的导航（sourceFrameId !== 0）：顶层框架（如新标签页的
     // window.open）保持原样。
-    chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
+    // 仅拦截来自扩展页面的导航，避免影响普通网页中的 iframe。
+    chrome.webNavigation.onCreatedNavigationTarget.addListener(async (details) => {
       const url = details.url;
       if (!url) return;
       if (details.sourceFrameId === 0) return;
       if (!/^https?:/i.test(url)) return;
+
+      try {
+        const sourceTab = await chrome.tabs.get(details.sourceTabId);
+        const sourceUrl = sourceTab.url || "";
+        if (!sourceUrl.startsWith("chrome-extension://")) return;
+      } catch {
+        return;
+      }
+
       chrome.tabs.remove(details.tabId).catch(() => {});
       chrome.runtime.sendMessage({ action: "xbOpenInSidebar", url }).catch(() => {});
     });
