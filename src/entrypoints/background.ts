@@ -23,6 +23,7 @@ async function updateMobileUaRule(enabled: boolean) {
             },
             condition: {
               resourceTypes: ["sub_frame"],
+              initiatorDomains: [chrome.runtime.id],
             },
           },
         ],
@@ -103,6 +104,7 @@ export default defineBackground({
               condition: {
                 requestDomains: [host],
                 resourceTypes: ["sub_frame"],
+                initiatorDomains: [chrome.runtime.id],
               },
             },
           ],
