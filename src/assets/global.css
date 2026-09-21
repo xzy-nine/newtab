@@ -1052,8 +1052,23 @@ html.dark .desktop-folder-panel {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  min-height: 30px;
+  padding: 2px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.desktop-folder-panel-more:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+  color: var(--color-foreground);
 }
 
 .desktop-folder-panel-hint {
@@ -1208,6 +1223,74 @@ html.dark .desktop-folder-panel {
   color: var(--color-foreground);
 }
 
+/* 右侧头部的工具按钮（全选/取消全选） */
+.dock-layer-tool {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.dock-layer-tool:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+  color: var(--color-foreground);
+}
+
+/* 批量操作条 */
+.dock-layer-bulk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+  background: color-mix(in oklch, var(--color-foreground) 6%, transparent);
+}
+
+.dock-layer-bulk-count {
+  font-size: 11px;
+  color: var(--color-muted-foreground);
+}
+
+.dock-layer-bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in oklch, var(--color-border) 80%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-foreground);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.dock-layer-bulk-btn:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+}
+
+.dock-layer-bulk-btn.is-primary {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.dock-layer-bulk-btn.is-primary:hover {
+  background: #2563eb;
+}
+
 .dock-layer-list {
   flex: 1;
   min-height: 0;
@@ -1235,6 +1318,21 @@ html.dark .desktop-folder-panel {
 
 .dock-layer-bookmark:hover {
   background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+}
+
+/* 多选中的书签 */
+.dock-layer-bookmark.is-selected {
+  background: rgba(59, 130, 246, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.5);
+}
+
+/* 已在主桌面上的书签标记 */
+.dock-layer-bookmark-pin {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #60a5fa;
 }
 
 .dock-layer-bookmark .desktop-shortcut-icon {

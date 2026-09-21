@@ -43,6 +43,8 @@ export interface DesktopGridViewProps {
   onItemResizeEnd?: () => void;
   /** 点击文件夹展开块内部的书签。 */
   onOpenBookmark?: (url: string) => void;
+  /** 点击展开块里的 "+N"（查看该文件夹全部书签）。 */
+  onOpenFolderPopup?: (folderId: string) => void;
   /** 列表为空时展示的内容。 */
   emptyState?: ReactNode;
   /** 网格之外的浮层（如右键菜单、对话框）。 */
@@ -65,6 +67,7 @@ export function DesktopGridView({
   onItemResize,
   onItemResizeEnd,
   onOpenBookmark,
+  onOpenFolderPopup,
   emptyState,
   children,
   className,
@@ -189,7 +192,11 @@ export function DesktopGridView({
                   {isShortcutItem(item) && <ShortcutTile item={item} />}
                   {isFolderItem(item) &&
                     (isExpandedFolderItem(item) ? (
-                      <FolderPanelTile item={item} onOpenBookmark={onOpenBookmark} />
+                      <FolderPanelTile
+                        item={item}
+                        onOpenBookmark={onOpenBookmark}
+                        onOpenPopup={onOpenFolderPopup}
+                      />
                     ) : (
                       <FolderTile item={item} />
                     ))}

@@ -1494,5 +1494,49 @@
   "folder": {
     "message": "Folder",
     "description": "文件夹通用名称"
+  },
+  "showAllBookmarks": {
+    "message": "Show all bookmarks",
+    "description": "查看全部书签"
+  },
+  "pinShortcutToDesktop": {
+    "message": "Pin to Home",
+    "description": "把书签固定到桌面"
+  },
+  "unpinShortcutFromDesktop": {
+    "message": "Remove from Home",
+    "description": "把书签从桌面移除"
+  },
+  "pinAllToDesktop": {
+    "message": "Pin selected to Home",
+    "description": "批量固定到桌面"
+  },
+  "unpinAllFromDesktop": {
+    "message": "Remove selected",
+    "description": "批量从桌面移除"
+  },
+  "selectMultiple": {
+    "message": "Select",
+    "description": "多选"
+  },
+  "selectAll": {
+    "message": "Select all",
+    "description": "全选"
+  },
+  "clearSelection": {
+    "message": "Clear selection",
+    "description": "取消全选"
+  },
+  "selectedCount": {
+    "message": "Selected",
+    "description": "已选数量前缀"
+  },
+  "pinnedShortcut": {
+    "message": "On home desktop",
+    "description": "该书签已在桌面"
+  },
+  "openInNewTab": {
+    "message": "Open in new tab",
+    "description": "在新标签页打开"
   }
 }

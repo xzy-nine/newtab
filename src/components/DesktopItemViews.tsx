@@ -87,13 +87,16 @@ export function FolderTile({ item }: { item: FolderItem }) {
  * 文件夹展开块：图标拉伸到 2 列及以上时，内联显示该文件夹的书签。
  *
  * 内部书签点击即打开；块本身仍可继续拉伸/缩回，缩回 1 列即恢复为图标。
+ * 放不下的书签汇总为 "+N"，点击会打开该文件夹的弹窗查看完整内容。
  */
 export function FolderPanelTile({
   item,
   onOpenBookmark,
+  onOpenPopup,
 }: {
   item: FolderItem;
   onOpenBookmark?: (url: string) => void;
+  onOpenPopup?: (folderId: string) => void;
 }) {
   const { bookmarks, loading } = useFolderBookmarks(item.folderId);
   const capacity = folderPanelCapacity(item.w);
@@ -130,7 +133,18 @@ export function FolderPanelTile({
               <span className="desktop-folder-panel-item-name">{bookmark.title}</span>
             </button>
           ))}
-          {rest > 0 && <span className="desktop-folder-panel-more">+{rest}</span>}
+          {rest > 0 && (
+            <button
+              className="desktop-folder-panel-more"
+              title={getMessage("showAllBookmarks", "查看全部书签")}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenPopup?.(item.folderId);
+              }}
+            >
+              +{rest}
+            </button>
+          )}
         </div>
       )}
     </div>

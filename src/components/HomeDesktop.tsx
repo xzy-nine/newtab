@@ -9,10 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { LayoutGrid, Link2, Pin, PinOff, Puzzle } from "lucide-react";
-import { useDesktopGrid } from "@/hooks/useDesktopGrid";
 import { DesktopGridView } from "@/components/DesktopGridView";
 import { WidgetAddDialog } from "@/components/WidgetSystem";
 import { FolderPopup } from "@/components/FolderPopup";
+import { BOOKMARK_DRAG_TYPE } from "@/components/DockFolderLayer";
 import { useContextMenu, type ContextMenuItem } from "@/hooks/useContextMenu";
 import { getMessage } from "@/lib/i18n";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -20,11 +20,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { normalizeBrowserUrl } from "@/lib/browser";
 import { isInSidePanel, openUrl } from "@/lib/open-url";
+import { createDesktopItemId, useHomeDesktop } from "@/lib/home-desktop-store";
 import {
+  DEFAULT_ITEM_NAME,
+  DEFAULT_SHORTCUT_COLOR,
   isExpandedFolderItem,
   isFolderItem,
   isShortcutItem,
   isWidgetItem,
+  type BookmarkLike,
   type DesktopItem,
 } from "@/lib/desktop-items";
 
@@ -67,17 +71,15 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
 ) {
   const {
     items: allItems,
+    hydrate,
     replaceItems,
-    load,
-    setItems,
-    scheduleSave,
+    addItem,
     removeItem,
-    addShortcut,
-    addWidget,
     updateItemData,
     moveItemIndex,
     syncFolderItems,
-  } = useDesktopGrid(folders);
+    pinBookmarks,
+  } = useHomeDesktop();
 
   const [showAddWidget, setShowAddWidget] = useState(false);
   const [showAddShortcut, setShowAddShortcut] = useState(false);
@@ -106,28 +108,27 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     loadStartedRef.current = true;
     let cancelled = false;
     const init = async () => {
-      const next = await load();
+      await hydrate(folders);
       if (cancelled) return;
-      replaceItems(next);
       setLoaded(true);
     };
     init();
     return () => {
       cancelled = true;
     };
-  }, [ready, load, replaceItems]);
-
-  // 文件夹图标跟随固定文件夹列表变化（仅在加载完成后生效）。
-  useEffect(() => {
-    if (!ready || !loaded) return;
-    syncFolderItems(pinnedFolderIds);
-  }, [ready, loaded, pinnedFolderIds, syncFolderItems]);
+  }, [ready, hydrate, folders]);
 
   const folderTitles = useMemo(() => {
     const titles: Record<string, string> = {};
     for (const folder of folders) titles[folder.id] = folder.title;
     return titles;
   }, [folders]);
+
+  // 文件夹图标跟随固定文件夹列表变化（仅在加载完成后生效）。
+  useEffect(() => {
+    if (!ready || !loaded) return;
+    syncFolderItems(pinnedFolderIds, folderTitles);
+  }, [ready, loaded, pinnedFolderIds, syncFolderItems, folderTitles]);
 
   // 关闭小部件时仅隐藏它们，数据仍保留在主桌面存储中。
   const visibleItems = useMemo(
@@ -160,19 +161,16 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     [removeItem, hideCtxMenu],
   );
 
-  const handleResize = useCallback(
-    (id: string, w: number) => {
-      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, w } : it)));
-    },
-    [setItems],
-  );
+  /** 缩放过程中直接改宽度（节流交给 React 渲染）。 */
+  const handleResize = useCallback((id: string, w: number) => {
+    const items = useHomeDesktop.getState().items.map((it) => (it.id === id ? { ...it, w } : it));
+    useHomeDesktop.setState({ items });
+  }, []);
 
+  /** 缩放结束：落盘一次。 */
   const handleResizeEnd = useCallback(() => {
-    setItems((prev) => {
-      scheduleSave(prev);
-      return prev;
-    });
-  }, [setItems, scheduleSave]);
+    replaceItems(useHomeDesktop.getState().items);
+  }, [replaceItems]);
 
   const handleItemClick = useCallback((item: DesktopItem) => {
     if (isShortcutItem(item)) openUrl(item.url);
@@ -185,10 +183,18 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
   const handleAddShortcut = useCallback(() => {
     const normalized = normalizeBrowserUrl(shortcutForm.url);
     if (normalized.kind !== "ok") return;
-    addShortcut(shortcutForm.name.trim() || normalized.url, normalized.url);
+    addItem({
+      id: createDesktopItemId(),
+      type: "shortcut",
+      name: shortcutForm.name.trim() || normalized.url || DEFAULT_ITEM_NAME,
+      url: normalized.url,
+      color: DEFAULT_SHORTCUT_COLOR,
+      w: 1,
+      h: 1,
+    });
     setShortcutForm({ name: "", url: "" });
     setShowAddShortcut(false);
-  }, [addShortcut, shortcutForm]);
+  }, [addItem, shortcutForm]);
 
   const handleItemContextMenu = useCallback(
     (e: React.MouseEvent, item: DesktopItem) => {
@@ -312,21 +318,44 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
 
   return (
     <>
-      <DesktopGridView
-        items={visibleItems}
-        onMove={handleMoveVisible}
-        onItemClick={handleItemClick}
-        onItemContextMenu={handleItemContextMenu}
-        onEmptyContextMenu={handleEmptyContextMenu}
-        onWidgetDataChange={updateItemData}
-        onItemResize={handleResize}
-        onItemResizeEnd={handleResizeEnd}
-        onOpenBookmark={openUrl}
-        emptyState={emptyState}
-        className="home-desktop"
+      {/* 文件夹视图里的书签可直接拖到桌面固定（见 DockFolderLayer 的 dataTransfer） */}
+      <div
+        className="home-desktop-drop"
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+          }
+        }}
+        onDrop={(e) => {
+          const raw = e.dataTransfer.getData(BOOKMARK_DRAG_TYPE);
+          if (!raw) return;
+          e.preventDefault();
+          try {
+            const payload = JSON.parse(raw) as BookmarkLike[];
+            if (Array.isArray(payload)) pinBookmarks(payload);
+          } catch {
+            /* 忽略非法拖拽数据 */
+          }
+        }}
       >
-        {ctxMenuEl}
-      </DesktopGridView>
+        <DesktopGridView
+          items={visibleItems}
+          onMove={handleMoveVisible}
+          onItemClick={handleItemClick}
+          onItemContextMenu={handleItemContextMenu}
+          onEmptyContextMenu={handleEmptyContextMenu}
+          onWidgetDataChange={updateItemData}
+          onItemResize={handleResize}
+          onItemResizeEnd={handleResizeEnd}
+          onOpenBookmark={openUrl}
+          onOpenFolderPopup={setPopupFolderId}
+          emptyState={emptyState}
+          className="home-desktop"
+        >
+          {ctxMenuEl}
+        </DesktopGridView>
+      </div>
 
       <FolderPopup
         folderId={popupFolderId}
@@ -338,7 +367,15 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
         open={showAddWidget}
         onOpenChange={setShowAddWidget}
         onSelect={(type) => {
-          addWidget(type);
+          addItem({
+            id: createDesktopItemId(),
+            type: "widget",
+            widgetType: type,
+            title: type,
+            data: {},
+            w: 2,
+            h: 2,
+          });
           setShowAddWidget(false);
         }}
       />
