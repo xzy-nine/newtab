@@ -949,28 +949,104 @@ html.light .desktop-shortcut-name {
   color: #ffffff;
 }
 
-/* ===== 文件夹展开块（图标拉伸后内联显示书签） ===== */
+/*
+ * 1x1 文件夹预览态：与展开态同高（150px），内部铺满 2x2 迷你图标。
+ * 展开态高度由 .desktop-folder-panel 自身决定，这里只需给磁贴定高。
+ */
+.desktop-item.is-folder-preview {
+  height: 150px;
+}
+
+.desktop-shortcut-inner.is-preview {
+  padding: 6px;
+  gap: 4px;
+}
+
+/*
+ * 1x1 预览态：容器只负责排布，不再套蓝底渐变，
+ * 让内部图标保持与桌面图标完全一致的样式。
+ */
+.desktop-shortcut-inner.is-preview .desktop-folder-icon {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  background: transparent;
+  box-shadow: none;
+}
+
+.desktop-item.is-folder-preview:hover .desktop-folder-icon {
+  transform: none;
+  box-shadow: none;
+}
+
+/* 1x1 预览态：直接铺 2x2 图标，图标尺寸沿用桌面图标的默认样式 */
+.desktop-folder-preview {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  grid-template-rows: repeat(2, auto);
+  place-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+}
+
+.desktop-folder-preview-cell,
+.desktop-folder-preview-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 4px;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.desktop-folder-preview-cell:hover .desktop-shortcut-icon {
+  filter: brightness(1.15);
+}
+
+/* "+N" 与一个默认尺寸的图标等大，保持 2x2 对齐 */
+.desktop-folder-preview-more {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.desktop-folder-preview-more:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* ===== 文件夹展开块（拉开后像其他小部件一样显示书签） ===== */
 .desktop-folder-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
   width: 100%;
-  /* 图标拉伸后需要一个确定高度，否则在自适应高度的网格项里会塌陷 */
-  min-height: 132px;
+  /*
+   * 面板占用桌面网格 1 行（h=1）。高度为其他小部件的一半，
+   * 内部仍可在可用高度里换行；测量也依赖这个确定高度。
+   */
+  height: 150px;
   padding: 8px;
   box-sizing: border-box;
   border-radius: 12px;
   overflow: hidden;
-  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
-  border: 1px solid rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.1));
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background-color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.dark .desktop-folder-panel,
-html.dark .desktop-folder-panel {
-  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
-  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+html.dark .desktop-folder-panel,
+.dark .desktop-folder-panel {
+  background-color: rgba(33, 33, 33, 0.75);
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 .desktop-folder-panel-header {

@@ -24,7 +24,7 @@ import { createDesktopItemId, useHomeDesktop } from "@/lib/home-desktop-store";
 import {
   DEFAULT_ITEM_NAME,
   DEFAULT_SHORTCUT_COLOR,
-  isExpandedFolderItem,
+  folderTileForm,
   isFolderItem,
   isShortcutItem,
   isWidgetItem,
@@ -167,6 +167,14 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     useHomeDesktop.setState({ items });
   }, []);
 
+  /** 文件夹缩放：同时更新宽度与 1x1 预览态。 */
+  const handleFolderResize = useCallback((id: string, w: number, preview: boolean) => {
+    const items = useHomeDesktop
+      .getState()
+      .items.map((it) => (it.id === id && it.type === "folder" ? { ...it, w, preview } : it));
+    useHomeDesktop.setState({ items });
+  }, []);
+
   /** 缩放结束：落盘一次。 */
   const handleResizeEnd = useCallback(() => {
     replaceItems(useHomeDesktop.getState().items);
@@ -174,8 +182,9 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
 
   const handleItemClick = useCallback((item: DesktopItem) => {
     if (isShortcutItem(item)) openUrl(item.url);
-    // 已拉伸的展开块内部自己处理书签点击，这里不再弹窗。
-    else if (isFolderItem(item) && !isExpandedFolderItem(item)) {
+    // 展开态内部自己处理点击；1x1（图标或预览）点空白/名称则打开文件夹弹窗
+    // （预览里的迷你图标会 stopPropagation，直接打开对应书签）。
+    else if (isFolderItem(item) && folderTileForm(item) !== "expanded") {
       setPopupFolderId(item.folderId);
     }
   }, []);
@@ -218,10 +227,20 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
 
       if (isFolderItem(item)) {
         // 点击才是打开；固定/取消固定只在这里（以及文件夹树上的图钉）。
-        if (isExpandedFolderItem(item)) {
+        const form = folderTileForm(item);
+        if (form === "expanded") {
           menuItems.push({
             label: getMessage("collapseFolder", "收起为图标"),
-            onSelect: () => handleResize(item.id, 1),
+            onSelect: () => handleFolderResize(item.id, 1, false),
+          });
+        } else {
+          // 1x1：可在"普通图标"与"2x2 预览"之间切换（也可直接轻拉缩放手柄）。
+          menuItems.push({
+            label:
+              form === "preview"
+                ? getMessage("hideFolderPreview", "隐藏文件夹预览")
+                : getMessage("showFolderPreview", "显示文件夹预览"),
+            onSelect: () => handleFolderResize(item.id, 1, form !== "preview"),
           });
         }
         menuItems.push({
@@ -241,7 +260,7 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
       if (menuItems.length === 0) return;
       showCtxMenu(e.nativeEvent, menuItems);
     },
-    [handleRemoveItem, handleResize, onUnpinFolder, showCtxMenu],
+    [handleFolderResize, handleRemoveItem, onUnpinFolder, showCtxMenu],
   );
 
   const handleEmptyContextMenu = useCallback(
@@ -347,6 +366,7 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
           onEmptyContextMenu={handleEmptyContextMenu}
           onWidgetDataChange={updateItemData}
           onItemResize={handleResize}
+          onFolderResize={handleFolderResize}
           onItemResizeEnd={handleResizeEnd}
           onOpenBookmark={openUrl}
           onOpenFolderPopup={setPopupFolderId}

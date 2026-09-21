@@ -2,16 +2,19 @@ import { describe, it, expect } from "vitest";
 import {
   FOLDER_PANEL_MIN_W,
   collectWidgetItems,
+  folderGridLayout,
   folderItemId,
-  folderPanelCapacity,
+  folderTileForm,
   hasSameItemIdentity,
   isExpandedFolderItem,
   normalizeDesktopItem,
   normalizeDesktopItems,
   reconcileFolderItems,
+  resolveFolderResize,
   seedFolderItems,
   stripWidgetsFromLayouts,
   type DesktopItem,
+  type FolderItem,
 } from "./desktop-items";
 
 describe("normalizeDesktopItem", () => {
@@ -29,9 +32,34 @@ describe("normalizeDesktopItem", () => {
       type: "folder",
       folderId: "1",
       name: "工作",
+      preview: false,
       w: 1,
       h: 1,
     });
+  });
+
+  it("persists the 1x1 preview flag of folder items", () => {
+    expect(
+      normalizeDesktopItem({
+        id: "folder:1",
+        type: "folder",
+        folderId: "1",
+        name: "工作",
+        preview: true,
+        w: 1,
+        h: 1,
+      }),
+    ).toMatchObject({ preview: true });
+    // 非布尔值一律视为关闭
+    expect(
+      normalizeDesktopItem({
+        id: "folder:1",
+        type: "folder",
+        folderId: "1",
+        name: "工作",
+        preview: "yes",
+      }),
+    ).toMatchObject({ preview: false });
   });
 
   it("rejects folder items without a folderId", () => {
@@ -196,9 +224,212 @@ describe("folder stretch state", () => {
     );
   });
 
-  it("grows the bookmark capacity with width, with a sensible floor", () => {
-    expect(folderPanelCapacity(2)).toBeGreaterThanOrEqual(4);
-    expect(folderPanelCapacity(4)).toBeGreaterThan(folderPanelCapacity(2));
+  it("grows with available width rather than capping at a fixed count", () => {
+    // 旧的固定上限会让 +N 出现在非末尾；现在由真实槽位决定。
+    expect(folderGridLayout(4, 10).visibleCount).toBe(3);
+    // 8 槽位仍放不下 10 个 → 7 个 + "+3"
+    expect(folderGridLayout(8, 10)).toEqual({ visibleCount: 7, overflow: 3 });
+    // 槽位足够时全部显示，+N 消失
+    expect(folderGridLayout(12, 10)).toEqual({ visibleCount: 10, overflow: 0 });
+  });
+});
+
+describe("folder tile forms", () => {
+  const base: DesktopItem = {
+    id: folderItemId("a"),
+    type: "folder",
+    folderId: "a",
+    name: "A",
+    w: 1,
+    h: 1,
+  };
+  const asFolder = (extra: Partial<FolderItem> = {}) => ({ ...base, ...extra }) as FolderItem;
+
+  it("is a plain icon by default at 1x1", () => {
+    expect(folderTileForm(asFolder())).toBe("icon");
+    expect(folderTileForm(asFolder({ preview: false }))).toBe("icon");
+  });
+
+  it("is a preview at 1x1 when preview is on", () => {
+    expect(folderTileForm(asFolder({ preview: true }))).toBe("preview");
+  });
+
+  it("is expanded once the width reaches 2 columns, regardless of preview", () => {
+    expect(folderTileForm(asFolder({ w: 2 }))).toBe("expanded");
+    expect(folderTileForm(asFolder({ w: 2, preview: true }))).toBe("expanded");
+    expect(folderTileForm(asFolder({ w: 4 }))).toBe("expanded");
+  });
+});
+
+describe("resolveFolderResize", () => {
+  const UNIT = 100;
+
+  it("expands once the width reaches 2 columns", () => {
+    expect(
+      resolveFolderResize({
+        origW: 1,
+        origPreview: false,
+        rawW: 2,
+        dx: UNIT,
+        unitWidth: UNIT,
+        maxCols: 6,
+      }),
+    ).toEqual({ w: 2, preview: false });
+  });
+
+  it("turns on the 1x1 preview on a light rightward drag", () => {
+    // 只拉了 40px：不足一格，但超过轻拉阈值 → 预览
+    expect(
+      resolveFolderResize({
+        origW: 1,
+        origPreview: false,
+        rawW: 1.4,
+        dx: 40,
+        unitWidth: UNIT,
+        maxCols: 6,
+      }),
+    ).toEqual({ w: 1, preview: true });
+  });
+
+  it("turns the preview back off on a light leftward drag", () => {
+    expect(
+      resolveFolderResize({
+        origW: 1,
+        origPreview: true,
+        rawW: 1,
+        dx: -40,
+        unitWidth: UNIT,
+        maxCols: 6,
+      }),
+    ).toEqual({ w: 1, preview: false });
+  });
+
+  it("keeps the current form while the drag is below the threshold", () => {
+    expect(
+      resolveFolderResize({
+        origW: 1,
+        origPreview: false,
+        rawW: 1,
+        dx: 5,
+        unitWidth: UNIT,
+        maxCols: 6,
+      }),
+    ).toEqual({ w: 1, preview: false });
+    expect(
+      resolveFolderResize({
+        origW: 1,
+        origPreview: true,
+        rawW: 1,
+        dx: -5,
+        unitWidth: UNIT,
+        maxCols: 6,
+      }),
+    ).toEqual({ w: 1, preview: true });
+  });
+
+  it("returns to a plain icon when shrinking from an expanded 2 columns", () => {
+    expect(
+      resolveFolderResize({
+        origW: 2,
+        origPreview: false,
+        rawW: 1,
+        dx: -UNIT,
+        unitWidth: UNIT,
+        maxCols: 6,
+      }),
+    ).toEqual({ w: 1, preview: false });
+  });
+
+  it("never goes below 1 column or above maxCols", () => {
+    expect(
+      resolveFolderResize({
+        origW: 1,
+        origPreview: false,
+        rawW: -5,
+        dx: -900,
+        unitWidth: UNIT,
+        maxCols: 6,
+      }),
+    ).toEqual({ w: 1, preview: false });
+    expect(
+      resolveFolderResize({
+        origW: 3,
+        origPreview: false,
+        rawW: 99,
+        dx: 9000,
+        unitWidth: UNIT,
+        maxCols: 6,
+      }),
+    ).toEqual({ w: 6, preview: false });
+  });
+
+  it("uses a floor for the threshold so tiny columns still need a real drag", () => {
+    // unitWidth 极小（列很多）时，阈值退化为 6px 而不是 ~0
+    expect(
+      resolveFolderResize({
+        origW: 1,
+        origPreview: false,
+        rawW: 1,
+        dx: 5,
+        unitWidth: 4,
+        maxCols: 40,
+      }),
+    ).toEqual({ w: 1, preview: false });
+    expect(
+      resolveFolderResize({
+        origW: 1,
+        origPreview: false,
+        rawW: 1,
+        dx: 8,
+        unitWidth: 4,
+        maxCols: 40,
+      }),
+    ).toEqual({ w: 1, preview: true });
+  });
+});
+
+describe("folderGridLayout", () => {
+  it("shows every bookmark when they all fit (no +N)", () => {
+    expect(folderGridLayout(4, 3)).toEqual({ visibleCount: 3, overflow: 0 });
+    expect(folderGridLayout(4, 4)).toEqual({ visibleCount: 4, overflow: 0 });
+  });
+
+  it("reserves the last slot for +N only when there is overflow", () => {
+    // 2x2=4 槽位、5 个书签 → 前 3 个 + "+2"，+N 位于末尾。
+    expect(folderGridLayout(4, 5)).toEqual({ visibleCount: 3, overflow: 2 });
+  });
+
+  it("keeps the +N as the last rendered cell, so visible + overflow === total", () => {
+    for (const slots of [1, 2, 3, 4, 5, 8, 12, 20]) {
+      for (const total of [0, 1, 2, 3, 4, 5, 9, 13, 40]) {
+        const { visibleCount, overflow } = folderGridLayout(slots, total);
+        // 渲染出来的格子数 = 书签格 + (有无 +N)
+        const rendered = visibleCount + (overflow > 0 ? 1 : 0);
+        expect(visibleCount + overflow).toBe(total);
+        expect(rendered).toBeLessThanOrEqual(slots);
+        // 放得下就不该出现 +N
+        if (total <= slots) expect(overflow).toBe(0);
+        else expect(overflow).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("degrades safely when no slot is measurable yet", () => {
+    expect(folderGridLayout(0, 7)).toEqual({ visibleCount: 0, overflow: 7 });
+  });
+
+  it("treats negative or fractional inputs as integers", () => {
+    expect(folderGridLayout(-3, 5)).toEqual({ visibleCount: 0, overflow: 5 });
+    expect(folderGridLayout(4.9, 3.2)).toEqual({ visibleCount: 3, overflow: 0 });
+  });
+
+  it("models internal wrapping across multiple rows", () => {
+    // 2 列 x 3 行 = 6 槽位：放得下 6 个就全显示、不换出 +N。
+    expect(folderGridLayout(6, 6)).toEqual({ visibleCount: 6, overflow: 0 });
+    // 7 个放不下 → 5 个 + "+2"，+N 落在最后一行末尾。
+    expect(folderGridLayout(6, 7)).toEqual({ visibleCount: 5, overflow: 2 });
+    // 拉宽到 12 槽位后能全放下，+N 消失。
+    expect(folderGridLayout(12, 7)).toEqual({ visibleCount: 7, overflow: 0 });
   });
 });
 

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { GripVertical } from "lucide-react";
 import {
-  isExpandedFolderItem,
+  folderTileForm,
   isFolderItem,
   isShortcutItem,
   isWidgetItem,
+  resolveFolderResize,
   type DesktopItem,
   type FolderItem,
   type WidgetItemData,
@@ -25,6 +26,17 @@ const PX_PER_COL = 100;
 const ROWS_PER_PAGE = 8;
 const MIN_ITEMS_PER_PAGE = 48;
 
+/**
+ * 磁贴的形态类名：文件夹预览/展开态需要与展开块一致的高度。
+ */
+function itemClassName(item: DesktopItem): string {
+  if (!isFolderItem(item)) return "";
+  const form = folderTileForm(item);
+  if (form === "expanded") return "is-folder-expanded";
+  if (form === "preview") return "is-folder-preview";
+  return "";
+}
+
 export interface DesktopGridViewProps {
   items: DesktopItem[];
   /** 拖拽排序回调（全局索引）。 */
@@ -39,6 +51,8 @@ export interface DesktopGridViewProps {
   onWidgetDataChange?: (itemId: string, data: Record<string, unknown>) => void;
   /** 小部件/文件夹块的宽度变化（拖动过程中持续触发）。 */
   onItemResize?: (itemId: string, w: number) => void;
+  /** 文件夹块缩放（同时给出预览态；拖动过程中持续触发）。 */
+  onFolderResize?: (itemId: string, w: number, preview: boolean) => void;
   /** 缩放结束（用于落盘）。 */
   onItemResizeEnd?: () => void;
   /** 点击文件夹展开块内部的书签。 */
@@ -65,6 +79,7 @@ export function DesktopGridView({
   onEmptyContextMenu,
   onWidgetDataChange,
   onItemResize,
+  onFolderResize,
   onItemResizeEnd,
   onOpenBookmark,
   onOpenFolderPopup,
@@ -137,12 +152,28 @@ export function DesktopGridView({
       e.preventDefault();
       const unitWidth = (containerWidth - GRID_GAP * (cols - 1)) / cols;
       if (unitWidth <= 0) return;
+      const isFolder = isFolderItem(item);
+      const origPreview = isFolder ? item.preview === true : false;
       resizeState.current = { id: item.id, startX: e.clientX, origW: item.w };
       const handleMove = (ev: PointerEvent) => {
         const rs = resizeState.current;
         if (!rs) return;
         const dx = ev.clientX - rs.startX;
-        const nw = Math.max(1, Math.min(cols, Math.round(rs.origW + dx / unitWidth)));
+        const rawW = rs.origW + dx / unitWidth;
+        if (isFolder) {
+          // 文件夹：宽 ≥ 2 列展开；停在 1 列时按轻拉方向切换 2x2 预览。
+          const { w, preview } = resolveFolderResize({
+            origW: rs.origW,
+            origPreview,
+            rawW,
+            dx,
+            unitWidth,
+            maxCols: cols,
+          });
+          onFolderResize?.(rs.id, w, preview);
+          return;
+        }
+        const nw = Math.max(1, Math.min(cols, Math.round(rawW)));
         onItemResize?.(rs.id, nw);
       };
       const handleUp = () => {
@@ -154,7 +185,7 @@ export function DesktopGridView({
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
     },
-    [containerWidth, cols, onItemResize, onItemResizeEnd],
+    [containerWidth, cols, onItemResize, onItemResizeEnd, onFolderResize],
   );
 
   const baseItemWidth = `calc((100% - ${GRID_GAP * (cols - 1)}px) / ${cols})`;
@@ -179,7 +210,7 @@ export function DesktopGridView({
               return (
                 <div
                   key={item.id}
-                  className="desktop-item"
+                  className={`desktop-item ${itemClassName(item)}`}
                   style={{ width: itemWidth }}
                   draggable
                   onDragStart={(e) => handleDragStart(e, globalIdx)}
@@ -191,14 +222,19 @@ export function DesktopGridView({
                 >
                   {isShortcutItem(item) && <ShortcutTile item={item} />}
                   {isFolderItem(item) &&
-                    (isExpandedFolderItem(item) ? (
+                    (folderTileForm(item) === "expanded" ? (
                       <FolderPanelTile
                         item={item}
                         onOpenBookmark={onOpenBookmark}
                         onOpenPopup={onOpenFolderPopup}
                       />
                     ) : (
-                      <FolderTile item={item} />
+                      <FolderTile
+                        item={item}
+                        preview={folderTileForm(item) === "preview"}
+                        onOpenBookmark={onOpenBookmark}
+                        onOpenPopup={onOpenFolderPopup}
+                      />
                     ))}
                   {isWidgetItem(item) && (
                     <WidgetGridItem

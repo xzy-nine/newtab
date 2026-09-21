@@ -594,5 +594,13 @@
   "openInNewTab": {
     "message": "在新标签页打开",
     "description": "在新标签页打开"
+  },
+  "showFolderPreview": {
+    "message": "显示文件夹预览",
+    "description": "显示文件夹预览"
+  },
+  "hideFolderPreview": {
+    "message": "隐藏文件夹预览",
+    "description": "隐藏文件夹预览"
   }
 }

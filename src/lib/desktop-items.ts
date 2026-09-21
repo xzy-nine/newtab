@@ -44,6 +44,12 @@ export interface FolderItem extends BaseItem {
   /** 书签文件夹 id。 */
   folderId: string;
   name: string;
+  /**
+   * 1x1 时是否显示 2x2 迷你预览。
+   * 默认 false（普通图标）；向右轻拉缩放手柄切换为 true，向左拖回变回图标。
+   * w ≥ 2 时该字段无意义（走展开块形态）。
+   */
+  preview?: boolean;
 }
 
 /** 桌面项目联合类型。 */
@@ -92,19 +98,104 @@ export function isFolderItem(item: DesktopItem): item is FolderItem {
 }
 
 /**
- * 文件夹图标拉伸成"展开块"所需的最小列数。
- * 图标（1 列）拉伸到 2 列及以上时，内联显示该文件夹的书签。
+ * 文件夹图标拉开成"展开块"所需的最小列数。
+ * 1x1（1 列）是普通图标；拉开到 2 列及以上即展开成显示书签的小部件形态。
  */
 export const FOLDER_PANEL_MIN_W = 2;
 
-/** 文件夹图标是否已拉伸成展开块。 */
+/**
+ * 文件夹磁贴的三种形态：
+ * - "icon"：1x1 普通图标（默认）；
+ * - "preview"：1x1 但内部显示 2x2 迷你预览；
+ * - "expanded"：w ≥ 2，展开成大图标网格。
+ */
+export type FolderTileForm = "icon" | "preview" | "expanded";
+
+/** 判断文件夹磁贴当前形态。 */
+export function folderTileForm(item: FolderItem): FolderTileForm {
+  if (item.w >= FOLDER_PANEL_MIN_W) return "expanded";
+  return item.preview ? "preview" : "icon";
+}
+
+/** 文件夹是否已展开（w ≥ 2）。 */
 export function isExpandedFolderItem(item: DesktopItem): boolean {
   return isFolderItem(item) && item.w >= FOLDER_PANEL_MIN_W;
 }
 
-/** 展开块当前宽度下可内联显示的书签数量。 */
-export function folderPanelCapacity(w: number): number {
-  return Math.max(4, Math.round(w) * 2 + 2);
+/** 1x1 预览的槽位（2x2）。 */
+export const FOLDER_PREVIEW_COLS = 2;
+export const FOLDER_PREVIEW_ROWS = 2;
+
+/** 拖动多少（相对一格的像素宽度）才算"轻拉一下"。 */
+export const FOLDER_PREVIEW_DRAG_RATIO = 0.3;
+
+/** 文件夹缩放的输入与结果。 */
+export interface FolderResizeInput {
+  /** 拖动前的宽度。 */
+  origW: number;
+  /** 拖动前是否处于 1x1 预览态。 */
+  origPreview: boolean;
+  /** 由横向位移换算出、已四舍五入的列数。 */
+  rawW: number;
+  /** 横向位移（像素，右为正）。 */
+  dx: number;
+  /** 一格的像素宽度（用于换算轻拉阈值）。 */
+  unitWidth: number;
+  /** 最大列数。 */
+  maxCols: number;
+}
+
+/**
+ * 计算文件夹磁贴缩放后的宽度与预览态。
+ *
+ * 规则（对应"1x1 默认图标，轻轻向右拉开变 1x1 预览"）：
+ * - 拉宽到 ≥ 2 列 → 展开块（不看 preview）；
+ * - 已展开时缩回 1 列 → 回到普通图标（不保留预览）；
+ * - 停在 1 列时，向右轻拉超过阈值开启预览，向左轻拉超过阈值关闭预览，
+ *   位移不足则维持原状。
+ */
+export function resolveFolderResize(input: FolderResizeInput): {
+  w: number;
+  preview: boolean;
+} {
+  const maxCols = Math.max(1, Math.floor(input.maxCols));
+  const w = Math.max(1, Math.min(maxCols, Math.round(input.rawW)));
+
+  if (w >= FOLDER_PANEL_MIN_W) return { w, preview: false };
+  // 从展开态缩回 1 列 → 普通图标。
+  if (input.origW >= FOLDER_PANEL_MIN_W) return { w: 1, preview: false };
+
+  const threshold = Math.max(6, input.unitWidth * FOLDER_PREVIEW_DRAG_RATIO);
+  if (input.dx > threshold) return { w: 1, preview: true };
+  if (input.dx < -threshold) return { w: 1, preview: false };
+  return { w: 1, preview: input.origPreview };
+}
+
+/** 展开块内部网格的排布结果。 */
+export interface FolderGridLayout {
+  /** 实际渲染的书签数量。 */
+  visibleCount: number;
+  /** 收纳为 "+N" 的数量；0 表示不显示 +N。 */
+  overflow: number;
+}
+
+/**
+ * 按"实际可用的网格槽位"决定文件夹内部显示哪些书签。
+ *
+ * 与旧的固定上限不同，这里依据真实渲染出的槽位数：
+ * - 书签放得下就全部显示，不出现 +N；
+ * - 放不下时留出最后一格放 "+N"，因此 +N 始终位于真正的末尾。
+ *
+ * @param availableSlots 实际可渲染的槽位数（列 × 行）。
+ * @param total 该文件夹内的书签总数。
+ */
+export function folderGridLayout(availableSlots: number, total: number): FolderGridLayout {
+  const slots = Math.max(0, Math.floor(availableSlots));
+  const count = Math.max(0, Math.floor(total));
+  if (slots <= 0) return { visibleCount: 0, overflow: count };
+  if (count <= slots) return { visibleCount: count, overflow: 0 };
+  // 需要 +N，占掉最后一格。
+  return { visibleCount: slots - 1, overflow: count - (slots - 1) };
 }
 
 function positiveNumber(value: unknown, fallback: number): number {
@@ -134,6 +225,7 @@ export function normalizeDesktopItem(raw: unknown): DesktopItem | null {
       type: "folder",
       folderId: r.folderId,
       name: typeof r.name === "string" ? r.name : "",
+      preview: r.preview === true,
       w,
       h,
     };

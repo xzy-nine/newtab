@@ -1538,5 +1538,13 @@
   "openInNewTab": {
     "message": "Open in new tab",
     "description": "在新标签页打开"
+  },
+  "showFolderPreview": {
+    "message": "Show folder preview",
+    "description": "显示文件夹预览"
+  },
+  "hideFolderPreview": {
+    "message": "Hide folder preview",
+    "description": "隐藏文件夹预览"
   }
 }
