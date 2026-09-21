@@ -458,5 +458,97 @@
   "newChatStartedWithHistory": {
     "message": "已复制从对话开始到该消息的所有内容",
     "description": "新对话开始通知描述（包含历史）"
+  },
+  "homeDesktop": {
+    "message": "主桌面",
+    "description": "主桌面按钮文本"
+  },
+  "backToHomeDesktop": {
+    "message": "返回主桌面",
+    "description": "返回主桌面"
+  },
+  "folderDrawer": {
+    "message": "文件夹",
+    "description": "Dock 文件夹抽屉按钮标题"
+  },
+  "folderDrawerTitle": {
+    "message": "文件夹与书签",
+    "description": "文件夹抽屉标题"
+  },
+  "drawerSelectFolder": {
+    "message": "选择左侧的文件夹以查看书签",
+    "description": "抽屉内未选择文件夹时的提示"
+  },
+  "emptyFolder": {
+    "message": "该文件夹内没有书签",
+    "description": "文件夹内没有书签的提示"
+  },
+  "openFolder": {
+    "message": "打开文件夹",
+    "description": "打开文件夹桌面"
+  },
+  "openFolderDesktop": {
+    "message": "打开该文件夹桌面",
+    "description": "打开该文件夹桌面按钮"
+  },
+  "addFolderToDesktop": {
+    "message": "添加文件夹到主桌面",
+    "description": "添加文件夹到主桌面"
+  },
+  "addFolderToDesktopDesc": {
+    "message": "选择要固定在主桌面的书签文件夹",
+    "description": "添加文件夹到主桌面的说明"
+  },
+  "allFoldersPinned": {
+    "message": "所有文件夹都已固定在主桌面",
+    "description": "所有文件夹都已固定在主桌面"
+  },
+  "unpinFromDesktop": {
+    "message": "从主桌面移除",
+    "description": "从主桌面移除文件夹图标"
+  },
+  "addShortcut": {
+    "message": "添加快捷方式",
+    "description": "添加网址快捷方式"
+  },
+  "shortcutName": {
+    "message": "名称（可选）",
+    "description": "快捷方式名称占位符"
+  },
+  "removeShortcut": {
+    "message": "删除快捷方式",
+    "description": "删除快捷方式"
+  },
+  "addToDesktop": {
+    "message": "添加到主桌面",
+    "description": "添加到主桌面按钮标题"
+  },
+  "homeDesktopEmptyHint": {
+    "message": "右键添加文件夹、快捷方式或小部件",
+    "description": "主桌面空状态提示"
+  },
+  "selectFolder": {
+    "message": "选择文件夹",
+    "description": "选择文件夹"
+  },
+  "refreshBackground": {
+    "message": "更换背景",
+    "description": "更换背景按钮标题"
+  },
+  "pinToDesktop": {
+    "message": "固定到主桌面",
+    "description": "固定到主桌面"
+  },
+  "pinFolderHint": {
+    "message": "在文件夹树上点击图钉，即可固定到主桌面",
+    "description": "主桌面固定文件夹提示"
+  },
+  "collapseFolder": {
+    "message": "收起为图标",
+    "description": "收起为图标"
+  },
+  "folder": {
+    "message": "文件夹",
+    "description": "文件夹通用名称"
   }
 }

@@ -83,6 +83,8 @@ export function useBookmarkFolders() {
   const [folderTree, setFolderTree] = useState<FolderNode[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(loadExpanded);
   const [pinnedFolders, setPinnedFolders] = useState<string[]>([]);
+  /** 文件夹树与固定列表是否已从存储/书签读完。 */
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     saveExpanded(expandedFolders);
@@ -120,6 +122,8 @@ export function useBookmarkFolders() {
         } catch {}
       } catch (e) {
         console.error("加载书签失败:", e);
+      } finally {
+        setReady(true);
       }
     };
     load();
@@ -179,6 +183,7 @@ export function useBookmarkFolders() {
     folderTree,
     expandedFolders,
     pinnedFolders,
+    ready,
     toggleFolder,
     selectFolder,
     getFolderBookmarks,

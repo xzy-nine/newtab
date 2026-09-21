@@ -915,3 +915,388 @@ html.light .desktop-shortcut-name {
   line-height: 1;
   transform: translate(-1px, 1px);
 }
+
+/* Dock 中处于开启状态的按钮（如文件夹抽屉） */
+.dock-btn-active {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.98);
+}
+
+/* ===== 主桌面文件夹图标（安卓桌面风格） ===== */
+.desktop-folder-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(160deg, rgba(96, 165, 250, 0.9) 0%, rgba(59, 130, 246, 0.85) 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.desktop-item:hover .desktop-folder-icon {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+.desktop-folder-glyph {
+  width: 22px;
+  height: 22px;
+  color: #ffffff;
+}
+
+/* ===== 文件夹展开块（图标拉伸后内联显示书签） ===== */
+.desktop-folder-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  /* 图标拉伸后需要一个确定高度，否则在自适应高度的网格项里会塌陷 */
+  min-height: 132px;
+  padding: 8px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+  border: 1px solid rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.1));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dark .desktop-folder-panel,
+html.dark .desktop-folder-panel {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+.desktop-folder-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+}
+
+.desktop-folder-panel-glyph {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: #60a5fa;
+}
+
+.desktop-folder-panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-folder-panel-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 4px;
+  align-content: start;
+}
+
+.desktop-folder-panel-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 2px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.desktop-folder-panel-item:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+}
+
+/* 展开块内的图标尺寸略微收小以容纳更多书签 */
+.desktop-folder-panel-item .desktop-shortcut-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.desktop-folder-panel-item .desktop-shortcut-letter {
+  font-size: 12px;
+}
+
+.desktop-folder-panel-item-name {
+  font-size: 10px;
+  line-height: 1.15;
+  width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-foreground);
+}
+
+.desktop-folder-panel-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--color-muted-foreground);
+}
+
+.desktop-folder-panel-hint {
+  margin: auto;
+  padding: 12px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--color-muted-foreground);
+}
+
+/* ===== 文件夹弹窗（点击文件夹图标） ===== */
+.folder-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+}
+
+.folder-popup-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.folder-popup-item:hover {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+}
+
+.folder-popup-item-name {
+  font-size: 11px;
+  line-height: 1.2;
+  width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== Dock 文件夹浮层（左树 + 右书签） ===== */
+.dock-layer {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: 70;
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(480px, calc(100vh - 160px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.dock-layer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-border) 70%, transparent);
+  color: var(--color-foreground);
+}
+
+.dock-layer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dock-layer-close:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+  color: var(--color-foreground);
+}
+
+.dock-layer-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+}
+
+.dock-layer-tree {
+  width: 220px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 6px 0;
+  border-right: 1px solid color-mix(in oklch, var(--color-border) 70%, transparent);
+}
+
+.dock-layer-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dock-layer-content-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+  color: var(--color-foreground);
+}
+
+.dock-layer-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in oklch, var(--color-border) 80%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.dock-layer-pin:hover {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+  color: var(--color-foreground);
+}
+
+.dock-layer-pin.is-pinned {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: var(--color-foreground);
+}
+
+.dock-layer-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 2px;
+}
+
+.dock-layer-bookmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-foreground);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.dock-layer-bookmark:hover {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+}
+
+.dock-layer-bookmark .desktop-shortcut-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.dock-layer-bookmark .desktop-shortcut-letter {
+  font-size: 10px;
+}
+
+.dock-layer-bookmark-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-layer-hint {
+  margin: auto;
+  padding: 24px 16px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--color-muted-foreground);
+}
+
+/* ===== Dock 上方的"添加"菜单 ===== */
+.dock-menu {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: 70;
+  min-width: 160px;
+  padding: 4px;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dock-menu-item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-foreground);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dock-menu-item:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+}
+
+/* 主桌面：稍微降低玻璃遮挡，突出图标 */
+.home-desktop {
+  border-radius: 12px;
+}

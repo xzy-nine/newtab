@@ -1402,5 +1402,97 @@
   "newChatStartedDesc": {
     "message": "Started new chat based on this message",
     "description": "新对话开始通知描述"
+  },
+  "homeDesktop": {
+    "message": "Home",
+    "description": "主桌面按钮文本"
+  },
+  "backToHomeDesktop": {
+    "message": "Back to Home",
+    "description": "返回主桌面"
+  },
+  "folderDrawer": {
+    "message": "Folders",
+    "description": "Dock 文件夹抽屉按钮标题"
+  },
+  "folderDrawerTitle": {
+    "message": "Folders & Bookmarks",
+    "description": "文件夹抽屉标题"
+  },
+  "drawerSelectFolder": {
+    "message": "Select a folder on the left to view its bookmarks",
+    "description": "抽屉内未选择文件夹时的提示"
+  },
+  "emptyFolder": {
+    "message": "This folder has no bookmarks",
+    "description": "文件夹内没有书签的提示"
+  },
+  "openFolder": {
+    "message": "Open Folder",
+    "description": "打开文件夹桌面"
+  },
+  "openFolderDesktop": {
+    "message": "Open Folder Desktop",
+    "description": "打开该文件夹桌面按钮"
+  },
+  "addFolderToDesktop": {
+    "message": "Add Folder to Home",
+    "description": "添加文件夹到主桌面"
+  },
+  "addFolderToDesktopDesc": {
+    "message": "Choose the bookmark folders to pin on the home desktop",
+    "description": "添加文件夹到主桌面的说明"
+  },
+  "allFoldersPinned": {
+    "message": "All folders are already pinned to the home desktop",
+    "description": "所有文件夹都已固定在主桌面"
+  },
+  "unpinFromDesktop": {
+    "message": "Remove from Home",
+    "description": "从主桌面移除文件夹图标"
+  },
+  "addShortcut": {
+    "message": "Add Shortcut",
+    "description": "添加网址快捷方式"
+  },
+  "shortcutName": {
+    "message": "Name (optional)",
+    "description": "快捷方式名称占位符"
+  },
+  "removeShortcut": {
+    "message": "Remove Shortcut",
+    "description": "删除快捷方式"
+  },
+  "addToDesktop": {
+    "message": "Add to Home",
+    "description": "添加到主桌面按钮标题"
+  },
+  "homeDesktopEmptyHint": {
+    "message": "Right-click to add folders, shortcuts or widgets",
+    "description": "主桌面空状态提示"
+  },
+  "selectFolder": {
+    "message": "Select Folder",
+    "description": "选择文件夹"
+  },
+  "refreshBackground": {
+    "message": "Change Background",
+    "description": "更换背景按钮标题"
+  },
+  "pinToDesktop": {
+    "message": "Pin to Home",
+    "description": "固定到主桌面"
+  },
+  "pinFolderHint": {
+    "message": "Click the pin on a folder in the tree to pin it to the home desktop",
+    "description": "主桌面固定文件夹提示"
+  },
+  "collapseFolder": {
+    "message": "Collapse to Icon",
+    "description": "收起为图标"
+  },
+  "folder": {
+    "message": "Folder",
+    "description": "文件夹通用名称"
   }
 }
