@@ -267,7 +267,7 @@ export function WidgetGridItem({
      * 包裹层必须有确定高度，组件根节点的 h-full 才能撑满。
      */
     <div
-      className="widget-tile w-full overflow-hidden rounded-xl bg-white/75 dark:bg-[rgba(33,33,33,0.75)] border border-white/20 dark:border-white/5 shadow-md"
+      className="widget-tile w-full overflow-hidden rounded-xl shadow-md"
       style={{ pointerEvents: "auto", height: WIDGET_TILE_HEIGHT }}
     >
       <WidgetComponent

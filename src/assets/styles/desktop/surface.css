@@ -52,10 +52,23 @@
  * 桌面小部件磁贴：与文件夹磁贴共用统一高度基准。
  * 高度由 TS 单一来源（src/lib/widget-layout.ts 的 WIDGET_TILE_HEIGHT）内联下发，
  * 并作为 containerHeight 传给组件，保证"紧凑判定用的高度"等于"真实外显高度"。
- * 这里只声明盒模型，避免内边距把基准高度撑破。
+ *
+ * 背景与边框同样走玻璃系统（令牌混色 + backdrop-filter）：
+ * 早先用的是写死的 bg-white/75 与 dark:bg-[rgba(33,33,33,0.75)]，
+ * 既不透明可控、也完全没有模糊，导致拖滑块时只有桌面/浮层在变、小部件纹丝不动。
+ * 参考 .xb-glass-card 的写法，亮/暗色交给令牌适配，无需 html.dark 覆盖。
+ * 盒模型只声明 box-sizing，避免内边距把基准高度撑破。
  */
 .widget-tile {
   box-sizing: border-box;
+  background-color: color-mix(
+    in srgb,
+    var(--color-card) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--xb-glass-blur));
+  border: 1px solid
+    color-mix(in srgb, var(--color-border) calc(var(--xb-glass-opacity) * 100%), transparent);
 }
 
 .desktop-item[draggable="true"]:active {
