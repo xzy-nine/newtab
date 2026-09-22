@@ -6,6 +6,8 @@ import { TimerWidget } from "@/components/widgets/timer/TimerWidget";
 import { NoteWidget } from "@/components/widgets/note/NoteWidget";
 import { WeatherWidget } from "@/components/widgets/weather/WeatherWidget";
 import { WeatherForecastPopup } from "@/components/widgets/weather/WeatherForecastPopup";
+import { ActivityWidget } from "@/components/widgets/activity/ActivityWidget";
+import { ActivityCalendarPopup } from "@/components/widgets/activity/ActivityCalendarPopup";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -72,6 +74,32 @@ export function useWidgetRegistration() {
       popup: {
         title: getMessage("weatherForecastTitle", "天气预报"),
         content: WeatherForecastPopup,
+      },
+    });
+    registerWidget("hoyo-activity", {
+      meta: {
+        type: "hoyo-activity",
+        name: getMessage("hoyoActivityWidgetName", "米哈游活动"),
+        description: getMessage(
+          "hoyoActivityWidgetDesc",
+          "即将到期与固定的游戏活动，支持甘特图与日程列表（原神/星铁/绝区零）",
+        ),
+        icon: "activity",
+      },
+      config: {
+        defaultWidth: 240,
+        defaultHeight: 170,
+        minWidth: 170,
+        minHeight: 120,
+        maxWidth: 480,
+        maxHeight: 360,
+      },
+      component: ActivityWidget,
+      // 展开后才拉取日程；筛选与固定都在弹窗内完成
+      popup: {
+        title: getMessage("hoyoActivityTitle", "游戏活动日程"),
+        content: ActivityCalendarPopup,
+        contentClassName: "max-w-2xl max-h-[80vh]",
       },
     });
   }, []);

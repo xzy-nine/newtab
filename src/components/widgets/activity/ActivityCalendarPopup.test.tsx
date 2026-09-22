@@ -1,0 +1,189 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { ActivityCalendarPopup } from "@/components/widgets/activity/ActivityCalendarPopup";
+
+/**
+ * 活动弹窗的行为测试。
+ *
+ * 重点覆盖三条与 API 语义强相关的路径：
+ * 1. capabilities 404（如崩坏3）→ "该游戏暂无日程"空态，而不是报错；
+ * 2. 前瞻只画起点（点标记）而非零宽条；
+ * 3. 父子两级筛选：父级被选中时其子级显示为选中。
+ */
+
+const CAPABILITIES_YS = {
+  json: "/api/v1/games/ys/calendar",
+  ics: "/api/v1/games/ys/calendar.ics",
+  selectors: [
+    {
+      value: "游戏内活动",
+      label: "游戏内活动",
+      children: [{ value: "游戏内活动:七圣召唤", label: "七圣召唤" }],
+    },
+    { value: "版本日程", label: "版本日程", children: [] },
+  ],
+};
+
+function isoInDays(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function calendarItem(overrides: Record<string, unknown>) {
+  return {
+    id: "e1",
+    kind: "游戏内活动",
+    title: "活动 A",
+    start: isoInDays(-1),
+    end: isoInDays(5),
+    all_day: false,
+    labels: [],
+    url: "https://example.com/a",
+    ...overrides,
+  };
+}
+
+function jsonResponse(payload: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => payload,
+  } as Response;
+}
+
+/** 按 URL 分派响应：capabilities 与 calendar 走不同分支。 */
+function routeFetch(handlers: { capabilities?: Response; calendar?: Response }) {
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/capabilities")) {
+      return handlers.capabilities ?? jsonResponse(CAPABILITIES_YS);
+    }
+    return handlers.calendar ?? jsonResponse({ total: 0, items: [] });
+  });
+}
+
+describe("ActivityCalendarPopup", () => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    localStorage.clear();
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the unavailable state when capabilities 404s", async () => {
+    // 崩坏3 / 未定事件簿等游戏实测返回 404 "calendar is not available"
+    fetchMock.mockImplementation(
+      routeFetch({ capabilities: jsonResponse({ message: "not available" }, 404) }),
+    );
+
+    render(<ActivityCalendarPopup data={{ gameId: "bh3" }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("该游戏暂无日程")).not.toBeNull();
+    });
+    // 不应落到通用错误态
+    expect(screen.queryByText("活动获取失败")).toBeNull();
+  });
+
+  it("renders the two-level filter tree and marks children selected with the parent", async () => {
+    fetchMock.mockImplementation(routeFetch({}));
+
+    const { container } = render(<ActivityCalendarPopup data={{}} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("游戏内活动")).not.toBeNull();
+    });
+    // 子级也被渲染出来（缩进一级）
+    expect(screen.queryByText("七圣召唤")).not.toBeNull();
+    expect(screen.queryByText("版本日程")).not.toBeNull();
+
+    // 只看筛选树内的复选框：默认全选 → 父与子都应 checked。
+    // （不能断言整个筛选区：其中还含"前瞻只显示起点"开关，它默认未选）
+    const groups = container.querySelectorAll(".activity-calendar-filter-group");
+    const checkboxes = Array.from(groups).flatMap((group) =>
+      Array.from(group.querySelectorAll('[role="checkbox"]')),
+    );
+    expect(checkboxes.length).toBe(3);
+    const states = checkboxes.map((box) => box.getAttribute("data-state"));
+    expect(states).toEqual(["checked", "checked", "checked"]);
+  });
+
+  it("lists ongoing activities with a status badge", async () => {
+    fetchMock.mockImplementation(
+      routeFetch({
+        calendar: jsonResponse({
+          total: 1,
+          items: [calendarItem({ title: "进行中的活动", end: isoInDays(5) })],
+        }),
+      }),
+    );
+
+    render(<ActivityCalendarPopup data={{ view: "list" }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("进行中的活动")).not.toBeNull();
+    });
+    expect(screen.queryByText("进行中")).not.toBeNull();
+  });
+
+  it("draws 前瞻特别节目 as a point when point mode is enabled", async () => {
+    fetchMock.mockImplementation(
+      routeFetch({
+        calendar: jsonResponse({
+          total: 1,
+          items: [
+            calendarItem({
+              id: "p",
+              kind: "版本日程",
+              title: "3.1版本前瞻特别节目",
+              labels: ["前瞻特别节目"],
+              start: isoInDays(1),
+              end: new Date(Date.now() + 24 * 60 * 60 * 1000 + 60 * 1000).toISOString(),
+            }),
+          ],
+        }),
+      }),
+    );
+
+    const { container } = render(
+      <ActivityCalendarPopup data={{ preview: "point", view: "gantt" }} />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector(".activity-gantt-point")).not.toBeNull();
+    });
+    // 点标记而非条：宽度为 0 的条会完全不可见
+    expect(container.querySelector(".activity-gantt-bar")).toBeNull();
+  });
+
+  it("hides 前瞻 by default in gantt view", async () => {
+    fetchMock.mockImplementation(
+      routeFetch({
+        calendar: jsonResponse({
+          total: 1,
+          items: [
+            calendarItem({
+              id: "p",
+              kind: "版本日程",
+              title: "3.1版本前瞻特别节目",
+              labels: ["前瞻特别节目"],
+              start: isoInDays(1),
+              end: isoInDays(1.1),
+            }),
+          ],
+        }),
+      }),
+    );
+
+    const { container } = render(<ActivityCalendarPopup data={{ view: "gantt" }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("暂无活动")).not.toBeNull();
+    });
+    expect(container.querySelector(".activity-gantt-point")).toBeNull();
+  });
+});

@@ -1879,3 +1879,569 @@ html.dark .desktop-folder-panel,
   text-align: right;
   min-width: 62px;
 }
+
+/* ===== 米哈游活动小部件（磁贴） ===== */
+.activity-widget {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  gap: 6px;
+  color: var(--color-foreground);
+  overflow: hidden;
+  /* 整块可点击展开；内部控件各自覆盖光标 */
+  cursor: pointer;
+}
+
+.activity-widget-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.activity-widget-game {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.activity-widget-game-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.activity-widget-game-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.activity-widget-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.activity-widget-refresh:hover {
+  background: var(--widget-btn-bg, rgba(128, 128, 128, 0.2));
+}
+
+.activity-widget-refresh-icon {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+}
+
+.activity-widget-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.activity-widget-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 5px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+  min-width: 0;
+  /* 左侧状态色条 */
+  border-left: 2px solid transparent;
+  background: color-mix(in oklch, var(--color-foreground) 5%, transparent);
+}
+
+.activity-widget-item.is-ongoing {
+  border-left-color: #34d399;
+}
+
+.activity-widget-item.is-upcoming {
+  border-left-color: #60a5fa;
+}
+
+.activity-widget-item.is-ended {
+  border-left-color: rgba(128, 128, 128, 0.5);
+  opacity: 0.6;
+}
+
+.activity-widget-pin-icon {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.activity-widget-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-widget-remaining {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted-foreground);
+}
+
+.activity-widget-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  min-height: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.activity-widget-state.is-error {
+  color: #f87171;
+  opacity: 0.9;
+}
+
+.activity-widget-state-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+/* ===== 米哈游活动展开弹窗（筛选 / 甘特图 / 日程列表） ===== */
+.activity-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.activity-calendar-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-calendar-games {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--color-foreground) 7%, transparent);
+}
+
+.activity-calendar-game-btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.activity-calendar-game-btn.is-active {
+  background: color-mix(in oklch, var(--color-foreground) 14%, transparent);
+  color: var(--color-foreground);
+}
+
+.activity-calendar-views {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--color-foreground) 7%, transparent);
+}
+
+.activity-calendar-view-btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.activity-calendar-view-btn.is-active {
+  background: color-mix(in oklch, var(--color-foreground) 14%, transparent);
+  color: var(--color-foreground);
+}
+
+.activity-calendar-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.activity-calendar-refresh:hover {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+}
+
+.activity-calendar-refresh:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.activity-calendar-refresh-icon {
+  width: 13px;
+  height: 13px;
+  opacity: 0.75;
+}
+
+.activity-calendar-refresh-icon.is-spinning,
+.activity-widget-refresh-icon.is-spinning {
+  animation: weather-spin 1s linear infinite;
+}
+
+/* 筛选区：父级 + 子级两级 */
+.activity-calendar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--color-foreground) 5%, transparent);
+  font-size: 11px;
+}
+
+.activity-calendar-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.activity-calendar-filter-parent,
+.activity-calendar-filter-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.activity-calendar-filter-children {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  /* 子级缩进，视觉上体现从属于父级 */
+  padding-left: 18px;
+  color: var(--color-muted-foreground);
+}
+
+.activity-calendar-extra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.activity-calendar-window {
+  display: flex;
+  gap: 2px;
+}
+
+.activity-calendar-window-btn {
+  padding: 2px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.activity-calendar-window-btn.is-active {
+  background: color-mix(in oklch, var(--color-foreground) 14%, transparent);
+  color: var(--color-foreground);
+}
+
+.activity-calendar-preview-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.activity-calendar-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 0;
+  font-size: 12px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.activity-calendar-state.is-error {
+  color: #f87171;
+  opacity: 0.9;
+}
+
+.activity-calendar-state-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* 甘特图：横轴 + 每行一条 */
+.activity-gantt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  max-height: 46vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.activity-gantt-axis {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-foreground) 12%, transparent);
+  padding-bottom: 3px;
+}
+
+.activity-gantt-axis-cell {
+  flex: 1;
+  min-width: 0;
+  font-size: 9px;
+  color: var(--color-muted-foreground);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-gantt-axis-cell.is-today {
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+
+.activity-gantt-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.activity-gantt-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.activity-gantt-label {
+  flex-shrink: 0;
+  /* 给标题固定宽度，保证各行时间轴起点对齐 */
+  width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-muted-foreground);
+}
+
+.activity-gantt-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 14px;
+  border-radius: 4px;
+  background: color-mix(in oklch, var(--color-foreground) 5%, transparent);
+}
+
+.activity-gantt-bar {
+  position: absolute;
+  top: 2px;
+  height: 10px;
+  border-radius: 3px;
+  /* 最小宽度由 JS 保证（MIN_BAR_WIDTH_PCT），这里只兜底 */
+  min-width: 2px;
+}
+
+.activity-gantt-point {
+  position: absolute;
+  top: 2px;
+  width: 8px;
+  height: 10px;
+  /* 点标记以起点为中心偏移一半，让"起点"落在正确位置 */
+  margin-left: -4px;
+  border-radius: 2px;
+}
+
+.activity-gantt-bar.ongoing,
+.activity-gantt-point.ongoing {
+  background: #34d399;
+}
+
+.activity-gantt-bar.upcoming,
+.activity-gantt-point.upcoming {
+  background: #60a5fa;
+}
+
+.activity-gantt-bar.ended,
+.activity-gantt-point.ended {
+  background: rgba(128, 128, 128, 0.55);
+}
+
+.activity-gantt-pin,
+.activity-list-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  opacity: 0.4;
+}
+
+.activity-gantt-pin:hover,
+.activity-list-pin:hover {
+  opacity: 0.85;
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+}
+
+.activity-gantt-pin.is-pinned,
+.activity-list-pin.is-pinned {
+  opacity: 1;
+  color: var(--color-foreground);
+}
+
+.activity-gantt-pin-icon,
+.activity-list-pin-icon {
+  width: 11px;
+  height: 11px;
+}
+
+/* 纯日程列表 */
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 46vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-width: 0;
+}
+
+.activity-list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.activity-list-row:hover {
+  background: color-mix(in oklch, var(--color-foreground) 8%, transparent);
+}
+
+.activity-list-status {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.activity-list-status.ongoing {
+  color: #34d399;
+  background: color-mix(in oklch, #34d399 18%, transparent);
+}
+
+.activity-list-status.upcoming {
+  color: #60a5fa;
+  background: color-mix(in oklch, #60a5fa 18%, transparent);
+}
+
+.activity-list-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-list-kind {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--color-muted-foreground);
+}
+
+.activity-list-remaining {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted-foreground);
+  min-width: 56px;
+  text-align: right;
+}
+
+.activity-list-link {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--color-muted-foreground);
+}
+
+.activity-list-link:hover {
+  color: var(--color-foreground);
+}
+
+.activity-list-link-icon {
+  width: 12px;
+  height: 12px;
+}

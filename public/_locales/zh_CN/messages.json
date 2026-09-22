@@ -670,5 +670,77 @@
   "weatherCurrent": {
     "message": "当前位置",
     "description": "当前位置"
+  },
+  "hoyoActivityWidgetName": {
+    "message": "米哈游活动",
+    "description": "米哈游活动小部件名称"
+  },
+  "hoyoActivityWidgetDesc": {
+    "message": "即将到期与固定的游戏活动，支持甘特图与日程列表",
+    "description": "米哈游活动小部件描述"
+  },
+  "hoyoActivityTitle": {
+    "message": "游戏活动日程",
+    "description": "活动日程弹窗标题"
+  },
+  "hoyoActivityLoading": {
+    "message": "加载中...",
+    "description": "活动加载中"
+  },
+  "hoyoActivityLoadFailed": {
+    "message": "活动获取失败",
+    "description": "活动获取失败"
+  },
+  "hoyoActivityEmpty": {
+    "message": "暂无活动",
+    "description": "暂无活动"
+  },
+  "hoyoActivityUnavailable": {
+    "message": "该游戏暂无日程",
+    "description": "该游戏暂无日程"
+  },
+  "hoyoActivityRefresh": {
+    "message": "刷新",
+    "description": "刷新活动"
+  },
+  "hoyoActivityEnded": {
+    "message": "已结束",
+    "description": "已结束"
+  },
+  "hoyoActivityDaysLeft": {
+    "message": "剩 {n} 天",
+    "description": "剩余天数"
+  },
+  "hoyoActivityHoursLeft": {
+    "message": "剩 {n} 小时",
+    "description": "剩余小时数"
+  },
+  "hoyoActivityGantt": {
+    "message": "甘特图",
+    "description": "甘特图视图"
+  },
+  "hoyoActivityList": {
+    "message": "日程列表",
+    "description": "日程列表视图"
+  },
+  "hoyoActivityDays": {
+    "message": "天",
+    "description": "天数单位"
+  },
+  "hoyoActivityPreviewPoint": {
+    "message": "前瞻只显示起点",
+    "description": "前瞻只显示起点"
+  },
+  "hoyoActivityPin": {
+    "message": "固定",
+    "description": "固定活动"
+  },
+  "hoyoActivityOngoing": {
+    "message": "进行中",
+    "description": "进行中"
+  },
+  "hoyoActivityUpcoming": {
+    "message": "未开始",
+    "description": "未开始"
   }
 }

@@ -1,0 +1,429 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Loader2, ExternalLink, Pin, RefreshCw } from "lucide-react";
+import { getMessage } from "@/lib/i18n";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  CALENDAR_GAME_IDS,
+  DEFAULT_WINDOW_DAYS,
+  GAME_FALLBACK_NAMES,
+  activityStatus,
+  addDaysToDayKey,
+  applySelectionFilter,
+  buildDayColumns,
+  computeDefaultSelection,
+  computeGanttRows,
+  fetchActivityEntries,
+  fetchCapabilities,
+  isChildChecked,
+  isParentChecked,
+  readGameId,
+  readPinnedIds,
+  readPreviewMode,
+  readSelected,
+  readViewMode,
+  readWindowDays,
+  remainingText,
+  selectionToIncludes,
+  togglePinned,
+  toggleSelectorValue,
+  utc8DayKey,
+  type CalendarCapabilities,
+  type ParsedActivityEntry,
+  type RemainingText,
+  type ViewMode,
+} from "@/components/widgets/activity/activity";
+
+interface ActivityCalendarPopupProps {
+  data?: Record<string, unknown>;
+  onDataChange?: (data: Record<string, unknown>) => void;
+}
+
+/** 窗口天数可选项。 */
+const WINDOW_OPTIONS = [7, 14, 30] as const;
+
+function remainingLabel(remaining: RemainingText): string {
+  if (remaining.unit === "ended") return getMessage("hoyoActivityEnded", "已结束");
+  if (remaining.unit === "hours") {
+    return getMessage("hoyoActivityHoursLeft", "剩 {n} 小时").replace(
+      "{n}",
+      String(remaining.value),
+    );
+  }
+  return getMessage("hoyoActivityDaysLeft", "剩 {n} 天").replace("{n}", String(remaining.value));
+}
+
+/**
+ * 活动小部件的展开内容：筛选 + 甘特图 / 纯日程列表 + 固定操作。
+ *
+ * 该组件只在弹窗打开时挂载，因此日程请求也是"展开后才发出"。
+ * 关键约束：
+ * - **按桶整取、本地筛选**——筛选条件变化不发请求（长 TTL 才有意义）；
+ * - **前瞻默认不显示**（它是 1 分钟事件，画成条必然不可见），
+ *   可选降级为"只显示起点"的点标记；
+ * - 时间一律按 **UTC+8** 换算展示，不跟随浏览器时区。
+ */
+export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPopupProps) {
+  const gameId = readGameId(data);
+  const previewMode = readPreviewMode(data);
+  const [view, setView] = useState<ViewMode>(() => readViewMode(data));
+  const [days, setDays] = useState(() => readWindowDays(data));
+  const pinnedIds = useMemo(() => readPinnedIds(data), [data]);
+
+  const [capabilities, setCapabilities] = useState<CalendarCapabilities | null>(null);
+  const [entries, setEntries] = useState<ParsedActivityEntry[] | null>(null);
+  const [selected, setSelected] = useState<Set<string> | null>(() => readSelected(data));
+  const [loading, setLoading] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  const [error, setError] = useState("");
+
+  // 当前时间作为 state：既用于状态判定，也用于跨天推动窗口滚动
+  const [now, setNow] = useState(() => Date.now());
+  const from = utc8DayKey(now);
+  const query = useMemo(
+    () => ({ gameId, from, to: addDaysToDayKey(from, DEFAULT_WINDOW_DAYS) }),
+    [gameId, from],
+  );
+
+  const persist = useCallback(
+    (patch: Record<string, unknown>) => {
+      onDataChange?.(patch);
+    },
+    [onDataChange],
+  );
+
+  const load = useCallback(
+    async (force: boolean) => {
+      setLoading(true);
+      setError("");
+      setUnavailable(false);
+      try {
+        // capabilities 是筛选 UI 的唯一权威来源：不同游戏的父子结构不同，不能硬编码
+        const caps = await fetchCapabilities(gameId, { force });
+        if (!caps) {
+          setUnavailable(true);
+          setCapabilities(null);
+          setEntries([]);
+          return;
+        }
+        setCapabilities(caps);
+        // 初次进入用默认选中（排除角色生日与前瞻）；
+        // 已有用户选择时保留它（selected 的初始值就来自持久化数据）
+        setSelected((prev) => prev ?? computeDefaultSelection(caps.selectors));
+        setEntries(await fetchActivityEntries(query, { force }));
+      } catch {
+        setError(getMessage("hoyoActivityLoadFailed", "活动获取失败"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [gameId, query],
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // 包一层 async IIFE，避免被判定为「effect 内同步 setState」
+  useEffect(() => {
+    void (async () => {
+      await load(false);
+    })();
+  }, [load]);
+
+  const onToggleSelector = useCallback(
+    (value: string) => {
+      if (!capabilities || !selected) return;
+      const next = toggleSelectorValue(capabilities.selectors, selected, value);
+      setSelected(next);
+      persist({ selected: selectionToIncludes(capabilities.selectors, next) });
+    },
+    [capabilities, selected, persist],
+  );
+
+  const onTogglePin = useCallback(
+    (id: string) => {
+      const next = togglePinned(pinnedIds, id);
+      persist({ pinned: next });
+    },
+    [pinnedIds, persist],
+  );
+
+  const onViewChange = useCallback(
+    (next: ViewMode) => {
+      setView(next);
+      persist({ view: next });
+    },
+    [persist],
+  );
+
+  const onDaysChange = useCallback(
+    (next: number) => {
+      setDays(next);
+      persist({ days: next });
+    },
+    [persist],
+  );
+
+  const onPreviewModeChange = useCallback(
+    (next: "hide" | "point") => {
+      persist({ preview: next });
+    },
+    [persist],
+  );
+
+  /**
+   * 切换游戏。
+   *
+   * 必须同时清掉 capabilities 与选中集：不同游戏的父子筛选结构完全不同
+   * （原神「游戏内活动」有子级、星铁没有；绝区零是「版本日程」+「卡池」），
+   * 沿用上一个游戏的选中值会筛出空结果。
+   */
+  const onGameChange = useCallback(
+    (nextGameId: string) => {
+      if (nextGameId === gameId) return;
+      setCapabilities(null);
+      setEntries(null);
+      setSelected(null); // 置空后由 load 按新游戏的 capabilities 生成默认选中
+      setUnavailable(false);
+      persist({ gameId: nextGameId, selected: undefined, pinned: [] });
+    },
+    [gameId, persist],
+  );
+
+  const filtered = useMemo(() => {
+    if (!entries || !selected) return [];
+    return applySelectionFilter(entries, selected, { previewMode });
+  }, [entries, selected, previewMode]);
+
+  // 甘特窗口：今天起 N 天，按 UTC+8 的日边界
+  const windowStartMs = useMemo(() => {
+    const utc = Date.UTC(
+      Number(from.slice(0, 4)),
+      Number(from.slice(5, 7)) - 1,
+      Number(from.slice(8, 10)),
+    );
+    return utc - 8 * 60 * 60 * 1000;
+  }, [from]);
+  const windowEndMs = windowStartMs + days * 24 * 60 * 60 * 1000;
+
+  const columns = useMemo(
+    () => buildDayColumns(windowStartMs, days, now),
+    [windowStartMs, days, now],
+  );
+  const ganttRows = useMemo(
+    () => computeGanttRows(filtered, windowStartMs, windowEndMs),
+    [filtered, windowStartMs, windowEndMs],
+  );
+  // 纯日程列表：只展示窗口内仍有效或即将开始的，按开始时间排序
+  const listRows = useMemo(
+    () => filtered.filter((entry) => entry.endMs > now).sort((a, b) => a.startMs - b.startMs),
+    [filtered, now],
+  );
+
+  return (
+    <div className="activity-calendar">
+      <div className="activity-calendar-bar">
+        <div className="activity-calendar-games">
+          {CALENDAR_GAME_IDS.map((id) => (
+            <button
+              key={id}
+              className={`activity-calendar-game-btn ${gameId === id ? "is-active" : ""}`}
+              onClick={() => onGameChange(id)}
+            >
+              {GAME_FALLBACK_NAMES[id] ?? id}
+            </button>
+          ))}
+        </div>
+        <div className="activity-calendar-views">
+          <button
+            className={`activity-calendar-view-btn ${view === "gantt" ? "is-active" : ""}`}
+            onClick={() => onViewChange("gantt")}
+          >
+            {getMessage("hoyoActivityGantt", "甘特图")}
+          </button>
+          <button
+            className={`activity-calendar-view-btn ${view === "list" ? "is-active" : ""}`}
+            onClick={() => onViewChange("list")}
+          >
+            {getMessage("hoyoActivityList", "日程列表")}
+          </button>
+        </div>
+        <button
+          className="activity-calendar-refresh"
+          title={getMessage("hoyoActivityRefresh", "刷新")}
+          onClick={() => void load(true)}
+          disabled={loading}
+        >
+          <RefreshCw className={`activity-calendar-refresh-icon ${loading ? "is-spinning" : ""}`} />
+        </button>
+      </div>
+
+      {/* 筛选：父/子两级，勾父级 = 全选其子级 */}
+      {capabilities && selected && (
+        <div className="activity-calendar-filters">
+          {capabilities.selectors.map((parent) => (
+            <div key={parent.value} className="activity-calendar-filter-group">
+              <label className="activity-calendar-filter-parent">
+                <Checkbox
+                  checked={isParentChecked(selected, parent.value)}
+                  onCheckedChange={() => onToggleSelector(parent.value)}
+                />
+                <span>{parent.label}</span>
+              </label>
+              {parent.children.length > 0 && (
+                <div className="activity-calendar-filter-children">
+                  {parent.children.map((child) => (
+                    <label key={child.value} className="activity-calendar-filter-child">
+                      <Checkbox
+                        checked={isChildChecked(selected, parent.value, child.value)}
+                        onCheckedChange={() => onToggleSelector(child.value)}
+                      />
+                      <span>{child.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          <div className="activity-calendar-extra">
+            <div className="activity-calendar-window">
+              {WINDOW_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  className={`activity-calendar-window-btn ${days === option ? "is-active" : ""}`}
+                  onClick={() => onDaysChange(option)}
+                >
+                  {option} {getMessage("hoyoActivityDays", "天")}
+                </button>
+              ))}
+            </div>
+            <label className="activity-calendar-preview-toggle">
+              <Checkbox
+                checked={previewMode === "point"}
+                onCheckedChange={(checked) => onPreviewModeChange(checked ? "point" : "hide")}
+              />
+              <span>{getMessage("hoyoActivityPreviewPoint", "前瞻只显示起点")}</span>
+            </label>
+          </div>
+        </div>
+      )}
+
+      {unavailable ? (
+        <div className="activity-calendar-state">
+          {getMessage("hoyoActivityUnavailable", "该游戏暂无日程")}
+        </div>
+      ) : error ? (
+        <div className="activity-calendar-state is-error">
+          <AlertTriangle className="activity-calendar-state-icon" />
+          <span>{error}</span>
+        </div>
+      ) : !entries ? (
+        <div className="activity-calendar-state">
+          <Loader2 className="activity-calendar-state-icon is-spinning" />
+          <span>{getMessage("hoyoActivityLoading", "加载中...")}</span>
+        </div>
+      ) : view === "gantt" ? (
+        <div className="activity-gantt">
+          <div className="activity-gantt-axis">
+            {columns.map((column) => (
+              <span
+                key={column.dayKey}
+                className={`activity-gantt-axis-cell ${column.isToday ? "is-today" : ""}`}
+              >
+                {column.label}
+              </span>
+            ))}
+          </div>
+          {ganttRows.length === 0 ? (
+            <div className="activity-calendar-state">
+              {getMessage("hoyoActivityEmpty", "暂无活动")}
+            </div>
+          ) : (
+            <div className="activity-gantt-rows">
+              {ganttRows.map((row) => (
+                <div key={row.entry.id} className="activity-gantt-row">
+                  <span className="activity-gantt-label" title={row.entry.title}>
+                    {row.entry.title}
+                  </span>
+                  <div className="activity-gantt-track">
+                    {row.isPoint ? (
+                      // 极短事件（前瞻为 1 分钟）只画起点标记，否则宽度为 0 不可见
+                      <span
+                        className={`activity-gantt-point ${statusOf(row.entry, now)}`}
+                        style={{ left: `${row.leftPct}%` }}
+                        title={row.entry.title}
+                      />
+                    ) : (
+                      <span
+                        className={`activity-gantt-bar ${statusOf(row.entry, now)}`}
+                        style={{ left: `${row.leftPct}%`, width: `${row.widthPct}%` }}
+                        title={row.entry.title}
+                      />
+                    )}
+                  </div>
+                  <button
+                    className={`activity-gantt-pin ${pinnedIds.includes(row.entry.id) ? "is-pinned" : ""}`}
+                    title={getMessage("hoyoActivityPin", "固定")}
+                    onClick={() => onTogglePin(row.entry.id)}
+                  >
+                    <Pin className="activity-gantt-pin-icon" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="activity-list">
+          {listRows.length === 0 ? (
+            <div className="activity-calendar-state">
+              {getMessage("hoyoActivityEmpty", "暂无活动")}
+            </div>
+          ) : (
+            listRows.map((entry) => (
+              <div key={entry.id} className="activity-list-row">
+                <button
+                  className={`activity-list-pin ${pinnedIds.includes(entry.id) ? "is-pinned" : ""}`}
+                  title={getMessage("hoyoActivityPin", "固定")}
+                  onClick={() => onTogglePin(entry.id)}
+                >
+                  <Pin className="activity-list-pin-icon" />
+                </button>
+                <span className={`activity-list-status ${statusOf(entry, now)}`}>
+                  {getMessage(
+                    statusOf(entry, now) === "ongoing"
+                      ? "hoyoActivityOngoing"
+                      : "hoyoActivityUpcoming",
+                    statusOf(entry, now) === "ongoing" ? "进行中" : "未开始",
+                  )}
+                </span>
+                <span className="activity-list-title">{entry.title}</span>
+                <span className="activity-list-kind">{entry.kind}</span>
+                <span className="activity-list-remaining">
+                  {remainingLabel(remainingText(entry, now))}
+                </span>
+                {entry.url && (
+                  <a
+                    className="activity-list-link"
+                    href={entry.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={entry.url}
+                  >
+                    <ExternalLink className="activity-list-link-icon" />
+                  </a>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 活动状态（用于样式类名）。 */
+function statusOf(entry: ParsedActivityEntry, now: number): string {
+  return activityStatus(entry, now);
+}
