@@ -32,7 +32,6 @@ import {
   isWidgetItem,
   type BookmarkLike,
   type DesktopItem,
-  type WidgetItemData,
 } from "@/lib/desktop-items";
 
 export interface HomeDesktopHandle {
@@ -89,8 +88,8 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
   const [shortcutForm, setShortcutForm] = useState({ name: "", url: "" });
   /** 正在弹窗展示的文件夹 id。 */
   const [popupFolderId, setPopupFolderId] = useState<string | null>(null);
-  /** 已展开的小部件（有 popup 定义的那些）。 */
-  const [expandedWidget, setExpandedWidget] = useState<WidgetItemData | null>(null);
+  /** 已展开的小部件 id（有 popup 定义的那些）。 */
+  const [expandedWidgetId, setExpandedWidgetId] = useState<string | null>(null);
   /** 初始加载是否已完成；未完成前不做任何落盘，避免覆盖已有数据。 */
   const [loaded, setLoaded] = useState(false);
   const loadStartedRef = useRef(false);
@@ -140,6 +139,23 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     () => (showWidgets ? allItems : allItems.filter((item) => !isWidgetItem(item))),
     [allItems, showWidgets],
   );
+
+  /**
+   * 从 store 里**实时**取回已展开的小部件，而不是在点击时保存一份快照。
+   *
+   * 快照会让弹窗拿到冻结的 `data`：弹窗里改游戏/固定后，store 已更新，
+   * 但 `expandedWidget` 仍是旧对象，于是切换游戏要关闭重开才生效、
+   * 固定操作也像是没反应（每次都基于同一份旧列表重算）。
+   * 改成按 id 派生后，store 一变这里就重新计算，弹窗立即收到新 data。
+   *
+   * 小部件被删除、或随"隐藏小部件"一起从可见列表消失时，这里自然得到 null，
+   * `WidgetPopupHost` 会据此关闭弹窗，无需额外的 effect 去清理。
+   */
+  const expandedWidget = useMemo(() => {
+    if (!expandedWidgetId) return null;
+    const found = visibleItems.find((item) => item.id === expandedWidgetId);
+    return found && isWidgetItem(found) ? found : null;
+  }, [visibleItems, expandedWidgetId]);
 
   /** 把可见列表的下标映射回完整列表，避免隐藏小部件时排序串位。 */
   const handleMoveVisible = useCallback(
@@ -197,7 +213,7 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     }
     // 带弹窗的小部件：点击非控件区域即展开（与拖动排序互不冲突）
     if (isWidgetItem(item) && hasWidgetPopup(item.widgetType)) {
-      setExpandedWidget(item);
+      setExpandedWidgetId(item.id);
     }
   }, []);
 
@@ -266,7 +282,7 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
         if (hasWidgetPopup(item.widgetType)) {
           menuItems.push({
             label: getMessage("widgetExpand", "展开详情"),
-            onSelect: () => setExpandedWidget(item),
+            onSelect: () => setExpandedWidgetId(item.id),
           });
         }
         menuItems.push({
@@ -404,7 +420,7 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
 
       <WidgetPopupHost
         item={expandedWidget}
-        onClose={() => setExpandedWidget(null)}
+        onClose={() => setExpandedWidgetId(null)}
         onDataChange={updateItemData}
       />
 

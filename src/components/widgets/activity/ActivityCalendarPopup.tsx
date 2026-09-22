@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Loader2, ExternalLink, Pin, RefreshCw } from "lucide-react";
 import { getMessage } from "@/lib/i18n";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -63,7 +63,23 @@ function remainingLabel(remaining: RemainingText): string {
  * - 时间一律按 **UTC+8** 换算展示，不跟随浏览器时区。
  */
 export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPopupProps) {
-  const gameId = readGameId(data);
+  /**
+   * 弹窗内切游戏时先用本地状态接管，而不是等父级把新 gameId 回灌回来。
+   *
+   * 若只 persist 再依赖 `data.gameId` 变化触发重新加载，一旦父级没能及时回灌
+   * （例如父级持有的是点击时的快照），弹窗就会一直停在"加载中"：
+   * 自身状态已清空，而 load 又没有被重新触发。
+   *
+   * 覆盖值记录"它是在哪个 props 值之上做出的选择"（`from`）：
+   * - props 仍是 `from` → 父级还没跟上，用本地值 `to`；
+   * - props 已变成别的值 → 父级已接手（或主动改成了另一个游戏），
+   *   此时丢弃本地值、以 props 为准。
+   * 这样在渲染期即可判定，不需要在 effect 里 setState 去清理。
+   */
+  const propsGameId = readGameId(data);
+  const [gameOverride, setGameOverride] = useState<{ from: string; to: string } | null>(null);
+  const gameId = gameOverride && gameOverride.from === propsGameId ? gameOverride.to : propsGameId;
+
   const previewMode = readPreviewMode(data);
   const [view, setView] = useState<ViewMode>(() => readViewMode(data));
   const [days, setDays] = useState(() => readWindowDays(data));
@@ -91,14 +107,24 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
     [onDataChange],
   );
 
+  /**
+   * 每次请求的序号。用于丢弃"迟到的旧请求"结果：
+   * 快速切换游戏时，上一个游戏的响应可能后到，不能让它覆盖新游戏的数据。
+   */
+  const requestRef = useRef(0);
+
   const load = useCallback(
     async (force: boolean) => {
+      const token = ++requestRef.current;
       setLoading(true);
       setError("");
       setUnavailable(false);
       try {
         // capabilities 是筛选 UI 的唯一权威来源：不同游戏的父子结构不同，不能硬编码
         const caps = await fetchCapabilities(gameId, { force });
+        // 慢响应保护：期间用户可能已切到别的游戏，晚到的旧结果必须丢弃，
+        // 否则会把新游戏的数据/筛选结构覆盖回去。
+        if (requestRef.current !== token) return;
         if (!caps) {
           setUnavailable(true);
           setCapabilities(null);
@@ -109,11 +135,14 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
         // 初次进入用默认选中（排除角色生日与前瞻）；
         // 已有用户选择时保留它（selected 的初始值就来自持久化数据）
         setSelected((prev) => prev ?? computeDefaultSelection(caps.selectors));
-        setEntries(await fetchActivityEntries(query, { force }));
+        const next = await fetchActivityEntries(query, { force });
+        if (requestRef.current !== token) return;
+        setEntries(next);
       } catch {
+        if (requestRef.current !== token) return;
         setError(getMessage("hoyoActivityLoadFailed", "活动获取失败"));
       } finally {
-        setLoading(false);
+        if (requestRef.current === token) setLoading(false);
       }
     },
     [gameId, query],
@@ -178,17 +207,22 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
    * 必须同时清掉 capabilities 与选中集：不同游戏的父子筛选结构完全不同
    * （原神「游戏内活动」有子级、星铁没有；绝区零是「版本日程」+「卡池」），
    * 沿用上一个游戏的选中值会筛出空结果。
+   *
+   * 这里同时写本地覆盖值：`load` 依赖 `gameId`，覆盖值一变就会重新取数，
+   * 不依赖父级回灌（详见组件顶部说明）。
    */
   const onGameChange = useCallback(
     (nextGameId: string) => {
       if (nextGameId === gameId) return;
+      setGameOverride({ from: propsGameId, to: nextGameId });
       setCapabilities(null);
       setEntries(null);
       setSelected(null); // 置空后由 load 按新游戏的 capabilities 生成默认选中
       setUnavailable(false);
+      setError("");
       persist({ gameId: nextGameId, selected: undefined, pinned: [] });
     },
-    [gameId, persist],
+    [gameId, propsGameId, persist],
   );
 
   const filtered = useMemo(() => {

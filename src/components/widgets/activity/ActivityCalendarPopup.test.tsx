@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { ActivityCalendarPopup } from "@/components/widgets/activity/ActivityCalendarPopup";
 
 /**
@@ -9,6 +9,10 @@ import { ActivityCalendarPopup } from "@/components/widgets/activity/ActivityCal
  * 1. capabilities 404（如崩坏3）→ "该游戏暂无日程"空态，而不是报错；
  * 2. 前瞻只画起点（点标记）而非零宽条；
  * 3. 父子两级筛选：父级被选中时其子级显示为选中。
+ *
+ * 另外钉住两个已修复的交互缺陷：
+ * 4. 切换游戏必须就地生效，且**不能卡在"加载中"**（曾因等待父级回灌 gameId 而卡死）；
+ * 5. 迟到的旧请求结果不能覆盖新游戏的数据。
  */
 
 const CAPABILITIES_YS = {
@@ -185,5 +189,97 @@ describe("ActivityCalendarPopup", () => {
       expect(screen.queryByText("暂无活动")).not.toBeNull();
     });
     expect(container.querySelector(".activity-gantt-point")).toBeNull();
+  });
+
+  it("switches game data in place without waiting for the parent to feed gameId back", async () => {
+    // 回归：曾经这里会卡在"加载中"——弹窗清空了自己的状态，
+    // 却只依赖父级回灌新 gameId 来触发重新加载；父级没回灌就永久卡住。
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const game = url.includes("/sr/") ? "sr" : "ys";
+      if (url.includes("/capabilities")) {
+        return jsonResponse({
+          json: `/api/v1/games/${game}/calendar`,
+          ics: `/api/v1/games/${game}/calendar.ics`,
+          selectors: [{ value: "游戏内活动", label: "游戏内活动", children: [] }],
+        });
+      }
+      return jsonResponse({
+        total: 1,
+        items: [calendarItem({ id: `${game}-1`, title: `${game} 的活动` })],
+      });
+    });
+
+    // onDataChange 刻意留空：模拟父级未能回灌
+    render(<ActivityCalendarPopup data={{ gameId: "ys" }} onDataChange={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("ys 的活动")).not.toBeNull();
+    });
+
+    fireEvent.click(screen.getByText("崩坏：星穹铁道"));
+
+    // 必须就地切到新游戏
+    await waitFor(
+      () => {
+        expect(screen.queryByText("sr 的活动")).not.toBeNull();
+      },
+      { timeout: 3000 },
+    );
+    // 且绝不能停在"加载中"
+    expect(screen.queryByText("加载中...")).toBeNull();
+  });
+
+  it("discards a late response from the previously selected game", async () => {
+    // 回归：切游戏时旧游戏的慢响应若后到，不能覆盖新游戏的数据。
+    let resolveYs!: (value: Response) => void;
+    const ysCalendar = new Promise<Response>((resolve) => {
+      resolveYs = resolve;
+    });
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/capabilities")) {
+        const game = url.includes("/sr/") ? "sr" : "ys";
+        return jsonResponse({
+          json: `/api/v1/games/${game}/calendar`,
+          ics: `/api/v1/games/${game}/calendar.ics`,
+          selectors: [{ value: "游戏内活动", label: "游戏内活动", children: [] }],
+        });
+      }
+      // 原神日程延迟返回，模拟慢响应
+      if (url.includes("/ys/")) return ysCalendar;
+      return jsonResponse({
+        total: 1,
+        items: [calendarItem({ id: "sr-1", title: "sr 的活动" })],
+      });
+    });
+
+    render(<ActivityCalendarPopup data={{ gameId: "ys" }} onDataChange={() => {}} />);
+
+    // 趁原神日程还没回来就切到星铁
+    await waitFor(() => {
+      expect(screen.queryByText("崩坏：星穹铁道")).not.toBeNull();
+    });
+    fireEvent.click(screen.getByText("崩坏：星穹铁道"));
+
+    await waitFor(
+      () => {
+        expect(screen.queryByText("sr 的活动")).not.toBeNull();
+      },
+      { timeout: 3000 },
+    );
+
+    // 此时原神的旧响应才到达，必须被丢弃
+    resolveYs(
+      jsonResponse({
+        total: 1,
+        items: [calendarItem({ id: "ys-1", title: "ys 的活动（迟到）" })],
+      }),
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText("ys 的活动（迟到）")).toBeNull();
+    expect(screen.queryByText("sr 的活动")).not.toBeNull();
   });
 });
