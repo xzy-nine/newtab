@@ -182,9 +182,9 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
 
   const handleItemClick = useCallback((item: DesktopItem) => {
     if (isShortcutItem(item)) openUrl(item.url);
-    // 展开态内部自己处理点击；1x1（图标或预览）点空白/名称则打开文件夹弹窗
-    // （预览里的迷你图标会 stopPropagation，直接打开对应书签）。
-    else if (isFolderItem(item) && folderTileForm(item) !== "expanded") {
+    // 文件夹：点击落在书签格子上时，面板内部已 stopPropagation 并直接打开；
+    // 能冒泡到这里说明点的是图标/标题/空白处 → 打开文件夹弹窗。
+    else if (isFolderItem(item)) {
       setPopupFolderId(item.folderId);
     }
   }, []);

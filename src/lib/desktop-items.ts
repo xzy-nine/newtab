@@ -122,10 +122,6 @@ export function isExpandedFolderItem(item: DesktopItem): boolean {
   return isFolderItem(item) && item.w >= FOLDER_PANEL_MIN_W;
 }
 
-/** 1x1 预览的槽位（2x2）。 */
-export const FOLDER_PREVIEW_COLS = 2;
-export const FOLDER_PREVIEW_ROWS = 2;
-
 /** 拖动多少（相对一格的像素宽度）才算"轻拉一下"。 */
 export const FOLDER_PREVIEW_DRAG_RATIO = 0.3;
 

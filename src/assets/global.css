@@ -582,11 +582,13 @@ html.dark .desktop-box {
   font-size: 11px;
   color: var(--color-foreground);
   max-width: 100%;
-  overflow: hidden;
+  /* 只在水平方向省略，避免纵向裁切文字 */
+  overflow-x: hidden;
+  overflow-y: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.3;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   padding: 0 2px;
   width: 100%;
@@ -950,88 +952,21 @@ html.light .desktop-shortcut-name {
 }
 
 /*
- * 1x1 文件夹预览态：与展开态同高（150px），内部铺满 2x2 迷你图标。
- * 展开态高度由 .desktop-folder-panel 自身决定，这里只需给磁贴定高。
+ * 1x1 预览态的磁贴高度：与展开态一致（150px）。
+ * 展开态由 .desktop-folder-panel 自身定高，两种形态 UI 相同、只是宽度不同。
  */
 .desktop-item.is-folder-preview {
   height: 150px;
 }
 
-.desktop-shortcut-inner.is-preview {
-  padding: 6px;
-  gap: 4px;
-}
-
-/*
- * 1x1 预览态：容器只负责排布，不再套蓝底渐变，
- * 让内部图标保持与桌面图标完全一致的样式。
- */
-.desktop-shortcut-inner.is-preview .desktop-folder-icon {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  flex: 1;
-  background: transparent;
-  box-shadow: none;
-}
-
-.desktop-item.is-folder-preview:hover .desktop-folder-icon {
-  transform: none;
-  box-shadow: none;
-}
-
-/* 1x1 预览态：直接铺 2x2 图标，图标尺寸沿用桌面图标的默认样式 */
-.desktop-folder-preview {
-  display: grid;
-  grid-template-columns: repeat(2, auto);
-  grid-template-rows: repeat(2, auto);
-  place-content: center;
-  gap: 3px;
-  width: 100%;
-  height: 100%;
-}
-
-.desktop-folder-preview-cell,
-.desktop-folder-preview-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-radius: 4px;
-  border: none;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.desktop-folder-preview-cell:hover .desktop-shortcut-icon {
-  filter: brightness(1.15);
-}
-
-/* "+N" 与一个默认尺寸的图标等大，保持 2x2 对齐 */
-.desktop-folder-preview-more {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #ffffff;
-  background: rgba(0, 0, 0, 0.38);
-}
-
-.desktop-folder-preview-more:hover {
-  background: rgba(0, 0, 0, 0.55);
-}
-
-/* ===== 文件夹展开块（拉开后像其他小部件一样显示书签） ===== */
+/* ===== 文件夹内容面板（1x1 预览态与 1xN 展开态共用） ===== */
 .desktop-folder-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
   width: 100%;
   /*
-   * 面板占用桌面网格 1 行（h=1）。高度为其他小部件的一半，
-   * 内部仍可在可用高度里换行；测量也依赖这个确定高度。
+   * 两种形态同高。测量依赖这个确定高度：改动时请同步 .is-folder-preview。
    */
   height: 150px;
   padding: 8px;
@@ -1074,13 +1009,23 @@ html.dark .desktop-folder-panel,
   white-space: nowrap;
 }
 
+/*
+ * 单元格尺寸以自定义属性暴露，供 JS 读取换算槽位数，
+ * 避免 CSS 与 TS 各写一份常量而漂移。
+ * 列宽（cell-min）与行高（cell-h）分开：格子高度必须放得下
+ * "图标 + 文字"，否则文字会被行高裁掉。
+ */
 .desktop-folder-panel-grid {
+  --folder-cell-min: 40px;
+  --folder-cell-h: 48px;
+  --folder-cell-gap: 4px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--folder-cell-min), 1fr));
+  grid-auto-rows: var(--folder-cell-h);
+  gap: var(--folder-cell-gap);
   align-content: start;
 }
 
@@ -1088,8 +1033,10 @@ html.dark .desktop-folder-panel,
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 4px 2px;
+  justify-content: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -1102,23 +1049,27 @@ html.dark .desktop-folder-panel,
   background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
 }
 
-/* 展开块内的图标尺寸略微收小以容纳更多书签 */
+/* 面板内图标沿用桌面图标样式，仅略微收小以容纳更多书签 */
 .desktop-folder-panel-item .desktop-shortcut-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  box-shadow: none;
+  flex-shrink: 0;
 }
 
-.desktop-folder-panel-item .desktop-shortcut-letter {
-  font-size: 12px;
-}
-
+/*
+ * 文字单行省略。行高留足（1.3）以免中文上下被裁；
+ * 只在水平方向省略，因此不使用会纵向裁切的 overflow: hidden。
+ */
 .desktop-folder-panel-item-name {
   font-size: 10px;
-  line-height: 1.15;
+  line-height: 1.3;
   width: 100%;
+  min-width: 0;
   text-align: center;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-foreground);
@@ -1128,12 +1079,11 @@ html.dark .desktop-folder-panel,
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
-  padding: 2px;
+  padding: 4px 2px;
   border: none;
   border-radius: 8px;
   background: transparent;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--color-muted-foreground);
   cursor: pointer;
@@ -1182,10 +1132,13 @@ html.dark .desktop-folder-panel,
 
 .folder-popup-item-name {
   font-size: 11px;
-  line-height: 1.2;
+  line-height: 1.3;
   width: 100%;
+  min-width: 0;
   text-align: center;
-  overflow: hidden;
+  /* 只在水平方向省略，避免纵向裁切文字 */
+  overflow-x: hidden;
+  overflow-y: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

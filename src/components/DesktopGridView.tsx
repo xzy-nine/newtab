@@ -222,16 +222,12 @@ export function DesktopGridView({
                 >
                   {isShortcutItem(item) && <ShortcutTile item={item} />}
                   {isFolderItem(item) &&
-                    (folderTileForm(item) === "expanded" ? (
+                    (folderTileForm(item) === "icon" ? (
+                      <FolderTile item={item} />
+                    ) : (
+                      // 1x1 预览态与 1xN 展开态共用同一个面板组件，UI 一致
                       <FolderPanelTile
                         item={item}
-                        onOpenBookmark={onOpenBookmark}
-                        onOpenPopup={onOpenFolderPopup}
-                      />
-                    ) : (
-                      <FolderTile
-                        item={item}
-                        preview={folderTileForm(item) === "preview"}
                         onOpenBookmark={onOpenBookmark}
                         onOpenPopup={onOpenFolderPopup}
                       />
