@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, Droplets, MapPin, RefreshCw, Wind } from "lucide-react";
 import { getCurrentLanguage, getMessage } from "@/lib/i18n";
 import { UapiError, uapiErrorText } from "@/lib/uapi";
+import { resolveWidgetSizeMode, widgetPadding } from "@/lib/widget-layout";
 import {
   displayPlaceName,
   fetchWeather,
@@ -164,7 +165,9 @@ export function WeatherWidget({
     void load(next, true, true);
   }, [city, draft, load]);
 
-  const compact = containerWidth <= 150 || containerHeight <= 110;
+  // 高度模式五组件共用（宽或高偏小即紧凑）
+  const mode = resolveWidgetSizeMode({ width: containerWidth, height: containerHeight });
+  const compact = mode === "compact";
   // 只把「用户显式设置的城市」当作展示名；IP 定位得到的上层地名不应
   // 盖掉接口返回的更细粒度 district（如 綦江区）。
   const place = displayPlaceName(cityIsUserSet ? city : "", snapshot);
@@ -174,7 +177,7 @@ export function WeatherWidget({
       className="weather-widget"
       // 非控件区域可点击展开预报（控件自身的点击不会冒泡到这里）
       title={getMessage("widgetExpand", "展开详情")}
-      style={{ padding: compact ? "6px" : "10px" }}
+      style={{ padding: widgetPadding(mode) }}
     >
       {/* 顶部：地点 + 刷新 */}
       <div className="weather-widget-top">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Folder, Maximize2 } from "lucide-react";
 import { fetchIconFromSources, generateInitialBasedIcon, getDomain } from "@/lib/icon-manager";
 import { getWidget } from "@/lib/widget-registry";
+import { WIDGET_TILE_HEIGHT } from "@/lib/widget-layout";
 import { getMessage } from "@/lib/i18n";
 import { useFolderBookmarks } from "@/hooks/useFolderBookmarks";
 import {
@@ -260,15 +261,20 @@ export function WidgetGridItem({
   const cellW = item.w * unitWidth + (item.w - 1) * gap - 8;
 
   return (
+    /*
+     * 磁贴高度取统一基准，并把同一个值作为 containerHeight 传给组件：
+     * 组件内部的紧凑判定与真实外显高度因此始终一致。
+     * 包裹层必须有确定高度，组件根节点的 h-full 才能撑满。
+     */
     <div
-      className="w-full overflow-hidden rounded-xl bg-white/75 dark:bg-[rgba(33,33,33,0.75)] border border-white/20 dark:border-white/5 shadow-md"
-      style={{ pointerEvents: "auto" }}
+      className="widget-tile w-full overflow-hidden rounded-xl bg-white/75 dark:bg-[rgba(33,33,33,0.75)] border border-white/20 dark:border-white/5 shadow-md"
+      style={{ pointerEvents: "auto", height: WIDGET_TILE_HEIGHT }}
     >
       <WidgetComponent
         data={item.data}
         onDataChange={(data) => onDataChange(item.id, data)}
         containerWidth={cellW}
-        containerHeight={300}
+        containerHeight={WIDGET_TILE_HEIGHT}
       />
     </div>
   );

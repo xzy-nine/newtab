@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarDays, Pin, RefreshCw } from "lucide-react";
 import { getMessage } from "@/lib/i18n";
+import { resolveWidgetSizeMode, widgetListCapacity, widgetPadding } from "@/lib/widget-layout";
 import {
   DEFAULT_WINDOW_DAYS,
   GAME_FALLBACK_NAMES,
@@ -153,6 +154,9 @@ export function ActivityWidget({
     [load, loading],
   );
 
+  // 高度模式五组件共用（宽或高偏小即紧凑）
+  const mode = resolveWidgetSizeMode({ width: containerWidth, height: containerHeight });
+
   const rows = useMemo(() => {
     if (!entries) return [];
     const selected = readSelected(data);
@@ -165,7 +169,8 @@ export function ActivityWidget({
     const pinned = selectPinned(entries, pinnedIds);
     const pinnedSet = new Set(pinned.map((entry) => entry.id));
 
-    const maxItems = containerHeight <= 130 ? 3 : 5;
+    // 行数由当前磁贴高度推算：磁贴变矮时自动少显示一行，而不是把最后一行裁掉
+    const maxItems = widgetListCapacity(containerHeight, mode);
     const slots = Math.max(0, maxItems - pinned.length);
     const expiring = selectExpiring(
       filtered.filter((entry) => !pinnedSet.has(entry.id)),
@@ -176,16 +181,14 @@ export function ActivityWidget({
       ...pinned.map((entry) => ({ entry, pinned: true })),
       ...expiring.map((entry) => ({ entry, pinned: false })),
     ];
-  }, [entries, data, pinnedIds, now, containerHeight]);
-
-  const compact = containerWidth <= 170 || containerHeight <= 120;
+  }, [entries, data, pinnedIds, now, mode, containerHeight]);
   const gameName = GAME_FALLBACK_NAMES[gameId] ?? gameId;
 
   return (
     <div
       className="activity-widget"
       title={getMessage("widgetExpand", "展开详情")}
-      style={{ padding: compact ? "6px" : "10px" }}
+      style={{ padding: widgetPadding(mode) }}
     >
       <div className="activity-widget-top">
         <span className="activity-widget-game">

@@ -396,6 +396,13 @@ html {
 
   /* 玻璃效果 CSS 变量默认值 */
   --xb-glass-opacity: 0.8;
+
+  /*
+   * 桌面磁贴的统一高度基准（文件夹行与小部件行等高）。
+   * 单一来源是 TS：src/lib/widget-layout.ts 的 WIDGET_TILE_HEIGHT，
+   * 两处必须一致；桌面小部件磁贴与文件夹面板都引用它，避免行与行高度漂移。
+   */
+  --desktop-tile-height: 150px;
 }
 
 /* data-glass 属性选择器 - 浮动组件玻璃效果 */
@@ -527,6 +534,16 @@ html.dark .desktop-box {
   border-radius: 12px;
   overflow: hidden;
   transition: opacity 0.2s ease;
+}
+
+/*
+ * 桌面小部件磁贴：与文件夹磁贴共用统一高度基准。
+ * 高度由 TS 单一来源（src/lib/widget-layout.ts 的 WIDGET_TILE_HEIGHT）内联下发，
+ * 并作为 containerHeight 传给组件，保证"紧凑判定用的高度"等于"真实外显高度"。
+ * 这里只声明盒模型，避免内边距把基准高度撑破。
+ */
+.widget-tile {
+  box-sizing: border-box;
 }
 
 .desktop-item[draggable="true"]:active {
@@ -952,11 +969,10 @@ html.light .desktop-shortcut-name {
 }
 
 /*
- * 1x1 预览态的磁贴高度：与展开态一致（150px）。
- * 展开态由 .desktop-folder-panel 自身定高，两种形态 UI 相同、只是宽度不同。
+ * 1x1 预览态的磁贴高度：与展开态、以及小部件磁贴取同一基准。
  */
 .desktop-item.is-folder-preview {
-  height: 150px;
+  height: var(--desktop-tile-height);
 }
 
 /* ===== 文件夹内容面板（1x1 预览态与 1xN 展开态共用） ===== */
@@ -966,9 +982,10 @@ html.light .desktop-shortcut-name {
   gap: 6px;
   width: 100%;
   /*
-   * 两种形态同高。测量依赖这个确定高度：改动时请同步 .is-folder-preview。
+   * 与文件夹预览态、小部件磁贴同高。测量依赖这个确定高度：
+   * 改动时请同步 --desktop-tile-height 的取值。
    */
-  height: 150px;
+  height: var(--desktop-tile-height);
   padding: 8px;
   box-sizing: border-box;
   border-radius: 12px;
