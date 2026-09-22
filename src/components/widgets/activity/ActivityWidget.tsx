@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarDays, Pin, RefreshCw } from "lucide-react";
 import { getMessage } from "@/lib/i18n";
-import { resolveWidgetSizeMode, widgetListCapacity, widgetPadding } from "@/lib/widget-layout";
+import { resolveWidgetSizeMode, widgetPadding } from "@/lib/widget-layout";
 import {
   CALENDAR_GAME_IDS,
   DEFAULT_WINDOW_DAYS,
@@ -53,11 +53,15 @@ function remainingLabel(remaining: RemainingText): string {
  * **外显范围是一份固定列表**（`displayGames`），与弹窗里"当前查看的游戏"无关：
  * 弹窗切游戏只改变弹窗内容，磁贴始终聚合展示允许外显的那几个游戏。
  *
- * 磁贴内容分两段：
- * 1. **即将截止**：从允许外显的游戏里按结束时间取前 N 条，
- *    距结束 ≤ 3 天的标红（`is-urgent`）；
+ * 磁贴内容分两段（**只有这两段**）：
+ * 1. **即将到期**：从允许外显的游戏里取**距结束 ≤ 3 天**的活动，
+ *    按结束时间升序——这正是它们被标红（`is-urgent`）的同一条件。
+ *    区间内的条目全部渲染、不按条数截断，放不下由磁贴内滚动区查看；
  * 2. **固定**：用户 pin 的活动常驻展示，**不受到期排序影响，也不受勾选影响**——
  *    即使它所属的游戏被取消勾选，固定项依然显示。
+ *
+ * 刻意**不含**"还很久才结束"的活动：磁贴叫"即将到期"，远期内容既无提醒价值，
+ * 又会把真正快截止的条目挤出视野。
  *
  * 一个游戏都不勾选时，只剩固定项（若没有固定项则是空态），即"允许不显示"。
  *
@@ -184,12 +188,11 @@ export function ActivityWidget({
 
   const rows = useMemo<ActivityTileRow[]>(() => {
     if (!groups) return [];
-    // 行数由当前磁贴高度推算：磁贴变矮时自动少显示一行，而不是把最后一行裁掉
-    const maxItems = widgetListCapacity(containerHeight, mode);
     /**
-     * 分类筛选沿用弹窗里保存的勾选（`selected`），对**所有外显游戏统一生效**。
-     * 六种 `kind` 是接口层面的全局分类，各游戏通用，因此一份勾选可跨游戏套用。
-     * 未配置筛选（旧版本数据）时不筛，保持与单游戏时代一致。
+     * 不再按磁贴高度算行数：磁贴高度固定为 150px，但列表内部可纵向滚动，
+     * 因此**阈值内即将到期的条目全部**渲染出来（固定项在最前），
+     * 放不下的部分滚动查看。入选范围由 `buildTileRows` 内的
+     * `selectUrgentItems` 按"距结束 ≤ 3 天"确定，与标红同源。
      */
     const selected = readSelected(data);
     const previewMode = readPreviewMode(data);
@@ -198,7 +201,6 @@ export function ActivityWidget({
       displayGameIds,
       pinned,
       now,
-      maxItems,
       /**
        * 分类筛选沿用弹窗保存的勾选，对**所有外显游戏统一生效**：
        * 六种 `kind` 是接口层面的全局分类，各游戏通用，因此一份勾选可跨游戏套用。
@@ -209,7 +211,7 @@ export function ActivityWidget({
             matchesSelection(entry, selected) && (previewMode === "point" || !isPreviewEntry(entry))
         : undefined,
     });
-  }, [groups, displayGameIds, pinned, now, mode, containerHeight, data]);
+  }, [groups, displayGameIds, pinned, now, data]);
 
   /** 表头标题：外显全部游戏时显示游戏名，否则按勾选列出（都不勾选则为空态文案）。 */
   const heading = headingLabel(displayGameIds);
@@ -257,7 +259,13 @@ export function ActivityWidget({
               : getMessage("hoyoActivityEmpty", "暂无活动")}
         </div>
       ) : (
-        <div className="activity-widget-list">
+        <div className="activity-widget-list" data-no-drag>
+          {/*
+            可滚动列表：`data-no-drag` 让磁贴排序拖拽在此区域让位给滚动
+            （判定见 lib/dom-interaction.ts）。它刻意**不算**交互控件——
+            点击列表空白/行仍要冒泡到磁贴以展开弹窗，只有拖拽被禁用，
+            否则滚轮与滚动条拖动都会被磁贴的拖拽手势吃掉。
+          */}
           {rows.map((row) => (
             <div
               key={`${row.gameId}:${row.entry.id}`}

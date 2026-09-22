@@ -4,13 +4,11 @@ import { resolve, join } from "node:path";
 import {
   WIDGET_COMPACT_HEIGHT,
   WIDGET_COMPACT_WIDTH,
-  WIDGET_LIST_MAX_ROWS,
   WIDGET_PADDING_COMPACT,
   WIDGET_PADDING_REGULAR,
   WIDGET_TILE_HEIGHT,
   isCompactSize,
   resolveWidgetSizeMode,
-  widgetListCapacity,
   widgetPadding,
 } from "@/lib/widget-layout";
 
@@ -102,24 +100,5 @@ describe("WIDGET_TILE_HEIGHT", () => {
     expect(panel?.[1].trim()).toBe("var(--desktop-tile-height)");
     const preview = css.match(/\.desktop-item\.is-folder-preview\s*\{[^}]*height:\s*([^;]+);/);
     expect(preview?.[1].trim()).toBe("var(--desktop-tile-height)");
-  });
-});
-
-describe("widgetListCapacity", () => {
-  it("fits fewer rows as the tile gets shorter", () => {
-    // 行数必须随磁贴高度变化，避免磁贴变矮后最后一行被 overflow 裁掉
-    const tall = widgetListCapacity(300, "regular");
-    const standard = widgetListCapacity(WIDGET_TILE_HEIGHT, "regular");
-    expect(standard).toBeLessThanOrEqual(tall);
-    expect(standard).toBeGreaterThan(0);
-  });
-
-  it("never exceeds the hard row cap", () => {
-    expect(widgetListCapacity(10_000, "regular")).toBe(WIDGET_LIST_MAX_ROWS);
-  });
-
-  it("returns zero instead of a negative count when there is no room", () => {
-    expect(widgetListCapacity(0, "regular")).toBe(0);
-    expect(widgetListCapacity(-100, "compact")).toBe(0);
   });
 });

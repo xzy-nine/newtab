@@ -21,12 +21,16 @@ const widget: WidgetItemData = {
   h: 2,
 };
 
-/** 含"控件区 + 非控件区"的测试用小部件。 */
+/** 含"控件区 + 非控件区 + 可滚动区"的测试用小部件。 */
 function FakeWidget() {
   return (
     <div className="fake-widget">
       <button data-testid="ctrl">地点</button>
       <div data-testid="plain">温度 27°</div>
+      {/* 可滚动列表：只禁拖拽，不禁点击（点击应仍能展开弹窗） */}
+      <div className="fake-scroll" data-no-drag>
+        <div data-testid="scroll-row">活动 A</div>
+      </div>
     </div>
   );
 }
@@ -90,5 +94,27 @@ describe("DesktopGridView 磁贴点击", () => {
     fireEvent.click(tile);
 
     expect(onItemClick).not.toHaveBeenCalled();
+  });
+
+  it("still fires the item click inside a data-no-drag scroll region", () => {
+    // 滚动列表标了 data-no-drag（禁止拖拽），但它不是控件：
+    // 点列表空白/行仍应展开弹窗，否则滚动手势修好了、展开却被误伤。
+    renderGrid();
+    fireEvent.click(screen.getByTestId("scroll-row"));
+    expect(onItemClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables tile dragging while pressing inside the scroll region", () => {
+    const { container } = renderGrid();
+    const tile = container.querySelector<HTMLElement>(".desktop-item")!;
+    expect(tile.getAttribute("draggable")).toBe("true");
+
+    // 在滚动区按下：磁贴临时关掉 draggable，避免手势被当成拖拽起点
+    fireEvent.pointerDown(screen.getByTestId("scroll-row"));
+    expect(tile.getAttribute("draggable")).toBe("false");
+
+    // 指针抬起后恢复，排序拖拽不受影响
+    fireEvent.pointerUp(window);
+    expect(tile.getAttribute("draggable")).toBe("true");
   });
 });

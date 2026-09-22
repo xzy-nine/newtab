@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { render, screen, waitFor } from "@testing-library/react";
 import { ActivityWidget } from "@/components/widgets/activity/ActivityWidget";
 
@@ -7,9 +9,12 @@ import { ActivityWidget } from "@/components/widgets/activity/ActivityWidget";
  *
  * 磁贴的核心契约（对应外显优化需求 1~4）：
  * 1. `displayGames` 决定外显哪些游戏 —— 可以"一个都不勾选"，也可以只勾一个；
- * 2. 在允许外显的游戏里，优先显示即将截止的，并把距结束 ≤ 3 天的标红；
+ * 2. 磁贴只有两段内容：**固定项** + **距结束 ≤ 3 天的即将到期活动**；
+ *    入选与标红共用同一条阈值规则，远期活动一律不进磁贴；
  * 3. 固定项始终显示，**不受外显勾选影响**（哪怕它所属游戏没被勾选）；
  * 4. 外显与弹窗里"当前查看的游戏"（`gameId`）**无关**。
+ *
+ * 另外钉住"允许外部滚动"：阈值内的条目全部渲染，不按磁贴高度截断。
  */
 
 /** 构造一个 ISO 时间：相对当前时间偏移若干天。 */
@@ -17,13 +22,20 @@ function isoInDays(days: number): string {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 }
 
+/**
+ * 默认结束时间取"2 天后"，刻意留在 3 天阈值**以内**。
+ *
+ * 阈值是闭区间（距结束 ≤ 3 天），而 `isoInDays(3)` 是在取数前构造的，
+ * 等到磁贴渲染时已经比此刻早了几毫秒，恰好落到阈值之外——
+ * 边界值只应在专门测边界的用例里出现，默认夹具不该踩在上面。
+ */
 function calendarItem(overrides: Record<string, unknown>) {
   return {
     id: "e1",
     kind: "游戏内活动",
     title: "活动 A",
     start: isoInDays(-1),
-    end: isoInDays(3),
+    end: isoInDays(2),
     all_day: false,
     version: "7.0",
     labels: [],
@@ -82,11 +94,12 @@ describe("ActivityWidget", () => {
   });
 
   it("sorts by end time so the most urgent comes first", async () => {
+    // 两条都落在 3 天阈值内，才能比较排序
     fetchMock.mockResolvedValue(
       jsonResponse({
         total: 2,
         items: [
-          calendarItem({ id: "far", title: "较晚结束", end: isoInDays(9) }),
+          calendarItem({ id: "far", title: "较晚结束", end: isoInDays(2.5) }),
           calendarItem({ id: "near", title: "最先结束", end: isoInDays(2) }),
         ],
       }),
@@ -151,7 +164,7 @@ describe("ActivityWidget", () => {
       jsonResponse({
         total: 2,
         items: [
-          calendarItem({ id: "a", title: "正常活动", end: isoInDays(5) }),
+          calendarItem({ id: "a", title: "正常活动", end: isoInDays(2) }),
           calendarItem({
             id: "b",
             kind: "角色生日",
@@ -177,7 +190,7 @@ describe("ActivityWidget", () => {
       jsonResponse({
         total: 2,
         items: [
-          calendarItem({ id: "a", title: "普通活动", end: isoInDays(4) }),
+          calendarItem({ id: "a", title: "普通活动", end: isoInDays(2) }),
           calendarItem({
             id: "p",
             title: "3.1版本前瞻特别节目",
@@ -264,11 +277,12 @@ describe("ActivityWidget", () => {
 
   it("ignores the popup's current game and keeps showing only the display games", async () => {
     // 需求 4：弹窗里切到星铁，磁贴不应跟着换；它只认 displayGames
+    // 结束时间取阈值内（2 天），确保这些行确实会渲染，才谈得上"换没换"
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const game = gameOf(String(input));
       return jsonResponse({
         total: 1,
-        items: [calendarItem({ id: `${game}-1`, title: `${game} 的活动`, end: isoInDays(3) })],
+        items: [calendarItem({ id: `${game}-1`, title: `${game} 的活动`, end: isoInDays(2) })],
       });
     });
 
@@ -292,7 +306,7 @@ describe("ActivityWidget", () => {
       const game = gameOf(String(input));
       return jsonResponse({
         total: 1,
-        items: [calendarItem({ id: `${game}-1`, title: `${game} 的活动`, end: isoInDays(3) })],
+        items: [calendarItem({ id: `${game}-1`, title: `${game} 的活动`, end: isoInDays(2) })],
       });
     });
 
@@ -310,9 +324,9 @@ describe("ActivityWidget", () => {
     expect(screen.queryByText("ys 的活动")).toBeNull();
   });
 
-  // ───────────── 需求 2：优先显示即将截止的并标红 ─────────────
+  // ───────────── 需求 2：只显示并标红"即将到期" ─────────────
 
-  it("marks activities ending within 3 days as urgent", async () => {
+  it("marks activities ending within 3 days as urgent and hides the far ones", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({
         total: 2,
@@ -333,6 +347,8 @@ describe("ActivityWidget", () => {
     expect(urgentRows[0]!.textContent).toContain("马上截止");
     // 表头徽标给出紧急条数
     expect(container.querySelector(".activity-widget-urgent-count")!.textContent).toBe("1");
+    // 20 天后才结束的活动不属"即将到期"，磁贴里没有它
+    expect(screen.queryByText("还早")).toBeNull();
   });
 
   it("does not mark an ended pinned activity as urgent", async () => {
@@ -436,7 +452,7 @@ describe("ActivityWidget", () => {
       const game = gameOf(String(input));
       return jsonResponse({
         total: 1,
-        items: [calendarItem({ id: `${game}-1`, title: `${game} 活动`, end: isoInDays(6) })],
+        items: [calendarItem({ id: `${game}-1`, title: `${game} 活动`, end: isoInDays(2) })],
       });
     });
 
@@ -450,5 +466,113 @@ describe("ActivityWidget", () => {
       (el) => el.textContent,
     );
     expect(tags).toEqual(["原神", "绝区零"]);
+  });
+
+  // ───────────── 只显示固定 + 即将到期；阈值内全部渲染、放不下靠滚动 ─────────────
+
+  it("shows only pinned rows and activities inside the urgent threshold", async () => {
+    /**
+     * 磁贴只有两段：固定项 + 距结束 ≤ 3 天的活动。
+     * 30 天后才结束的活动不属"即将到期"，不该出现在磁贴上。
+     */
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        total: 3,
+        items: [
+          calendarItem({ id: "soon", title: "快截止的", end: isoInDays(2) }),
+          calendarItem({ id: "far", title: "很久以后", end: isoInDays(30) }),
+        ],
+      }),
+    );
+
+    const { container } = render(<ActivityWidget data={only("ys")} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("快截止的")).not.toBeNull();
+    });
+    expect(screen.queryByText("很久以后")).toBeNull();
+    expect(container.querySelectorAll(".activity-widget-item")).toHaveLength(1);
+  });
+
+  it("renders every activity inside the threshold instead of truncating to tile height", async () => {
+    /**
+     * 磁贴高度固定 150px（约 4~5 行），但阈值内的条目不设上限：
+     * 超出高度的行必须留在 DOM 里、由滚动区查看，而不是被数据层切掉。
+     */
+    // 全部落在 3 天阈值内，条数（6）超过磁贴能显示的行数
+    const items = Array.from({ length: 6 }, (_, i) =>
+      calendarItem({
+        id: `e${i}`,
+        title: `活动 ${i}`,
+        // 结束时间递增：排序结果即可预测
+        end: isoInDays((i + 1) / 24),
+      }),
+    );
+    fetchMock.mockResolvedValue(jsonResponse({ total: items.length, items }));
+
+    // 传一个"只够 1 行"的高度，确保渲染数量不受高度影响
+    const { container } = render(
+      <ActivityWidget data={only("ys")} containerWidth={80} containerHeight={40} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("活动 0")).not.toBeNull();
+    });
+    expect(container.querySelectorAll(".activity-widget-item")).toHaveLength(6);
+    // 最后一条也要在，滚动才有内容可看
+    expect(screen.queryByText("活动 5")).not.toBeNull();
+  });
+
+  it("keeps the row list as a non-dragging scroll container", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ total: 1, items: [calendarItem({ title: "活动 A" })] }),
+    );
+
+    const { container } = render(<ActivityWidget data={only("ys")} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("活动 A")).not.toBeNull();
+    });
+    // data-no-drag：磁贴排序拖拽在此让位给滚动（判定见 lib/dom-interaction.ts）
+    const list = container.querySelector(".activity-widget-list");
+    expect(list).not.toBeNull();
+    expect(list!.hasAttribute("data-no-drag")).toBe(true);
+  });
+});
+
+/**
+ * 活动磁贴的样式契约。
+ *
+ * jsdom 不做布局，`scrollHeight` / `clientHeight` 恒为 0，因此"能不能滚"
+ * 只能钉在 CSS 上：列表必须是纵向滚动容器，且必须阻断滚动链，
+ * 否则滚到底会把整个桌面一起滚走。
+ */
+describe("activity-widget 滚动样式", () => {
+  /** 按 index.css 的导入顺序拼接全部层级样式（与 widget-layout.test.ts 同法）。 */
+  function readLayerCss(): string {
+    const stylesDir = resolve(process.cwd(), "src/assets/styles");
+    const index = readFileSync(join(stylesDir, "index.css"), "utf8");
+    const files = [...index.matchAll(/@import\s+"\.\/([^"]+\.css)"/g)].map((m) => m[1]);
+    if (files.length === 0) throw new Error("styles/index.css 未导入任何层级文件");
+    return files.map((file) => readFileSync(join(stylesDir, file), "utf8")).join("\n");
+  }
+
+  it("makes .activity-widget-list vertically scrollable without chaining", () => {
+    const css = readLayerCss();
+    const rule = css.match(/\.activity-widget-list\s*\{([^}]*)\}/);
+    expect(rule).not.toBeNull();
+    const body = rule![1]!;
+    expect(body).toMatch(/overflow-y:\s*auto/);
+    expect(body).toMatch(/overscroll-behavior:\s*contain/);
+    // 容器高度必须受父级约束，否则列表会被内容撑开而无法滚动
+    expect(body).toMatch(/min-height:\s*0/);
+  });
+
+  it("keeps rows from being squashed when there are many", () => {
+    const css = readLayerCss();
+    const rule = css.match(/\.activity-widget-item\s*\{([^}]*)\}/);
+    expect(rule).not.toBeNull();
+    // 没有 flex-shrink: 0，条目多时会被压扁成一条，滚动也读不出内容
+    expect(rule![1]!).toMatch(/flex-shrink:\s*0/);
   });
 });

@@ -454,35 +454,6 @@ export function daysUntilStart(entry: ParsedActivityEntry, now: number): number 
 }
 
 /**
- * 选中「即将到期」的条目：按结束时间升序，未结束的排前面。
- *
- * 进行中的活动（已开始未结束）天然排在纯未来活动之前，因为它们更紧迫。
- *
- * 泛型版本供磁贴使用：磁贴要跨游戏聚合，条目外面包了一层 `gameId`，
- * 因此结束时间用取键函数给出，而不是硬取 `entry.endMs`。
- */
-export function selectExpiringItems<T>(
-  items: readonly T[],
-  endOf: (item: T) => number,
-  now: number,
-  limit: number,
-): T[] {
-  return items
-    .filter((item) => endOf(item) > now)
-    .sort((a, b) => endOf(a) - endOf(b))
-    .slice(0, Math.max(0, limit));
-}
-
-/** 选中「即将到期」的日程（`selectExpiringItems` 的日程特化）。 */
-export function selectExpiring(
-  entries: ParsedActivityEntry[],
-  now: number,
-  limit: number,
-): ParsedActivityEntry[] {
-  return selectExpiringItems(entries, (entry) => entry.endMs, now, limit);
-}
-
-/**
  * 「即将截止」的判定阈值：距结束不足该天数即标红提醒。
  *
  * 取 3 天是"还能安排但不该再拖"的经验值：更短会漏掉需要提前规划的限时活动，
@@ -490,6 +461,22 @@ export function selectExpiring(
  */
 export const URGENT_DAYS = 3;
 export const URGENT_THRESHOLD_MS = URGENT_DAYS * DAY_MS;
+
+/**
+ * 「即将到期」的数值判定：未结束，且距结束不超过阈值。
+ *
+ * 抽成对时间戳的纯函数，让**磁贴的入选范围**（`selectUrgentItems`）与
+ * **标红判定**（`isUrgent`）共用同一条规则。二者曾经分开表达，
+ * 只要一边改了阈值就会出现"标红了却没显示 / 显示了却没标红"的矛盾。
+ */
+export function isExpiringWithin(
+  endMs: number,
+  now: number,
+  thresholdMs = URGENT_THRESHOLD_MS,
+): boolean {
+  if (now >= endMs) return false;
+  return endMs - now <= thresholdMs;
+}
 
 /**
  * 是否为「即将截止」：未结束，且距结束不超过阈值。
@@ -502,8 +489,28 @@ export function isUrgent(
   now: number,
   thresholdMs = URGENT_THRESHOLD_MS,
 ): boolean {
-  if (now >= entry.endMs) return false;
-  return entry.endMs - now <= thresholdMs;
+  return isExpiringWithin(entry.endMs, now, thresholdMs);
+}
+
+/**
+ * 选中「即将到期」的条目：未结束、距结束不超过阈值，按结束时间升序。
+ *
+ * 磁贴只认这一个集合，**按时间阈值筛选而不是按条数截断**：
+ * "哪些快到期了"是确定集合，而"最靠前的 N 条"会让一条 300 天后结束的
+ * 活动也混进磁贴，同时把真正三天内到期的条目挤出视野。
+ * 集合定下来后由磁贴内滚动区负责全部展示。
+ *
+ * 泛型版本供磁贴使用：磁贴跨游戏聚合，条目外还包了一层 `gameId`。
+ */
+export function selectUrgentItems<T>(
+  items: readonly T[],
+  endOf: (item: T) => number,
+  now: number,
+  thresholdMs = URGENT_THRESHOLD_MS,
+): T[] {
+  return items
+    .filter((item) => isExpiringWithin(endOf(item), now, thresholdMs))
+    .sort((a, b) => endOf(a) - endOf(b));
 }
 
 /** 按 id 取出被固定的日程，保持传入的固定顺序。 */
@@ -1157,8 +1164,12 @@ export interface BuildTileRowsOptions {
   /** 按游戏分组的固定项。 */
   pinned: PinnedMap;
   now: number;
-  /** 磁贴能完整容纳的行数。 */
-  maxItems: number;
+  /**
+   * 「即将到期」的判定阈值（毫秒），缺省 3 天（`URGENT_THRESHOLD_MS`）。
+   *
+   * 磁贴只展示这一区间内的活动，与标红用的是同一条规则。
+   */
+  urgentThresholdMs?: number;
   /**
    * 分类筛选（弹窗里的父/子两级勾选），**只作用于"即将截止"区**。
    *
@@ -1179,10 +1190,16 @@ export interface BuildTileRowsOptions {
  *    完全不看 `gameId`，因此磁贴是一份与弹窗选择解耦的固定列表。
  *
  * 排序与旧的单游戏磁贴一致：固定项在前（保持用户固定顺序），
- * 其余按结束时间升序，取满可用槽位为止。
+ * 其余按结束时间升序。
+ *
+ * **入选范围 = 固定项 + 距结束 ≤ 阈值的活动**（阈值即标红用的那一个）。
+ * 磁贴刻意不含"还很久才结束"的活动：它叫"即将到期"，远期内容既无提醒价值，
+ * 又会把真正快截止的条目挤出视野。区间内的条目**全部返回**、不按条数截断，
+ * 放不下时由磁贴内的滚动区查看（"允许外部滚动"）——在数据层切掉的条目
+ * 连 DOM 都不会有，滚动也无从看起。
  */
 export function buildTileRows(options: BuildTileRowsOptions): ActivityTileRow[] {
-  const { groups, displayGameIds, pinned, now, maxItems, filter } = options;
+  const { groups, displayGameIds, pinned, now, urgentThresholdMs, filter } = options;
   const byGame = new Map(groups.map((group) => [group.gameId, group.entries]));
 
   /**
@@ -1220,10 +1237,19 @@ export function buildTileRows(options: BuildTileRowsOptions): ActivityTileRow[] 
       candidates.push({ gameId, entry });
     }
   }
-  const slots = Math.max(0, maxItems - pinnedRows.length);
-  const expiringRows = selectExpiringItems(candidates, (item) => item.entry.endMs, now, slots).map(
-    ({ gameId, entry }) => ({ gameId, entry, pinned: false, urgent: isUrgent(entry, now) }),
-  );
+  // 只取阈值内即将到期的活动，全部返回（不按条数截断），放不下交给滚动区
+  const expiringRows = selectUrgentItems(
+    candidates,
+    (item) => item.entry.endMs,
+    now,
+    urgentThresholdMs,
+  ).map(({ gameId, entry }) => ({
+    gameId,
+    entry,
+    pinned: false,
+    // 入选条件与标红条件同源，这里必然为 true；仍按同一规则计算，避免两处漂移
+    urgent: isUrgent(entry, now, urgentThresholdMs),
+  }));
 
   return [...pinnedRows, ...expiringRows];
 }

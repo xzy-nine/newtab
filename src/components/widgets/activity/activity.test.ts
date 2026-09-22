@@ -32,6 +32,7 @@ import {
   hasPinnedInMap,
   isChildChecked,
   isDisplayGameChecked,
+  isExpiringWithin,
   isParentChecked,
   isPreviewEntry,
   isUrgent,
@@ -52,8 +53,8 @@ import {
   remainingText,
   requiredGameIds,
   resolveDisplayGameIds,
-  selectExpiring,
   selectPinned,
+  selectUrgentItems,
   selectionToIncludes,
   toggleDisplayGame,
   togglePinned,
@@ -374,20 +375,6 @@ describe("活动状态与排序", () => {
     expect(remainingText(entry, endMs)).toEqual({ unit: "ended" });
   });
 
-  it("selects expiring entries by end time and skips ended ones", () => {
-    const a = makeEntry({ id: "a", endMs: endMs + 3, end: "x" });
-    const b = makeEntry({ id: "b", endMs: endMs + 1, end: "x" });
-    const done = makeEntry({ id: "done", endMs: endMs - 1, end: "x" });
-    const result = selectExpiring([a, b, done], endMs, 10);
-    expect(result.map((item) => item.id)).toEqual(["b", "a"]);
-  });
-
-  it("honours the limit", () => {
-    const many = [1, 2, 3].map((n) => makeEntry({ id: `m${n}`, endMs: endMs + n, end: "x" }));
-    expect(selectExpiring(many, endMs, 2)).toHaveLength(2);
-    expect(selectExpiring(many, endMs, 0)).toHaveLength(0);
-  });
-
   it("keeps pinned entries in the pinned order", () => {
     const a = makeEntry({ id: "a" });
     const b = makeEntry({ id: "b" });
@@ -426,6 +413,83 @@ describe("即将截止判定（isUrgent）", () => {
   it("accepts a custom threshold", () => {
     expect(isUrgent(entry, endMs - 2 * 60 * 60 * 1000, 60 * 60 * 1000)).toBe(false);
     expect(isUrgent(entry, endMs - 30 * 60 * 1000, 60 * 60 * 1000)).toBe(true);
+  });
+});
+
+/**
+ * 「即将到期」的数值判定与选中。
+ *
+ * 磁贴的入选范围与标红共用 `isExpiringWithin`：这两件事一旦各写一份，
+ * 改了阈值就会出现"标红了却没显示 / 显示了却没标红"的矛盾。
+ */
+describe("isExpiringWithin（到期区间判定）", () => {
+  const now = Date.parse("2026-09-01T00:00:00Z");
+  const day = 24 * 60 * 60 * 1000;
+
+  it("is inclusive at the threshold", () => {
+    expect(isExpiringWithin(now + URGENT_THRESHOLD_MS, now)).toBe(true);
+    expect(isExpiringWithin(now + 1, now)).toBe(true);
+  });
+
+  it("is false just beyond the threshold", () => {
+    expect(isExpiringWithin(now + URGENT_THRESHOLD_MS + 1, now)).toBe(false);
+    expect(isExpiringWithin(now + 4 * day, now)).toBe(false);
+  });
+
+  it("is false for an already-ended moment", () => {
+    // 半开区间：结束时刻即视为已结束，不该再算"即将到期"
+    expect(isExpiringWithin(now, now)).toBe(false);
+    expect(isExpiringWithin(now - 1, now)).toBe(false);
+  });
+
+  it("honours a custom threshold", () => {
+    expect(isExpiringWithin(now + 5 * day, now)).toBe(false);
+    expect(isExpiringWithin(now + 5 * day, now, 7 * day)).toBe(true);
+  });
+});
+
+describe("selectUrgentItems（按阈值选中即将到期）", () => {
+  const now = Date.parse("2026-09-01T00:00:00Z");
+  const day = 24 * 60 * 60 * 1000;
+  const minutes = 60 * 1000;
+
+  /** 造一个"距 now 还有 n 分钟结束"的条目。 */
+  function endingIn(id: string, minutesLeft: number) {
+    return { id, endMs: now + minutesLeft * minutes };
+  }
+
+  it("keeps only entries inside the threshold", () => {
+    const items = [endingIn("in3d", 3 * 24 * 60), endingIn("in4d", 4 * 24 * 60)];
+    const picked = selectUrgentItems(items, (item) => item.endMs, now);
+    expect(picked.map((item) => item.id)).toEqual(["in3d"]);
+  });
+
+  it("sorts by end time so the most urgent comes first", () => {
+    const items = [endingIn("later", 2 * 24 * 60), endingIn("sooner", 60)];
+    expect(selectUrgentItems(items, (item) => item.endMs, now).map((item) => item.id)).toEqual([
+      "sooner",
+      "later",
+    ]);
+  });
+
+  it("skips ended entries", () => {
+    const items = [endingIn("done", -1), endingIn("live", 60)];
+    expect(selectUrgentItems(items, (item) => item.endMs, now).map((item) => item.id)).toEqual([
+      "live",
+    ]);
+  });
+
+  it("returns everything inside the threshold without a count cap", () => {
+    // 与条数截断的区别：区间内有多少就返回多少，放不下由滚动区负责
+    const many = Array.from({ length: 12 }, (_, i) => endingIn(`m${i}`, i + 1));
+    expect(selectUrgentItems(many, (item) => item.endMs, now)).toHaveLength(12);
+  });
+
+  it("honours a custom threshold", () => {
+    const items = [endingIn("in3d", 3 * 24 * 60), endingIn("in10d", 10 * 24 * 60)];
+    expect(
+      selectUrgentItems(items, (item) => item.endMs, now, 14 * day).map((item) => item.id),
+    ).toEqual(["in3d", "in10d"]);
   });
 });
 
@@ -548,28 +612,30 @@ describe("buildTileRows（磁贴外显聚合）", () => {
     { gameId: "sr", entries: [at("sr-mid", 1)] },
   ];
 
-  it("takes the soonest-expiring entries across the display games", () => {
-    const rows = buildTileRows({
-      groups,
-      displayGameIds: ["ys", "sr"],
-      pinned: {},
-      now,
-      maxItems: 3,
-    });
-    // 按结束时间升序：sr-mid(1) → ys-soon(2) → ys-late(30)
-    expect(rows.map((row) => row.entry.id)).toEqual(["sr-mid", "ys-soon", "ys-late"]);
+  it("takes only entries within the urgent threshold, soonest first", () => {
+    const rows = buildTileRows({ groups, displayGameIds: ["ys", "sr"], pinned: {}, now });
+    // ys-late 还有 30 天才结束：不属"即将到期"，不进磁贴
+    expect(rows.map((row) => row.entry.id)).toEqual(["sr-mid", "ys-soon"]);
     expect(rows.every((row) => !row.pinned)).toBe(true);
   });
 
+  it("excludes an entry just outside the threshold", () => {
+    // 阈值是"距结束 ≤ 3 天"（闭区间）：3 天在内、3 天零 1 毫秒在外
+    const exactly = { gameId: "ys", entries: [at("edge", URGENT_DAYS)] };
+    const outside = { gameId: "ys", entries: [at("out", URGENT_DAYS + 1)] };
+    expect(
+      buildTileRows({ groups: [exactly], displayGameIds: ["ys"], pinned: {}, now }).map(
+        (row) => row.entry.id,
+      ),
+    ).toEqual(["edge"]);
+    expect(buildTileRows({ groups: [outside], displayGameIds: ["ys"], pinned: {}, now })).toEqual(
+      [],
+    );
+  });
+
   it("never takes entries from a game that is not displayed", () => {
-    const rows = buildTileRows({
-      groups,
-      displayGameIds: ["ys"],
-      pinned: {},
-      now,
-      maxItems: 5,
-    });
-    expect(rows.map((row) => row.entry.id)).toEqual(["ys-soon", "ys-late"]);
+    const rows = buildTileRows({ groups, displayGameIds: ["ys"], pinned: {}, now });
+    expect(rows.map((row) => row.entry.id)).toEqual(["ys-soon"]);
   });
 
   it("returns only pinned rows when nothing is displayed", () => {
@@ -578,22 +644,21 @@ describe("buildTileRows（磁贴外显聚合）", () => {
       displayGameIds: [],
       pinned: { sr: ["sr-mid"] },
       now,
-      maxItems: 5,
     });
     expect(rows.map((row) => row.entry.id)).toEqual(["sr-mid"]);
     expect(rows[0]!.pinned).toBe(true);
   });
 
-  it("keeps pinned rows whose game is not displayed", () => {
-    // 需求 3：取消勾选某个游戏，不该把它里面已固定的活动一起藏掉
+  it("keeps pinned rows whose game is not displayed, even when far from expiring", () => {
+    // 需求 3：取消勾选某个游戏，不该把它里面已固定的活动一起藏掉；
+    // 固定项也不受"即将到期"阈值约束——它在数据里被固定就意味着要常驻
     const rows = buildTileRows({
       groups,
       displayGameIds: ["ys"],
-      pinned: { sr: ["sr-mid"] },
+      pinned: { ys: ["ys-late"] },
       now,
-      maxItems: 5,
     });
-    expect(rows.map((row) => row.entry.id)).toEqual(["sr-mid", "ys-soon", "ys-late"]);
+    expect(rows.map((row) => row.entry.id)).toEqual(["ys-late", "ys-soon"]);
     expect(rows[0]!.pinned).toBe(true);
   });
 
@@ -603,23 +668,17 @@ describe("buildTileRows（磁贴外显聚合）", () => {
       displayGameIds: ["ys"],
       pinned: { ys: ["ys-soon"] },
       now,
-      maxItems: 5,
     });
     // 同一条不能既是固定行又出现在即将截止区
     expect(rows.filter((row) => row.entry.id === "ys-soon")).toHaveLength(1);
-    expect(rows.map((row) => row.entry.id)).toEqual(["ys-soon", "ys-late"]);
+    expect(rows.map((row) => row.entry.id)).toEqual(["ys-soon"]);
   });
 
-  it("flags urgent rows by the 3-day threshold", () => {
-    const rows = buildTileRows({
-      groups,
-      displayGameIds: ["ys", "sr"],
-      pinned: {},
-      now,
-      maxItems: 5,
-    });
-    const urgent = rows.filter((row) => row.urgent).map((row) => row.entry.id);
-    expect(urgent).toEqual(["sr-mid", "ys-soon"]);
+  it("marks every expiring row urgent, since inclusion and highlight share one rule", () => {
+    const rows = buildTileRows({ groups, displayGameIds: ["ys", "sr"], pinned: {}, now });
+    // 入选即标红：两处判定同源，不该出现"显示了却没标红"的条目
+    expect(rows.filter((row) => !row.urgent)).toEqual([]);
+    expect(rows.map((row) => row.entry.id)).toEqual(["sr-mid", "ys-soon"]);
   });
 
   it("does not flag an ended pinned row as urgent", () => {
@@ -629,22 +688,9 @@ describe("buildTileRows（磁贴外显聚合）", () => {
       displayGameIds: ["ys"],
       pinned: { ys: ["ys-old"] },
       now,
-      maxItems: 5,
     });
     expect(rows).toHaveLength(1);
     expect(rows[0]!.urgent).toBe(false);
-  });
-
-  it("reserves slots for pinned rows before filling the expiring section", () => {
-    const rows = buildTileRows({
-      groups,
-      displayGameIds: ["ys", "sr"],
-      pinned: { ys: ["ys-late"] },
-      now,
-      maxItems: 2,
-    });
-    // 先放固定项，剩下的 1 个槽位给最紧迫的
-    expect(rows.map((row) => row.entry.id)).toEqual(["ys-late", "sr-mid"]);
   });
 
   it("applies the category filter to the expiring section only", () => {
@@ -653,7 +699,6 @@ describe("buildTileRows（磁贴外显聚合）", () => {
       displayGameIds: ["ys", "sr"],
       pinned: { ys: ["ys-late"] },
       now,
-      maxItems: 5,
       // 只留 sr
       filter: (entry) => entry.id.startsWith("sr"),
     });
@@ -661,13 +706,68 @@ describe("buildTileRows（磁贴外显聚合）", () => {
     expect(rows.map((row) => row.entry.id)).toEqual(["ys-late", "sr-mid"]);
   });
 
-  it("returns nothing when there is no data or no slot", () => {
-    expect(
-      buildTileRows({ groups: [], displayGameIds: ["ys"], pinned: {}, now, maxItems: 5 }),
-    ).toEqual([]);
-    expect(buildTileRows({ groups, displayGameIds: ["ys"], pinned: {}, now, maxItems: 0 })).toEqual(
-      [],
-    );
+  it("returns nothing when there is no data", () => {
+    expect(buildTileRows({ groups: [], displayGameIds: ["ys"], pinned: {}, now })).toEqual([]);
+  });
+
+  it("honours a custom threshold", () => {
+    // 阈值可调：放大后远期活动也会被纳入，便于测试与将来配置化
+    const rows = buildTileRows({
+      groups,
+      displayGameIds: ["ys"],
+      pinned: {},
+      now,
+      urgentThresholdMs: 60 * day,
+    });
+    expect(rows.map((row) => row.entry.id)).toEqual(["ys-soon", "ys-late"]);
+  });
+
+  // ───────── 阈值内全部渲染：不按条数截断，放不下交给滚动区 ─────────
+
+  it("renders every entry inside the threshold instead of capping the count", () => {
+    // 磁贴高度只够几行，但阈值内的条目必须全部渲染：被切掉的连 DOM 都没有
+    const many = [
+      {
+        gameId: "ys",
+        entries: [at("a", 1), at("b", 2), at("c", 3), at("d", 4), at("e", 5), at("f", 6)],
+      },
+    ];
+    const rows = buildTileRows({ groups: many, displayGameIds: ["ys"], pinned: {}, now });
+    // 只有前三条在 3 天阈值内；条数不设上限
+    expect(rows.map((row) => row.entry.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("returns pinned rows plus every entry inside the threshold", () => {
+    // 固定项不挤占名额：两者都完整渲染，固定项仍排最前
+    const rows = buildTileRows({
+      groups,
+      displayGameIds: ["ys", "sr"],
+      pinned: { ys: ["ys-late"] },
+      now,
+    });
+    expect(rows.map((row) => `${row.pinned ? "p" : "e"}:${row.entry.id}`)).toEqual([
+      "p:ys-late",
+      "e:sr-mid",
+      "e:ys-soon",
+    ]);
+  });
+
+  it("is not limited by the tile row capacity", () => {
+    // 大阈值下条目数远超磁贴行数上限（5），仍应全部返回
+    const many = [
+      {
+        gameId: "ys",
+        entries: Array.from({ length: 12 }, (_, i) => at(`m${i}`, i + 1)),
+      },
+    ];
+    const rows = buildTileRows({
+      groups: many,
+      displayGameIds: ["ys"],
+      pinned: {},
+      now,
+      urgentThresholdMs: 30 * day,
+    });
+    expect(rows).toHaveLength(12);
   });
 });
 

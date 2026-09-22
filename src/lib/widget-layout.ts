@@ -70,35 +70,3 @@ export const WIDGET_PADDING_REGULAR = 10;
 export function widgetPadding(mode: WidgetSizeMode): string {
   return `${mode === "compact" ? WIDGET_PADDING_COMPACT : WIDGET_PADDING_REGULAR}px`;
 }
-
-/**
- * 列表型小部件的行高参数（像素）。
- *
- * 与 CSS 对应：`.activity-widget-item` 的行高 + 上下内边距约 21px，
- * 行间距 3px；标题栏（含与列表之间的间距）约 26px。
- * 改动 CSS 时需同步这几个值，否则行数会算多导致最后一行被裁。
- */
-export const WIDGET_LIST_ROW_HEIGHT = 21;
-export const WIDGET_LIST_ROW_GAP = 3;
-export const WIDGET_LIST_HEADER_HEIGHT = 26;
-/** 列表最多展示的行数上限（再多就该展开弹窗看完整日程）。 */
-export const WIDGET_LIST_MAX_ROWS = 5;
-
-/**
- * 在给定磁贴高度下，列表最多能完整容纳几行。
- *
- * 行数是磁贴高度的函数而非另写一个高度阈值：磁贴高度一旦调整，
- * 行数自动跟着变，不会出现"行数按旧高度算、最后一行被裁掉"。
- *
- * @param height 磁贴高度（像素）。
- * @param mode 尺寸模式，决定内边距。
- */
-export function widgetListCapacity(height: number, mode: WidgetSizeMode): number {
-  const padding = mode === "compact" ? WIDGET_PADDING_COMPACT : WIDGET_PADDING_REGULAR;
-  const available = height - padding * 2 - WIDGET_LIST_HEADER_HEIGHT;
-  if (available <= 0) return 0;
-  const rows = Math.floor(
-    (available + WIDGET_LIST_ROW_GAP) / (WIDGET_LIST_ROW_HEIGHT + WIDGET_LIST_ROW_GAP),
-  );
-  return Math.max(0, Math.min(WIDGET_LIST_MAX_ROWS, rows));
-}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { GripVertical } from "lucide-react";
-import { isInteractiveTarget } from "@/lib/dom-interaction";
+import { isDragBlockedTarget, isInteractiveTarget } from "@/lib/dom-interaction";
 import {
   folderTileForm,
   isFolderItem,
@@ -162,9 +162,13 @@ export function DesktopGridView({
    * 若在控件上按下时磁贴仍可拖拽，浏览器会把这次按下当成拖拽起点，
    * 导致输入框无法获得焦点、按钮点击被吞掉。
    * 因此按下控件时记下该磁贴，暂时关掉它的 draggable，指针抬起后恢复。
+   *
+   * 判定用 `isDragBlockedTarget` 而不是 `isInteractiveTarget`：
+   * 磁贴内的可滚动列表（`data-no-drag`）不是控件，点击它仍应展开弹窗，
+   * 但同样不能成为拖拽起点，否则滚动会被拖拽手势吃掉。
    */
   const handleTilePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, id: string) => {
-    if (!isInteractiveTarget(e.target)) return;
+    if (!isDragBlockedTarget(e.target)) return;
     setDragDisabledId(id);
   }, []);
 

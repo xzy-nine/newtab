@@ -13,6 +13,10 @@
   box-sizing: border-box;
   gap: 6px;
   color: var(--color-foreground);
+  /*
+   * 磁贴本身不滚动：纵向滚动只由内部的 `.activity-widget-list` 承担
+   * （表头固定、列表滚动）。这里保持裁切，避免内容溢出磁贴圆角。
+   */
   overflow: hidden;
   /* 整块可点击展开；内部控件各自覆盖光标 */
   cursor: pointer;
@@ -76,13 +80,26 @@
   opacity: 0.7;
 }
 
+/*
+ * 列表容器：**内容全部渲染，放不下时内部纵向滚动**。
+ *
+ * 此前行数由 JS 按磁贴高度算好后在数据层截断，被切掉的条目
+ * 连 DOM 都没有，用户无从得知还有多少活动要到期。现在改为"都渲染 + 滚动查看"，
+ * 磁贴高度仍取统一基准（不随内容变高），因此这里必须是可滚动容器。
+ *
+ * `overscroll-behavior: contain` 是必需的：滚到边界时不把滚动链带给外层
+ * `.desktop-box`，否则列表滚到底会顺势把整个桌面一起滚走。
+ * `scrollbar-gutter: stable` 让滚动条出现/消失时行宽不跳变。
+ */
 .activity-widget-list {
   display: flex;
   flex-direction: column;
   gap: 3px;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .activity-widget-item {
@@ -94,6 +111,8 @@
   font-size: 11px;
   line-height: 1.35;
   min-width: 0;
+  /* 条目多时不允许被 flex 压扁，行高保持恒定才能滚动阅读 */
+  flex-shrink: 0;
   /* 左侧状态色条 */
   border-left: 2px solid transparent;
   background: color-mix(in oklch, var(--color-foreground) 5%, transparent);
