@@ -18,16 +18,20 @@ import {
   ganttTodayPct,
   ganttWindow,
   isChildChecked,
+  isDisplayGameChecked,
   isParentChecked,
+  pinnedIdsOf,
+  readDisplayGames,
   readGameId,
-  readPinnedIds,
+  readPinnedMap,
   readPreviewMode,
   readSelected,
   readViewMode,
   readWindowDays,
   remainingText,
   selectionToIncludes,
-  togglePinned,
+  toggleDisplayGame,
+  togglePinnedInMap,
   toggleSelectorValue,
   utc8DateLabel,
   utc8DayKey,
@@ -115,7 +119,17 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
   const previewMode = readPreviewMode(data);
   const [view, setView] = useState<ViewMode>(() => readViewMode(data));
   const [days, setDays] = useState(() => readWindowDays(data));
-  const pinnedIds = useMemo(() => readPinnedIds(data), [data]);
+  /**
+   * 固定项按游戏分组存储。
+   *
+   * 磁贴现在跨游戏聚合，固定项必须记住自己属于哪个游戏：
+   * 否则既无法正确取数（可能得去别的游戏里找这条 id），
+   * 也无法在"该游戏未勾选外显"时仍然把它单独显示出来。
+   */
+  const pinnedMap = useMemo(() => readPinnedMap(data), [data]);
+  const pinnedIds = pinnedIdsOf(pinnedMap, gameId);
+  /** 磁贴外显的游戏配置（与弹窗里查看的 `gameId` 无关）。 */
+  const displayGames = useMemo(() => readDisplayGames(data), [data]);
 
   const [capabilities, setCapabilities] = useState<CalendarCapabilities | null>(null);
   const [entries, setEntries] = useState<ParsedActivityEntry[] | null>(null);
@@ -204,10 +218,24 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
 
   const onTogglePin = useCallback(
     (id: string) => {
-      const next = togglePinned(pinnedIds, id);
-      persist({ pinned: next });
+      // 写回整份分组映射（空数组的 key 会在 togglePinnedInMap 里清掉）
+      persist({ pinned: togglePinnedInMap(pinnedMap, gameId, id) });
     },
-    [pinnedIds, persist],
+    [pinnedMap, gameId, persist],
+  );
+
+  /**
+   * 切换磁贴外显的游戏。
+   *
+   * 只改 `displayGames`，**不动 `gameId`**：弹窗当前在看哪个游戏与外显无关，
+   * 这是需求 4 的核心——外显是一份固定列表，不跟随弹窗里的游戏切换。
+   */
+  const onToggleDisplayGame = useCallback(
+    (targetGameId: string) => {
+      const next = toggleDisplayGame(displayGames, targetGameId, CALENDAR_GAME_IDS);
+      persist({ displayGames: next });
+    },
+    [displayGames, persist],
   );
 
   const onViewChange = useCallback(
@@ -242,6 +270,10 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
    *
    * 这里同时写本地覆盖值：`load` 依赖 `gameId`，覆盖值一变就会重新取数，
    * 不依赖父级回灌（详见组件顶部说明）。
+   *
+   * **刻意不清空 `pinned`**：固定项按游戏分开存储后，切游戏只是换个视角看，
+   * 不该丢掉别的游戏里已经固定好的活动（磁贴仍在展示它们）。
+   * 新游戏的固定项由 `pinnedMap` 按 gameId 取出，天然是空的。
    */
   const onGameChange = useCallback(
     (nextGameId: string) => {
@@ -252,7 +284,7 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
       setSelected(null); // 置空后由 load 按新游戏的 capabilities 生成默认选中
       setUnavailable(false);
       setError("");
-      persist({ gameId: nextGameId, selected: undefined, pinned: [] });
+      persist({ gameId: nextGameId, selected: undefined });
     },
     [gameId, propsGameId, persist],
   );
@@ -283,7 +315,7 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
   return (
     <div className="activity-calendar">
       <div className="activity-calendar-bar">
-        <div className="activity-calendar-games">
+        <div className="activity-calendar-games" title={getMessage("hoyoActivityViewGame", "查看")}>
           {CALENDAR_GAME_IDS.map((id) => (
             <button
               key={id}
@@ -316,6 +348,48 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
         >
           <RefreshCw className={`activity-calendar-refresh-icon ${loading ? "is-spinning" : ""}`} />
         </button>
+      </div>
+
+      {/*
+        磁贴外显游戏：与上面"当前查看的游戏"完全独立的一份设置。
+        不勾选任何游戏 → 磁贴只显示固定项；固定项始终显示，不受此处影响。
+        这一区刻意不依赖 capabilities（它只描述磁贴该聚合哪些游戏，与筛选无关）。
+      */}
+      <div className="activity-calendar-display">
+        <div className="activity-calendar-display-head">
+          <span className="activity-calendar-display-title">
+            {getMessage("hoyoActivityDisplayGames", "磁贴外显")}
+          </span>
+          <span className="activity-calendar-display-hint">
+            {getMessage("hoyoActivityDisplayHint", "与上方查看的游戏无关；固定项始终显示")}
+          </span>
+        </div>
+        <div className="activity-calendar-display-games">
+          {CALENDAR_GAME_IDS.map((id) => {
+            const gamePinned = pinnedIdsOf(pinnedMap, id);
+            return (
+              <label key={id} className="activity-calendar-display-game">
+                <Checkbox
+                  checked={isDisplayGameChecked(displayGames, id)}
+                  onCheckedChange={() => onToggleDisplayGame(id)}
+                />
+                <span>{GAME_FALLBACK_NAMES[id] ?? id}</span>
+                {gamePinned.length > 0 && (
+                  <span
+                    className="activity-calendar-display-pinned"
+                    title={getMessage("hoyoActivityPinnedCount", "已固定 {n} 项").replace(
+                      "{n}",
+                      String(gamePinned.length),
+                    )}
+                  >
+                    <Pin className="activity-calendar-display-pin-icon" />
+                    {gamePinned.length}
+                  </span>
+                )}
+              </label>
+            );
+          })}
+        </div>
       </div>
 
       {/* 筛选：父/子两级，勾父级 = 全选其子级 */}

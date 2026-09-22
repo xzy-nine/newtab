@@ -5,8 +5,11 @@ import { ActivityWidget } from "@/components/widgets/activity/ActivityWidget";
 /**
  * 活动小部件（磁贴）的行为测试。
  *
- * 重点覆盖：没有筛选配置时不筛、固定项常驻且不受到期排序影响、
- * 以及该游戏不支持日程（capabilities 404）时的空态。
+ * 磁贴的核心契约（对应外显优化需求 1~4）：
+ * 1. `displayGames` 决定外显哪些游戏 —— 可以"一个都不勾选"，也可以只勾一个；
+ * 2. 在允许外显的游戏里，优先显示即将截止的，并把距结束 ≤ 3 天的标红；
+ * 3. 固定项始终显示，**不受外显勾选影响**（哪怕它所属游戏没被勾选）；
+ * 4. 外显与弹窗里"当前查看的游戏"（`gameId`）**无关**。
  */
 
 /** 构造一个 ISO 时间：相对当前时间偏移若干天。 */
@@ -37,6 +40,17 @@ function jsonResponse(payload: unknown, status = 200) {
   } as Response;
 }
 
+/** 只外显指定游戏的配置（测试里用它把多游戏请求收窄成单游戏）。 */
+function only(...games: string[]) {
+  return { displayGames: { mode: "custom" as const, games } };
+}
+
+/** 该 URL 属于哪个游戏。 */
+function gameOf(url: string): string {
+  const match = /\/api\/v1\/games\/([^/]+)\/calendar/.exec(url);
+  return match?.[1] ?? "";
+}
+
 describe("ActivityWidget", () => {
   const fetchMock = vi.fn();
 
@@ -58,7 +72,7 @@ describe("ActivityWidget", () => {
       }),
     );
 
-    render(<ActivityWidget />);
+    render(<ActivityWidget data={only("ys")} />);
 
     await waitFor(() => {
       expect(screen.queryByText("七圣召唤·热斗模式")).not.toBeNull();
@@ -78,7 +92,7 @@ describe("ActivityWidget", () => {
       }),
     );
 
-    render(<ActivityWidget />);
+    render(<ActivityWidget data={only("ys")} />);
 
     await waitFor(() => {
       expect(screen.queryByText("最先结束")).not.toBeNull();
@@ -100,7 +114,7 @@ describe("ActivityWidget", () => {
       }),
     );
 
-    render(<ActivityWidget data={{ pinned: ["pinned"] }} />);
+    render(<ActivityWidget data={{ ...only("ys"), pinned: ["pinned"] }} />);
 
     await waitFor(() => {
       expect(screen.queryByText("被固定的活动")).not.toBeNull();
@@ -115,7 +129,7 @@ describe("ActivityWidget", () => {
   it("shows an empty state when the calendar returns nothing", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ total: 0, items: [] }));
 
-    render(<ActivityWidget />);
+    render(<ActivityWidget data={only("ys")} />);
 
     await waitFor(() => {
       expect(screen.queryByText("暂无活动")).not.toBeNull();
@@ -125,7 +139,7 @@ describe("ActivityWidget", () => {
   it("falls back to the error state when every bucket fails", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ message: "boom" }, 500));
 
-    render(<ActivityWidget />);
+    render(<ActivityWidget data={only("ys")} />);
 
     await waitFor(() => {
       expect(screen.queryByText("活动获取失败")).not.toBeNull();
@@ -150,7 +164,7 @@ describe("ActivityWidget", () => {
       }),
     );
 
-    render(<ActivityWidget data={{ selected: ["游戏内活动"] }} />);
+    render(<ActivityWidget data={{ ...only("ys"), selected: ["游戏内活动"] }} />);
 
     await waitFor(() => {
       expect(screen.queryByText("正常活动")).not.toBeNull();
@@ -175,7 +189,7 @@ describe("ActivityWidget", () => {
       }),
     );
 
-    render(<ActivityWidget data={{ selected: ["游戏内活动"] }} />);
+    render(<ActivityWidget data={{ ...only("ys"), selected: ["游戏内活动"] }} />);
 
     await waitFor(() => {
       expect(screen.queryByText("普通活动")).not.toBeNull();
@@ -195,7 +209,7 @@ describe("ActivityWidget", () => {
       }),
     );
 
-    render(<ActivityWidget data={{ selected: ["卡池"], pinned: ["pinned"] }} />);
+    render(<ActivityWidget data={{ ...only("ys"), selected: ["卡池"], pinned: ["pinned"] }} />);
 
     await waitFor(() => {
       expect(screen.queryByText("已固定的活动")).not.toBeNull();
@@ -203,47 +217,238 @@ describe("ActivityWidget", () => {
     expect(screen.queryByText("被筛掉的活动")).toBeNull();
   });
 
-  it("requests 星铁 when the widget is configured for sr", async () => {
+  // ───────────── 需求 1 / 4：外显是一份固定列表，可收窄甚至为空 ─────────────
+
+  it("fetches every supported game by default (displayGames 未配置 = 全部外显)", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ total: 0, items: [] }));
 
-    render(<ActivityWidget data={{ gameId: "sr" }} />);
+    render(<ActivityWidget />);
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalled();
     });
-    const urls = fetchMock.mock.calls.map((call) => String(call[0]));
-    expect(urls.every((url) => url.includes("/api/v1/games/sr/calendar"))).toBe(true);
+    const games = new Set(
+      fetchMock.mock.calls.map((call) => gameOf(String(call[0]))).filter((id) => id !== ""),
+    );
+    expect(games).toEqual(new Set(["ys", "sr", "zzz"]));
   });
 
-  it("refetches and swaps the displayed game when gameId changes", async () => {
-    // 弹窗里切换游戏后，磁贴必须跟着换数据，而不是继续显示上一个游戏
-    fetchMock.mockResolvedValue(
-      jsonResponse({
-        total: 1,
-        items: [calendarItem({ id: "ys-1", title: "原神活动", end: isoInDays(3) })],
-      }),
-    );
+  it("only fetches the selected games and never the others", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ total: 0, items: [] }));
 
-    const { rerender } = render(<ActivityWidget data={{ gameId: "ys" }} />);
+    render(<ActivityWidget data={only("sr")} />);
+
     await waitFor(() => {
-      expect(screen.queryByText("原神活动")).not.toBeNull();
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    const games = new Set(
+      fetchMock.mock.calls.map((call) => gameOf(String(call[0]))).filter((id) => id !== ""),
+    );
+    // 只勾选星铁 → 绝不能请求原神/绝区零（这是"不显示某个游戏"的实现基础）
+    expect(games).toEqual(new Set(["sr"]));
+  });
+
+  it("does not fetch or render any game when nothing is selected", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ total: 0, items: [] }));
+
+    render(<ActivityWidget data={only()} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("未勾选外显游戏")).not.toBeNull();
+    });
+    const calendarCalls = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes("/calendar"),
+    );
+    expect(calendarCalls).toHaveLength(0);
+  });
+
+  it("ignores the popup's current game and keeps showing only the display games", async () => {
+    // 需求 4：弹窗里切到星铁，磁贴不应跟着换；它只认 displayGames
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const game = gameOf(String(input));
+      return jsonResponse({
+        total: 1,
+        items: [calendarItem({ id: `${game}-1`, title: `${game} 的活动`, end: isoInDays(3) })],
+      });
     });
 
-    // 切到星铁：重新挂载不同数据
-    fetchMock.mockResolvedValue(
-      jsonResponse({
+    const { rerender } = render(<ActivityWidget data={{ ...only("ys"), gameId: "ys" }} />);
+    await waitFor(() => {
+      expect(screen.queryByText("ys 的活动")).not.toBeNull();
+    });
+
+    // 只改弹窗查看的游戏，displayGames 不变
+    rerender(<ActivityWidget data={{ ...only("ys"), gameId: "sr" }} />);
+
+    // 磁贴仍只显示原神的活动
+    await waitFor(() => {
+      expect(screen.queryByText("sr 的活动")).toBeNull();
+    });
+    expect(screen.queryByText("ys 的活动")).not.toBeNull();
+  });
+
+  it("follows displayGames changes and drops the previous game's data", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const game = gameOf(String(input));
+      return jsonResponse({
         total: 1,
-        items: [calendarItem({ id: "sr-1", kind: "卡池", title: "星铁卡池", end: isoInDays(4) })],
-      }),
-    );
-    rerender(<ActivityWidget data={{ gameId: "sr" }} />);
+        items: [calendarItem({ id: `${game}-1`, title: `${game} 的活动`, end: isoInDays(3) })],
+      });
+    });
+
+    const { rerender } = render(<ActivityWidget data={only("ys")} />);
+    await waitFor(() => {
+      expect(screen.queryByText("ys 的活动")).not.toBeNull();
+    });
+
+    rerender(<ActivityWidget data={only("sr")} />);
 
     await waitFor(() => {
-      expect(screen.queryByText("星铁卡池")).not.toBeNull();
+      expect(screen.queryByText("sr 的活动")).not.toBeNull();
     });
     // 旧游戏的数据不能残留
-    expect(screen.queryByText("原神活动")).toBeNull();
-    const urls = fetchMock.mock.calls.map((call) => String(call[0]));
-    expect(urls.some((url) => url.includes("/api/v1/games/sr/calendar"))).toBe(true);
+    expect(screen.queryByText("ys 的活动")).toBeNull();
+  });
+
+  // ───────────── 需求 2：优先显示即将截止的并标红 ─────────────
+
+  it("marks activities ending within 3 days as urgent", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        total: 2,
+        items: [
+          calendarItem({ id: "soon", title: "马上截止", end: isoInDays(2) }),
+          calendarItem({ id: "later", title: "还早", end: isoInDays(20) }),
+        ],
+      }),
+    );
+
+    const { container } = render(<ActivityWidget data={only("ys")} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("马上截止")).not.toBeNull();
+    });
+    const urgentRows = Array.from(container.querySelectorAll(".activity-widget-item.is-urgent"));
+    expect(urgentRows).toHaveLength(1);
+    expect(urgentRows[0]!.textContent).toContain("马上截止");
+    // 表头徽标给出紧急条数
+    expect(container.querySelector(".activity-widget-urgent-count")!.textContent).toBe("1");
+  });
+
+  it("does not mark an ended pinned activity as urgent", async () => {
+    // 固定项可能早已结束；标红会把"已结束"误读成"还要到期"
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        total: 1,
+        items: [
+          calendarItem({ id: "old", title: "早已结束", start: isoInDays(-30), end: isoInDays(-2) }),
+        ],
+      }),
+    );
+
+    const { container } = render(<ActivityWidget data={{ ...only("ys"), pinned: ["old"] }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("早已结束")).not.toBeNull();
+    });
+    expect(container.querySelector(".activity-widget-item.is-urgent")).toBeNull();
+  });
+
+  // ───────────── 需求 3：固定的始终显示 ─────────────
+
+  it("still shows pinned activities whose game is not selected for display", async () => {
+    // 需求 3 的关键场景：取消勾选星铁，但星铁里已固定的活动必须继续显示
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const game = gameOf(String(input));
+      return jsonResponse({
+        total: 1,
+        items: [calendarItem({ id: `${game}-pinned`, title: `${game} 固定项`, end: isoInDays(9) })],
+      });
+    });
+
+    render(<ActivityWidget data={{ ...only("ys"), pinned: { sr: ["sr-pinned"] } }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("sr 固定项")).not.toBeNull();
+    });
+    // 该游戏未被勾选，因此仍要单独为它取数，否则固定项取不到
+    const games = new Set(
+      fetchMock.mock.calls.map((call) => gameOf(String(call[0]))).filter((id) => id !== ""),
+    );
+    expect(games).toEqual(new Set(["ys", "sr"]));
+  });
+
+  it("shows pinned activities only when no game is selected", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        total: 1,
+        items: [calendarItem({ id: "keep", title: "常驻固定项", end: isoInDays(50) })],
+      }),
+    );
+
+    render(<ActivityWidget data={{ ...only(), pinned: { ys: ["keep"] } }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("常驻固定项")).not.toBeNull();
+    });
+    // 表头明确提示当前是"仅固定"
+    expect(screen.queryByText("仅固定")).not.toBeNull();
+  });
+
+  it("migrates a legacy flat pinned array to the default game", async () => {
+    // 旧版本 data.pinned 是一维数组：升级后固定项不能丢
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        total: 1,
+        items: [calendarItem({ id: "legacy", title: "旧版固定项", end: isoInDays(30) })],
+      }),
+    );
+
+    render(<ActivityWidget data={{ ...only("ys"), pinned: ["legacy"] }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("旧版固定项")).not.toBeNull();
+    });
+  });
+
+  it("keeps a pinned activity urgent when it is also expiring soon", async () => {
+    // 固定 + 即将截止同时成立：两个 class 都要在，
+    // 样式层靠 `.is-pinned-row:not(.is-urgent)` 保证红底不被灰底覆盖
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        total: 1,
+        items: [calendarItem({ id: "both", title: "固定且紧急", end: isoInDays(1) })],
+      }),
+    );
+
+    const { container } = render(<ActivityWidget data={{ ...only("ys"), pinned: ["both"] }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("固定且紧急")).not.toBeNull();
+    });
+    const row = container.querySelector(".activity-widget-item")!;
+    expect(row.classList.contains("is-pinned-row")).toBe(true);
+    expect(row.classList.contains("is-urgent")).toBe(true);
+  });
+
+  it("labels each row with its game so aggregated rows stay readable", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const game = gameOf(String(input));
+      return jsonResponse({
+        total: 1,
+        items: [calendarItem({ id: `${game}-1`, title: `${game} 活动`, end: isoInDays(6) })],
+      });
+    });
+
+    const { container } = render(<ActivityWidget data={only("ys", "zzz")} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("ys 活动")).not.toBeNull();
+    });
+    // 简称标签（星铁/绝区零），而不是占宽的全名
+    const tags = Array.from(container.querySelectorAll(".activity-widget-game-tag")).map(
+      (el) => el.textContent,
+    );
+    expect(tags).toEqual(["原神", "绝区零"]);
   });
 });

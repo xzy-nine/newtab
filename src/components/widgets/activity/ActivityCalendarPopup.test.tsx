@@ -65,6 +65,20 @@ function routeFetch(handlers: { capabilities?: Response; calendar?: Response }) 
   });
 }
 
+/**
+ * 弹窗顶部"查看游戏"的单选按钮。
+ *
+ * 必须按 class + 文本精确取，不能用 `getByText`：
+ * 游戏名同时出现在顶部切换器与下方「磁贴外显」勾选区里，文本查询会命中多个。
+ */
+function gameViewButton(name: string): HTMLElement {
+  const target = Array.from(
+    document.querySelectorAll<HTMLElement>(".activity-calendar-game-btn"),
+  ).find((el) => el.textContent === name);
+  if (!target) throw new Error(`game view button not found: ${name}`);
+  return target;
+}
+
 describe("ActivityCalendarPopup", () => {
   const fetchMock = vi.fn();
 
@@ -354,7 +368,7 @@ describe("ActivityCalendarPopup", () => {
       expect(screen.queryByText("ys 的活动")).not.toBeNull();
     });
 
-    fireEvent.click(screen.getByText("崩坏：星穹铁道"));
+    fireEvent.click(gameViewButton("崩坏：星穹铁道"));
 
     // 必须就地切到新游戏
     await waitFor(
@@ -396,9 +410,9 @@ describe("ActivityCalendarPopup", () => {
 
     // 趁原神日程还没回来就切到星铁
     await waitFor(() => {
-      expect(screen.queryByText("崩坏：星穹铁道")).not.toBeNull();
+      expect(gameViewButton("崩坏：星穹铁道")).not.toBeNull();
     });
-    fireEvent.click(screen.getByText("崩坏：星穹铁道"));
+    fireEvent.click(gameViewButton("崩坏：星穹铁道"));
 
     await waitFor(
       () => {
@@ -418,5 +432,125 @@ describe("ActivityCalendarPopup", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.queryByText("ys 的活动（迟到）")).toBeNull();
     expect(screen.queryByText("sr 的活动")).not.toBeNull();
+  });
+
+  // ───────── 磁贴外显设置：独立于"当前查看的游戏"（需求 1 / 3 / 4） ─────────
+
+  it("renders a tile-games section independent from the viewed game", async () => {
+    fetchMock.mockImplementation(routeFetch({}));
+
+    const { container } = render(<ActivityCalendarPopup data={{}} />);
+
+    await waitFor(() => {
+      expect(container.querySelector(".activity-calendar-display")).not.toBeNull();
+    });
+    // 默认未配置 → 三个游戏全部勾选（保持"总是显示"的既有观感）
+    const boxes = Array.from(
+      container.querySelectorAll<HTMLElement>(".activity-calendar-display-game [role='checkbox']"),
+    );
+    expect(boxes).toHaveLength(3);
+    expect(boxes.map((box) => box.getAttribute("data-state"))).toEqual([
+      "checked",
+      "checked",
+      "checked",
+    ]);
+  });
+
+  it("persists a narrowed tile game list without changing the viewed game", async () => {
+    fetchMock.mockImplementation(routeFetch({}));
+    const changes: Record<string, unknown>[] = [];
+
+    const { container } = render(
+      <ActivityCalendarPopup data={{ gameId: "ys" }} onDataChange={(d) => changes.push(d)} />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector(".activity-calendar-display")).not.toBeNull();
+    });
+
+    // 取消勾选星铁
+    const srBox = Array.from(
+      container.querySelectorAll<HTMLElement>(".activity-calendar-display-game"),
+    ).find((el) => el.textContent?.includes("崩坏：星穹铁道"))!;
+    fireEvent.click(srBox.querySelector("[role='checkbox']")!);
+
+    // 写回的是 displayGames，且从"全部"展开成"全部减星铁"
+    const patch = changes.at(-1)!;
+    expect(patch.displayGames).toEqual({ mode: "custom", games: ["ys", "zzz"] });
+    // 关键：绝不能顺手改掉弹窗当前查看的游戏
+    expect("gameId" in patch).toBe(false);
+  });
+
+  it("can uncheck every game (allow hiding the tile entirely)", async () => {
+    fetchMock.mockImplementation(routeFetch({}));
+    const changes: Record<string, unknown>[] = [];
+
+    const { container } = render(
+      <ActivityCalendarPopup
+        data={{ displayGames: { mode: "custom", games: ["ys"] } }}
+        onDataChange={(d) => changes.push(d)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector(".activity-calendar-display")).not.toBeNull();
+    });
+
+    const ysBox = Array.from(
+      container.querySelectorAll<HTMLElement>(".activity-calendar-display-game"),
+    ).find((el) => el.textContent?.includes("原神"))!;
+    fireEvent.click(ysBox.querySelector("[role='checkbox']")!);
+
+    expect((changes.at(-1)!.displayGames as { games: string[] }).games).toEqual([]);
+  });
+
+  it("keeps pins of other games when switching the viewed game", async () => {
+    // 固定项按游戏分开存：切游戏只是换视角，不能丢掉别的游戏的固定项
+    fetchMock.mockImplementation(routeFetch({}));
+    const changes: Record<string, unknown>[] = [];
+
+    render(
+      <ActivityCalendarPopup
+        data={{ gameId: "ys", pinned: { ys: ["a"], sr: ["b"] } }}
+        onDataChange={(d) => changes.push(d)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(gameViewButton("崩坏：星穹铁道")).not.toBeNull();
+    });
+    fireEvent.click(gameViewButton("崩坏：星穹铁道"));
+
+    const patch = changes.at(-1)!;
+    expect(patch.gameId).toBe("sr");
+    // 不写 pinned → 映射原样保留，星铁自己那一条固定项还在
+    expect("pinned" in patch).toBe(false);
+  });
+
+  it("pins into the map of the game currently being viewed", async () => {
+    fetchMock.mockImplementation(
+      routeFetch({
+        calendar: jsonResponse({
+          total: 1,
+          items: [calendarItem({ id: "a", title: "原神活动" })],
+        }),
+      }),
+    );
+    const changes: Record<string, unknown>[] = [];
+
+    const { container } = render(
+      <ActivityCalendarPopup
+        data={{ gameId: "ys", view: "list" }}
+        onDataChange={(d) => changes.push(d)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector(".activity-list-pin")).not.toBeNull();
+    });
+    fireEvent.click(container.querySelector(".activity-list-pin")!);
+
+    // 固定项写入 ys 名下，而不是一条扁平数组
+    expect(changes.at(-1)!.pinned).toEqual({ ys: ["a"] });
   });
 });

@@ -44,6 +44,18 @@ export const GAME_FALLBACK_NAMES: Record<string, string> = {
   zzz: "绝区零",
 };
 
+/**
+ * 游戏简称，供磁贴内的窄标签使用。
+ *
+ * 磁贴一行只有 240px 左右，`崩坏：星穹铁道` 会占掉大半宽度，
+ * 因此跨游戏聚合时必须用简称，全名留给弹窗与 tooltip。
+ */
+export const GAME_SHORT_NAMES: Record<string, string> = {
+  ys: "原神",
+  sr: "星铁",
+  zzz: "绝区零",
+};
+
 /** 默认游戏：原神。 */
 export const DEFAULT_GAME_ID = "ys";
 
@@ -442,19 +454,56 @@ export function daysUntilStart(entry: ParsedActivityEntry, now: number): number 
 }
 
 /**
- * 选中「即将到期」的日程：按结束时间升序，未结束的排前面。
+ * 选中「即将到期」的条目：按结束时间升序，未结束的排前面。
  *
  * 进行中的活动（已开始未结束）天然排在纯未来活动之前，因为它们更紧迫。
+ *
+ * 泛型版本供磁贴使用：磁贴要跨游戏聚合，条目外面包了一层 `gameId`，
+ * 因此结束时间用取键函数给出，而不是硬取 `entry.endMs`。
  */
+export function selectExpiringItems<T>(
+  items: readonly T[],
+  endOf: (item: T) => number,
+  now: number,
+  limit: number,
+): T[] {
+  return items
+    .filter((item) => endOf(item) > now)
+    .sort((a, b) => endOf(a) - endOf(b))
+    .slice(0, Math.max(0, limit));
+}
+
+/** 选中「即将到期」的日程（`selectExpiringItems` 的日程特化）。 */
 export function selectExpiring(
   entries: ParsedActivityEntry[],
   now: number,
   limit: number,
 ): ParsedActivityEntry[] {
-  return entries
-    .filter((entry) => entry.endMs > now)
-    .sort((a, b) => a.endMs - b.endMs)
-    .slice(0, Math.max(0, limit));
+  return selectExpiringItems(entries, (entry) => entry.endMs, now, limit);
+}
+
+/**
+ * 「即将截止」的判定阈值：距结束不足该天数即标红提醒。
+ *
+ * 取 3 天是"还能安排但不该再拖"的经验值：更短会漏掉需要提前规划的限时活动，
+ * 更长则几乎整块列表都被标红，反而失去提示意义。
+ */
+export const URGENT_DAYS = 3;
+export const URGENT_THRESHOLD_MS = URGENT_DAYS * DAY_MS;
+
+/**
+ * 是否为「即将截止」：未结束，且距结束不超过阈值。
+ *
+ * 已结束的一律返回 false——磁贴常规列表本就不含已结束项，
+ * 固定项则可能已结束，把它标红会误导成"还要到期"。
+ */
+export function isUrgent(
+  entry: ParsedActivityEntry,
+  now: number,
+  thresholdMs = URGENT_THRESHOLD_MS,
+): boolean {
+  if (now >= entry.endMs) return false;
+  return entry.endMs - now <= thresholdMs;
 }
 
 /** 按 id 取出被固定的日程，保持传入的固定顺序。 */
@@ -479,6 +528,57 @@ export function togglePinned(pinnedIds: readonly string[], id: string): string[]
 /** 某条日程是否被固定。 */
 export function isPinned(pinnedIds: readonly string[], id: string): boolean {
   return pinnedIds.includes(id);
+}
+
+/**
+ * 固定项的存储形式：按游戏分开的 id 集合。
+ *
+ * 磁贴改为跨游戏聚合后，只用一维 id 列表会出问题——不同游戏的日程 id
+ * 理论上可能相撞，且区分"这条固定项属于哪个游戏"也才能正确取数与展示来源。
+ */
+export type PinnedMap = Record<string, string[]>;
+
+/** 读取按游戏分组的固定项；兼容旧版本的一维数组（归给默认游戏）。 */
+export function readPinnedMap(data?: Record<string, unknown>): PinnedMap {
+  const raw = data?.pinned;
+  // 旧数据是一条扁平数组，迁移到默认游戏名下，避免升级后固定项全部丢失
+  if (Array.isArray(raw)) {
+    const ids = raw.filter((item): item is string => typeof item === "string");
+    return ids.length > 0 ? { [DEFAULT_GAME_ID]: ids } : {};
+  }
+  if (!raw || typeof raw !== "object") return {};
+  const result: PinnedMap = {};
+  for (const [gameId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(value)) continue;
+    const ids = value.filter((item): item is string => typeof item === "string");
+    if (ids.length > 0) result[gameId] = ids;
+  }
+  return result;
+}
+
+/** 取某个游戏的固定 id 列表。 */
+export function pinnedIdsOf(map: PinnedMap, gameId: string): string[] {
+  return map[gameId] ?? [];
+}
+
+/**
+ * 切换某个游戏里的某个固定项，返回新的分组映射。
+ *
+ * 空数组要从映射里删掉而不是留一个空列表：否则"取消最后一个固定项"会写入
+ * 一堆空 key，既脏又会让"是否有固定项"的判断写法变复杂。
+ */
+export function togglePinnedInMap(map: PinnedMap, gameId: string, id: string): PinnedMap {
+  const current = map[gameId] ?? [];
+  const next = togglePinned(current, id);
+  const result: PinnedMap = { ...map };
+  if (next.length === 0) delete result[gameId];
+  else result[gameId] = next;
+  return result;
+}
+
+/** 某个游戏里是否有固定项。 */
+export function hasPinnedInMap(map: PinnedMap, gameId: string): boolean {
+  return (map[gameId]?.length ?? 0) > 0;
 }
 
 // ───────────────────────────── 甘特图布局（纯计算） ─────────────────────────────
@@ -930,11 +1030,308 @@ export function readGameId(data?: Record<string, unknown>): string {
   return typeof value === "string" && value.trim() !== "" ? value : DEFAULT_GAME_ID;
 }
 
-/** 读取固定（pin）的活动 id 列表。 */
-export function readPinnedIds(data?: Record<string, unknown>): string[] {
-  const raw = data?.pinned;
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((item): item is string => typeof item === "string");
+/**
+ * 磁贴外显的游戏范围。
+ *
+ * 与弹窗里"当前查看的游戏"（`gameId`）**完全无关**：
+ * `gameId` 只决定弹窗内展示哪个游戏的日程，
+ * 而这里是磁贴要聚合展示的游戏集合，是一份固定列表。
+ */
+type DisplayGamesMode = "all" | "custom";
+
+/** 外显游戏配置。 */
+export interface DisplayGamesSetting {
+  mode: DisplayGamesMode;
+  /** `mode === "custom"` 时生效的游戏 id 列表。 */
+  games: string[];
+}
+
+/**
+ * 读取磁贴外显游戏配置。
+ *
+ * 兼容两种历史/手写形态：
+ * - 缺省（旧版本数据）→ `all`，即维持原来的"总是显示"行为，升级后外观不变；
+ * - 裸数组 → 视为 `custom` 列表（写入侧的简化形式）。
+ *
+ * **不做排序或去重以外的裁剪**：具体哪些 id 有意义由调用方按
+ * `CALENDAR_GAME_IDS` 过滤（纯逻辑层不绑定游戏集合）。
+ */
+export function readDisplayGames(data?: Record<string, unknown>): DisplayGamesSetting {
+  const raw = data?.displayGames;
+  if (Array.isArray(raw)) {
+    return { mode: "custom", games: uniqueStrings(raw) };
+  }
+  if (!raw || typeof raw !== "object") return { mode: "all", games: [] };
+  const r = raw as Record<string, unknown>;
+  const games = Array.isArray(r.games) ? uniqueStrings(r.games) : [];
+  // 只有显式写了 mode: "custom" 才进入自定义；否则一律按"全部"处理
+  const mode: DisplayGamesMode = r.mode === "custom" ? "custom" : "all";
+  return { mode, games };
+}
+
+function uniqueStrings(values: readonly unknown[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (trimmed === "" || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+  return result;
+}
+
+/**
+ * 按候选游戏顺序解析出真正要外显的游戏 id。
+ *
+ * - `all` → 全部候选；
+ * - `custom` → 只保留候选里被勾选的（按候选顺序，而不是用户勾选顺序，
+ *   这样磁贴里游戏的分组顺序始终稳定）；
+ * - 一个都没勾选 → 返回空数组，由调用方决定"只显示固定项"。
+ *
+ * 关键在于"在候选集内求交"：用户在旧版本勾过、后来被下线的游戏 id
+ * 不会让磁贴去请求一个不存在的游戏。
+ */
+export function resolveDisplayGameIds(
+  setting: DisplayGamesSetting,
+  candidates: readonly string[],
+): string[] {
+  if (setting.mode === "all") return [...candidates];
+  const chosen = new Set(setting.games);
+  return candidates.filter((id) => chosen.has(id));
+}
+
+/** 某个游戏是否允许外显（弹窗勾选框用）。 */
+export function isDisplayGameChecked(setting: DisplayGamesSetting, gameId: string): boolean {
+  return setting.mode === "all" ? true : setting.games.includes(gameId);
+}
+
+/**
+ * 切换某个游戏的外显勾选状态，返回新的配置。
+ *
+ * 从 `all` 切换到具体勾选时，要先展开成"全部候选减去取消的那个"，
+ * 否则"在全部显示的状态下取消一个"会变成"一个都不显示"。
+ */
+export function toggleDisplayGame(
+  setting: DisplayGamesSetting,
+  gameId: string,
+  candidates: readonly string[],
+): DisplayGamesSetting {
+  const current = isDisplayGameChecked(setting, gameId)
+    ? resolveDisplayGameIds(setting, candidates)
+    : resolveDisplayGameIds({ mode: "custom", games: setting.games }, candidates);
+  const chosen = new Set(current);
+  if (chosen.has(gameId)) chosen.delete(gameId);
+  else chosen.add(gameId);
+  return { mode: "custom", games: candidates.filter((id) => chosen.has(id)) };
+}
+
+/** 一个游戏的日程集合（磁贴跨游戏聚合的基本单元）。 */
+export interface GameEntries {
+  gameId: string;
+  entries: ParsedActivityEntry[];
+}
+
+/** 磁贴外显的一行。 */
+export interface ActivityTileRow {
+  gameId: string;
+  entry: ParsedActivityEntry;
+  /** 来自固定列表：常驻展示，不受外显游戏勾选影响。 */
+  pinned: boolean;
+  /** 即将截止，需要标红。 */
+  urgent: boolean;
+}
+
+/** 跨游戏行的去重键（不能只用 id：不同游戏的日程 id 可能相撞）。 */
+function rowKey(gameId: string, id: string): string {
+  return `${gameId}\u0000${id}`;
+}
+
+/** 把多个游戏的日程聚合成磁贴展示行的参数。 */
+export interface BuildTileRowsOptions {
+  /** 已取到的各游戏日程。允许只包含部分游戏（缺的按空处理）。 */
+  groups: readonly GameEntries[];
+  /** 允许外显的游戏 id（决定"即将截止"的取数范围）。 */
+  displayGameIds: readonly string[];
+  /** 按游戏分组的固定项。 */
+  pinned: PinnedMap;
+  now: number;
+  /** 磁贴能完整容纳的行数。 */
+  maxItems: number;
+  /**
+   * 分类筛选（弹窗里的父/子两级勾选），**只作用于"即将截止"区**。
+   *
+   * 固定项刻意不受它影响：固定是比分类筛选更具体的用户意图，
+   * 否则用户取消某个分类会把已固定的活动一起藏掉，与"常驻展示"矛盾。
+   */
+  filter?: (entry: ParsedActivityEntry) => boolean;
+}
+
+/**
+ * 按磁贴规则排出展示行（需求 1~4 的落点）。
+ *
+ * 1. **"即将截止"只从允许外显的游戏里取**——未勾选的游戏不出现在这一区，
+ *    空集合时该区为空，从而支持"不显示"；
+ * 2. **固定项始终显示**，即使它所属的游戏没被勾选：固定是更明确的用户意图，
+ *    与"是否外显该游戏"无关，否则取消勾选会把固定项一起藏掉；
+ * 3. **外显与弹窗里查看的游戏无关**：本函数只接受 `displayGameIds`，
+ *    完全不看 `gameId`，因此磁贴是一份与弹窗选择解耦的固定列表。
+ *
+ * 排序与旧的单游戏磁贴一致：固定项在前（保持用户固定顺序），
+ * 其余按结束时间升序，取满可用槽位为止。
+ */
+export function buildTileRows(options: BuildTileRowsOptions): ActivityTileRow[] {
+  const { groups, displayGameIds, pinned, now, maxItems, filter } = options;
+  const byGame = new Map(groups.map((group) => [group.gameId, group.entries]));
+
+  /**
+   * 固定项的游戏遍历顺序：先按允许外显的顺序，再补上"只被固定、未被勾选"的游戏。
+   * 后者按 id 排序，保证同一份数据每次渲染出的行序稳定。
+   */
+  const displaySet = new Set(displayGameIds);
+  const extraPinnedGames = Object.keys(pinned)
+    .filter((gameId) => !displaySet.has(gameId))
+    .sort();
+  const orderedGames = [...displayGameIds, ...extraPinnedGames];
+
+  const pinnedRows: ActivityTileRow[] = [];
+  const pinnedKeys = new Set<string>();
+  for (const gameId of orderedGames) {
+    const ids = pinned[gameId];
+    if (!ids || ids.length === 0) continue;
+    const entries = byGame.get(gameId);
+    if (!entries) continue;
+    for (const entry of selectPinned(entries, ids)) {
+      pinnedRows.push({ gameId, entry, pinned: true, urgent: isUrgent(entry, now) });
+      pinnedKeys.add(rowKey(gameId, entry.id));
+    }
+  }
+
+  // 即将截止：只允许外显的游戏参与，且跳过已经作为固定项展示过的行
+  const candidates: { gameId: string; entry: ParsedActivityEntry }[] = [];
+  for (const gameId of displayGameIds) {
+    const entries = byGame.get(gameId);
+    if (!entries) continue;
+    for (const entry of entries) {
+      if (pinnedKeys.has(rowKey(gameId, entry.id))) continue;
+      // 分类筛选只作用于这一区：固定项在上面已经无条件展示完了
+      if (filter && !filter(entry)) continue;
+      candidates.push({ gameId, entry });
+    }
+  }
+  const slots = Math.max(0, maxItems - pinnedRows.length);
+  const expiringRows = selectExpiringItems(candidates, (item) => item.entry.endMs, now, slots).map(
+    ({ gameId, entry }) => ({ gameId, entry, pinned: false, urgent: isUrgent(entry, now) }),
+  );
+
+  return [...pinnedRows, ...expiringRows];
+}
+
+/** 按游戏读取缓存并聚合成组；全部未命中时返回 null。 */
+function collectGameEntries(
+  gameIds: readonly string[],
+  read: (gameId: string) => ParsedActivityEntry[] | null,
+): GameEntries[] | null {
+  const groups: GameEntries[] = [];
+  for (const gameId of gameIds) {
+    const entries = read(gameId);
+    if (entries) groups.push({ gameId, entries });
+  }
+  return groups.length > 0 ? groups : null;
+}
+
+/**
+ * 首屏读取多个游戏的缓存（不发请求）。
+ *
+ * 只要有任一游戏命中就返回，让磁贴立刻有内容可渲染；
+ * 全都未命中才返回 null，此时调用方显示"加载中"。
+ */
+export function readCachedEntriesForGames(
+  gameIds: readonly string[],
+  from: string,
+  to: string,
+): GameEntries[] | null {
+  return collectGameEntries(gameIds, (gameId) => readCachedEntries({ gameId, from, to }));
+}
+
+/** 读取多个游戏的**过期**缓存（不发请求），供远端不可用时兜底。 */
+export function readStaleEntriesForGames(
+  gameIds: readonly string[],
+  from: string,
+  to: string,
+): GameEntries[] | null {
+  return collectGameEntries(gameIds, (gameId) => readStaleEntries({ gameId, from, to }));
+}
+
+/** 多游戏取数的结果：成功的组 + 失败的明细。 */
+export interface GameEntriesResult {
+  groups: GameEntries[];
+  failures: {
+    gameId: string;
+    /** true = 该游戏本就不提供日程（404），属正常状态而非网络故障。 */
+    unavailable: boolean;
+  }[];
+}
+
+/**
+ * 并发取多个游戏的日程。
+ *
+ * 与单游戏版本的关键差别：**单个游戏失败不影响其余游戏**。
+ * 有的游戏本就不支持日程（404 → `CalendarUnavailableError`），
+ * 若用 `Promise.all` 整体 reject，一个未开放日程的游戏就会把整块磁贴打空；
+ * 而磁贴要汇总多个游戏，局部失败必须局部消化。
+ * 失败的游戏回落到它自己的缓存（可能已过期），仍无缓存则记进 `failures`，
+ * 由调用方区分"该游戏没有日程"与"网络故障"。
+ */
+export async function fetchEntriesForGames(
+  gameIds: readonly string[],
+  from: string,
+  to: string,
+  options: { force?: boolean } = {},
+): Promise<GameEntriesResult> {
+  const results = await Promise.allSettled(
+    gameIds.map(async (gameId) => ({
+      gameId,
+      entries: await fetchActivityEntries({ gameId, from, to }, options),
+    })),
+  );
+
+  const groups: GameEntries[] = [];
+  const failures: GameEntriesResult["failures"] = [];
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i]!;
+    if (result.status === "fulfilled") {
+      groups.push(result.value);
+      continue;
+    }
+    const gameId = gameIds[i]!;
+    const fallback =
+      readCachedEntries({ gameId, from, to }) ?? readStaleEntries({ gameId, from, to });
+    if (fallback) {
+      groups.push({ gameId, entries: fallback });
+      continue;
+    }
+    failures.push({
+      gameId,
+      unavailable: result.reason instanceof CalendarUnavailableError,
+    });
+  }
+  return { groups, failures };
+}
+
+/**
+ * 需要取数的游戏集合：允许外显的 + 有固定项但未被勾选的。
+ *
+ * 后者必须一并取数，否则"取消勾选某个游戏但固定了它的一条活动"时，
+ * 那条固定项会因为拿不到该游戏的数据而凭空消失。
+ */
+export function requiredGameIds(displayGameIds: readonly string[], pinned: PinnedMap): string[] {
+  const ids = [...displayGameIds];
+  for (const gameId of Object.keys(pinned).sort()) {
+    if (!ids.includes(gameId)) ids.push(gameId);
+  }
+  return ids;
 }
 
 /** 读取前瞻展示方式。 */
@@ -985,15 +1382,29 @@ export function computeDefaultSelection(selectors: readonly CalendarSelector[]):
 }
 
 /**
+ * 单条日程是否命中筛选条件。
+ *
+ * 命中规则：
+ * - 该 `kind` 的父级被选中 → 通过（等于"包含其全部子级"）；
+ * - 或任一 label 命中了被选中的子级值 `kind:label` → 通过。
+ *
+ * 抽成谓词供两处复用：`applySelectionFilter` 批量筛选，
+ * 以及磁贴里对单条固定项/候选做归属判断。
+ */
+export function matchesSelection(
+  entry: ParsedActivityEntry,
+  selected: ReadonlySet<string>,
+): boolean {
+  if (selected.has(entry.kind)) return true;
+  return entry.labels.some((label) => selected.has(`${entry.kind}:${label}`));
+}
+
+/**
  * 按用户选择**在本地**过滤已缓存的日程。
  *
  * 关键设计：网络层按「桶」整取三类数据（各自长 TTL），筛选完全在前端做。
  * 这样切换筛选条件**不产生任何请求**，也不会破坏缓存复用；
  * 若把 include 塞进请求，每改一次勾选就要重拉一次，长 TTL 就失去意义了。
- *
- * 命中规则：
- * - 该 `kind` 的父级被选中 → 通过（等于"包含其全部子级"）；
- * - 或任一 label 命中了被选中的子级值 `kind:label` → 通过。
  */
 export function applySelectionFilter(
   entries: ParsedActivityEntry[],
@@ -1001,10 +1412,7 @@ export function applySelectionFilter(
   options: { previewMode?: PreviewMode } = {},
 ): ParsedActivityEntry[] {
   if (selected.size === 0) return [];
-  const filtered = entries.filter((entry) => {
-    if (selected.has(entry.kind)) return true;
-    return entry.labels.some((label) => selected.has(`${entry.kind}:${label}`));
-  });
+  const filtered = entries.filter((entry) => matchesSelection(entry, selected));
   return filterPreview(filtered, options.previewMode ?? "hide");
 }
 

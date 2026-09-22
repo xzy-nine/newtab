@@ -1992,6 +1992,15 @@ html.dark .desktop-folder-panel,
   background: color-mix(in oklch, var(--color-foreground) 5%, transparent);
 }
 
+/*
+ * 即将截止（距结束 ≤ 3 天）：整行标红。
+ *
+ * 用左侧色条 + 文字色 + 极淡底色三种信号叠加而不是只换底色——
+ * 磁贴很小，单靠浅底色在亮/暗主题下都不够醒目。
+ *
+ * 注意顺序：本组规则必须排在下面 .is-ongoing / .is-upcoming / .is-ended 之后，
+ * 否则"进行中且即将截止"的行左色条会被状态色覆盖回绿色（同特异性、后者胜）。
+ */
 .activity-widget-item.is-ongoing {
   border-left-color: #34d399;
 }
@@ -2003,6 +2012,83 @@ html.dark .desktop-folder-panel,
 .activity-widget-item.is-ended {
   border-left-color: rgba(128, 128, 128, 0.5);
   opacity: 0.6;
+}
+
+.activity-widget-item.is-urgent {
+  border-left-color: #ef4444;
+  background: color-mix(in oklch, #ef4444 14%, transparent);
+  /* 覆盖 .is-ended 的 0.6：已结束但仍被固定的项若临近边界也要看清 */
+  opacity: 1;
+}
+
+.activity-widget-item.is-urgent .activity-widget-title {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.activity-widget-item.is-urgent .activity-widget-remaining.is-urgent {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/*
+ * 表头的紧急计数徽标。
+ * 让"磁贴里还有几条要到期"在不逐行阅读的情况下也能看到。
+ */
+.activity-widget-urgent-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/*
+ * 游戏来源标签。
+ * 磁贴跨游戏聚合后每条必须标出属于哪个游戏；用简称保证不挤占标题宽度，
+ * 并用游戏专属色相区分，扫一眼即可归类。
+ */
+.activity-widget-game-tag {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+  background: color-mix(in oklch, currentColor 16%, transparent);
+}
+
+.activity-widget-game-tag.game-ys {
+  color: #f59e0b;
+}
+
+.activity-widget-game-tag.game-sr {
+  color: #8b5cf6;
+}
+
+.activity-widget-game-tag.game-zzz {
+  color: #06b6d4;
+}
+
+/*
+ * 固定行：与"即将截止"区分开，即使同一个游戏也可能两种都有。
+ *
+ * `:not(.is-urgent)` 是必需的：两者特异性相同，若不在选择器里排除，
+ * 后出现的 .is-urgent 红底也不会被覆盖——但反过来一旦顺序调整就会出错，
+ * 这里直接用排除法把"固定且紧急"的红色锁死。
+ */
+.activity-widget-item.is-pinned-row:not(.is-urgent) {
+  background: color-mix(in oklch, var(--color-foreground) 9%, transparent);
 }
 
 .activity-widget-pin-icon {
@@ -2153,6 +2239,70 @@ html.dark .desktop-folder-panel,
 .activity-calendar-refresh-icon.is-spinning,
 .activity-widget-refresh-icon.is-spinning {
   animation: weather-spin 1s linear infinite;
+}
+
+/*
+ * 磁贴外显设置区。
+ * 与上面的「当前查看的游戏」有意做成外观不同的独立卡片，
+ * 提醒用户这是两块互不影响的设置（需求 4）。
+ */
+.activity-calendar-display {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in oklch, var(--color-foreground) 18%, transparent);
+  font-size: 11px;
+}
+
+.activity-calendar-display-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-calendar-display-title {
+  font-weight: 600;
+}
+
+.activity-calendar-display-hint {
+  color: var(--color-muted-foreground);
+  font-size: 10px;
+}
+
+.activity-calendar-display-games {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+}
+
+.activity-calendar-display-game {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* 已固定条数：即使该游戏未勾选外显也会显示，提示"它仍在磁贴上" */
+.activity-calendar-display-pinned {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+  color: var(--color-muted-foreground);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-calendar-display-pin-icon {
+  width: 9px;
+  height: 9px;
 }
 
 /* 筛选区：父级 + 子级两级 */

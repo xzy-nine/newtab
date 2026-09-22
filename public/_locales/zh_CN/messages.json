@@ -759,6 +759,38 @@
     "message": "未开始",
     "description": "未开始"
   },
+  "hoyoActivityDisplayGames": {
+    "message": "磁贴外显",
+    "description": "磁贴外显游戏设置区标题"
+  },
+  "hoyoActivityDisplayHint": {
+    "message": "与上方查看的游戏无关；固定项始终显示",
+    "description": "磁贴外显游戏设置区说明"
+  },
+  "hoyoActivityPinnedCount": {
+    "message": "已固定 {n} 项",
+    "description": "某游戏已固定的活动条数"
+  },
+  "hoyoActivityViewGame": {
+    "message": "在弹窗内查看该游戏的日程",
+    "description": "游戏切换按钮的提示"
+  },
+  "hoyoActivityAllGames": {
+    "message": "游戏活动",
+    "description": "磁贴表头：全部游戏外显时"
+  },
+  "hoyoActivityPinnedOnly": {
+    "message": "仅固定",
+    "description": "磁贴表头：未勾选任何外显游戏时"
+  },
+  "hoyoActivityNoGameSelected": {
+    "message": "未勾选外显游戏",
+    "description": "磁贴空态：未勾选任何外显游戏且无固定项"
+  },
+  "hoyoActivityUrgentHint": {
+    "message": "即将截止",
+    "description": "即将截止的提示"
+  },
   "uapiSettingsTitle": {
     "message": "UAPI 接口",
     "description": "UAPI 设置页标题"

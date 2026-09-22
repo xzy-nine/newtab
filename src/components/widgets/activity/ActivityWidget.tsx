@@ -3,24 +3,28 @@ import { AlertTriangle, CalendarDays, Pin, RefreshCw } from "lucide-react";
 import { getMessage } from "@/lib/i18n";
 import { resolveWidgetSizeMode, widgetListCapacity, widgetPadding } from "@/lib/widget-layout";
 import {
+  CALENDAR_GAME_IDS,
   DEFAULT_WINDOW_DAYS,
   GAME_FALLBACK_NAMES,
-  activityStatus,
+  GAME_SHORT_NAMES,
   addDaysToDayKey,
-  applySelectionFilter,
-  fetchActivityEntries,
-  readCachedEntries,
-  readGameId,
-  readPinnedIds,
+  buildTileRows,
+  fetchEntriesForGames,
+  isPreviewEntry,
+  matchesSelection,
+  readCachedEntriesForGames,
+  readDisplayGames,
+  readPinnedMap,
   readPreviewMode,
   readSelected,
-  readStaleEntries,
+  readStaleEntriesForGames,
   remainingText,
-  selectExpiring,
-  selectPinned,
+  requiredGameIds,
+  resolveDisplayGameIds,
   utc8DayKey,
-  type ActivityStatus,
-  type ParsedActivityEntry,
+  type ActivityTileRow,
+  type GameEntries,
+  type PinnedMap,
   type RemainingText,
 } from "@/components/widgets/activity/activity";
 
@@ -43,23 +47,23 @@ function remainingLabel(remaining: RemainingText): string {
   return getMessage("hoyoActivityDaysLeft", "剩 {n} 天").replace("{n}", String(remaining.value));
 }
 
-/** 活动状态的样式类名。 */
-function statusClass(status: ActivityStatus): string {
-  if (status === "ongoing") return "is-ongoing";
-  if (status === "upcoming") return "is-upcoming";
-  return "is-ended";
-}
-
 /**
  * 米哈游活动小部件（磁贴）。
  *
- * 外显两段内容：
- * 1. **即将到期**：按结束时间升序取前 N 条（进行中的天然排最前，因为它们更紧迫）；
- * 2. **固定**：用户 pin 的活动，不受到期排序影响，常驻展示。
+ * **外显范围是一份固定列表**（`displayGames`），与弹窗里"当前查看的游戏"无关：
+ * 弹窗切游戏只改变弹窗内容，磁贴始终聚合展示允许外显的那几个游戏。
  *
- * 数据按三类（游戏内活动 / 卡池 / 版本日程）分别长 TTL 缓存：
- * 挂载时先用缓存秒开，再后台补拉；筛选在本地做，切换条件不产生请求。
- * 点非控件区域由 HomeDesktop 负责展开弹窗，弹窗里提供筛选、甘特图与固定操作。
+ * 磁贴内容分两段：
+ * 1. **即将截止**：从允许外显的游戏里按结束时间取前 N 条，
+ *    距结束 ≤ 3 天的标红（`is-urgent`）；
+ * 2. **固定**：用户 pin 的活动常驻展示，**不受到期排序影响，也不受勾选影响**——
+ *    即使它所属的游戏被取消勾选，固定项依然显示。
+ *
+ * 一个游戏都不勾选时，只剩固定项（若没有固定项则是空态），即"允许不显示"。
+ *
+ * 数据仍按游戏 + 三类桶分别长 TTL 缓存：挂载时先用缓存秒开，再后台补拉；
+ * 多个游戏并发取数且**互不影响**（单个游戏 404/失败不会打空整块磁贴）。
+ * 点非控件区域由 HomeDesktop 负责展开弹窗。
  */
 export function ActivityWidget({
   data,
@@ -68,9 +72,14 @@ export function ActivityWidget({
   containerHeight = 150,
 }: ActivityWidgetProps) {
   void onDataChange; // 磁贴只读展示，写入统一由弹窗完成
-  const gameId = readGameId(data);
-  const pinnedIds = useMemo(() => readPinnedIds(data), [data]);
+  const pinned = useMemo<PinnedMap>(() => readPinnedMap(data), [data]);
+  const displayGames = useMemo(() => readDisplayGames(data), [data]);
 
+  // 磁贴外显的游戏集合：在候选集内求交，过滤掉已下线/无效的 id
+  const displayGameIds = useMemo(
+    () => resolveDisplayGameIds(displayGames, CALENDAR_GAME_IDS),
+    [displayGames],
+  );
   /**
    * 当前时间作为 state（而非渲染期直接调用 Date.now()）。
    * 每 60 秒刷新一次，让「剩 X 小时」等相对时间能自行走动；
@@ -78,14 +87,15 @@ export function ActivityWidget({
    */
   const [now, setNow] = useState(() => Date.now());
   const todayKey = utc8DayKey(now);
+  const to = useMemo(() => addDaysToDayKey(todayKey, DEFAULT_WINDOW_DAYS), [todayKey]);
 
-  // 一次性拉满未来一年：TTL 长、数据量小，把「新增」尽量预取进来
-  const query = useMemo(
-    () => ({ gameId, from: todayKey, to: addDaysToDayKey(todayKey, DEFAULT_WINDOW_DAYS) }),
-    [gameId, todayKey],
+  // 未外显但有固定项的游戏也要取数，否则那些固定项会凭空消失
+  const queryGameIds = useMemo(
+    () => requiredGameIds(displayGameIds, pinned),
+    [displayGameIds, pinned],
   );
-  /** 查询标识：游戏或日期窗口变化即视为另一份数据。 */
-  const queryKey = `${gameId}:${todayKey}`;
+  /** 查询标识：参与取数的游戏集合或日期窗口变化即视为另一份数据。 */
+  const queryKey = `${queryGameIds.join(",")}:${todayKey}`;
 
   /**
    * 首屏缓存：优先新鲜缓存，其次（可能已过期的）旧缓存。
@@ -93,20 +103,22 @@ export function ActivityWidget({
    * 过期只代表可能少了新增内容，直接清空会闪"暂无活动"；
    * 保持旧数据再后台刷新体验更好。
    */
-  const cached = useMemo(() => readCachedEntries(query) ?? readStaleEntries(query), [query]);
+  const cached = useMemo(
+    () =>
+      readCachedEntriesForGames(queryGameIds, todayKey, to) ??
+      readStaleEntriesForGames(queryGameIds, todayKey, to),
+    [queryGameIds, todayKey, to],
+  );
 
   /**
    * 拉取结果连同它所属的 queryKey 一起存。
    *
-   * 这样切换游戏（弹窗里可切）或跨天滚动窗口时，**渲染期即可判断结果是否过期**，
-   * 直接回落到新 query 的缓存，不会把上一个游戏的活动继续显示出来；
+   * 这样游戏集合变化（弹窗里改勾选）或跨天滚动窗口时，**渲染期即可判断结果是否过期**，
+   * 直接回落到新 query 的缓存，不会把上一批游戏的陈旧数据继续显示出来；
    * 也避免了"在 effect 里 setState 清空旧数据"那种级联渲染。
    */
-  const [fetched, setFetched] = useState<{
-    key: string;
-    entries: ParsedActivityEntry[];
-  } | null>(null);
-  const entries = fetched?.key === queryKey ? fetched.entries : cached;
+  const [fetched, setFetched] = useState<{ key: string; groups: GameEntries[] } | null>(null);
+  const groups = fetched?.key === queryKey ? fetched.groups : cached;
 
   // 无任何可用数据时才显示"加载中"，避免先闪一下"暂无活动"
   const [loading, setLoading] = useState(() => cached === null);
@@ -122,22 +134,35 @@ export function ActivityWidget({
       setLoading(true);
       setError("");
       try {
-        const next = await fetchActivityEntries(query, { force });
-        // 远端没给数据时保持当前已展示的内容，不要用空数组覆盖
+        const { groups: next, failures } = await fetchEntriesForGames(queryGameIds, todayKey, to, {
+          force,
+        });
+        // 远端一个游戏都没给数据时保持当前已展示的内容，不要用空数组覆盖
         if (next.length > 0 || cached === null) {
-          setFetched({ key: queryKey, entries: next });
+          setFetched({ key: queryKey, groups: next });
+        }
+        /**
+         * 只要有游戏是"查不到日程"（404）而非"没开放"，就算一次失败。
+         *
+         * 这里刻意不看 `next.length`：全部游戏都网络失败、但本地还有旧缓存时，
+         * 旧数据仍会照常展示，此时必须给出错误提示，否则用户看到的是
+         * 一份静静过期的列表却毫无提示。
+         */
+        const failed = failures.filter((item) => !item.unavailable);
+        if (failed.length > 0) {
+          setError(getMessage("hoyoActivityLoadFailed", "活动获取失败"));
         }
       } catch {
-        // 拉取失败同样保留当前数据，只提示错误
+        // 兜底：fetchEntriesForGames 已用 allSettled 消化异常，这里不会触发
         setError(getMessage("hoyoActivityLoadFailed", "活动获取失败"));
       } finally {
         setLoading(false);
       }
     },
-    [query, queryKey, cached],
+    [queryGameIds, queryKey, todayKey, to, cached],
   );
 
-  // 挂载后、以及游戏/窗口变化时拉取；命中缓存时不会真正联网（按桶 TTL 判定）。
+  // 挂载后、以及游戏集合/窗口变化时拉取；命中缓存时不会真正联网（按桶 TTL 判定）。
   // 包一层 async IIFE 而非直接调用，避免被判定为「effect 内同步 setState」。
   useEffect(() => {
     void (async () => {
@@ -157,32 +182,38 @@ export function ActivityWidget({
   // 高度模式五组件共用（宽或高偏小即紧凑）
   const mode = resolveWidgetSizeMode({ width: containerWidth, height: containerHeight });
 
-  const rows = useMemo(() => {
-    if (!entries) return [];
-    const selected = readSelected(data);
-    // 未配置筛选（旧版本数据）时不筛，直接展示全部
-    const filtered = selected
-      ? applySelectionFilter(entries, selected, { previewMode: readPreviewMode(data) })
-      : entries;
-    // 固定是比筛选更具体的用户意图：固定项从**未筛选**的集合里取，
-    // 否则用户取消某个分类会把已固定的活动一起藏掉，与"常驻展示"矛盾。
-    const pinned = selectPinned(entries, pinnedIds);
-    const pinnedSet = new Set(pinned.map((entry) => entry.id));
-
+  const rows = useMemo<ActivityTileRow[]>(() => {
+    if (!groups) return [];
     // 行数由当前磁贴高度推算：磁贴变矮时自动少显示一行，而不是把最后一行裁掉
     const maxItems = widgetListCapacity(containerHeight, mode);
-    const slots = Math.max(0, maxItems - pinned.length);
-    const expiring = selectExpiring(
-      filtered.filter((entry) => !pinnedSet.has(entry.id)),
+    /**
+     * 分类筛选沿用弹窗里保存的勾选（`selected`），对**所有外显游戏统一生效**。
+     * 六种 `kind` 是接口层面的全局分类，各游戏通用，因此一份勾选可跨游戏套用。
+     * 未配置筛选（旧版本数据）时不筛，保持与单游戏时代一致。
+     */
+    const selected = readSelected(data);
+    const previewMode = readPreviewMode(data);
+    return buildTileRows({
+      groups,
+      displayGameIds,
+      pinned,
       now,
-      slots,
-    );
-    return [
-      ...pinned.map((entry) => ({ entry, pinned: true })),
-      ...expiring.map((entry) => ({ entry, pinned: false })),
-    ];
-  }, [entries, data, pinnedIds, now, mode, containerHeight]);
-  const gameName = GAME_FALLBACK_NAMES[gameId] ?? gameId;
+      maxItems,
+      /**
+       * 分类筛选沿用弹窗保存的勾选，对**所有外显游戏统一生效**：
+       * 六种 `kind` 是接口层面的全局分类，各游戏通用，因此一份勾选可跨游戏套用。
+       * 未配置筛选（旧版本数据）时不筛，保持与单游戏时代一致。
+       */
+      filter: selected
+        ? (entry) =>
+            matchesSelection(entry, selected) && (previewMode === "point" || !isPreviewEntry(entry))
+        : undefined,
+    });
+  }, [groups, displayGameIds, pinned, now, mode, containerHeight, data]);
+
+  /** 表头标题：外显全部游戏时显示游戏名，否则按勾选列出（都不勾选则为空态文案）。 */
+  const heading = headingLabel(displayGameIds);
+  const urgentCount = rows.filter((row) => row.urgent).length;
 
   return (
     <div
@@ -193,8 +224,16 @@ export function ActivityWidget({
       <div className="activity-widget-top">
         <span className="activity-widget-game">
           <CalendarDays className="activity-widget-game-icon" />
-          <span className="activity-widget-game-text">{gameName}</span>
+          <span className="activity-widget-game-text">{heading}</span>
         </span>
+        {urgentCount > 0 && (
+          <span
+            className="activity-widget-urgent-count"
+            title={getMessage("hoyoActivityUrgentHint", "即将截止")}
+          >
+            {urgentCount}
+          </span>
+        )}
         <button
           className="activity-widget-refresh"
           title={getMessage("hoyoActivityRefresh", "刷新")}
@@ -213,19 +252,27 @@ export function ActivityWidget({
         <div className="activity-widget-state">
           {loading
             ? getMessage("hoyoActivityLoading", "加载中...")
-            : getMessage("hoyoActivityEmpty", "暂无活动")}
+            : displayGameIds.length === 0
+              ? getMessage("hoyoActivityNoGameSelected", "未勾选外显游戏")
+              : getMessage("hoyoActivityEmpty", "暂无活动")}
         </div>
       ) : (
         <div className="activity-widget-list">
-          {rows.map(({ entry, pinned }) => (
+          {rows.map((row) => (
             <div
-              key={entry.id}
-              className={`activity-widget-item ${statusClass(activityStatus(entry, now))}`}
+              key={`${row.gameId}:${row.entry.id}`}
+              className={`activity-widget-item ${row.pinned ? "is-pinned-row" : ""} ${
+                row.urgent ? "is-urgent" : ""
+              }`}
+              title={`${GAME_FALLBACK_NAMES[row.gameId] ?? row.gameId} · ${row.entry.title}`}
             >
-              {pinned && <Pin className="activity-widget-pin-icon" />}
-              <span className="activity-widget-title">{entry.title}</span>
-              <span className="activity-widget-remaining">
-                {remainingLabel(remainingText(entry, now))}
+              {row.pinned && <Pin className="activity-widget-pin-icon" />}
+              <span className={`activity-widget-game-tag game-${row.gameId}`}>
+                {GAME_SHORT_NAMES[row.gameId] ?? row.gameId}
+              </span>
+              <span className="activity-widget-title">{row.entry.title}</span>
+              <span className={`activity-widget-remaining ${row.urgent ? "is-urgent" : ""}`}>
+                {remainingLabel(remainingText(row.entry, now))}
               </span>
             </div>
           ))}
@@ -233,4 +280,20 @@ export function ActivityWidget({
       )}
     </div>
   );
+}
+
+/**
+ * 表头文案。
+ *
+ * 外显全部游戏时用「游戏活动」这类整体说法（列出三个名字会超出磁贴宽度）；
+ * 只勾选一部分时列出简称，让用户一眼看出磁贴被收窄到了哪些游戏。
+ */
+function headingLabel(displayGameIds: readonly string[]): string {
+  if (displayGameIds.length === 0) {
+    return getMessage("hoyoActivityPinnedOnly", "仅固定");
+  }
+  if (displayGameIds.length >= CALENDAR_GAME_IDS.length) {
+    return getMessage("hoyoActivityAllGames", "游戏活动");
+  }
+  return displayGameIds.map((id) => GAME_SHORT_NAMES[id] ?? id).join(" / ");
 }

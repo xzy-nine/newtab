@@ -7,6 +7,8 @@ import {
   EMPTY_RESULT_TTL_MS,
   PREVIEW_LABEL,
   SCHEDULE_TTL_MS,
+  URGENT_DAYS,
+  URGENT_THRESHOLD_MS,
   addDaysToDayKey,
   applySelectionFilter,
   activityStatus,
@@ -14,6 +16,7 @@ import {
   bucketOfKind,
   buildCalendarUrl,
   buildAxisColumns,
+  buildTileRows,
   computeDefaultSelection,
   computeGanttLayout,
   dayKeyDiff,
@@ -26,31 +29,41 @@ import {
   ganttTodayPct,
   ganttWindow,
   hasCachedEntries,
+  hasPinnedInMap,
   isChildChecked,
+  isDisplayGameChecked,
   isParentChecked,
   isPreviewEntry,
+  isUrgent,
   normalizeCalendarResponse,
   normalizeGamesResponse,
   parseActivityEntry,
   parseCapabilities,
+  pinnedIdsOf,
   readCachedEntries,
+  readDisplayGames,
   readGameId,
-  readPinnedIds,
+  readPinnedMap,
   readPreviewMode,
   readSelected,
   readStaleEntries,
   readViewMode,
   readWindowDays,
   remainingText,
+  requiredGameIds,
+  resolveDisplayGameIds,
   selectExpiring,
   selectPinned,
   selectionToIncludes,
+  toggleDisplayGame,
   togglePinned,
+  togglePinnedInMap,
   toggleSelectorValue,
   utc8DayKey,
   utc8MidnightMs,
   utc8TimeLabel,
   type CalendarSelector,
+  type DisplayGamesSetting,
   type ParsedActivityEntry,
 } from "./activity";
 
@@ -388,6 +401,288 @@ describe("活动状态与排序", () => {
     expect(togglePinned([], "a")).toEqual(["a"]);
     expect(togglePinned(["a", "b"], "a")).toEqual(["b"]);
     expect(togglePinned(["a"], "b")).toEqual(["a", "b"]);
+  });
+});
+
+describe("即将截止判定（isUrgent）", () => {
+  const entry = makeEntry(); // 2026-09-01 ~ 2026-09-10
+  const endMs = entry.endMs;
+
+  it("marks entries ending within the 3-day threshold", () => {
+    expect(URGENT_DAYS).toBe(3);
+    // 恰好 3 天 → 仍是"即将截止"（闭区间）
+    expect(isUrgent(entry, endMs - URGENT_THRESHOLD_MS)).toBe(true);
+    expect(isUrgent(entry, endMs - 60 * 60 * 1000)).toBe(true);
+    // 超过阈值一天 → 不算
+    expect(isUrgent(entry, endMs - URGENT_THRESHOLD_MS - 24 * 60 * 60 * 1000)).toBe(false);
+  });
+
+  it("never marks an ended entry as urgent", () => {
+    // 已结束的固定项若被标红，会被误读成"还要到期"
+    expect(isUrgent(entry, endMs)).toBe(false);
+    expect(isUrgent(entry, endMs + 1000)).toBe(false);
+  });
+
+  it("accepts a custom threshold", () => {
+    expect(isUrgent(entry, endMs - 2 * 60 * 60 * 1000, 60 * 60 * 1000)).toBe(false);
+    expect(isUrgent(entry, endMs - 30 * 60 * 1000, 60 * 60 * 1000)).toBe(true);
+  });
+});
+
+describe("外显游戏配置", () => {
+  const candidates = ["ys", "sr", "zzz"];
+
+  it("defaults to showing every game so upgrades keep the old appearance", () => {
+    const setting = readDisplayGames({});
+    expect(setting).toEqual({ mode: "all", games: [] });
+    expect(resolveDisplayGameIds(setting, candidates)).toEqual(candidates);
+    expect(isDisplayGameChecked(setting, "zzz")).toBe(true);
+  });
+
+  it("reads an explicit custom list and a bare array shorthand", () => {
+    expect(readDisplayGames({ displayGames: { mode: "custom", games: ["sr"] } })).toEqual({
+      mode: "custom",
+      games: ["sr"],
+    });
+    // 裸数组视为 custom
+    expect(readDisplayGames({ displayGames: ["ys", "zzz"] })).toEqual({
+      mode: "custom",
+      games: ["ys", "zzz"],
+    });
+  });
+
+  it("drops malformed values and de-duplicates", () => {
+    expect(
+      readDisplayGames({ displayGames: { mode: "custom", games: ["ys", "ys", 1, "", "  "] } }),
+    ).toEqual({ mode: "custom", games: ["ys"] });
+    expect(readDisplayGames({ displayGames: { games: ["sr"] } }).mode).toBe("all");
+    expect(readDisplayGames(undefined)).toEqual({ mode: "all", games: [] });
+  });
+
+  it("intersects the stored list with the supported candidates", () => {
+    // 用户在旧版本勾过、后来下线的游戏不能让磁贴去请求不存在的游戏
+    const setting: DisplayGamesSetting = { mode: "custom", games: ["bh3", "sr"] };
+    expect(resolveDisplayGameIds(setting, candidates)).toEqual(["sr"]);
+  });
+
+  it("keeps candidate order, not the user's click order", () => {
+    const setting: DisplayGamesSetting = { mode: "custom", games: ["zzz", "ys"] };
+    expect(resolveDisplayGameIds(setting, candidates)).toEqual(["ys", "zzz"]);
+  });
+
+  it("allows an empty selection (hide the tile entirely)", () => {
+    const setting: DisplayGamesSetting = { mode: "custom", games: [] };
+    expect(resolveDisplayGameIds(setting, candidates)).toEqual([]);
+  });
+
+  it("unchecks one game from the 'all' state by expanding to the rest", () => {
+    // 关键：从"全部"取消一个，必须变成"其余两个"，而不是"一个都不显示"
+    const next = toggleDisplayGame({ mode: "all", games: [] }, "sr", candidates);
+    expect(next).toEqual({ mode: "custom", games: ["ys", "zzz"] });
+  });
+
+  it("re-checks a game and returns to the candidate order", () => {
+    const off = toggleDisplayGame({ mode: "all", games: [] }, "sr", candidates);
+    expect(toggleDisplayGame(off, "sr", candidates)).toEqual({
+      mode: "custom",
+      games: ["ys", "sr", "zzz"],
+    });
+  });
+
+  it("can uncheck the last game", () => {
+    const one: DisplayGamesSetting = { mode: "custom", games: ["ys"] };
+    expect(toggleDisplayGame(one, "ys", candidates)).toEqual({ mode: "custom", games: [] });
+  });
+});
+
+describe("分组固定项（PinnedMap）", () => {
+  it("migrates a legacy flat array to the default game", () => {
+    // 旧版本的 data.pinned 是一维数组，升级后固定项不能丢
+    expect(readPinnedMap({ pinned: ["a", "b"] })).toEqual({ [DEFAULT_GAME_ID]: ["a", "b"] });
+  });
+
+  it("reads a per-game map and ignores malformed entries", () => {
+    expect(readPinnedMap({ pinned: { ys: ["a"], sr: ["b", 1, null], zzz: [] } })).toEqual({
+      ys: ["a"],
+      sr: ["b"],
+    });
+    expect(readPinnedMap({})).toEqual({});
+    expect(readPinnedMap(undefined)).toEqual({});
+  });
+
+  it("toggles within one game and drops empty keys", () => {
+    const added = togglePinnedInMap({}, "ys", "a");
+    expect(added).toEqual({ ys: ["a"] });
+    // 取消最后一个固定项后不应留下空 key
+    expect(togglePinnedInMap(added, "ys", "a")).toEqual({});
+    // 不影响其它游戏
+    expect(togglePinnedInMap({ ys: ["a"], sr: ["b"] }, "ys", "a")).toEqual({ sr: ["b"] });
+  });
+
+  it("queries and toggles per game", () => {
+    expect(pinnedIdsOf({ ys: ["a"] }, "ys")).toEqual(["a"]);
+    expect(pinnedIdsOf({ ys: ["a"] }, "sr")).toEqual([]);
+    expect(hasPinnedInMap({ ys: ["a"] }, "ys")).toBe(true);
+    expect(hasPinnedInMap({ ys: [] }, "ys")).toBe(false);
+  });
+});
+
+describe("buildTileRows（磁贴外显聚合）", () => {
+  const now = Date.parse("2026-09-01T00:00:00Z");
+  const day = 24 * 60 * 60 * 1000;
+
+  /** 造一条相对 now 的日程。 */
+  function at(id: string, endInDays: number, kind = "游戏内活动"): ParsedActivityEntry {
+    return makeEntry({
+      id,
+      kind,
+      endMs: now + endInDays * day,
+      end: "x",
+      startMs: now - day,
+      start: "x",
+    });
+  }
+
+  const groups = [
+    { gameId: "ys", entries: [at("ys-late", 30), at("ys-soon", 2)] },
+    { gameId: "sr", entries: [at("sr-mid", 1)] },
+  ];
+
+  it("takes the soonest-expiring entries across the display games", () => {
+    const rows = buildTileRows({
+      groups,
+      displayGameIds: ["ys", "sr"],
+      pinned: {},
+      now,
+      maxItems: 3,
+    });
+    // 按结束时间升序：sr-mid(1) → ys-soon(2) → ys-late(30)
+    expect(rows.map((row) => row.entry.id)).toEqual(["sr-mid", "ys-soon", "ys-late"]);
+    expect(rows.every((row) => !row.pinned)).toBe(true);
+  });
+
+  it("never takes entries from a game that is not displayed", () => {
+    const rows = buildTileRows({
+      groups,
+      displayGameIds: ["ys"],
+      pinned: {},
+      now,
+      maxItems: 5,
+    });
+    expect(rows.map((row) => row.entry.id)).toEqual(["ys-soon", "ys-late"]);
+  });
+
+  it("returns only pinned rows when nothing is displayed", () => {
+    const rows = buildTileRows({
+      groups,
+      displayGameIds: [],
+      pinned: { sr: ["sr-mid"] },
+      now,
+      maxItems: 5,
+    });
+    expect(rows.map((row) => row.entry.id)).toEqual(["sr-mid"]);
+    expect(rows[0]!.pinned).toBe(true);
+  });
+
+  it("keeps pinned rows whose game is not displayed", () => {
+    // 需求 3：取消勾选某个游戏，不该把它里面已固定的活动一起藏掉
+    const rows = buildTileRows({
+      groups,
+      displayGameIds: ["ys"],
+      pinned: { sr: ["sr-mid"] },
+      now,
+      maxItems: 5,
+    });
+    expect(rows.map((row) => row.entry.id)).toEqual(["sr-mid", "ys-soon", "ys-late"]);
+    expect(rows[0]!.pinned).toBe(true);
+  });
+
+  it("deduplicates a pinned entry out of the expiring section", () => {
+    const rows = buildTileRows({
+      groups,
+      displayGameIds: ["ys"],
+      pinned: { ys: ["ys-soon"] },
+      now,
+      maxItems: 5,
+    });
+    // 同一条不能既是固定行又出现在即将截止区
+    expect(rows.filter((row) => row.entry.id === "ys-soon")).toHaveLength(1);
+    expect(rows.map((row) => row.entry.id)).toEqual(["ys-soon", "ys-late"]);
+  });
+
+  it("flags urgent rows by the 3-day threshold", () => {
+    const rows = buildTileRows({
+      groups,
+      displayGameIds: ["ys", "sr"],
+      pinned: {},
+      now,
+      maxItems: 5,
+    });
+    const urgent = rows.filter((row) => row.urgent).map((row) => row.entry.id);
+    expect(urgent).toEqual(["sr-mid", "ys-soon"]);
+  });
+
+  it("does not flag an ended pinned row as urgent", () => {
+    const old = at("ys-old", -2);
+    const rows = buildTileRows({
+      groups: [{ gameId: "ys", entries: [old] }],
+      displayGameIds: ["ys"],
+      pinned: { ys: ["ys-old"] },
+      now,
+      maxItems: 5,
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.urgent).toBe(false);
+  });
+
+  it("reserves slots for pinned rows before filling the expiring section", () => {
+    const rows = buildTileRows({
+      groups,
+      displayGameIds: ["ys", "sr"],
+      pinned: { ys: ["ys-late"] },
+      now,
+      maxItems: 2,
+    });
+    // 先放固定项，剩下的 1 个槽位给最紧迫的
+    expect(rows.map((row) => row.entry.id)).toEqual(["ys-late", "sr-mid"]);
+  });
+
+  it("applies the category filter to the expiring section only", () => {
+    const rows = buildTileRows({
+      groups,
+      displayGameIds: ["ys", "sr"],
+      pinned: { ys: ["ys-late"] },
+      now,
+      maxItems: 5,
+      // 只留 sr
+      filter: (entry) => entry.id.startsWith("sr"),
+    });
+    // 固定项不受筛选影响；即将截止区只剩 sr 的
+    expect(rows.map((row) => row.entry.id)).toEqual(["ys-late", "sr-mid"]);
+  });
+
+  it("returns nothing when there is no data or no slot", () => {
+    expect(
+      buildTileRows({ groups: [], displayGameIds: ["ys"], pinned: {}, now, maxItems: 5 }),
+    ).toEqual([]);
+    expect(buildTileRows({ groups, displayGameIds: ["ys"], pinned: {}, now, maxItems: 0 })).toEqual(
+      [],
+    );
+  });
+});
+
+describe("requiredGameIds（需要取数的游戏）", () => {
+  it("includes displayed games plus games that only have pins", () => {
+    expect(requiredGameIds(["ys"], { sr: ["a"] })).toEqual(["ys", "sr"]);
+  });
+
+  it("does not duplicate a game that is both displayed and pinned", () => {
+    expect(requiredGameIds(["ys", "sr"], { ys: ["a"] })).toEqual(["ys", "sr"]);
+  });
+
+  it("handles the empty case", () => {
+    expect(requiredGameIds([], {})).toEqual([]);
+    expect(requiredGameIds([], { zzz: ["a"] })).toEqual(["zzz"]);
   });
 });
 
@@ -891,12 +1186,6 @@ describe("小部件数据读取", () => {
     expect(readGameId({})).toBe(DEFAULT_GAME_ID);
     expect(readGameId(undefined)).toBe(DEFAULT_GAME_ID);
     expect(readGameId({ gameId: "  " })).toBe(DEFAULT_GAME_ID);
-  });
-
-  it("reads pinned ids and ignores malformed entries", () => {
-    expect(readPinnedIds({ pinned: ["a", "b"] })).toEqual(["a", "b"]);
-    expect(readPinnedIds({ pinned: ["a", 1, null] })).toEqual(["a"]);
-    expect(readPinnedIds({})).toEqual([]);
   });
 
   it("reads view, preview and window settings with defaults", () => {
