@@ -704,28 +704,6 @@ html.light .desktop-shortcut-name {
   opacity: 1;
 }
 
-/* 展开手柄（支持弹窗的小部件） */
-.desktop-item-expand-handle {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  opacity: 0;
-  transition: opacity 0.2s;
-  padding: 3px;
-  border: none;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  color: white;
-  cursor: pointer;
-  z-index: 6;
-  pointer-events: auto;
-  line-height: 0;
-}
-
-.desktop-item:hover .desktop-item-expand-handle {
-  opacity: 1;
-}
-
 /* 自定义滚动条 - 圆角矩形风格 */
 ::-webkit-scrollbar {
   width: 6px;
@@ -1460,16 +1438,20 @@ html.dark .desktop-folder-panel,
   gap: 6px;
   color: var(--color-foreground);
   overflow: hidden;
-  /* 小部件内有输入框等控件，需要允许选中与编辑 */
-  user-select: text;
-  -webkit-user-select: text;
+  /* 整块可点击展开；内部控件会各自覆盖自己的光标 */
+  cursor: pointer;
 }
 
-/* 控件区域恢复文本选择，避免继承 body 的 user-select: none */
+/* 控件区域恢复文本选择与自己的光标，避免继承 body 的 user-select: none */
 .weather-widget input {
   user-select: text;
   -webkit-user-select: text;
   cursor: text;
+}
+
+.weather-widget-place,
+.weather-widget-refresh {
+  cursor: pointer;
 }
 
 .weather-widget-top {
@@ -1679,6 +1661,12 @@ html.dark .desktop-folder-panel,
   flex-direction: column;
   gap: 14px;
   color: var(--color-foreground);
+  /*
+   * 关键：min-width: 0 允许本列在弹窗内收窄。
+   * 缺了它，flex/grid 子项会被内容（24 个小时格）撑到内容宽度，
+   * 结果既没有可滚动空间（滚不动），又会横向溢出弹窗被裁掉。
+   */
+  min-width: 0;
 }
 
 .weather-forecast-bar {
@@ -1752,6 +1740,8 @@ html.dark .desktop-folder-panel,
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* 同上：让分节可以被弹窗约束宽度，内部才会真正出现滚动条 */
+  min-width: 0;
 }
 
 .weather-forecast-heading {
@@ -1761,12 +1751,17 @@ html.dark .desktop-folder-panel,
   color: var(--color-muted-foreground);
 }
 
-/* 逐小时：横向滚动 */
+/* 逐小时：独立横向滚动容器（滚轮上下由 JS 转为横滚） */
 .weather-hourly {
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  overflow-y: hidden;
   padding-bottom: 4px;
+  /* 宽度由父级约束，内容超出即出现横向滚动 */
+  min-width: 0;
+  /* 滚动到边界时不把滚动传递给外层 */
+  overscroll-behavior-x: contain;
 }
 
 .weather-hourly-item {
@@ -1805,11 +1800,20 @@ html.dark .desktop-folder-panel,
   line-height: 1.3;
 }
 
-/* 逐天：行式布局 */
+/* 逐天：独立纵向滚动容器，与逐小时的横滚互不干扰 */
 .weather-daily {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /*
+   * 限高用视口比例而不是硬编码像素，避免内容被弹窗裁掉；
+   * 溢出时由本容器自己纵向滚动。
+   */
+  max-height: 40vh;
+  overflow-y: auto;
+  /* 滚动到边界时不把滚动传递给外层弹窗 */
+  overscroll-behavior: contain;
+  min-width: 0;
 }
 
 .weather-daily-row {

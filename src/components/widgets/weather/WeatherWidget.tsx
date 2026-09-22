@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, Droplets, MapPin, RefreshCw, Wind } from "lucide-react";
 import { getCurrentLanguage, getMessage } from "@/lib/i18n";
 import {
+  displayPlaceName,
   fetchMyRegion,
   fetchWeather,
   formatTemperature,
   isWeatherStale,
   regionToCity,
-  snapshotPlaceLabel,
   weatherEmoji,
   type WeatherSnapshot,
 } from "@/components/widgets/weather/weather";
@@ -148,10 +148,16 @@ export function WeatherWidget({
   }, [city, draft, load]);
 
   const compact = containerWidth <= 150 || containerHeight <= 110;
-  const place = snapshotPlaceLabel(snapshot) || city;
+  // 显示用户设置的城市，未设置时才用接口返回的最细粒度地名
+  const place = displayPlaceName(city, snapshot);
 
   return (
-    <div className="weather-widget" style={{ padding: compact ? "6px" : "10px" }}>
+    <div
+      className="weather-widget"
+      // 非控件区域可点击展开预报（控件自身的点击不会冒泡到这里）
+      title={getMessage("widgetExpand", "展开详情")}
+      style={{ padding: compact ? "6px" : "10px" }}
+    >
       {/* 顶部：地点 + 刷新 */}
       <div className="weather-widget-top">
         {editing ? (

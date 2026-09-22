@@ -171,6 +171,61 @@ export function weatherEmoji(iconCode: unknown): string {
 }
 
 /**
+ * 天气现象文本 → emoji。
+ *
+ * 逐小时与逐天预报的响应里**不含** `weather_icon`（只有当前天气有），
+ * 所以这两处必须按文本映射，否则图标会全是问号。
+ * 顺序敏感：更具体的词（晴间多云、雨夹雪、大雪）必须排在通用词之前。
+ */
+const WEATHER_TEXT_EMOJI: ReadonlyArray<readonly [RegExp, string]> = [
+  [/晴间多云|partly\s*cloudy/i, "⛅"],
+  [/少云|mostly\s*clear/i, "🌤️"],
+  [/多云|cloudy/i, "⛅"],
+  [/晴|clear|sunny/i, "☀️"],
+  [/阴|overcast/i, "☁️"],
+  [/雷阵雨|雷暴|thunder/i, "⛈️"],
+  [/冰雹|hail/i, "🧊"],
+  [/冻雨|freezing\s*rain/i, "🧊"],
+  [/雨夹雪|sleet/i, "🌨️"],
+  [/暴雨|大暴雨|特大暴雨|rainstorm|torrential/i, "🌊"],
+  [/阵雨|shower/i, "🌦️"],
+  [/毛毛雨|drizzle/i, "🌦️"],
+  [/小雨|中雨|大雨|light\s*rain|moderate\s*rain|heavy\s*rain/i, "🌧️"],
+  [/暴雪|blizzard/i, "❄️"],
+  [/大雪|中雪|小雪|heavy\s*snow|moderate\s*snow|light\s*snow/i, "🌨️"],
+  [/雪|snow/i, "❄️"],
+  [/沙尘暴|sandstorm/i, "🏜️"],
+  [/扬沙|浮尘|沙尘|dust|sand/i, "💨"],
+  [/强浓雾|浓雾|大雾|特强浓雾|fog/i, "🌫️"],
+  [/霾|haze|smog/i, "😶‍🌫️"],
+  [/雨|rain/i, "🌧️"],
+  [/热浪|酷热|高温|hot|heat/i, "🥵"],
+  [/寒潮|严寒|寒冷|低温|cold|freez/i, "🥶"],
+  [/台风|typhoon/i, "🌀"],
+  [/龙卷风|tornado/i, "🌪️"],
+];
+
+/** 按天气文本猜一个 emoji；无法识别时返回空串。 */
+export function weatherTextEmoji(weather: unknown): string {
+  if (typeof weather !== "string" || weather.trim() === "") return "";
+  const text = weather.trim();
+  for (const [pattern, emoji] of WEATHER_TEXT_EMOJI) {
+    if (pattern.test(text)) return emoji;
+  }
+  return "";
+}
+
+/**
+ * 取天气图标：优先用接口给的图标代码，缺省时按天气文本兜底。
+ * 逐小时/逐天预报只有文本，这是它们能正确显示图标的关键。
+ */
+export function weatherGlyph(iconCode: unknown, weatherText: unknown): string {
+  const byCode = weatherEmoji(iconCode);
+  if (byCode !== "❓") return byCode;
+  return weatherTextEmoji(weatherText) || "❓";
+}
+
+/**
  * 解析 IP 定位返回的 `region` 字段（形如 "中国 重庆 重庆" / "中国 广东 深圳"）。
  *
  * 只取到"大行政区"一级：省份与城市。城市缺省时回落到省份，
@@ -271,10 +326,30 @@ export function formatTemperature(value: number): string {
   return `${Math.round(value)}°`;
 }
 
-/** 由快照拼出地点显示名（城市优先，回落省份）。 */
+/**
+ * 由快照拼出地点名：取最细粒度的一级（区县 > 城市 > 省份）。
+ *
+ * 接口在按城市名查询时只回上层名（如查「綦江」可能回「重庆城区」），
+ * 而按 IP 查询时才会带上 `district`。所以这里优先用 district。
+ */
 export function snapshotPlaceLabel(snapshot: WeatherSnapshot | undefined): string {
   if (!snapshot) return "";
-  return snapshot.city || snapshot.province || "";
+  return snapshot.district || snapshot.city || snapshot.province || "";
+}
+
+/**
+ * 磁贴与弹窗共用的地点显示名。
+ *
+ * 优先显示用户显式设置的城市（与输入一致，避免磁贴与弹窗各显示一个名字），
+ * 未设置时才回落到接口返回的最细粒度地名。
+ */
+export function displayPlaceName(
+  configuredCity: string | undefined,
+  snapshot: WeatherSnapshot | undefined,
+): string {
+  const configured = configuredCity?.trim();
+  if (configured) return configured;
+  return snapshotPlaceLabel(snapshot);
 }
 
 /** 逐小时预报的一个时间点。 */

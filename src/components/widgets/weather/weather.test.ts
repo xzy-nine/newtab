@@ -4,6 +4,7 @@ import {
   WEATHER_TTL_MS,
   buildForecastUrl,
   buildWeatherUrl,
+  displayPlaceName,
   forecastCacheKey,
   formatTemperature,
   hasCachedForecast,
@@ -17,6 +18,8 @@ import {
   snapshotPlaceLabel,
   timeLabel,
   weatherEmoji,
+  weatherGlyph,
+  weatherTextEmoji,
 } from "./weather";
 
 describe("weatherEmoji", () => {
@@ -197,11 +200,79 @@ describe("formatTemperature / snapshotPlaceLabel", () => {
     expect(formatTemperature(0)).toBe("0°");
   });
 
-  it("labels a snapshot by city, falling back to province", () => {
+  it("labels a snapshot by the finest available name", () => {
     const base = normalizeWeatherResponse({ weather: "晴", temperature: 1 })!;
+    // 有区县时优先显示区县（按 IP 查询才会带上）
+    expect(
+      snapshotPlaceLabel({ ...base, district: "綦江区", city: "重庆城区", province: "重庆市" }),
+    ).toBe("綦江区");
     expect(snapshotPlaceLabel({ ...base, city: "北京", province: "北京市" })).toBe("北京");
     expect(snapshotPlaceLabel({ ...base, city: "", province: "北京市" })).toBe("北京市");
     expect(snapshotPlaceLabel(undefined)).toBe("");
+  });
+});
+
+describe("displayPlaceName", () => {
+  const base = normalizeWeatherResponse({ weather: "晴", temperature: 1 })!;
+
+  it("prefers the city the user configured so tile and popup agree", () => {
+    // 用户设置了「綦江」，接口回的是上层名「重庆城区」——应显示用户设置的名字
+    expect(displayPlaceName("綦江", { ...base, city: "重庆城区", province: "重庆市" })).toBe(
+      "綦江",
+    );
+  });
+
+  it("falls back to the API name when no city is configured", () => {
+    expect(displayPlaceName("", { ...base, district: "綦江区", city: "重庆城区" })).toBe("綦江区");
+    expect(displayPlaceName(undefined, { ...base, city: "北京" })).toBe("北京");
+  });
+
+  it("ignores blank configured values", () => {
+    expect(displayPlaceName("   ", { ...base, city: "北京" })).toBe("北京");
+  });
+
+  it("returns an empty string when nothing is available", () => {
+    expect(displayPlaceName("", undefined)).toBe("");
+  });
+});
+
+describe("weatherTextEmoji / weatherGlyph", () => {
+  it("maps weather text to an emoji when no icon code exists", () => {
+    expect(weatherTextEmoji("晴")).toBe("☀️");
+    expect(weatherTextEmoji("多云")).toBe("⛅");
+    expect(weatherTextEmoji("阴")).toBe("☁️");
+    expect(weatherTextEmoji("小雨")).toBe("🌧️");
+    expect(weatherTextEmoji("雷阵雨")).toBe("⛈️");
+    expect(weatherTextEmoji("小雪")).toBe("🌨️");
+  });
+
+  it("prefers the more specific phrase", () => {
+    // 「晴间多云」不能命中「晴」
+    expect(weatherTextEmoji("晴间多云")).toBe("⛅");
+    // 「雨夹雪」不能命中「雨」
+    expect(weatherTextEmoji("雨夹雪")).toBe("🌨️");
+  });
+
+  it("returns an empty string for unknown or empty text", () => {
+    expect(weatherTextEmoji("")).toBe("");
+    expect(weatherTextEmoji("未知现象")).toBe("");
+    expect(weatherTextEmoji(undefined)).toBe("");
+  });
+
+  it("uses the icon code when present", () => {
+    expect(weatherGlyph("100", "小雨")).toBe("☀️");
+    expect(weatherGlyph(305, "晴")).toBe("🌧️");
+  });
+
+  it("falls back to text for the forecast sections that omit weather_icon", () => {
+    // 逐小时/逐天响应里没有 weather_icon，这正是此前图标全为问号的原因
+    expect(weatherGlyph(undefined, "多云")).toBe("⛅");
+    expect(weatherGlyph("", "中雨")).toBe("🌧️");
+  });
+
+  it("still yields a placeholder when neither is usable", () => {
+    expect(weatherGlyph(undefined, "未知现象")).toBe("❓");
+    expect(weatherGlyph(undefined, undefined)).toBe("❓");
   });
 });
 

@@ -78,6 +78,46 @@ describe("WeatherForecastPopup", () => {
     expect(screen.queryByText("星期四")).not.toBeNull();
   });
 
+  it("renders real weather icons even though forecast rows omit weather_icon", async () => {
+    // 逐小时/逐天的响应里只有天气文本，没有 weather_icon
+    fetchMock.mockResolvedValue(
+      ok({
+        hourly_forecast: [
+          { time: "2026-02-19T17:00:00+0900", temperature: 8, weather: "多云" },
+          { time: "2026-02-19T18:00:00+0900", temperature: 7, weather: "小雨" },
+        ],
+        forecast: [
+          { date: "2026-02-19", week: "星期四", temp_max: 14, temp_min: -1, weather_day: "晴" },
+          { date: "2026-02-20", week: "星期五", temp_max: 12, temp_min: -2, weather_day: "小雪" },
+        ],
+      }),
+    );
+
+    render(<WeatherForecastPopup data={{ city: "北京" }} />);
+    await waitFor(() => expect(screen.queryByText("17:00")).not.toBeNull());
+
+    // 必须有实际图标，不能是问号占位
+    expect(screen.queryByText("⛅")).not.toBeNull();
+    expect(screen.queryByText("🌧️")).not.toBeNull();
+    expect(screen.queryByText("☀️")).not.toBeNull();
+    expect(screen.queryByText("🌨️")).not.toBeNull();
+    expect(screen.queryByText("❓")).toBeNull();
+  });
+
+  it("keeps the hourly and daily sections in separate scroll containers", async () => {
+    fetchMock.mockResolvedValue(ok(FORECAST));
+    const { container } = render(<WeatherForecastPopup data={{ city: "北京" }} />);
+    await waitFor(() => expect(screen.queryByText("17:00")).not.toBeNull());
+
+    const hourly = container.querySelector(".weather-hourly");
+    const daily = container.querySelector(".weather-daily");
+    expect(hourly).not.toBeNull();
+    expect(daily).not.toBeNull();
+    // 两者是各自独立的容器，不互相嵌套
+    expect(hourly!.contains(daily!)).toBe(false);
+    expect(daily!.contains(hourly!)).toBe(false);
+  });
+
   it("serves a cached forecast without any network request", async () => {
     seedCache("北京");
 

@@ -22,7 +22,11 @@ export function WidgetPopupHost({ item, onClose, onDataChange }: WidgetPopupHost
 
   return (
     <Dialog open={Boolean(item && Content)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className={popup?.contentClassName ?? "max-w-lg max-h-[80vh] overflow-y-auto"}>
+      {/*
+        各分节自己负责滚动（逐小时横滚、逐天竖滚），这里只约束整体高度；
+        不加 overflow-hidden，否则内容一旦横向溢出会被直接裁掉看不见。
+      */}
+      <DialogContent className={popup?.contentClassName ?? "max-w-lg max-h-[80vh]"}>
         <DialogTitle>{popup?.title ?? definition?.meta.name ?? ""}</DialogTitle>
         {item &&
           Content && (

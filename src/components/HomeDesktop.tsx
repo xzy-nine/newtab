@@ -186,11 +186,18 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
   }, [replaceItems]);
 
   const handleItemClick = useCallback((item: DesktopItem) => {
-    if (isShortcutItem(item)) openUrl(item.url);
-    // 文件夹：点击落在书签格子上时，面板内部已 stopPropagation 并直接打开；
-    // 能冒泡到这里说明点的是图标/标题/空白处 → 打开文件夹弹窗。
-    else if (isFolderItem(item)) {
+    if (isShortcutItem(item)) {
+      openUrl(item.url);
+      return;
+    }
+    // 文件夹：书签格子内部已 stopPropagation，能到这里说明点的是图标/标题/空白
+    if (isFolderItem(item)) {
       setPopupFolderId(item.folderId);
+      return;
+    }
+    // 带弹窗的小部件：点击非控件区域即展开（与拖动排序互不冲突）
+    if (isWidgetItem(item) && hasWidgetPopup(item.widgetType)) {
+      setExpandedWidget(item);
     }
   }, []);
 
@@ -255,8 +262,7 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
       }
 
       if (isWidgetItem(item)) {
-        // 支持展开的小部件（如天气）在右键菜单里也给一个入口，
-        // 与磁贴右上角的按钮等价。
+        // 展开也可从右键菜单进入（左键点击非控件区域是主入口）
         if (hasWidgetPopup(item.widgetType)) {
           menuItems.push({
             label: getMessage("widgetExpand", "展开详情"),
@@ -383,7 +389,6 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
           onItemResizeEnd={handleResizeEnd}
           onOpenBookmark={openUrl}
           onOpenFolderPopup={setPopupFolderId}
-          onExpandWidget={setExpandedWidget}
           emptyState={emptyState}
           className="home-desktop"
         >

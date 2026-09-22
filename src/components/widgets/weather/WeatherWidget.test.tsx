@@ -67,8 +67,8 @@ describe("WeatherWidget", () => {
     expect(weatherUrl).toContain("/misc/weather");
     expect(weatherUrl).toContain(encodeURIComponent("深圳"));
 
-    // 展示地点与天气
-    expect(screen.queryByText("深圳市")).not.toBeNull();
+    // 展示地点与天气：地点显示定位/设置得到的城市名，而非接口回显的上层名
+    expect(screen.queryByText("深圳")).not.toBeNull();
     expect(screen.queryByText("多云")).not.toBeNull();
   });
 
@@ -122,6 +122,48 @@ describe("WeatherWidget", () => {
     const weatherUrl = String(fetchMock.mock.calls[1]![0]);
     expect(weatherUrl).toContain("/misc/weather");
     expect(weatherUrl).not.toContain("city=");
+  });
+
+  it("shows the configured city rather than the API's coarser echo", async () => {
+    // 用户设置「綦江」，接口按城市名查询只回上层名「重庆城区」
+    fetchMock.mockResolvedValueOnce(
+      mockFetchOnce({
+        province: "重庆市",
+        city: "重庆城区",
+        weather: "阴",
+        weather_icon: "104",
+        temperature: 21,
+      }),
+    );
+
+    render(<WeatherWidget data={{ city: "綦江" }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("21°")).not.toBeNull();
+    });
+    // 磁贴显示用户设置的名字，与展开弹窗保持一致
+    expect(screen.queryByText("綦江")).not.toBeNull();
+    expect(screen.queryByText("重庆城区")).toBeNull();
+  });
+
+  it("falls back to the finest API name when no city is configured", async () => {
+    // 无已存城市：先 IP 定位（这里返回空 region 走接口自身定位），再查天气
+    fetchMock.mockResolvedValue(
+      mockFetchOnce({
+        province: "重庆市",
+        city: "重庆城区",
+        district: "綦江区",
+        weather: "阴",
+        weather_icon: "104",
+        temperature: 21,
+      }),
+    );
+
+    render(<WeatherWidget />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("綦江区")).not.toBeNull();
+    });
   });
 
   it("shows a friendly message when the city is not found", async () => {
