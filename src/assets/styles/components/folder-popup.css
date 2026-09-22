@@ -1,0 +1,43 @@
+/*
+ * 文件夹弹窗网格
+ *
+ * 由 src/assets/global.css 第 1125-1162 行原样拆分而来（未改动任何规则与顺序）。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+/* ===== 文件夹弹窗（点击文件夹图标） ===== */
+.folder-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+}
+
+.folder-popup-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.folder-popup-item:hover {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+}
+
+.folder-popup-item-name {
+  font-size: 11px;
+  line-height: 1.3;
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+  /* 只在水平方向省略，避免纵向裁切文字 */
+  overflow-x: hidden;
+  overflow-y: visible;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

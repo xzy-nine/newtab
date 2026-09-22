@@ -1,0 +1,820 @@
+/*
+ * 米哈游活动小部件 + 展开弹窗（筛选 / 甘特图 / 日程列表）
+ *
+ * 由 src/assets/global.css 第 1900-2713 行原样拆分而来（未改动任何规则与顺序）。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+/* ===== 米哈游活动小部件（磁贴） ===== */
+.activity-widget {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  gap: 6px;
+  color: var(--color-foreground);
+  overflow: hidden;
+  /* 整块可点击展开；内部控件各自覆盖光标 */
+  cursor: pointer;
+}
+
+.activity-widget-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.activity-widget-game {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.activity-widget-game-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.activity-widget-game-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.activity-widget-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.activity-widget-refresh:hover {
+  background: var(--widget-btn-bg, rgba(128, 128, 128, 0.2));
+}
+
+.activity-widget-refresh-icon {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+}
+
+.activity-widget-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.activity-widget-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 5px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+  min-width: 0;
+  /* 左侧状态色条 */
+  border-left: 2px solid transparent;
+  background: color-mix(in oklch, var(--color-foreground) 5%, transparent);
+}
+
+/*
+ * 即将截止（距结束 ≤ 3 天）：整行标红。
+ *
+ * 用左侧色条 + 文字色 + 极淡底色三种信号叠加而不是只换底色——
+ * 磁贴很小，单靠浅底色在亮/暗主题下都不够醒目。
+ *
+ * 注意顺序：本组规则必须排在下面 .is-ongoing / .is-upcoming / .is-ended 之后，
+ * 否则"进行中且即将截止"的行左色条会被状态色覆盖回绿色（同特异性、后者胜）。
+ */
+.activity-widget-item.is-ongoing {
+  border-left-color: #34d399;
+}
+
+.activity-widget-item.is-upcoming {
+  border-left-color: #60a5fa;
+}
+
+.activity-widget-item.is-ended {
+  border-left-color: rgba(128, 128, 128, 0.5);
+  opacity: 0.6;
+}
+
+.activity-widget-item.is-urgent {
+  border-left-color: #ef4444;
+  background: color-mix(in oklch, #ef4444 14%, transparent);
+  /* 覆盖 .is-ended 的 0.6：已结束但仍被固定的项若临近边界也要看清 */
+  opacity: 1;
+}
+
+.activity-widget-item.is-urgent .activity-widget-title {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.activity-widget-item.is-urgent .activity-widget-remaining.is-urgent {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/*
+ * 表头的紧急计数徽标。
+ * 让"磁贴里还有几条要到期"在不逐行阅读的情况下也能看到。
+ */
+.activity-widget-urgent-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/*
+ * 游戏来源标签。
+ * 磁贴跨游戏聚合后每条必须标出属于哪个游戏；用简称保证不挤占标题宽度，
+ * 并用游戏专属色相区分，扫一眼即可归类。
+ */
+.activity-widget-game-tag {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+  background: color-mix(in oklch, currentColor 16%, transparent);
+}
+
+.activity-widget-game-tag.game-ys {
+  color: #f59e0b;
+}
+
+.activity-widget-game-tag.game-sr {
+  color: #8b5cf6;
+}
+
+.activity-widget-game-tag.game-zzz {
+  color: #06b6d4;
+}
+
+/*
+ * 固定行：与"即将截止"区分开，即使同一个游戏也可能两种都有。
+ *
+ * `:not(.is-urgent)` 是必需的：两者特异性相同，若不在选择器里排除，
+ * 后出现的 .is-urgent 红底也不会被覆盖——但反过来一旦顺序调整就会出错，
+ * 这里直接用排除法把"固定且紧急"的红色锁死。
+ */
+.activity-widget-item.is-pinned-row:not(.is-urgent) {
+  background: color-mix(in oklch, var(--color-foreground) 9%, transparent);
+}
+
+.activity-widget-pin-icon {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.activity-widget-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-widget-remaining {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted-foreground);
+}
+
+.activity-widget-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  min-height: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.activity-widget-state.is-error {
+  color: #f87171;
+  opacity: 0.9;
+}
+
+.activity-widget-state-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+/* ===== 米哈游活动展开弹窗（筛选 / 甘特图 / 日程列表） ===== */
+.activity-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.activity-calendar-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-calendar-games {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--color-foreground) 7%, transparent);
+}
+
+.activity-calendar-game-btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.activity-calendar-game-btn.is-active {
+  background: color-mix(in oklch, var(--color-foreground) 14%, transparent);
+  color: var(--color-foreground);
+}
+
+.activity-calendar-views {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--color-foreground) 7%, transparent);
+}
+
+.activity-calendar-view-btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.activity-calendar-view-btn.is-active {
+  background: color-mix(in oklch, var(--color-foreground) 14%, transparent);
+  color: var(--color-foreground);
+}
+
+.activity-calendar-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.activity-calendar-refresh:hover {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+}
+
+.activity-calendar-refresh:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.activity-calendar-refresh-icon {
+  width: 13px;
+  height: 13px;
+  opacity: 0.75;
+}
+
+.activity-calendar-refresh-icon.is-spinning,
+.activity-widget-refresh-icon.is-spinning {
+  animation: weather-spin 1s linear infinite;
+}
+
+/*
+ * 磁贴外显设置区。
+ * 与上面的「当前查看的游戏」有意做成外观不同的独立卡片，
+ * 提醒用户这是两块互不影响的设置（需求 4）。
+ */
+.activity-calendar-display {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in oklch, var(--color-foreground) 18%, transparent);
+  font-size: 11px;
+}
+
+.activity-calendar-display-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-calendar-display-title {
+  font-weight: 600;
+}
+
+.activity-calendar-display-hint {
+  color: var(--color-muted-foreground);
+  font-size: 10px;
+}
+
+.activity-calendar-display-games {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+}
+
+.activity-calendar-display-game {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* 已固定条数：即使该游戏未勾选外显也会显示，提示"它仍在磁贴上" */
+.activity-calendar-display-pinned {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+  color: var(--color-muted-foreground);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-calendar-display-pin-icon {
+  width: 9px;
+  height: 9px;
+}
+
+/* 筛选区：父级 + 子级两级 */
+.activity-calendar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--color-foreground) 5%, transparent);
+  font-size: 11px;
+}
+
+.activity-calendar-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.activity-calendar-filter-parent,
+.activity-calendar-filter-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.activity-calendar-filter-children {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  /* 子级缩进，视觉上体现从属于父级 */
+  padding-left: 18px;
+  color: var(--color-muted-foreground);
+}
+
+.activity-calendar-extra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.activity-calendar-window {
+  display: flex;
+  gap: 2px;
+}
+
+.activity-calendar-window-btn {
+  padding: 2px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.activity-calendar-window-btn.is-active {
+  background: color-mix(in oklch, var(--color-foreground) 14%, transparent);
+  color: var(--color-foreground);
+}
+
+.activity-calendar-preview-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.activity-calendar-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 0;
+  font-size: 12px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.activity-calendar-state.is-error {
+  color: #f87171;
+  opacity: 0.9;
+}
+
+.activity-calendar-state-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* ===== 甘特图（真正的时间轴：周分块 + 今天线 + 泳道条） ===== */
+.activity-gantt {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  max-height: 50vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* 横轴：整周分块 */
+.activity-gantt-head {
+  position: relative;
+  flex-shrink: 0;
+  height: 34px;
+  /* 与内容区同宽：两者都填满容器，百分比才对得齐 */
+  min-width: 0;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-foreground) 14%, transparent);
+}
+
+.activity-gantt-week {
+  position: absolute;
+  top: 0;
+  /* inset 会与 left/width 冲突，这里只用右内边距做分隔留白 */
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding-left: 8px;
+  border-right: 1px solid color-mix(in oklch, var(--color-foreground) 14%, transparent);
+  overflow: hidden;
+}
+
+.activity-gantt-week-index {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* 被窗口边界裁出的碎片块：放不下文字，隐藏以免溢出成"7/2"这种断片 */
+.activity-gantt-week.is-narrow .activity-gantt-week-index,
+.activity-gantt-week.is-narrow .activity-gantt-week-range {
+  display: none;
+}
+
+.activity-gantt-week-range {
+  font-size: 10px;
+  color: var(--color-muted-foreground);
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 内容区：分隔线、今天线、泳道都以此为坐标原点 */
+.activity-gantt-body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.activity-gantt-gridline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+  pointer-events: none;
+}
+
+/* 今天：贯穿整块时间轴的竖线（相对 .activity-gantt-grid 定位） */
+.activity-gantt-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ef4444;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.activity-gantt-today-label {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 时间轴网格：今天条 + 周标题 + 泳道共用一个定位上下文 */
+.activity-gantt-grid {
+  position: relative;
+  min-width: 0;
+}
+
+/* 今天标记条：给贯穿线的头部标签留出独立空间，避免压住周标题 */
+.activity-gantt-today-strip {
+  position: relative;
+  flex-shrink: 0;
+  height: 26px;
+  min-width: 0;
+}
+
+.activity-gantt-lanes {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+/* 每条活动就是一根真实时间跨度的条 */
+.activity-gantt-bar {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 28px;
+  /* 泳道高 34px，上下各留 3px 间隙 */
+  margin-top: 3px;
+  padding: 0 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  color: #1f1300;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+  /* 最小宽度由 JS 保证（MIN_BAR_WIDTH_PCT），这里只兜底 */
+  min-width: 3px;
+}
+
+.activity-gantt-bar.ongoing {
+  background: linear-gradient(180deg, #ffb43f, #ff9e1f);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.12);
+}
+
+.activity-gantt-bar.upcoming {
+  background: linear-gradient(180deg, #ffd27a, #ffc24d);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.1);
+}
+
+.activity-gantt-bar.ended {
+  background: rgba(128, 128, 128, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 被窗口截断的一侧压平并加淡出，提示"还延伸到窗口之外" */
+.activity-gantt-bar.is-clipped-start {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+
+.activity-gantt-bar.is-clipped-end {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+
+.activity-gantt-bar-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 过窄的条（长窗口里几天的活动）：只留色块，文字与按钮都放不下 */
+.activity-gantt-bar.is-narrow {
+  padding: 0;
+}
+
+.activity-gantt-bar.is-narrow .activity-gantt-bar-title {
+  display: none;
+}
+
+/* 极短事件（前瞻为 1 分钟）：只画起点标记，宽度为 0 的条不可见 */
+.activity-gantt-bar.is-point {
+  width: 10px;
+  min-width: 10px;
+  /* 以起点为中心偏移一半，让"起点"落在正确位置 */
+  margin-left: -5px;
+  padding: 0;
+  border-radius: 3px;
+  background: #ef4444;
+}
+
+.activity-gantt-bar.is-point .activity-gantt-bar-title,
+.activity-gantt-bar.is-point .activity-gantt-pin {
+  display: none;
+}
+
+.activity-gantt-pin,
+.activity-list-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.45;
+}
+
+.activity-gantt-pin:hover,
+.activity-list-pin:hover {
+  opacity: 0.9;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.activity-gantt-pin.is-pinned,
+.activity-list-pin.is-pinned {
+  opacity: 1;
+}
+
+.activity-gantt-pin-icon,
+.activity-list-pin-icon {
+  width: 11px;
+  height: 11px;
+}
+
+/* 纯日程列表 */
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 46vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-width: 0;
+}
+
+.activity-list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.activity-list-row:hover {
+  background: color-mix(in oklch, var(--color-foreground) 8%, transparent);
+}
+
+.activity-list-status {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.activity-list-status.ongoing {
+  color: #34d399;
+  background: color-mix(in oklch, #34d399 18%, transparent);
+}
+
+.activity-list-status.upcoming {
+  color: #60a5fa;
+  background: color-mix(in oklch, #60a5fa 18%, transparent);
+}
+
+.activity-list-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-list-kind {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--color-muted-foreground);
+}
+
+.activity-list-remaining {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted-foreground);
+  min-width: 56px;
+  text-align: right;
+}
+
+.activity-list-link {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--color-muted-foreground);
+}
+
+.activity-list-link:hover {
+  color: var(--color-foreground);
+}
+
+.activity-list-link-icon {
+  width: 12px;
+  height: 12px;
+}

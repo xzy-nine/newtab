@@ -36,6 +36,13 @@ lint → typecheck → test → build
 ```
 src/
 ├── entrypoints/       # newtab, sidepanel, background
+├── assets/
+│   ├── global.css     # 全局样式入口，只转发到 styles/index.css
+│   └── styles/        # 分层样式（index.css 是唯一聚合入口）
+│       ├── foundation/  # theme(设计令牌) / glass(玻璃) / base / dark
+│       ├── desktop/     # surface / folder-panel / home
+│       ├── components/  # dock / dock-layer / folder-tree / folder-popup
+│       └── widgets/     # clock / weather / activity
 ├── components/
 │   ├── ui/            # shadcn
 │   └── widgets/       # 每个小部件一个子目录
@@ -62,6 +69,7 @@ src/
 - **Bookmark Management**: `useBookmarkFolders` hook → 书签文件夹树和固定功能
 - **Theme System**: `useTheme` hook → 亮色/暗色/系统主题切换
 - **Desktop Grid**: `useDesktopGrid` hook → 桌面图标网格布局
+- **Styles**: `assets/global.css` 仅转发 `assets/styles/index.css`；层级文件的 `@import` 顺序**即层叠优先级**，必须沿用原单文件书写顺序（已非按目录分组），重排会静默改变样式。改动后请比对构建产物 CSS 是否与改动前一致。
 
 ## 关键模式
 

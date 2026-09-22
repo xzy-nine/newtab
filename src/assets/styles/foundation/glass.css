@@ -1,0 +1,99 @@
+/*
+ * 玻璃拟态：xb-glass 系列 + data-glass 浮层 + 文件夹按钮栏
+ *
+ * 由 src/assets/global.css 第 363-456 行原样拆分而来（未改动任何规则与顺序）。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+/* 玻璃效果 */
+.xb-glass {
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+}
+
+.xb-glass-card {
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+  border: 1px solid rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+.xb-glass-popover {
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+  border: 1px solid rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.15));
+}
+
+.dark .xb-glass-popover {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+.dark .xb-glass {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+}
+
+.dark .xb-glass-card {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* 玻璃效果 CSS 变量默认值 */
+  --xb-glass-opacity: 0.8;
+
+  /*
+   * 桌面磁贴的统一高度基准（文件夹行与小部件行等高）。
+   * 单一来源是 TS：src/lib/widget-layout.ts 的 WIDGET_TILE_HEIGHT，
+   * 两处必须一致；桌面小部件磁贴与文件夹面板都引用它，避免行与行高度漂移。
+   */
+  --desktop-tile-height: 150px;
+}
+
+/* data-glass 属性选择器 - 浮动组件玻璃效果 */
+:root[data-glass] [data-slot="dialog-content"] {
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+  border-color: rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+:root[data-glass] [data-slot="dialog-overlay"] {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+:root[data-glass] [data-slot="select-content"] {
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+  border-color: rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.15));
+}
+
+:root[data-glass] .xb-glass-popover {
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+}
+
+/* data-glass + dark 同时存在时切换为深色 */
+:root.dark[data-glass] [data-slot="dialog-content"] {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+:root.dark[data-glass] [data-slot="select-content"] {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+:root.dark[data-glass] .xb-glass-popover {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+}
+
+/* 文件夹按钮栏背景块 */
+.xb-folder-bar {
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+  border: 1px solid rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.08));
+  border-radius: 10px;
+  padding: 4px 8px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dark .xb-folder-bar {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.08));
+}

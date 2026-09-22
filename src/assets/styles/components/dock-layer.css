@@ -1,0 +1,285 @@
+/*
+ * Dock 文件夹浮层（左树右书签）+ 添加菜单
+ *
+ * 由 src/assets/global.css 第 1163-1442 行原样拆分而来（未改动任何规则与顺序）。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+/* ===== Dock 文件夹浮层（左树 + 右书签） ===== */
+.dock-layer {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: 70;
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(480px, calc(100vh - 160px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.dock-layer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-border) 70%, transparent);
+  color: var(--color-foreground);
+}
+
+.dock-layer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dock-layer-close:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+  color: var(--color-foreground);
+}
+
+.dock-layer-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+}
+
+.dock-layer-tree {
+  width: 220px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 6px 0;
+  border-right: 1px solid color-mix(in oklch, var(--color-border) 70%, transparent);
+}
+
+.dock-layer-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dock-layer-content-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+  color: var(--color-foreground);
+}
+
+.dock-layer-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in oklch, var(--color-border) 80%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.dock-layer-pin:hover {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+  color: var(--color-foreground);
+}
+
+.dock-layer-pin.is-pinned {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: var(--color-foreground);
+}
+
+/* 右侧头部的工具按钮（全选/取消全选） */
+.dock-layer-tool {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.dock-layer-tool:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+  color: var(--color-foreground);
+}
+
+/* 批量操作条 */
+.dock-layer-bulk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+  background: color-mix(in oklch, var(--color-foreground) 6%, transparent);
+}
+
+.dock-layer-bulk-count {
+  font-size: 11px;
+  color: var(--color-muted-foreground);
+}
+
+.dock-layer-bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in oklch, var(--color-border) 80%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-foreground);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.dock-layer-bulk-btn:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+}
+
+.dock-layer-bulk-btn.is-primary {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.dock-layer-bulk-btn.is-primary:hover {
+  background: #2563eb;
+}
+
+.dock-layer-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 2px;
+}
+
+.dock-layer-bookmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-foreground);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.dock-layer-bookmark:hover {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+}
+
+/* 多选中的书签 */
+.dock-layer-bookmark.is-selected {
+  background: rgba(59, 130, 246, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.5);
+}
+
+/* 已在主桌面上的书签标记 */
+.dock-layer-bookmark-pin {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #60a5fa;
+}
+
+.dock-layer-bookmark .desktop-shortcut-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.dock-layer-bookmark .desktop-shortcut-letter {
+  font-size: 10px;
+}
+
+.dock-layer-bookmark-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-layer-hint {
+  margin: auto;
+  padding: 24px 16px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--color-muted-foreground);
+}
+
+/* ===== Dock 上方的"添加"菜单 ===== */
+.dock-menu {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: 70;
+  min-width: 160px;
+  padding: 4px;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dock-menu-item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-foreground);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dock-menu-item:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+}

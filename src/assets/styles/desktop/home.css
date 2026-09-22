@@ -1,0 +1,10 @@
+/*
+ * 主桌面容器微调
+ *
+ * 由 src/assets/global.css 第 1443-1447 行原样拆分而来（未改动任何规则与顺序）。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+/* 主桌面：稍微降低玻璃遮挡，突出图标 */
+.home-desktop {
+  border-radius: 12px;
+}

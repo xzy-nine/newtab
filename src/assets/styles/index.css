@@ -1,0 +1,26 @@
+/*
+ * 全局样式层级清单（唯一入口）。
+ *
+ * global.css 只导入本文件；各层级样式按目录归类（foundation / desktop / components / widgets）。
+ * ⚠️ 导入顺序 = 层叠优先级：下面严格沿用拆分前单文件的书写顺序，
+ *    并未按目录重新分组（例如 clock 仍排在 theme 之前、home 仍排在 dock-layer 之后）。
+ *    重排会静默改变样式结果——如需调整请以构建产物 CSS 逐字节比对为准。
+ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import "./widgets/clock.css"; /* 01 原第 3-332 行 · 数码管时钟（段码 + 小数点闪烁 + 暗色泛光） */
+@import "./foundation/theme.css"; /* 02 原第 333-362 行 · 设计令牌：Tailwind @theme（颜色 / 字体 / 圆角） */
+@import "./foundation/glass.css"; /* 03 原第 363-456 行 · 玻璃拟态：xb-glass 系列 + data-glass 浮层 + 文件夹按钮栏 */
+@import "./foundation/base.css"; /* 04 原第 457-479 行 · 页面基础：html / body / img（含 --desktop-tile-height 基准） */
+@import "./foundation/dark.css"; /* 05 原第 480-497 行 · 暗色主题令牌（html.dark） */
+@import "./desktop/surface.css"; /* 06 原第 498-752 行 · 桌面容器：暗色覆盖 + 瀑布流 + 桌面项 + 快捷方式 + 磁贴 + 分页 + 手柄 + 滚动条 */
+@import "./components/folder-tree.css"; /* 07 原第 753-853 行 · 文件夹选择器（层级树 + 固定态） */
+@import "./components/dock.css"; /* 08 原第 854-943 行 · Dock 容器与按钮 */
+@import "./desktop/folder-panel.css"; /* 09 原第 944-1124 行 · 桌面文件夹图标、内容面板（1x1 预览 / 1xN 展开） */
+@import "./components/folder-popup.css"; /* 10 原第 1125-1162 行 · 文件夹弹窗网格 */
+@import "./components/dock-layer.css"; /* 11 原第 1163-1442 行 · Dock 文件夹浮层（左树右书签）+ 添加菜单 */
+@import "./desktop/home.css"; /* 12 原第 1443-1447 行 · 主桌面容器微调 */
+@import "./widgets/weather.css"; /* 13 原第 1448-1899 行 · 天气小部件 + 展开弹窗（逐小时 / 逐天） */
+@import "./widgets/activity.css"; /* 14 原第 1900-2713 行 · 米哈游活动小部件 + 展开弹窗（筛选 / 甘特图 / 日程列表） */

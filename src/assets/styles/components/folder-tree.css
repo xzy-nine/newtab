@@ -1,0 +1,106 @@
+/*
+ * 文件夹选择器（层级树 + 固定态）
+ *
+ * 由 src/assets/global.css 第 753-853 行原样拆分而来（未改动任何规则与顺序）。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+/* 文件夹选择器 - 层级树 */
+.folder-picker {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.folder-tree-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.folder-tree-item-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.folder-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  cursor: default;
+  transition: background 0.15s;
+  border-radius: 6px;
+  margin: 1px 4px;
+  user-select: none;
+  min-height: 30px;
+}
+
+.folder-tree-item:hover {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+}
+
+.folder-tree-item.selectable {
+  cursor: pointer;
+}
+
+.folder-tree-item.selected {
+  background: rgba(59, 130, 246, 0.25);
+  color: var(--color-foreground);
+}
+
+.folder-tree-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.15s;
+}
+
+.folder-tree-arrow:hover {
+  background: color-mix(in oklch, var(--color-foreground) 15%, transparent);
+  color: var(--color-foreground);
+}
+
+.folder-tree-arrow-placeholder {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.folder-tree-icon {
+  flex-shrink: 0;
+  color: var(--color-muted-foreground);
+}
+
+.folder-tree-item.selected .folder-tree-icon {
+  color: #60a5fa;
+}
+
+.folder-tree-name {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-foreground);
+}
+
+.folder-tree-item.selected .folder-tree-name {
+  color: white;
+  font-weight: 500;
+}
+
+.folder-tree-item.selected {
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+}
+
+.pinned-folder-btn.bg-foreground\/15 {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+}

@@ -1,0 +1,260 @@
+/*
+ * 桌面容器：暗色覆盖 + 瀑布流 + 桌面项 + 快捷方式 + 磁贴 + 分页 + 手柄 + 滚动条
+ *
+ * 由 src/assets/global.css 第 498-752 行原样拆分而来（未改动任何规则与顺序）。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+html.dark .desktop-box {
+  background-color: rgba(30, 30, 30, var(--xb-glass-opacity));
+  border-color: rgba(255, 255, 255, calc(var(--xb-glass-opacity) * 0.1));
+}
+
+/* 桌面容器 - 瀑布流布局 */
+.desktop-box {
+  width: 100%;
+  height: 100%;
+  min-height: 60vh;
+  background-color: rgba(255, 255, 255, var(--xb-glass-opacity));
+  border-radius: 12px;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid rgba(0, 0, 0, calc(var(--xb-glass-opacity) * 0.1));
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* 瀑布流容器 */
+.desktop-waterfall {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+
+/* 桌面项目 */
+.desktop-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: opacity 0.2s ease;
+}
+
+/*
+ * 桌面小部件磁贴：与文件夹磁贴共用统一高度基准。
+ * 高度由 TS 单一来源（src/lib/widget-layout.ts 的 WIDGET_TILE_HEIGHT）内联下发，
+ * 并作为 containerHeight 传给组件，保证"紧凑判定用的高度"等于"真实外显高度"。
+ * 这里只声明盒模型，避免内边距把基准高度撑破。
+ */
+.widget-tile {
+  box-sizing: border-box;
+}
+
+.desktop-item[draggable="true"]:active {
+  opacity: 0.6;
+}
+
+/* 快捷方式内部 */
+.desktop-shortcut-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.desktop-shortcut-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.desktop-item:hover .desktop-shortcut-icon {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.desktop-shortcut-letter {
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.desktop-shortcut-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.desktop-shortcut-name {
+  font-size: 11px;
+  color: var(--color-foreground);
+  max-width: 100%;
+  /* 只在水平方向省略，避免纵向裁切文字 */
+  overflow-x: hidden;
+  overflow-y: visible;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.3;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  padding: 0 2px;
+  width: 100%;
+}
+
+html.light .desktop-shortcut-name {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* 页面指示器 */
+.desktop-pages {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.2);
+  z-index: 5;
+}
+
+.desktop-page-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s;
+}
+
+.desktop-page-dot.active {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.desktop-page-dot:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.desktop-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.desktop-page-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.desktop-page-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.desktop-page-btn:disabled:hover {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* 排序拖拽手柄 */
+.desktop-item-drag-handle {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 2px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  pointer-events: none;
+  cursor: grab;
+  z-index: 5;
+}
+
+.desktop-item:hover .desktop-item-drag-handle {
+  opacity: 1;
+}
+
+/* 调整大小手柄 */
+.desktop-resize-handle {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 3px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  cursor: ew-resize;
+  z-index: 5;
+  pointer-events: auto;
+  line-height: 0;
+}
+
+.desktop-item:hover .desktop-resize-handle {
+  opacity: 1;
+}
+
+/* 自定义滚动条 - 圆角矩形风格 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--color-muted-foreground) 25%, transparent);
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--color-muted-foreground) 40%, transparent);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: color-mix(in oklch, var(--color-muted-foreground) 55%, transparent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--color-muted-foreground) 25%, transparent) transparent;
+}

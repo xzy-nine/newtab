@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
 import {
   WIDGET_COMPACT_HEIGHT,
   WIDGET_COMPACT_WIDTH,
@@ -13,6 +13,18 @@ import {
   widgetListCapacity,
   widgetPadding,
 } from "@/lib/widget-layout";
+
+/**
+ * 按 index.css 的导入顺序读取全部层级样式，拼成等效于拆分前 global.css 的文本。
+ * 层级化后样式不再集中在一个文件，测试若只读单个文件会在下次拆分时静默失效。
+ */
+function readLayerCss(): string {
+  const stylesDir = resolve(process.cwd(), "src/assets/styles");
+  const index = readFileSync(join(stylesDir, "index.css"), "utf8");
+  const files = [...index.matchAll(/@import\s+"\.\/([^"]+\.css)"/g)].map((m) => m[1]);
+  if (files.length === 0) throw new Error("styles/index.css 未导入任何层级文件");
+  return files.map((file) => readFileSync(join(stylesDir, file), "utf8")).join("\n");
+}
 
 /**
  * 小部件统一高度模式的回归测试。
@@ -78,7 +90,9 @@ describe("WIDGET_TILE_HEIGHT", () => {
     // CSS 里 --desktop-tile-height 同时被文件夹面板与小部件磁贴引用，
     // 一旦只改一边，两行就会再次错位。
     // jsdom 环境下 import.meta.url 不是 file: URL，因此按 cwd（项目根）定位样式文件。
-    const css = readFileSync(resolve(process.cwd(), "src/assets/global.css"), "utf8");
+    // 样式已按层级拆分到 src/assets/styles/ 下，这里读取全部层级文件拼接后的文本，
+    // 使得后续再拆分/挪动文件时该回归测试依然有效。
+    const css = readLayerCss();
     const declared = css.match(/--desktop-tile-height:\s*(\d+)px/);
     expect(declared).not.toBeNull();
     expect(Number(declared![1])).toBe(WIDGET_TILE_HEIGHT);
