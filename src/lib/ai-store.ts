@@ -9,7 +9,7 @@ export interface AIMessage {
   reasoning_content?: string;
 }
 
-export interface Conversation {
+interface Conversation {
   id: string;
   title: string;
   messages: AIMessage[];

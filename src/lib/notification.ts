@@ -92,7 +92,7 @@ export function setDuration(type: Exclude<NotificationType, "loading">, ms: numb
   } catch {}
 }
 
-export async function sendToPopup(notification: {
+async function sendToPopup(notification: {
   title: string;
   message: string;
   type: string;
@@ -108,7 +108,7 @@ export async function sendToPopup(notification: {
   } catch {}
 }
 
-export function isExtensionEnv(): boolean {
+function isExtensionEnv(): boolean {
   try {
     return typeof chrome !== "undefined" && !!chrome.runtime?.sendMessage;
   } catch {
@@ -116,7 +116,7 @@ export function isExtensionEnv(): boolean {
   }
 }
 
-export function isNewTabPage(): boolean {
+function isNewTabPage(): boolean {
   try {
     return (
       window.location.pathname.includes("newtab.html") ||
@@ -173,7 +173,7 @@ export function showNotification(options: {
   };
 }
 
-export const notify = {
+const notify = {
   info: (
     title: string,
     message: string,
@@ -210,7 +210,7 @@ let _lastUpdate = 0;
 let _pending: ReturnType<typeof setTimeout> | null = null;
 const MIN_INTERVAL = 500;
 
-export function showLoading(title?: string, message?: string): string {
+function showLoading(title?: string, message?: string): string {
   if (_loadingId) {
     const existing = useNotificationStore.getState().notifications.find((n) => n.id === _loadingId);
     if (existing) return _loadingId;
@@ -221,7 +221,7 @@ export function showLoading(title?: string, message?: string): string {
   return result.id;
 }
 
-export function updateLoadingProgress(percent: number, message?: string) {
+function updateLoadingProgress(percent: number, message?: string) {
   if (!_loadingId) return;
   const now = Date.now();
   if (_pending) {
@@ -239,7 +239,7 @@ export function updateLoadingProgress(percent: number, message?: string) {
   _lastUpdate = now;
 }
 
-export function hideLoading(force = false) {
+function hideLoading(force = false) {
   if (!_loadingId) return;
   const store = useNotificationStore.getState();
   if (force) {
@@ -253,7 +253,7 @@ export function hideLoading(force = false) {
   }, 1000);
 }
 
-export function showLoadingError(message: string) {
+function showLoadingError(message: string) {
   if (!_loadingId) return;
   const store = useNotificationStore.getState();
   store.updateProgress(_loadingId, 100, message);
@@ -263,7 +263,7 @@ export function showLoadingError(message: string) {
   }, 5000);
 }
 
-export function clearBadge() {
+function clearBadge() {
   try {
     if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
       chrome.runtime.sendMessage({ action: "notificationsCleared" });

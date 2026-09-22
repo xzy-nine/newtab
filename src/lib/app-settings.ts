@@ -18,7 +18,7 @@ export interface AIProvider {
   reasoningEffort?: "high" | "max";
 }
 
-export type SyncMode = "disabled" | "upload" | "download";
+type SyncMode = "disabled" | "upload" | "download";
 
 export interface AppSettings {
   theme: AppTheme;
@@ -46,13 +46,13 @@ export interface AppSettings {
   syncInterval: number;
 }
 
-export const DEFAULT_SEARCH_ENGINES: SearchEngine[] = [
+const DEFAULT_SEARCH_ENGINES: SearchEngine[] = [
   { name: "Bing", url: "https://bing.com/search?q=" },
   { name: "Baidu", url: "https://www.baidu.com/s?wd=" },
   { name: "Google", url: "https://www.google.com/search?q=" },
 ];
 
-export const DEFAULT_AI_PROVIDERS: AIProvider[] = [
+const DEFAULT_AI_PROVIDERS: AIProvider[] = [
   {
     name: "DeepSeek",
     apiUrl: "https://api.deepseek.com",
@@ -105,7 +105,7 @@ export function resolveIsDarkMode(theme: AppTheme, prefersDark: boolean): boolea
   return prefersDark;
 }
 
-export function normalizeSearchEngines(engines: unknown): SearchEngine[] {
+function normalizeSearchEngines(engines: unknown): SearchEngine[] {
   if (!Array.isArray(engines)) return DEFAULT_SEARCH_ENGINES;
 
   const valid = engines.filter(
@@ -119,7 +119,7 @@ export function normalizeSearchEngines(engines: unknown): SearchEngine[] {
   return valid.length > 0 ? valid : DEFAULT_SEARCH_ENGINES;
 }
 
-export function normalizeAIProviders(providers: unknown): AIProvider[] {
+function normalizeAIProviders(providers: unknown): AIProvider[] {
   if (!Array.isArray(providers)) return DEFAULT_AI_PROVIDERS;
   const valid = providers
     .filter(

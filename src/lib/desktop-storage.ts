@@ -30,7 +30,7 @@ interface HomeDesktopRecord {
 type LayoutRecord = { items: DesktopItem[] };
 
 /** 从书签文件夹列表构造 id → 标题 映射。 */
-export function folderTitlesFrom(folders: BookmarkFolderLike[]): Record<string, string> {
+function folderTitlesFrom(folders: BookmarkFolderLike[]): Record<string, string> {
   const titles: Record<string, string> = {};
   for (const folder of folders) {
     if (folder.id) titles[folder.id] = folder.title;

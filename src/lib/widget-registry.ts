@@ -7,7 +7,7 @@ export interface WidgetMeta {
   icon: string;
 }
 
-export interface WidgetConfig {
+interface WidgetConfig {
   defaultWidth: number;
   defaultHeight: number;
   minWidth: number;
@@ -16,7 +16,7 @@ export interface WidgetConfig {
   maxHeight: number;
 }
 
-export interface WidgetComponentProps {
+interface WidgetComponentProps {
   data?: Record<string, unknown>;
   onDataChange?: (data: Record<string, unknown>) => void;
   containerWidth?: number;
@@ -69,11 +69,11 @@ export function getAllTypes(): WidgetMeta[] {
   return Array.from(registry.values()).map((d) => d.meta);
 }
 
-export function getWidgetConfig(type: string): WidgetConfig | undefined {
+function getWidgetConfig(type: string): WidgetConfig | undefined {
   return registry.get(type)?.config;
 }
 
-export function hasWidget(type: string): boolean {
+function hasWidget(type: string): boolean {
   return registry.has(type);
 }
 

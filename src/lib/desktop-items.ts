@@ -9,10 +9,10 @@
  */
 
 /** 桌面项目类型。 */
-export type ItemType = "shortcut" | "widget" | "folder";
+type ItemType = "shortcut" | "widget" | "folder";
 
 /** 桌面项目的公共字段。 */
-export interface BaseItem {
+interface BaseItem {
   id: string;
   type: ItemType;
   /** 占用的列数。 */
@@ -123,7 +123,7 @@ export function isExpandedFolderItem(item: DesktopItem): boolean {
 }
 
 /** 拖动多少（相对一格的像素宽度）才算"轻拉一下"。 */
-export const FOLDER_PREVIEW_DRAG_RATIO = 0.3;
+const FOLDER_PREVIEW_DRAG_RATIO = 0.3;
 
 /** 文件夹缩放的输入与结果。 */
 export interface FolderResizeInput {

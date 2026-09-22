@@ -17,10 +17,10 @@ import { UAPI_BASE, uapiFetch } from "@/lib/uapi";
 import { WEATHER_ICONS, type WeatherIconInfo } from "@/components/widgets/weather/weather-icons";
 
 /** 天气接口路径。 */
-export const WEATHER_PATH = "/misc/weather";
+const WEATHER_PATH = "/misc/weather";
 
 /** 天气接口完整地址（保留导出，便于文档与调试引用）。 */
-export const WEATHER_API = `${UAPI_BASE}${WEATHER_PATH}`;
+const WEATHER_API = `${UAPI_BASE}${WEATHER_PATH}`;
 
 /** 天气数据缓存时长（毫秒）：10 分钟。 */
 export const WEATHER_TTL_MS = 10 * 60 * 1000;

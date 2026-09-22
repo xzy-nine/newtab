@@ -103,4 +103,4 @@ const SelectItem = forwardRef<
 ));
 SelectItem.displayName = SelectPrimitive.Item.displayName;
 
-export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem };
+export { Select, SelectValue, SelectTrigger, SelectContent, SelectItem };

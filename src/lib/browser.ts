@@ -10,7 +10,7 @@
  */
 
 /** 一次导航被拒绝的原因。 */
-export type BrowserBlockReason = "scheme" | "loopback";
+type BrowserBlockReason = "scheme" | "loopback";
 
 /** 一次地址栏输入规范化的结果。 */
 export type BrowserNavigateResult =

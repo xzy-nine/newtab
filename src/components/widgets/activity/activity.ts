@@ -22,10 +22,10 @@
 import { readFreshCache, readStaleCache, removeCache, writeCache } from "@/lib/cache-store";
 
 /** Akasha 服务地址。 */
-export const AKASHA_BASE = "https://akasha.trrw.cn";
+const AKASHA_BASE = "https://akasha.trrw.cn";
 
 /** 每条日程记录在数据库中的分类（`kind`），API 只会有这六种。 */
-export const CALENDAR_KINDS = [
+const CALENDAR_KINDS = [
   "游戏内活动",
   "网页活动",
   "版本日程",
@@ -72,7 +72,7 @@ export const PREVIEW_LABEL = "前瞻特别节目";
 export type ActivityBucket = "activity" | "banner" | "schedule";
 
 /** 各缓存桶包含的一级分类（`include` 值）。 */
-export const BUCKET_INCLUDES: Record<ActivityBucket, string[]> = {
+const BUCKET_INCLUDES: Record<ActivityBucket, string[]> = {
   // 「游戏内活动」含 七圣召唤 / 千星奇域 等子级，传父级即包含全部子级
   activity: ["游戏内活动", "网页活动", "通行证"],
   banner: ["卡池"],
@@ -99,10 +99,10 @@ export const SCHEDULE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 export const EMPTY_RESULT_TTL_MS = 60 * 60 * 1000;
 
 /** 筛选规则（capabilities）的缓存时长：结构极少变动。 */
-export const CAPABILITIES_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const CAPABILITIES_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** 游戏列表的缓存时长。 */
-export const GAMES_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const GAMES_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** 默认时间窗口长度（天）；接口 `to` 缺省为 from + 366 天。 */
 export const DEFAULT_WINDOW_DAYS = 366;
@@ -121,7 +121,7 @@ const CACHE_PREFIX = "hoyo-activity:";
 // ───────────────────────────── 时间：统一按 UTC+8 ─────────────────────────────
 
 /** 国服时区偏移。 */
-export const CN_OFFSET_MS = 8 * 60 * 60 * 1000;
+const CN_OFFSET_MS = 8 * 60 * 60 * 1000;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -174,7 +174,7 @@ export function utc8TimeLabel(ms: number): string {
 }
 
 /** UTC+8 下的零填充日期，如 `09/23`（横轴区间标签用，保证等宽对齐）。 */
-export function utc8DateLabelPadded(ms: number): string {
+function utc8DateLabelPadded(ms: number): string {
   const p = utc8Parts(ms);
   return `${pad2(p.month)}/${pad2(p.day)}`;
 }
@@ -243,7 +243,7 @@ export interface GameSummary {
 }
 
 /** 筛选规则里的一项（子级值形如 `父:子`）。 */
-export interface CalendarSelectorOption {
+interface CalendarSelectorOption {
   value: string;
   label: string;
 }
@@ -262,7 +262,7 @@ export interface CalendarCapabilities {
 }
 
 /** 日程接口对某游戏不可用时抛出。 */
-export class CalendarUnavailableError extends Error {
+class CalendarUnavailableError extends Error {
   constructor(readonly gameId: string) {
     super(`calendar is not available for game ${gameId}`);
     this.name = "CalendarUnavailableError";
@@ -349,7 +349,7 @@ export function normalizeCalendarResponse(raw: unknown): ParsedActivityEntry[] {
 }
 
 /** 读取分页响应里的 total，用于判断是否还要继续翻页。 */
-export function readTotal(raw: unknown): number {
+function readTotal(raw: unknown): number {
   if (!raw || typeof raw !== "object") return 0;
   const total = (raw as Record<string, unknown>).total;
   return typeof total === "number" && Number.isFinite(total) ? total : 0;
@@ -448,7 +448,7 @@ export function daysUntilEnd(entry: ParsedActivityEntry, now: number): number {
 }
 
 /** 距开始还有多少天（向上取整）；已开始返回 0。 */
-export function daysUntilStart(entry: ParsedActivityEntry, now: number): number {
+function daysUntilStart(entry: ParsedActivityEntry, now: number): number {
   if (now >= entry.startMs) return 0;
   return Math.ceil((entry.startMs - now) / DAY_MS);
 }
@@ -533,7 +533,7 @@ export function togglePinned(pinnedIds: readonly string[], id: string): string[]
 }
 
 /** 某条日程是否被固定。 */
-export function isPinned(pinnedIds: readonly string[], id: string): boolean {
+function isPinned(pinnedIds: readonly string[], id: string): boolean {
   return pinnedIds.includes(id);
 }
 
@@ -595,10 +595,10 @@ export function hasPinnedInMap(map: PinnedMap, gameId: string): boolean {
  *
  * 前瞻特别节目实测为 1 分钟，按比例算宽度是 0，画成条必然不可见。
  */
-export const POINT_THRESHOLD_MS = 60 * 60 * 1000;
+const POINT_THRESHOLD_MS = 60 * 60 * 1000;
 
 /** 甘特条的最小宽度百分比，避免极短事件被压成 0 宽而消失。 */
-export const MIN_BAR_WIDTH_PCT = 1.2;
+const MIN_BAR_WIDTH_PCT = 1.2;
 
 /**
  * 今天在甘特窗口中的横向位置：**前 30% 回看、后 70% 前瞻**。
@@ -606,7 +606,7 @@ export const MIN_BAR_WIDTH_PCT = 1.2;
  * 以今天为基准而不是"从今天往后铺"：这样既能看到已经进行中的活动
  * 已经跑了多久（左侧 30%），又把大部分宽度留给未来（右侧 70%）。
  */
-export const GANTT_LOOKBACK_RATIO = 0.3;
+const GANTT_LOOKBACK_RATIO = 0.3;
 
 /** 甘特图的时间窗口（总天数已取整到整周，便于切成整数个周块）。 */
 export interface GanttWindow {
@@ -666,7 +666,7 @@ export function ganttTodayPct(win: GanttWindow, now: number): number {
 export type GanttAxisUnit = "week" | "month";
 
 /** 超过该天数改用月粒度（约两个月以上，周块已密到放不下文字）。 */
-export const GANTT_MONTH_UNIT_THRESHOLD_DAYS = 70;
+const GANTT_MONTH_UNIT_THRESHOLD_DAYS = 70;
 
 /** 按窗口长度选择横轴粒度。 */
 export function ganttAxisUnit(win: GanttWindow): GanttAxisUnit {
@@ -745,7 +745,7 @@ export function buildAxisColumns(win: GanttWindow, unit = ganttAxisUnit(win)): G
 }
 
 /** 一条甘特条的布局结果。 */
-export interface GanttBar {
+interface GanttBar {
   entry: ParsedActivityEntry;
   /** 所在泳道（0 起）。互不重叠的活动会共用同一泳道。 */
   lane: number;
@@ -1022,7 +1022,7 @@ export function selectionToIncludes(
 }
 
 /** 默认选中全部一级分类（再由默认排除项收窄）。 */
-export function defaultSelection(selectors: readonly CalendarSelector[]): Set<string> {
+function defaultSelection(selectors: readonly CalendarSelector[]): Set<string> {
   return new Set(selectors.map((item) => item.value));
 }
 
@@ -1445,17 +1445,17 @@ export function applySelectionFilter(
 // ───────────────────────────────── URL 构造 ─────────────────────────────────
 
 /** 日程 JSON 路径。 */
-export function calendarPath(gameId: string): string {
+function calendarPath(gameId: string): string {
   return `/api/v1/games/${encodeURIComponent(gameId)}/calendar`;
 }
 
 /** 日程筛选规则路径。 */
-export function calendarCapabilitiesPath(gameId: string): string {
+function calendarCapabilitiesPath(gameId: string): string {
   return `/api/v1/games/${encodeURIComponent(gameId)}/calendar/capabilities`;
 }
 
 /** 游戏列表路径。 */
-export const GAMES_PATH = "/api/v1/games";
+const GAMES_PATH = "/api/v1/games";
 
 export interface CalendarQuery {
   gameId: string;
@@ -1520,19 +1520,19 @@ export function bucketCacheKey(gameId: string, bucket: ActivityBucket): string {
 }
 
 /** 缓存是否可用（防御旧版本或损坏数据）。 */
-export function isUsableEntries(value: unknown): value is ParsedActivityEntry[] {
+function isUsableEntries(value: unknown): value is ParsedActivityEntry[] {
   return Array.isArray(value);
 }
 
 /** 缓存是否可用（筛选规则）。 */
-export function isUsableCapabilities(value: unknown): value is CalendarCapabilities {
+function isUsableCapabilities(value: unknown): value is CalendarCapabilities {
   if (!value || typeof value !== "object") return false;
   const c = value as Partial<CalendarCapabilities>;
   return typeof c.gameId === "string" && Array.isArray(c.selectors);
 }
 
 /** 缓存是否可用（游戏列表）。 */
-export function isUsableGames(value: unknown): value is GameSummary[] {
+function isUsableGames(value: unknown): value is GameSummary[] {
   return Array.isArray(value);
 }
 
@@ -1726,7 +1726,7 @@ export async function fetchCapabilities(
 }
 
 /** 取游戏列表（用于展示游戏名与图标）。 */
-export async function fetchGames(options: { force?: boolean } = {}): Promise<GameSummary[]> {
+async function fetchGames(options: { force?: boolean } = {}): Promise<GameSummary[]> {
   const key = `${CACHE_PREFIX}games`;
 
   function isEmptyGames(value: GameSummary[]): boolean {

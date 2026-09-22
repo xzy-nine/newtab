@@ -88,15 +88,4 @@ const DialogTitle = DialogPrimitive.Title;
 
 const DialogDescription = DialogPrimitive.Description;
 
-export {
-  Dialog,
-  DialogTrigger,
-  DialogPortal,
-  DialogOverlay,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
-};
+export { Dialog, DialogContent, DialogTitle, DialogDescription };

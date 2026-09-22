@@ -37,7 +37,7 @@ function extractBookmarks(
  * 获取所有收藏夹书签
  * @returns 所有书签数组
  */
-export async function getAllBookmarks(): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
+async function getAllBookmarks(): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
   try {
     const tree = await chrome.bookmarks.getTree();
     const allBookmarks: chrome.bookmarks.BookmarkTreeNode[] = [];

@@ -46,7 +46,7 @@ function safeStorage(): Storage | null {
  *
  * 只有结构损坏（非法 JSON / 缺字段）才会被清理并返回 null。
  */
-export function readCacheRecord<T>(key: string): CacheRecord<T> | null {
+function readCacheRecord<T>(key: string): CacheRecord<T> | null {
   const store = safeStorage();
   if (!store) return null;
   const raw = store.getItem(storageKey(key));

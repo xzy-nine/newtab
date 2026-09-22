@@ -23,22 +23,22 @@ export const UAPI_BASE = "https://uapis.cn/api/v1";
 export const UAPI_CONSOLE_URL = "https://uapis.cn/console";
 
 /** 单次请求超时（毫秒）。 */
-export const UAPI_FETCH_TIMEOUT_MS = 12 * 1000;
+const UAPI_FETCH_TIMEOUT_MS = 12 * 1000;
 
 /** 最大尝试次数（含首次）。 */
 export const UAPI_MAX_ATTEMPTS = 3;
 
 /** 无 `Retry-After` 时的退避基数：500ms → 1000ms。 */
-export const UAPI_BASE_BACKOFF_MS = 500;
+const UAPI_BASE_BACKOFF_MS = 500;
 
 /** 交互式调用默认能接受的最大退避时长：超过就直接失败，避免新标签页卡住。 */
-export const UAPI_DEFAULT_MAX_RETRY_DELAY_MS = 10 * 1000;
+const UAPI_DEFAULT_MAX_RETRY_DELAY_MS = 10 * 1000;
 
 /** 全局最小请求间隔：避免多个小部件同时挂载造成瞬时并发。 */
-export const UAPI_MIN_REQUEST_INTERVAL_MS = 250;
+const UAPI_MIN_REQUEST_INTERVAL_MS = 250;
 
 /** 匿名被限速后的最小冷却时长；冷却期内若已配置密钥就直接带密钥。 */
-export const UAPI_ANONYMOUS_COOLDOWN_MS = 60 * 1000;
+const UAPI_ANONYMOUS_COOLDOWN_MS = 60 * 1000;
 
 /** 国服时区偏移（游客额度按月重置，按 UTC+8 计算次月边界）。 */
 const CN_OFFSET_MS = 8 * 60 * 60 * 1000;
