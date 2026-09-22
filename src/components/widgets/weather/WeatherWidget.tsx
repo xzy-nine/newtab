@@ -7,6 +7,7 @@ import {
   displayPlaceName,
   fetchWeather,
   formatTemperature,
+  weatherDisplayText,
   weatherEmoji,
   type WeatherSnapshot,
 } from "@/components/widgets/weather/weather";
@@ -28,7 +29,7 @@ function readCity(data?: Record<string, unknown>): string {
  *
  * 旧版本数据没有这个标记，此时一律视为用户设置（保持原有展示行为）。
  * 区分二者很重要：按 IP 定位得到的只是接口回显的上层地名（如「重庆城区」），
- * 若当成用户设置，就会盖掉接口返回的更细粒度 `district`（如「綦江区」）。
+ * 若当成用户设置，就会盖掉接口返回的更细粒度 `district`（如「某某区」）。
  */
 function readCityIsUserSet(data?: Record<string, unknown>): boolean {
   return data?.cityIsUserSet !== false;
@@ -169,7 +170,7 @@ export function WeatherWidget({
   const mode = resolveWidgetSizeMode({ width: containerWidth, height: containerHeight });
   const compact = mode === "compact";
   // 只把「用户显式设置的城市」当作展示名；IP 定位得到的上层地名不应
-  // 盖掉接口返回的更细粒度 district（如 綦江区）。
+  // 盖掉接口返回的更细粒度 district（如 某某区）。
   const place = displayPlaceName(cityIsUserSet ? city : "", snapshot);
 
   return (
@@ -234,7 +235,9 @@ export function WeatherWidget({
             <span className="weather-widget-emoji">{weatherEmoji(snapshot.weatherIcon)}</span>
             <div className="weather-widget-temp-group">
               <span className="weather-widget-temp">{formatTemperature(snapshot.temperature)}</span>
-              <span className="weather-widget-desc">{snapshot.weather}</span>
+              <span className="weather-widget-desc">
+                {weatherDisplayText(snapshot.weatherIcon, snapshot.weather)}
+              </span>
             </div>
           </div>
 

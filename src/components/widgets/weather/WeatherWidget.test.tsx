@@ -123,7 +123,7 @@ describe("WeatherWidget", () => {
   });
 
   it("shows the configured city rather than the API's coarser echo", async () => {
-    // 用户设置「綦江」，接口按城市名查询只回上层名「重庆城区」
+    // 用户设置「某某」，接口按城市名查询只回上层名「重庆城区」
     fetchMock.mockResolvedValueOnce(
       mockFetchOnce({
         province: "重庆市",
@@ -134,13 +134,13 @@ describe("WeatherWidget", () => {
       }),
     );
 
-    render(<WeatherWidget data={{ city: "綦江" }} />);
+    render(<WeatherWidget data={{ city: "某某" }} />);
 
     await waitFor(() => {
       expect(screen.queryByText("21°")).not.toBeNull();
     });
     // 磁贴显示用户设置的名字，与展开弹窗保持一致
-    expect(screen.queryByText("綦江")).not.toBeNull();
+    expect(screen.queryByText("某某")).not.toBeNull();
     expect(screen.queryByText("重庆城区")).toBeNull();
   });
 
@@ -150,7 +150,7 @@ describe("WeatherWidget", () => {
       mockFetchOnce({
         province: "重庆市",
         city: "重庆城区",
-        district: "綦江区",
+        district: "某某区",
         weather: "阴",
         weather_icon: "104",
         temperature: 21,
@@ -160,7 +160,7 @@ describe("WeatherWidget", () => {
     render(<WeatherWidget />);
 
     await waitFor(() => {
-      expect(screen.queryByText("綦江区")).not.toBeNull();
+      expect(screen.queryByText("某某区")).not.toBeNull();
     });
   });
 
@@ -177,5 +177,26 @@ describe("WeatherWidget", () => {
     });
     // 不可重试：只尝试一次
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the alert icon and name for an alert code", async () => {
+    // 预警代码不在常规天气图标表里，需要按预警代码表映射
+    fetchMock.mockResolvedValueOnce(
+      mockFetchOnce({
+        province: "Florida",
+        city: "迈阿密",
+        weather: "极端火灾危险",
+        weather_icon: "2414",
+        temperature: 34,
+      }),
+    );
+
+    render(<WeatherWidget data={{ city: "迈阿密" }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("34°")).not.toBeNull();
+    });
+    expect(screen.queryByText("🔥")).not.toBeNull();
+    expect(screen.queryByText("极端火灾危险(美)")).not.toBeNull();
   });
 });

@@ -18,10 +18,13 @@ import {
   snapshotPlaceLabel,
   timeLabel,
   weatherCacheKey,
+  weatherDisplayText,
   weatherEmoji,
   weatherGlyph,
+  weatherIconInfo,
   weatherTextEmoji,
 } from "./weather";
+import { WEATHER_ICONS } from "./weather-icons";
 
 describe("weatherEmoji", () => {
   it("maps known icon codes to their emoji", () => {
@@ -33,15 +36,59 @@ describe("weatherEmoji", () => {
   });
 
   it("falls back to a warning sign for unknown warning-range codes", () => {
-    expect(weatherEmoji("1050")).toBe("⚠️");
-    expect(weatherEmoji("9999")).toBe("⚠️");
+    // 1099 不在代码表内，但属预警/灾害区间
+    expect(weatherEmoji("1099")).toBe("⚠️");
+    expect(weatherEmoji("12345")).toBe("⚠️");
   });
 
   it("falls back to a question mark for unusable input", () => {
-    expect(weatherEmoji("12345")).toBe("⚠️");
     expect(weatherEmoji("")).toBe("❓");
     expect(weatherEmoji(null)).toBe("❓");
     expect(weatherEmoji(undefined)).toBe("❓");
+  });
+
+  it("maps alert codes to their own icon instead of the generic warning", () => {
+    expect(weatherEmoji("2414")).toBe("🔥");
+    expect(weatherEmoji("2419")).toBe("🏖️");
+    expect(weatherEmoji(2423)).toBe("🌀");
+    expect(weatherEmoji("2554")).toBe("🧊");
+    expect(weatherEmoji(9999)).toBe("⚠️");
+  });
+});
+
+describe("weather code table", () => {
+  it("parses every generated entry", () => {
+    for (const [code, info] of Object.entries(WEATHER_ICONS)) {
+      expect(code).toMatch(/^\d+$/);
+      expect(info.emoji).not.toBe("");
+      expect(info.name).not.toBe("");
+    }
+    expect(Object.keys(WEATHER_ICONS).length).toBe(443);
+  });
+
+  it("repairs the corrupted emoji in the source table", () => {
+    // temp.txt 里 502（霾）的 emoji 是乱码，生成时会修正
+    expect(WEATHER_ICONS["502"]).toEqual({ emoji: "😶‍🌫️", name: "霾" });
+  });
+
+  it("looks up info by code and tolerates unusable input", () => {
+    expect(weatherIconInfo("2411")).toEqual({ emoji: "🌊", name: "水文展望(美)" });
+    expect(weatherIconInfo(2530)).toMatchObject({ name: "寒潮(国际)" });
+    expect(weatherIconInfo("100")).toEqual({ emoji: "☀️", name: "晴" });
+    expect(weatherIconInfo("")).toBeUndefined();
+    expect(weatherIconInfo(null)).toBeUndefined();
+    expect(weatherIconInfo(undefined)).toBeUndefined();
+  });
+
+  it("prefers the code table name over the API's generic weather text", () => {
+    // 代码表带国别后缀，比接口文案更精确
+    expect(weatherDisplayText("2414", "极端火灾危险")).toBe("极端火灾危险(美)");
+    expect(weatherDisplayText("512", "霾")).toBe("重度霾");
+    expect(weatherDisplayText("2411", "未知现象")).toBe("水文展望(美)");
+    // 代码表没有的代码回落到接口文案
+    expect(weatherDisplayText("1099", "未知现象")).toBe("未知现象");
+    expect(weatherDisplayText("", "晴")).toBe("晴");
+    expect(weatherDisplayText("100", undefined)).toBe("晴");
   });
 });
 
@@ -206,8 +253,8 @@ describe("formatTemperature / snapshotPlaceLabel", () => {
     const base = normalizeWeatherResponse({ weather: "晴", temperature: 1 })!;
     // 有区县时优先显示区县（按 IP 查询才会带上）
     expect(
-      snapshotPlaceLabel({ ...base, district: "綦江区", city: "重庆城区", province: "重庆市" }),
-    ).toBe("綦江区");
+      snapshotPlaceLabel({ ...base, district: "某某区", city: "重庆城区", province: "重庆市" }),
+    ).toBe("某某区");
     expect(snapshotPlaceLabel({ ...base, city: "北京", province: "北京市" })).toBe("北京");
     expect(snapshotPlaceLabel({ ...base, city: "", province: "北京市" })).toBe("北京市");
     expect(snapshotPlaceLabel(undefined)).toBe("");
@@ -218,14 +265,14 @@ describe("displayPlaceName", () => {
   const base = normalizeWeatherResponse({ weather: "晴", temperature: 1 })!;
 
   it("prefers the city the user configured so tile and popup agree", () => {
-    // 用户设置了「綦江」，接口回的是上层名「重庆城区」——应显示用户设置的名字
-    expect(displayPlaceName("綦江", { ...base, city: "重庆城区", province: "重庆市" })).toBe(
-      "綦江",
+    // 用户设置了「某某」，接口回的是上层名「重庆城区」——应显示用户设置的名字
+    expect(displayPlaceName("某某", { ...base, city: "重庆城区", province: "重庆市" })).toBe(
+      "某某",
     );
   });
 
   it("falls back to the API name when no city is configured", () => {
-    expect(displayPlaceName("", { ...base, district: "綦江区", city: "重庆城区" })).toBe("綦江区");
+    expect(displayPlaceName("", { ...base, district: "某某区", city: "重庆城区" })).toBe("某某区");
     expect(displayPlaceName(undefined, { ...base, city: "北京" })).toBe("北京");
   });
 

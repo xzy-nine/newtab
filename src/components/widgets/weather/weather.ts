@@ -14,6 +14,7 @@
 
 import { readCache, readThroughCache, readStaleCache } from "@/lib/cache-store";
 import { UAPI_BASE, uapiFetch } from "@/lib/uapi";
+import { WEATHER_ICONS, type WeatherIconInfo } from "@/components/widgets/weather/weather-icons";
 
 /** 天气接口路径。 */
 export const WEATHER_PATH = "/misc/weather";
@@ -56,101 +57,18 @@ export interface WeatherSnapshot {
   aqiCategory?: string;
 }
 
-/** 天气图标代码 → emoji（取自官方枚举表）。 */
-const WEATHER_EMOJI: Record<string, string> = {
-  // 晴 / 多云 / 阴
-  "100": "☀️",
-  "101": "⛅",
-  "102": "🌤️",
-  "103": "⛅",
-  "104": "☁️",
-  // 夜间
-  "150": "🌙",
-  "151": "🌙",
-  "152": "🌙",
-  "153": "🌙",
-  // 雨
-  "300": "🌦️",
-  "301": "🌧️",
-  "302": "⛈️",
-  "303": "⛈️",
-  "304": "⛈️",
-  "305": "🌧️",
-  "306": "🌧️",
-  "307": "🌧️",
-  "308": "🌧️",
-  "309": "🌦️",
-  "310": "🌊",
-  "311": "🌊",
-  "312": "🌊",
-  "313": "🧊",
-  "314": "🌧️",
-  "315": "🌧️",
-  "316": "🌊",
-  "317": "🌊",
-  "318": "🌊",
-  "350": "🌙",
-  "351": "🌙",
-  "399": "🌧️",
-  // 雪
-  "400": "🌨️",
-  "401": "🌨️",
-  "402": "❄️",
-  "403": "❄️",
-  "404": "🌨️",
-  "405": "🌨️",
-  "406": "🌨️",
-  "407": "🌨️",
-  "408": "🌨️",
-  "409": "❄️",
-  "410": "❄️",
-  "456": "🌙",
-  "457": "🌙",
-  "499": "❄️",
-  // 雾 / 霾 / 沙尘
-  "500": "🌫️",
-  "501": "🌫️",
-  "502": "😶‍🌫️",
-  "503": "💨",
-  "504": "💨",
-  "507": "🏜️",
-  "508": "🏜️",
-  "509": "🌫️",
-  "510": "🌫️",
-  "511": "😶‍🌫️",
-  "512": "😶‍🌫️",
-  "513": "😶‍🌫️",
-  "514": "🌫️",
-  "515": "🌫️",
-  // 月相
-  "800": "🌑",
-  "801": "🌒",
-  "802": "🌓",
-  "803": "🌔",
-  "804": "🌕",
-  "805": "🌖",
-  "806": "🌗",
-  "807": "🌘",
-  // 体感
-  "900": "🥵",
-  "901": "🥶",
-  "999": "❓",
-  "9999": "⚠️",
-  // 灾害 / 预警
-  "1001": "🌀",
-  "1002": "🌪️",
-  "1003": "🌊",
-  "1004": "❄️",
-  "1005": "🥶",
-  "1006": "💨",
-  "1007": "🏜️",
-  "1008": "🧊",
-  "1009": "🌡️",
-  "1010": "🥵",
-  "1014": "⚡",
-  "1015": "🧊",
-  "1016": "🥶",
-};
+/**
+ * 天气代码 → 信息（图标 + 名称）。
+ *
+ * 代码表由 weather-icons.ts 生成维护，覆盖常规天气现象、月相与预警/灾害；
+ * 命不中时返回 undefined，由调用方决定兜底策略。
+ */
+export function weatherIconInfo(iconCode: unknown): WeatherIconInfo | undefined {
+  if (typeof iconCode !== "string" && typeof iconCode !== "number") return undefined;
+  const code = String(iconCode).trim();
+  if (!code) return undefined;
+  return WEATHER_ICONS[code];
+}
 
 /**
  * 天气图标代码映射为 emoji。
@@ -160,11 +78,20 @@ export function weatherEmoji(iconCode: unknown): string {
   if (typeof iconCode !== "string" && typeof iconCode !== "number") return "❓";
   const code = String(iconCode).trim();
   if (!code) return "❓";
-  const exact = WEATHER_EMOJI[code];
-  if (exact) return exact;
+  const exact = WEATHER_ICONS[code];
+  if (exact) return exact.emoji;
   const numeric = Number(code);
   if (Number.isFinite(numeric) && numeric >= 1000) return "⚠️";
   return "❓";
+}
+
+/**
+ * 快照的天气现象文案：代码表有名称时优先用名称，否则回落到接口文案。
+ *
+ * 接口只回通用文案（如「霾」），代码表能给出更精确的名称（如「中度霾」）。
+ */
+export function weatherDisplayText(iconCode: unknown, weatherText: string | undefined): string {
+  return weatherIconInfo(iconCode)?.name || weatherText || "";
 }
 
 /**
@@ -296,7 +223,7 @@ export function formatTemperature(value: number): string {
 /**
  * 由快照拼出地点名：取最细粒度的一级（区县 > 城市 > 省份）。
  *
- * 接口在按城市名查询时只回上层名（如查「綦江」可能回「重庆城区」），
+ * 接口在按城市名查询时只回上层名（如查「某某」可能回「重庆城区」），
  * 而按 IP 查询时才会带上 `district`。所以这里优先用 district。
  */
 export function snapshotPlaceLabel(snapshot: WeatherSnapshot | undefined): string {
