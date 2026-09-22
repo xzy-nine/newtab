@@ -758,5 +758,141 @@
   "hoyoActivityUpcoming": {
     "message": "未开始",
     "description": "未开始"
+  },
+  "uapiSettingsTitle": {
+    "message": "UAPI 接口",
+    "description": "UAPI 设置页标题"
+  },
+  "uapiSettingsDesc": {
+    "message": "本项目多处使用 uapis.cn 的免费接口。默认以游客身份调用（按 IP 计积分、有速率限制），触及限制后会自动改用你配置的密钥。",
+    "description": "UAPI 设置页说明"
+  },
+  "uapiApiKey": {
+    "message": "API 密钥",
+    "description": "API 密钥"
+  },
+  "uapiApiKeyPlaceholder": {
+    "message": "粘贴在 uapis.cn 控制台创建的密钥",
+    "description": "密钥输入框占位符"
+  },
+  "uapiApiKeySaved": {
+    "message": "密钥已保存",
+    "description": "密钥保存成功"
+  },
+  "uapiApiKeyCleared": {
+    "message": "密钥已清除",
+    "description": "密钥清除成功"
+  },
+  "uapiKeyLocalOnly": {
+    "message": "密钥仅保存在本机，不会参与云同步。",
+    "description": "密钥存储位置说明"
+  },
+  "uapiCreateKey": {
+    "message": "创建密钥",
+    "description": "前往控制台创建密钥"
+  },
+  "uapiTestKey": {
+    "message": "测试密钥",
+    "description": "测试密钥按钮"
+  },
+  "uapiTestCostHint": {
+    "message": "测试会真实调用一次接口，消耗 1 积分。",
+    "description": "测试密钥的积分消耗提示"
+  },
+  "uapiTestTesting": {
+    "message": "测试中...",
+    "description": "测试进行中"
+  },
+  "uapiTestOk": {
+    "message": "密钥可用",
+    "description": "密钥测试成功"
+  },
+  "uapiTestFailed": {
+    "message": "密钥不可用",
+    "description": "密钥测试失败"
+  },
+  "uapiPreferKey": {
+    "message": "始终使用密钥",
+    "description": "优先使用密钥开关"
+  },
+  "uapiPreferKeyDesc": {
+    "message": "开启后不再以游客身份调用，直接使用密钥（默认关闭：优先用免费游客额度）。",
+    "description": "优先使用密钥说明"
+  },
+  "uapiStatusTitle": {
+    "message": "调用状态",
+    "description": "调用状态标题"
+  },
+  "uapiStatusAnonymous": {
+    "message": "当前以游客身份调用（未触发限制）",
+    "description": "匿名状态"
+  },
+  "uapiStatusKeyActive": {
+    "message": "当前使用密钥调用",
+    "description": "密钥生效状态"
+  },
+  "uapiStatusBlocked": {
+    "message": "游客调用受限，已临时切换到密钥",
+    "description": "游客被限流状态"
+  },
+  "uapiBlockedUntil": {
+    "message": "冷却至 {time}",
+    "description": "冷却截止时间"
+  },
+  "uapiBlockedQuota": {
+    "message": "原因：本月游客额度已用尽（下月重置）",
+    "description": "额度耗尽原因"
+  },
+  "uapiBlockedRateLimit": {
+    "message": "原因：触发速率限制",
+    "description": "速率限制原因"
+  },
+  "uapiResetAnonymous": {
+    "message": "重新尝试游客调用",
+    "description": "清除冷却按钮"
+  },
+  "uapiNoKeyWarning": {
+    "message": "尚未配置密钥：一旦游客额度受限，接口将不可用。建议前往控制台免费创建一个。",
+    "description": "未配置密钥警告"
+  },
+  "uapiClearCache": {
+    "message": "清除接口缓存",
+    "description": "清除缓存按钮"
+  },
+  "uapiClearCacheDesc": {
+    "message": "清除天气、壁纸等接口的本地缓存，下次使用时重新获取。",
+    "description": "清除缓存说明"
+  },
+  "uapiCacheCleared": {
+    "message": "接口缓存已清除",
+    "description": "缓存清除成功"
+  },
+  "uapiDocs": {
+    "message": "查看接口文档",
+    "description": "接口文档链接"
+  },
+  "uapiErrorRateLimited": {
+    "message": "请求过于频繁，请稍后再试",
+    "description": "限速错误"
+  },
+  "uapiErrorQuotaExhausted": {
+    "message": "本月游客额度已用尽，请在设置中配置密钥",
+    "description": "游客额度耗尽错误"
+  },
+  "uapiErrorUnauthorized": {
+    "message": "密钥无效，请在设置中检查",
+    "description": "密钥无效错误"
+  },
+  "uapiErrorInsufficientCredits": {
+    "message": "账户余额不足",
+    "description": "余额不足错误"
+  },
+  "uapiErrorNotFound": {
+    "message": "未找到相关数据",
+    "description": "未找到错误"
+  },
+  "uapiErrorUnavailable": {
+    "message": "接口暂时不可用，请稍后再试",
+    "description": "服务不可用错误"
   }
 }

@@ -44,10 +44,14 @@ export function WeatherForecastPopup({ data }: WeatherForecastPopupProps) {
         const lang = getCurrentLanguage() === "en" ? "en" : "zh";
         const next = await fetchForecast({ city: city || undefined, lang, force });
         // 防御畸形数据：只接受结构可用的结果，避免渲染时崩溃。
-        const usable = isUsableForecast(next);
-        setForecast(usable ? next : null);
-        if (!usable) setError(getMessage("weatherForecastFailed", "预报获取失败"));
+        // 数据不可用时**保留**已展示的预报（可能来自上次成功请求），只提示错误。
+        if (isUsableForecast(next)) {
+          setForecast(next);
+        } else {
+          setError(getMessage("weatherForecastFailed", "预报获取失败"));
+        }
       } catch {
+        // 拉取失败同样保留当前预报，不清空
         setError(getMessage("weatherForecastFailed", "预报获取失败"));
       } finally {
         setLoading(false);
@@ -107,7 +111,7 @@ export function WeatherForecastPopup({ data }: WeatherForecastPopupProps) {
         </button>
       </div>
 
-      {error ? (
+      {error && !forecast ? (
         <div className="weather-forecast-state">
           <AlertTriangle className="weather-forecast-state-icon" />
           <span>{error}</span>

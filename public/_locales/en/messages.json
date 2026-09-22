@@ -1702,5 +1702,141 @@
   "hoyoActivityUpcoming": {
     "message": "Upcoming",
     "description": "未开始"
+  },
+  "uapiSettingsTitle": {
+    "message": "UAPI",
+    "description": "UAPI 设置页标题"
+  },
+  "uapiSettingsDesc": {
+    "message": "This project calls several free uapis.cn endpoints. Requests are made anonymously by default (per-IP credits with rate limits); once a limit is hit, your API key is used automatically.",
+    "description": "UAPI 设置页说明"
+  },
+  "uapiApiKey": {
+    "message": "API Key",
+    "description": "API 密钥"
+  },
+  "uapiApiKeyPlaceholder": {
+    "message": "Paste a key created at the uapis.cn console",
+    "description": "密钥输入框占位符"
+  },
+  "uapiApiKeySaved": {
+    "message": "API key saved",
+    "description": "密钥保存成功"
+  },
+  "uapiApiKeyCleared": {
+    "message": "API key cleared",
+    "description": "密钥清除成功"
+  },
+  "uapiKeyLocalOnly": {
+    "message": "The key is stored only on this device and is never synced.",
+    "description": "密钥存储位置说明"
+  },
+  "uapiCreateKey": {
+    "message": "Create a key",
+    "description": "前往控制台创建密钥"
+  },
+  "uapiTestKey": {
+    "message": "Test key",
+    "description": "测试密钥按钮"
+  },
+  "uapiTestCostHint": {
+    "message": "Testing makes one real request and costs 1 credit.",
+    "description": "测试密钥的积分消耗提示"
+  },
+  "uapiTestTesting": {
+    "message": "Testing...",
+    "description": "测试进行中"
+  },
+  "uapiTestOk": {
+    "message": "Key works",
+    "description": "密钥测试成功"
+  },
+  "uapiTestFailed": {
+    "message": "Key is not usable",
+    "description": "密钥测试失败"
+  },
+  "uapiPreferKey": {
+    "message": "Always use the API key",
+    "description": "优先使用密钥开关"
+  },
+  "uapiPreferKeyDesc": {
+    "message": "When enabled, requests always use the key instead of the free anonymous quota (off by default).",
+    "description": "优先使用密钥说明"
+  },
+  "uapiStatusTitle": {
+    "message": "Call status",
+    "description": "调用状态标题"
+  },
+  "uapiStatusAnonymous": {
+    "message": "Calling anonymously (no limits hit)",
+    "description": "匿名状态"
+  },
+  "uapiStatusKeyActive": {
+    "message": "Calling with your API key",
+    "description": "密钥生效状态"
+  },
+  "uapiStatusBlocked": {
+    "message": "Anonymous calls are limited; switched to your API key",
+    "description": "游客被限流状态"
+  },
+  "uapiBlockedUntil": {
+    "message": "Cooling down until {time}",
+    "description": "冷却截止时间"
+  },
+  "uapiBlockedQuota": {
+    "message": "Reason: this month's anonymous quota is exhausted (resets next month)",
+    "description": "额度耗尽原因"
+  },
+  "uapiBlockedRateLimit": {
+    "message": "Reason: rate limit reached",
+    "description": "速率限制原因"
+  },
+  "uapiResetAnonymous": {
+    "message": "Retry anonymous calls",
+    "description": "清除冷却按钮"
+  },
+  "uapiNoKeyWarning": {
+    "message": "No API key configured: once the anonymous quota is limited, these endpoints will stop working. Consider creating a free key.",
+    "description": "未配置密钥警告"
+  },
+  "uapiClearCache": {
+    "message": "Clear API cache",
+    "description": "清除缓存按钮"
+  },
+  "uapiClearCacheDesc": {
+    "message": "Clears cached weather, wallpaper and other API responses so they are fetched again.",
+    "description": "清除缓存说明"
+  },
+  "uapiCacheCleared": {
+    "message": "API cache cleared",
+    "description": "缓存清除成功"
+  },
+  "uapiDocs": {
+    "message": "API documentation",
+    "description": "接口文档链接"
+  },
+  "uapiErrorRateLimited": {
+    "message": "Too many requests, please try again later",
+    "description": "限速错误"
+  },
+  "uapiErrorQuotaExhausted": {
+    "message": "This month's anonymous quota is used up. Configure an API key in settings.",
+    "description": "游客额度耗尽错误"
+  },
+  "uapiErrorUnauthorized": {
+    "message": "Invalid API key. Check it in settings.",
+    "description": "密钥无效错误"
+  },
+  "uapiErrorInsufficientCredits": {
+    "message": "Insufficient account credits",
+    "description": "余额不足错误"
+  },
+  "uapiErrorNotFound": {
+    "message": "No matching data found",
+    "description": "未找到错误"
+  },
+  "uapiErrorUnavailable": {
+    "message": "The API is temporarily unavailable, please try again later",
+    "description": "服务不可用错误"
   }
 }

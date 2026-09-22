@@ -2,17 +2,24 @@
  * 天气小部件的纯逻辑与数据访问。
  *
  * 数据来自 UAPI（https://uapis.cn/docs/api-reference/get-misc-weather）：
- * - `GET /api/v1/misc/weather`：实时天气，可选 extended/forecast 等模块；
- * - `GET /api/v1/network/myip`：按 IP 定位，用于预填城市。
+ * - `GET /api/v1/misc/weather`：实时天气，可选 extended/forecast/hourly 等模块；
+ *   不带 `city` / `adcode` 时由服务端按客户端 IP 自动定位。
+ *
+ * 认证策略由 `@/lib/uapi` 统一处理：默认匿名（游客按 IP 计积分），
+ * 触及限速/额度时自动回退到用户在设置页配置的密钥。
  *
  * 本模块把网络与纯计算分开：解析、映射、校验、URL 构造都是纯函数，
- * 便于单元测试；只有 fetchWeather / fetchForecast / fetchMyRegion 会发请求。
+ * 便于单元测试；只有 fetchWeather / fetchForecast 会发请求。
  */
 
-import { readCache, readThroughCache, removeCache } from "@/lib/cache-store";
+import { readCache, readThroughCache, readStaleCache } from "@/lib/cache-store";
+import { UAPI_BASE, uapiFetch } from "@/lib/uapi";
 
-const WEATHER_API = "https://uapis.cn/api/v1/misc/weather";
-const MYIP_API = "https://uapis.cn/api/v1/network/myip";
+/** 天气接口路径。 */
+export const WEATHER_PATH = "/misc/weather";
+
+/** 天气接口完整地址（保留导出，便于文档与调试引用）。 */
+export const WEATHER_API = `${UAPI_BASE}${WEATHER_PATH}`;
 
 /** 天气数据缓存时长（毫秒）：10 分钟。 */
 export const WEATHER_TTL_MS = 10 * 60 * 1000;
@@ -25,9 +32,6 @@ export const FORECAST_TTL_MS = 24 * 60 * 60 * 1000;
 
 /** 预报缓存的键前缀（与 cache-store 的命名空间拼成最终键）。 */
 const FORECAST_CACHE_PREFIX = "weather-forecast:";
-
-/** 网络请求超时（毫秒）。 */
-const FETCH_TIMEOUT_MS = 12 * 1000;
 
 /** 一次天气查询的结果快照（已规范化为 camelCase）。 */
 export interface WeatherSnapshot {
@@ -50,13 +54,6 @@ export interface WeatherSnapshot {
   tempMin?: number;
   aqi?: number;
   aqiCategory?: string;
-}
-
-/** IP 定位解析出的行政区。 */
-export interface RegionInfo {
-  country: string;
-  province: string;
-  city: string;
 }
 
 /** 天气图标代码 → emoji（取自官方枚举表）。 */
@@ -223,36 +220,6 @@ export function weatherGlyph(iconCode: unknown, weatherText: unknown): string {
   const byCode = weatherEmoji(iconCode);
   if (byCode !== "❓") return byCode;
   return weatherTextEmoji(weatherText) || "❓";
-}
-
-/**
- * 解析 IP 定位返回的 `region` 字段（形如 "中国 重庆 重庆" / "中国 广东 深圳"）。
- *
- * 只取到"大行政区"一级：省份与城市。城市缺省时回落到省份，
- * 因为天气接口的 `city` 对直辖市同样接受省份名。
- */
-export function parseRegion(region: unknown): RegionInfo {
-  const empty: RegionInfo = { country: "", province: "", city: "" };
-  if (typeof region !== "string") return empty;
-  const parts = region.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return empty;
-
-  let rest = parts;
-  let country = "";
-  if (parts.length > 1 && /^(中国|china)$/i.test(parts[0]!)) {
-    country = parts[0]!;
-    rest = parts.slice(1);
-  }
-  if (rest.length === 0) return { country, province: "", city: "" };
-
-  const province = rest[0]!;
-  const city = rest.length > 1 ? rest[1]! : province;
-  return { country, province, city };
-}
-
-/** 由 IP 定位结果选出适合查询天气的城市名。 */
-export function regionToCity(region: RegionInfo): string {
-  return region.city || region.province || "";
 }
 
 function num(value: unknown): number | undefined {
@@ -476,30 +443,59 @@ export function forecastCacheKey(params: {
   return `${FORECAST_CACHE_PREFIX}${lang}:${locator}`;
 }
 
-async function fetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "omit",
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-  return response.json();
+async function fetchJson(url: string, options: { force?: boolean } = {}): Promise<unknown> {
+  // 统一走 UAPI 客户端：匿名优先、限速时自动升级到密钥、必要时退避重试。
+  // 主动刷新（force）会绕过本地节流与去重，立即发一次真实请求。
+  return uapiFetch<unknown>(url, { force: options.force });
+}
+
+/** 实时天气的缓存键前缀（与 cache-store 命名空间拼成最终键）。 */
+const WEATHER_CACHE_PREFIX = "weather-current:";
+
+/** 实时天气缓存键：按城市与语言区分。 */
+export function weatherCacheKey(params: { city?: string; adcode?: string; lang?: string }): string {
+  const locator = params.adcode?.trim() || params.city?.trim() || "auto";
+  const lang = params.lang === "en" ? "en" : "zh";
+  return `${WEATHER_CACHE_PREFIX}${lang}:${locator}`;
+}
+
+/** 实时天气快照是否可用（防御旧版本或损坏缓存）。 */
+export function isUsableWeatherSnapshot(value: unknown): value is WeatherSnapshot {
+  if (!value || typeof value !== "object") return false;
+  const snapshot = value as Partial<WeatherSnapshot>;
+  return typeof snapshot.weather === "string" && typeof snapshot.temperature === "number";
 }
 
 /**
  * 查询实时天气。
- * @throws 网络错误、超时、非 2xx，或响应缺少必要字段。
+ *
+ * - 结果按 `WEATHER_TTL_MS`（10 分钟）缓存，多个磁贴共享同一份数据；
+ * - **主动刷新**（`force`）忽略缓存与本地节流，立即联网；
+ * - 联网失败时若本地已有（可能已过期的）快照，则继续返回它，
+ *   保证界面不会因为一次失败就清空。
+ *
+ * @throws 无任何可用数据且请求失败时抛出（含 UapiError）。
  */
 export async function fetchWeather(params: {
   city?: string;
   adcode?: string;
   lang?: string;
+  /** 传 true 表示用户主动刷新：忽略缓存与本地节流。 */
+  force?: boolean;
 }): Promise<WeatherSnapshot> {
-  const raw = await fetchJson(buildWeatherUrl(params));
-  const snapshot = normalizeWeatherResponse(raw);
-  if (!snapshot) throw new Error("INVALID_WEATHER_RESPONSE");
+  const url = buildWeatherUrl(params);
+  const snapshot = await readThroughCache(
+    weatherCacheKey(params),
+    async () => {
+      const raw = await fetchJson(url, { force: params.force });
+      const parsed = normalizeWeatherResponse(raw);
+      if (!parsed) throw new Error("INVALID_WEATHER_RESPONSE");
+      return parsed;
+    },
+    WEATHER_TTL_MS,
+    isUsableWeatherSnapshot as (value: unknown) => boolean,
+    { force: params.force === true },
+  );
   return snapshot;
 }
 
@@ -508,6 +504,7 @@ export async function fetchWeather(params: {
  *
  * 结果按 24 小时缓存到 localStorage：浏览器重启后仍在，且不参与云同步。
  * 供展开弹窗按需调用，避免每次渲染都占用免费 API 配额。
+ * 主动刷新忽略缓存；联网失败时继续沿用已过期的预报。
  */
 export async function fetchForecast(params: {
   city?: string;
@@ -517,17 +514,17 @@ export async function fetchForecast(params: {
   force?: boolean;
 }): Promise<WeatherForecast> {
   const key = forecastCacheKey(params);
-  if (params.force) removeCache(key);
   return readThroughCache(
     key,
     async () => {
-      const raw = await fetchJson(buildForecastUrl(params));
+      const raw = await fetchJson(buildForecastUrl(params), { force: params.force });
       const forecast = normalizeForecastResponse(raw);
       if (!forecast) throw new Error("INVALID_FORECAST_RESPONSE");
       return forecast;
     },
     FORECAST_TTL_MS,
     isUsableForecast as (value: unknown) => boolean,
+    { force: params.force === true },
   );
 }
 
@@ -552,17 +549,15 @@ export function isUsableForecast(value: unknown): value is WeatherForecast {
 }
 
 /**
- * 按当前 IP 解析所在行政区，用于预填城市。
- * @throws 网络错误、超时或非 2xx。
+ * 读取**已过期**的实时天气快照（不发请求）。
+ *
+ * 供磁贴首屏兜底：远端暂时拿不到数据时，继续展示上一次的结果。
  */
-export async function fetchMyRegion(): Promise<RegionInfo> {
-  const raw = await fetchJson(MYIP_API);
-  const record = (raw ?? {}) as Record<string, unknown>;
-  const region = parseRegion(record.region);
-  // myip 的 district 仅在商业数据源返回，存在时优先作为城市。
-  const district = str(record.district);
-  if (district && district !== region.city) {
-    return { ...region, city: region.city || district };
-  }
-  return region;
+export function readStaleWeather(params: {
+  city?: string;
+  adcode?: string;
+  lang?: string;
+}): WeatherSnapshot | null {
+  const cached = readStaleCache<unknown>(weatherCacheKey(params));
+  return isUsableWeatherSnapshot(cached) ? cached : null;
 }

@@ -368,11 +368,19 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
         </div>
       )}
 
+      {/* 保留旧数据时，用一条非阻断提示说明刷新失败，而不是清空已展示的日程 */}
+      {error && entries && (
+        <div className="activity-calendar-state is-error">
+          <AlertTriangle className="activity-calendar-state-icon" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {unavailable ? (
         <div className="activity-calendar-state">
           {getMessage("hoyoActivityUnavailable", "该游戏暂无日程")}
         </div>
-      ) : error ? (
+      ) : error && !entries ? (
         <div className="activity-calendar-state is-error">
           <AlertTriangle className="activity-calendar-state-icon" />
           <span>{error}</span>

@@ -8,15 +8,16 @@ import {
   forecastCacheKey,
   formatTemperature,
   hasCachedForecast,
+  isUsableWeatherSnapshot,
   isWeatherStale,
   normalizeForecastResponse,
   normalizeWeatherResponse,
   parseDailyForecast,
   parseHourlyForecast,
-  parseRegion,
-  regionToCity,
+  readStaleWeather,
   snapshotPlaceLabel,
   timeLabel,
+  weatherCacheKey,
   weatherEmoji,
   weatherGlyph,
   weatherTextEmoji,
@@ -44,47 +45,48 @@ describe("weatherEmoji", () => {
   });
 });
 
-describe("parseRegion", () => {
-  it("parses country, province and city from the myip region string", () => {
-    expect(parseRegion("中国 重庆 重庆")).toEqual({
-      country: "中国",
-      province: "重庆",
-      city: "重庆",
-    });
-    expect(parseRegion("中国 广东 深圳")).toEqual({
-      country: "中国",
-      province: "广东",
-      city: "深圳",
-    });
+describe("weather cache key and staleness helpers", () => {
+  beforeEach(() => {
+    localStorage.clear();
   });
 
-  it("falls back to the province when no city is present", () => {
-    expect(parseRegion("中国 重庆")).toEqual({ country: "中国", province: "重庆", city: "重庆" });
+  it("separates real-time weather entries by locator and language", () => {
+    expect(weatherCacheKey({ city: "北京", lang: "zh" })).toBe("weather-current:zh:北京");
+    expect(weatherCacheKey({ city: "北京", lang: "en" })).toBe("weather-current:en:北京");
+    // 无城市时归入 auto（由服务端按 IP 定位）
+    expect(weatherCacheKey({})).toBe("weather-current:zh:auto");
+    expect(weatherCacheKey({ city: "北京", adcode: "110000" })).toBe("weather-current:zh:110000");
   });
 
-  it("handles a missing country prefix", () => {
-    expect(parseRegion("广东 深圳")).toMatchObject({ province: "广东", city: "深圳" });
+  it("accepts a well formed snapshot and rejects malformed ones", () => {
+    expect(isUsableWeatherSnapshot({ weather: "晴", temperature: 20 })).toBe(true);
+    // 温度可以为 0
+    expect(isUsableWeatherSnapshot({ weather: "晴", temperature: 0 })).toBe(true);
+    expect(isUsableWeatherSnapshot({ weather: "晴" })).toBe(false);
+    expect(isUsableWeatherSnapshot({ temperature: 20 })).toBe(false);
+    expect(isUsableWeatherSnapshot(null)).toBe(false);
+    expect(isUsableWeatherSnapshot("nope")).toBe(false);
   });
 
-  it("returns empty fields for unusable input", () => {
-    expect(parseRegion("")).toEqual({ country: "", province: "", city: "" });
-    expect(parseRegion(undefined)).toEqual({ country: "", province: "", city: "" });
-    expect(parseRegion(123)).toEqual({ country: "", province: "", city: "" });
+  it("reads a stale snapshot even after its TTL has passed", () => {
+    // 远端拿不到数据时要能继续展示这份数据
+    localStorage.setItem(
+      "newtab:cache:" + weatherCacheKey({ city: "北京" }),
+      JSON.stringify({
+        savedAt: 0,
+        ttl: 1,
+        value: { weather: "晴", temperature: 20 },
+      }),
+    );
+    expect(readStaleWeather({ city: "北京" })).toEqual({ weather: "晴", temperature: 20 });
   });
 
-  it("collapses extra whitespace", () => {
-    expect(parseRegion("  中国   广东   深圳  ")).toMatchObject({
-      province: "广东",
-      city: "深圳",
-    });
-  });
-});
-
-describe("regionToCity", () => {
-  it("prefers the city, then the province", () => {
-    expect(regionToCity({ country: "中国", province: "广东", city: "深圳" })).toBe("深圳");
-    expect(regionToCity({ country: "中国", province: "重庆", city: "" })).toBe("重庆");
-    expect(regionToCity({ country: "", province: "", city: "" })).toBe("");
+  it("returns null for a stale snapshot that is structurally unusable", () => {
+    localStorage.setItem(
+      "newtab:cache:" + weatherCacheKey({ city: "北京" }),
+      JSON.stringify({ savedAt: 0, ttl: 1, value: { broken: true } }),
+    );
+    expect(readStaleWeather({ city: "北京" })).toBeNull();
   });
 });
 

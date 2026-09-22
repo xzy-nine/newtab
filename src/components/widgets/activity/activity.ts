@@ -19,7 +19,7 @@
  *    定时事件为 UTC RFC 3339。
  */
 
-import { readCache, removeCache, writeCache } from "@/lib/cache-store";
+import { readFreshCache, readStaleCache, removeCache, writeCache } from "@/lib/cache-store";
 
 /** Akasha 服务地址。 */
 export const AKASHA_BASE = "https://akasha.trrw.cn";
@@ -771,13 +771,38 @@ export function formatRange(entry: ParsedActivityEntry): string {
  * 避免每次打开新标签页都先闪一下"加载中"。
  */
 export function readCachedEntries(query: CalendarQuery): ParsedActivityEntry[] | null {
+  return mergeBuckets((bucket) => {
+    // 用 readFreshCache：readCache 会删掉过期条目，而那份过期数据
+    // 正是 readStaleEntries 的兜底来源，不能被首屏读取顺手清掉。
+    const cached = readFreshCache<unknown>(bucketCacheKey(query.gameId, bucket));
+    return isUsableEntries(cached) ? cached : null;
+  });
+}
+
+/**
+ * 读取**已过期**的日程缓存（不发请求）。
+ *
+ * 用于「远端拿不到数据时保持当前数据」：日程条目一旦收录就基本不变，
+ * 过期只说明可能少了新增内容，继续展示远好过清空。
+ */
+export function readStaleEntries(query: CalendarQuery): ParsedActivityEntry[] | null {
+  return mergeBuckets((bucket) => {
+    const cached = readStaleCache<unknown>(bucketCacheKey(query.gameId, bucket));
+    return isUsableEntries(cached) ? cached : null;
+  });
+}
+
+/** 按桶读取并合并去重；三桶全空视为未命中。 */
+function mergeBuckets(
+  load: (bucket: ActivityBucket) => ParsedActivityEntry[] | null,
+): ParsedActivityEntry[] | null {
   const merged: ParsedActivityEntry[] = [];
   let hit = false;
   for (const bucket of ["activity", "banner", "schedule"] as const) {
-    const cached = readCache<unknown>(bucketCacheKey(query.gameId, bucket, query));
-    if (isUsableEntries(cached)) {
+    const entries = load(bucket);
+    if (entries !== null) {
       hit = true;
-      merged.push(...cached);
+      merged.push(...entries);
     }
   }
   // 三桶全无缓存才算未命中；命中任一桶即可先渲染（其余桶随后补拉）
@@ -1043,17 +1068,21 @@ export function defaultQuery(
 // ───────────────────────────────── 缓存键 ─────────────────────────────────
 
 /**
- * 缓存键。
+ * 缓存键：**只按游戏与桶**，不含查询窗口的日期。
  *
- * 刻意把 `from` 日期并入键：跨天后窗口滚动会自然产生新键，
- * 即使长 TTL 还没到期也会重新取数，避免"日期没滚动但数据已过期"。
+ * 这一点是本小部件长 TTL 能否成立的关键。此前把 `from` / `to` 并入键，
+ * 而查询窗口以「今天」为起点，于是**每天都会换一把新键**，
+ * 长 TTL 从未真正生效——等于每天必然重拉三个桶。
+ *
+ * 实测上游语义：接口只保留当前官方活动列表，会**删除**已下线的旧活动，
+ * 因此缓存是"当前集合的快照"；`from` / `to` 仅用于服务端筛选，
+ * 甘特窗口由 `now` 在前端本地计算，与缓存键无关。
+ *
+ * 跨天时窗口虽然滚动，但缓存内容仍然有效（长活动本就不该因跨天丢失），
+ * 由各桶 TTL（12 小时 / 3 天）负责新鲜度。
  */
-export function bucketCacheKey(
-  gameId: string,
-  bucket: ActivityBucket,
-  query: CalendarQuery,
-): string {
-  return `${CACHE_PREFIX}${gameId}:${bucket}:${query.from}:${query.to}`;
+export function bucketCacheKey(gameId: string, bucket: ActivityBucket): string {
+  return `${CACHE_PREFIX}${gameId}:${bucket}`;
 }
 
 /** 缓存是否可用（防御旧版本或损坏数据）。 */
@@ -1088,9 +1117,12 @@ async function fetchJson(url: string): Promise<{ ok: boolean; status: number; da
 /**
  * 带非对称 TTL 的读缓存。
  *
- * 与 `cache-store` 的 `readThroughCache` 的唯一区别：**写入时按结果是否为空选择 TTL**。
- * 长 TTL 是本小部件的核心策略，而空结果的成因常常只是「版本更新前的空窗」，
- * 必须用短 TTL，否则会把待公布的内容一起吞掉。
+ * 与 `cache-store` 的 `readThroughCache` 的区别：
+ * 1. **写入时按结果是否为空选择 TTL**。长 TTL 是本小部件的核心策略，
+ *    而空结果的成因常常只是「版本更新前的空窗」，必须用短 TTL，
+ *    否则会把待公布的内容一起吞掉。
+ * 2. **主动刷新失败时保留旧数据**：用户点刷新但网络不通，不应把已展示的
+ *    日程清空——继续用（可能已过期的）旧值并把错误交给调用方即可。
  */
 const inflight = new Map<string, Promise<unknown>>();
 
@@ -1100,16 +1132,33 @@ async function readThroughBucket<T>(
   ttl: number,
   isEmpty: (value: T) => boolean,
   validate: (value: unknown) => boolean,
+  force = false,
 ): Promise<T> {
-  const cached = readCache<unknown>(key);
-  if (cached !== null && validate(cached)) return cached as T;
-  if (cached !== null) removeCache(key);
+  if (!force) {
+    // 用 readFreshCache 而非 readCache：后者会删除过期条目，
+    // 而那份过期数据正是下面「远端未返回」时要用到的兜底。
+    const cached = readFreshCache<unknown>(key);
+    if (cached !== null) {
+      if (validate(cached)) return cached as T;
+      // 结构不合法（旧版本/损坏）的缓存直接丢弃，避免反复命中坏数据
+      removeCache(key);
+    }
+  }
 
   const existing = inflight.get(key) as Promise<T> | undefined;
   if (existing) return existing;
 
   const task = (async () => {
-    const value = await producer();
+    let value: T;
+    try {
+      value = await producer();
+    } catch (error) {
+      // 远端未返回：有旧值就继续用旧值，避免界面被清空。
+      // 404（该游戏无日程）与取消等语义由调用方处理，故仅在存在旧值时兜底。
+      const stale = readStaleCache<unknown>(key);
+      if (stale !== null && validate(stale)) return stale as T;
+      throw error;
+    }
     writeCache(key, value, isEmpty(value) ? EMPTY_RESULT_TTL_MS : ttl);
     return value;
   })();
@@ -1124,6 +1173,9 @@ async function readThroughBucket<T>(
 
 /**
  * 取某个游戏某个桶的日程。
+ *
+ * @param force 用户主动刷新：忽略缓存与并发去重，立即联网；
+ *   失败时仍回落到已有的（可能过期的）缓存。
  * @throws CalendarUnavailableError 当该游戏不支持日程（404）。
  */
 async function fetchBucket(
@@ -1132,8 +1184,7 @@ async function fetchBucket(
   ttl: number,
   force: boolean,
 ): Promise<ParsedActivityEntry[]> {
-  const key = bucketCacheKey(query.gameId, bucket, query);
-  if (force) removeCache(key);
+  const key = bucketCacheKey(query.gameId, bucket);
 
   return readThroughBucket(
     key,
@@ -1164,6 +1215,7 @@ async function fetchBucket(
     ttl,
     isEmpty,
     isUsableEntries,
+    force,
   );
 }
 
@@ -1211,7 +1263,6 @@ export async function fetchCapabilities(
   options: { force?: boolean } = {},
 ): Promise<CalendarCapabilities | null> {
   const key = `${CACHE_PREFIX}capabilities:${gameId}`;
-  if (options.force) removeCache(key);
 
   function isEmptyCapabilities(value: CalendarCapabilities | null): boolean {
     return value === null;
@@ -1236,13 +1287,13 @@ export async function fetchCapabilities(
     CAPABILITIES_TTL_MS,
     isEmptyCapabilities,
     validate,
+    options.force === true,
   ) as Promise<CalendarCapabilities | null>;
 }
 
 /** 取游戏列表（用于展示游戏名与图标）。 */
 export async function fetchGames(options: { force?: boolean } = {}): Promise<GameSummary[]> {
   const key = `${CACHE_PREFIX}games`;
-  if (options.force) removeCache(key);
 
   function isEmptyGames(value: GameSummary[]): boolean {
     return value.length === 0;
@@ -1258,6 +1309,7 @@ export async function fetchGames(options: { force?: boolean } = {}): Promise<Gam
     GAMES_TTL_MS,
     isEmptyGames,
     isUsableGames,
+    options.force === true,
   );
 }
 

@@ -8,6 +8,7 @@ import {
   Puzzle,
   RefreshCw,
   Info,
+  KeyRound,
   Plus,
   Trash2,
   Upload,
@@ -30,6 +31,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useAppSettings } from "@/lib/app-settings-store";
 import { BackgroundSettings } from "@/components/BackgroundSettings";
+import { UapiSettings } from "@/components/UapiSettings";
 import {
   showNotification,
   getDuration,
@@ -48,6 +50,7 @@ type CategoryId =
   | "ai"
   | "search"
   | "widgets"
+  | "uapi"
   | "sync"
   | "about";
 
@@ -64,6 +67,7 @@ const CATEGORIES: Category[] = [
   { id: "ai", label: "AI助手", icon: Bot },
   { id: "search", label: "搜索引擎", icon: Search },
   { id: "widgets", label: "小部件", icon: Puzzle },
+  { id: "uapi", label: "UAPI 接口", icon: KeyRound },
   { id: "sync", label: "数据同步", icon: RefreshCw },
   { id: "about", label: "关于", icon: Info },
 ];
@@ -117,6 +121,7 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
             {activeCategory === "ai" && <AISettings />}
             {activeCategory === "search" && <EngineManager />}
             {activeCategory === "widgets" && <WidgetListSettings />}
+            {activeCategory === "uapi" && <UapiSettings />}
             {activeCategory === "sync" && <SyncSettings />}
             {activeCategory === "about" && <AboutSection />}
           </main>

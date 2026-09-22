@@ -5,15 +5,9 @@ import { WeatherWidget } from "@/components/widgets/weather/WeatherWidget";
 /**
  * 天气小部件的行为测试。
  *
- * 重点覆盖"IP 定位预填城市"这条链路：没有已存城市时先调用 myip 接口，
- * 再用解析出的大行政区去查天气；以及接口失败时的错误提示。
+ * 重点覆盖：无已存城市时由天气接口自身按 IP 定位（不再单独调用 myip），
+ * 已存/用户设置城市的优先级，以及接口失败时的错误提示。
  */
-
-const MYIP_RESPONSE = {
-  ip: "125.82.121.12",
-  region: "中国 广东 深圳",
-  isp: "Chinanet",
-};
 
 const WEATHER_RESPONSE = {
   province: "广东省",
@@ -29,18 +23,23 @@ const WEATHER_RESPONSE = {
   temp_min: 26,
 };
 
-function mockFetchOnce(payload: unknown, ok = true) {
+/** `uapiFetch` 通过 status / text() / headers 读取响应。 */
+function mockFetchOnce(payload: unknown, ok = true, status = ok ? 200 : 404) {
   return {
     ok,
-    status: ok ? 200 : 404,
+    status,
+    text: async () => JSON.stringify(payload),
     json: async () => payload,
-  } as Response;
+    headers: new Headers(),
+  } as unknown as Response;
 }
 
 describe("WeatherWidget", () => {
   const fetchMock = vi.fn();
 
   beforeEach(() => {
+    // 天气请求现在会写入 localStorage 缓存，必须在用例间清理，否则会互相干扰
+    localStorage.clear();
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
   });
@@ -49,10 +48,9 @@ describe("WeatherWidget", () => {
     vi.unstubAllGlobals();
   });
 
-  it("prefills the city from the IP API, then loads that city's weather", async () => {
-    fetchMock
-      .mockResolvedValueOnce(mockFetchOnce(MYIP_RESPONSE))
-      .mockResolvedValueOnce(mockFetchOnce(WEATHER_RESPONSE));
+  it("asks the API to geolocate by IP, then shows the returned city", async () => {
+    // 不再单独调用 /network/myip：天气接口自身会在无 city 时按 IP 定位
+    fetchMock.mockResolvedValueOnce(mockFetchOnce(WEATHER_RESPONSE));
 
     render(<WeatherWidget />);
 
@@ -60,15 +58,15 @@ describe("WeatherWidget", () => {
       expect(screen.queryByText("30°")).not.toBeNull();
     });
 
-    // 第一次是 IP 定位，第二次天气请求必须带上定位出的城市
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(String(fetchMock.mock.calls[0]![0])).toContain("/network/myip");
-    const weatherUrl = String(fetchMock.mock.calls[1]![0]);
+    // 只发一次请求，且不带 city（由服务端定位）
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const weatherUrl = String(fetchMock.mock.calls[0]![0]);
     expect(weatherUrl).toContain("/misc/weather");
-    expect(weatherUrl).toContain(encodeURIComponent("深圳"));
+    expect(weatherUrl).not.toContain("city=");
+    expect(weatherUrl).not.toContain("myip");
 
-    // 展示地点与天气：地点显示定位/设置得到的城市名，而非接口回显的上层名
-    expect(screen.queryByText("深圳")).not.toBeNull();
+    // 展示地点与天气
+    expect(screen.queryByText("深圳市")).not.toBeNull();
     expect(screen.queryByText("多云")).not.toBeNull();
   });
 
@@ -108,20 +106,20 @@ describe("WeatherWidget", () => {
     await waitFor(() => expect(fetchMock).not.toHaveBeenCalled());
   });
 
-  it("still loads weather when IP geolocation fails", async () => {
-    fetchMock
-      .mockRejectedValueOnce(new Error("network down"))
-      .mockResolvedValueOnce(mockFetchOnce(WEATHER_RESPONSE));
+  it("keeps the existing snapshot when the refresh fails", async () => {
+    // 需求：远端未返回时保持当前（可能已过期的）数据，不把界面清空
+    fetchMock.mockResolvedValueOnce(mockFetchOnce(WEATHER_RESPONSE));
+    const { rerender } = render(<WeatherWidget data={{ city: "北京" }} />);
+    await waitFor(() => expect(screen.queryByText("30°")).not.toBeNull());
 
-    render(<WeatherWidget />);
+    // 刷新失败：接口直接报错
+    fetchMock.mockRejectedValueOnce(new Error("network down"));
+    rerender(<WeatherWidget data={{ city: "北京", cityIsUserSet: true }} />);
 
-    // 定位失败后回落到不带 city 的查询（由接口按 IP 定位）
     await waitFor(() => {
+      // 旧数据仍在，没有被清空
       expect(screen.queryByText("30°")).not.toBeNull();
     });
-    const weatherUrl = String(fetchMock.mock.calls[1]![0]);
-    expect(weatherUrl).toContain("/misc/weather");
-    expect(weatherUrl).not.toContain("city=");
   });
 
   it("shows the configured city rather than the API's coarser echo", async () => {
@@ -147,7 +145,7 @@ describe("WeatherWidget", () => {
   });
 
   it("falls back to the finest API name when no city is configured", async () => {
-    // 无已存城市：先 IP 定位（这里返回空 region 走接口自身定位），再查天气
+    // 无已存城市：接口按 IP 定位，返回 district 时应展示最细粒度地名
     fetchMock.mockResolvedValue(
       mockFetchOnce({
         province: "重庆市",
@@ -167,14 +165,17 @@ describe("WeatherWidget", () => {
   });
 
   it("shows a friendly message when the city is not found", async () => {
-    fetchMock
-      .mockResolvedValueOnce(mockFetchOnce(MYIP_RESPONSE))
-      .mockResolvedValueOnce(mockFetchOnce({ code: "NOT_FOUND" }, false));
+    // 404 不可重试，直接落到「未找到该城市」
+    fetchMock.mockResolvedValueOnce(
+      mockFetchOnce({ code: "NOT_FOUND", message: "未找到该城市的天气数据" }, false, 404),
+    );
 
     render(<WeatherWidget />);
 
     await waitFor(() => {
       expect(screen.queryByText("未找到该城市")).not.toBeNull();
     });
+    // 不可重试：只尝试一次
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

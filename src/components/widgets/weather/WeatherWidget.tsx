@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, Droplets, MapPin, RefreshCw, Wind } from "lucide-react";
 import { getCurrentLanguage, getMessage } from "@/lib/i18n";
+import { UapiError, uapiErrorText } from "@/lib/uapi";
 import {
   displayPlaceName,
-  fetchMyRegion,
   fetchWeather,
   formatTemperature,
-  isWeatherStale,
-  regionToCity,
   weatherEmoji,
   type WeatherSnapshot,
 } from "@/components/widgets/weather/weather";
@@ -19,9 +17,20 @@ interface WeatherWidgetProps {
   containerHeight?: number;
 }
 
-/** 该 IP 定位只在没有已存城市时执行一次，避免每次渲染都请求。 */
+/** 读取用户已设置的城市；为空时交给接口按 IP 自动定位。 */
 function readCity(data?: Record<string, unknown>): string {
   return typeof data?.city === "string" ? data.city : "";
+}
+
+/**
+ * 该城市是否是用户**显式设置**的。
+ *
+ * 旧版本数据没有这个标记，此时一律视为用户设置（保持原有展示行为）。
+ * 区分二者很重要：按 IP 定位得到的只是接口回显的上层地名（如「重庆城区」），
+ * 若当成用户设置，就会盖掉接口返回的更细粒度 `district`（如「綦江区」）。
+ */
+function readCityIsUserSet(data?: Record<string, unknown>): boolean {
+  return data?.cityIsUserSet !== false;
 }
 
 function readSnapshot(data?: Record<string, unknown>): WeatherSnapshot | undefined {
@@ -36,10 +45,12 @@ function readSnapshot(data?: Record<string, unknown>): WeatherSnapshot | undefin
 /**
  * 天气小部件。
  *
- * 数据来自 UAPI 实时天气接口；城市未设置时先用 IP 定位接口预填所在地
- * （取到"大行政区"一级，即省份/城市），再查询天气。
+ * 数据来自 UAPI 实时天气接口。城市未设置时不额外调用定位接口：
+ * 天气接口在 `city` / `adcode` 均缺失时会按客户端 IP 自动定位，
+ * 并直接回传 `province` / `city` / `district`，少一次请求与一份积分。
  *
- * 结果连同时间戳一起存入小部件数据，10 分钟内复用缓存，点击右上角可手动刷新。
+ * 结果按 10 分钟 TTL 缓存；点右上角可**主动刷新**——主动刷新会绕过
+ * 本地节流与缓存立即联网，且失败时保留当前数据不清空。
  */
 export function WeatherWidget({
   data,
@@ -48,6 +59,8 @@ export function WeatherWidget({
   containerHeight = 150,
 }: WeatherWidgetProps) {
   const [city, setCity] = useState(() => readCity(data));
+  /** 已存城市是否为用户显式设置（决定地名优先用设置值还是接口的细粒度值）。 */
+  const [cityIsUserSet, setCityIsUserSet] = useState(() => readCityIsUserSet(data));
   const [snapshot, setSnapshot] = useState<WeatherSnapshot | undefined>(() => readSnapshot(data));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -57,30 +70,47 @@ export function WeatherWidget({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const persist = useCallback(
-    (next: { city: string; snapshot?: WeatherSnapshot }) => {
+    (next: { city: string; cityIsUserSet: boolean; snapshot?: WeatherSnapshot }) => {
       if (!onDataChange) return;
-      onDataChange({ city: next.city, snapshot: next.snapshot, updatedAt: Date.now() });
+      onDataChange({
+        city: next.city,
+        cityIsUserSet: next.cityIsUserSet,
+        snapshot: next.snapshot,
+        updatedAt: Date.now(),
+      });
     },
     [onDataChange],
   );
 
-  /** 查询天气；targetCity 为空时交给接口按 IP 自动定位。 */
+  /**
+   * 查询天气；targetCity 为空时由接口按 IP 自动定位。
+   *
+   * @param force 用户主动刷新：忽略缓存与本地节流。
+   * @param userSet 该城市是否为用户显式设置（IP 定位得到的不是）。
+   */
   const load = useCallback(
-    async (targetCity: string) => {
+    async (targetCity: string, force = false, userSet = true) => {
       setLoading(true);
       setError("");
       try {
         const lang = getCurrentLanguage() === "en" ? "en" : "zh";
-        const next = await fetchWeather({ city: targetCity || undefined, lang });
+        const next = await fetchWeather({ city: targetCity || undefined, lang, force });
         setSnapshot(next);
         setCity(targetCity || next.city);
-        persist({ city: targetCity || next.city, snapshot: next });
+        setCityIsUserSet(userSet && Boolean(targetCity));
+        persist({
+          city: targetCity || next.city,
+          cityIsUserSet: userSet && Boolean(targetCity),
+          snapshot: next,
+        });
       } catch (e) {
-        setError(
-          e instanceof Error && e.message.includes("HTTP 404")
+        // 拿不到新数据时**保留**已有快照（可能已过期），只提示错误
+        const fallback =
+          e instanceof UapiError && e.info.kind === "not-found"
             ? getMessage("weatherCityNotFound", "未找到该城市")
-            : getMessage("weatherLoadFailed", "天气获取失败"),
-        );
+            : undefined;
+        const { key, fallback: text } = uapiErrorText(e, fallback);
+        setError(getMessage(key, text));
       } finally {
         setLoading(false);
       }
@@ -88,32 +118,16 @@ export function WeatherWidget({
     [persist],
   );
 
-  // 首次挂载后拉取数据。有效缓存已由 useState 初始化直接采用，
-  // 这里只在缓存缺失或过期时请求；状态更新都发生在异步流程里。
+  // 首次挂载后拉取数据。有效缓存由 fetchWeather 内部命中，
+  // 因此这里直接调用即可：有新鲜数据就不会真正联网。
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
 
     void (async () => {
       const storedCity = readCity(data);
-      const storedSnapshot = readSnapshot(data);
-      // 有新鲜缓存就不请求（初始 state 已经用了它）。
-      if (storedSnapshot && !isWeatherStale(data?.updatedAt, Date.now())) return;
-
-      if (storedCity) {
-        await load(storedCity);
-        return;
-      }
-
-      // 没有城市：先用 IP 定位预填大行政区，再查天气。
-      let prefilled = "";
-      try {
-        prefilled = regionToCity(await fetchMyRegion());
-        if (prefilled) setCity(prefilled);
-      } catch {
-        /* 定位失败就退回接口自身的 IP 定位 */
-      }
-      await load(prefilled);
+      // 已存城市：沿用其"是否用户设置"的语义；无城市则交给接口按 IP 定位
+      await load(storedCity, false, readCityIsUserSet(data));
     })();
   }, [data, load]);
 
@@ -121,13 +135,14 @@ export function WeatherWidget({
     if (editing && inputRef.current) inputRef.current.focus();
   }, [editing]);
 
+  /** 主动刷新：绕过缓存与本地节流，立即联网。 */
   const handleRefresh = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (loading) return;
-      void load(city);
+      void load(city, true, cityIsUserSet);
     },
-    [city, load, loading],
+    [city, cityIsUserSet, load, loading],
   );
 
   const handleEditStart = useCallback(
@@ -144,12 +159,15 @@ export function WeatherWidget({
     setEditing(false);
     if (!next || next === city) return;
     setCity(next);
-    void load(next);
+    setCityIsUserSet(true);
+    // 换城市属用户明确操作：直接取新城市的实时数据，不沿用旧缓存
+    void load(next, true, true);
   }, [city, draft, load]);
 
   const compact = containerWidth <= 150 || containerHeight <= 110;
-  // 显示用户设置的城市，未设置时才用接口返回的最细粒度地名
-  const place = displayPlaceName(city, snapshot);
+  // 只把「用户显式设置的城市」当作展示名；IP 定位得到的上层地名不应
+  // 盖掉接口返回的更细粒度 district（如 綦江区）。
+  const place = displayPlaceName(cityIsUserSet ? city : "", snapshot);
 
   return (
     <div

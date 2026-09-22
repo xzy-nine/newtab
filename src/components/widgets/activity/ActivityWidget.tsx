@@ -13,6 +13,7 @@ import {
   readPinnedIds,
   readPreviewMode,
   readSelected,
+  readStaleEntries,
   remainingText,
   selectExpiring,
   selectPinned,
@@ -85,7 +86,13 @@ export function ActivityWidget({
   /** 查询标识：游戏或日期窗口变化即视为另一份数据。 */
   const queryKey = `${gameId}:${todayKey}`;
 
-  const cached = useMemo(() => readCachedEntries(query), [query]);
+  /**
+   * 首屏缓存：优先新鲜缓存，其次（可能已过期的）旧缓存。
+   *
+   * 过期只代表可能少了新增内容，直接清空会闪"暂无活动"；
+   * 保持旧数据再后台刷新体验更好。
+   */
+  const cached = useMemo(() => readCachedEntries(query) ?? readStaleEntries(query), [query]);
 
   /**
    * 拉取结果连同它所属的 queryKey 一起存。
@@ -115,14 +122,18 @@ export function ActivityWidget({
       setError("");
       try {
         const next = await fetchActivityEntries(query, { force });
-        setFetched({ key: queryKey, entries: next });
+        // 远端没给数据时保持当前已展示的内容，不要用空数组覆盖
+        if (next.length > 0 || cached === null) {
+          setFetched({ key: queryKey, entries: next });
+        }
       } catch {
+        // 拉取失败同样保留当前数据，只提示错误
         setError(getMessage("hoyoActivityLoadFailed", "活动获取失败"));
       } finally {
         setLoading(false);
       }
     },
-    [query, queryKey],
+    [query, queryKey, cached],
   );
 
   // 挂载后、以及游戏/窗口变化时拉取；命中缓存时不会真正联网（按桶 TTL 判定）。
@@ -190,7 +201,7 @@ export function ActivityWidget({
         </button>
       </div>
 
-      {error ? (
+      {error && rows.length === 0 ? (
         <div className="activity-widget-state is-error">
           <AlertTriangle className="activity-widget-state-icon" />
           <span>{error}</span>

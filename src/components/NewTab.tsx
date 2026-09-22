@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAppSettings } from "@/lib/app-settings-store";
+import { ensureUapiSettingsHydrated } from "@/lib/uapi-settings-store";
 import { useTheme } from "@/hooks/useTheme";
 import { useBackgroundStyle } from "@/components/Background";
 import { ClockWidget } from "@/components/ClockWidget";
@@ -19,6 +20,8 @@ export function NewTab() {
 
   useEffect(() => {
     hydrate();
+    // UAPI 密钥/冷却状态独立存储，需与设置一起就绪，避免首个请求读到空密钥
+    void ensureUapiSettingsHydrated();
   }, [hydrate]);
 
   // 玻璃效果同步：将设置值应用到 documentElement 的 CSS 变量

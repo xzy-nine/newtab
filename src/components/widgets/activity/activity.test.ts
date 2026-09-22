@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
+import { writeCache } from "@/lib/cache-store";
 import {
   ACTIVITY_TTL_MS,
   BANNER_TTL_MS,
@@ -9,6 +10,7 @@ import {
   addDaysToDayKey,
   applySelectionFilter,
   activityStatus,
+  bucketCacheKey,
   bucketOfKind,
   buildCalendarUrl,
   buildAxisColumns,
@@ -23,6 +25,7 @@ import {
   ganttAxisUnit,
   ganttTodayPct,
   ganttWindow,
+  hasCachedEntries,
   isChildChecked,
   isParentChecked,
   isPreviewEntry,
@@ -30,10 +33,12 @@ import {
   normalizeGamesResponse,
   parseActivityEntry,
   parseCapabilities,
+  readCachedEntries,
   readGameId,
   readPinnedIds,
   readPreviewMode,
   readSelected,
+  readStaleEntries,
   readViewMode,
   readWindowDays,
   remainingText,
@@ -942,5 +947,91 @@ describe("formatRange", () => {
       endMs: utc8MidnightMs("2026-09-10"),
     });
     expect(formatRange(entry)).toBe("2026-09-07 → 2026-09-09");
+  });
+});
+
+/**
+ * 缓存键与「窗口滚动」的关系。
+ *
+ * 这是长 TTL 能否生效的关键：键里曾包含查询窗口的 from/to，
+ * 而窗口以「今天」为起点，于是每天换一把新键，长 TTL 形同虚设。
+ */
+describe("bucketCacheKey", () => {
+  const base = {
+    gameId: "ys",
+    from: "2026-09-01",
+    to: "2027-09-02",
+  };
+
+  it("does not include the query window, so rolling the window reuses the cache", () => {
+    const day1 = bucketCacheKey(base.gameId, "activity");
+    const day2 = bucketCacheKey(base.gameId, "activity");
+    // 同一游戏同一桶 → 永远同一个键，跨天也不会产生新键
+    expect(day1).toBe(day2);
+    expect(day1).not.toContain(base.from);
+    expect(day1).not.toContain(base.to);
+  });
+
+  it("separates games and buckets", () => {
+    expect(bucketCacheKey("ys", "activity")).not.toBe(bucketCacheKey("sr", "activity"));
+    expect(bucketCacheKey("ys", "activity")).not.toBe(bucketCacheKey("ys", "banner"));
+    expect(bucketCacheKey("ys", "activity")).toBe("hoyo-activity:ys:activity");
+  });
+});
+
+describe("readCachedEntries / readStaleEntries", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  /** 写入某个桶的缓存，可指定 TTL（默认很长）。 */
+  function seedBucket(
+    gameId: string,
+    bucket: "activity" | "banner" | "schedule",
+    entries: ParsedActivityEntry[],
+    ttl = ACTIVITY_TTL_MS,
+  ) {
+    writeCache(bucketCacheKey(gameId, bucket), entries, ttl);
+  }
+
+  const query = { gameId: "ys", from: "2026-09-01", to: "2027-09-02" };
+
+  it("returns null when no bucket is cached", () => {
+    expect(readCachedEntries(query)).toBeNull();
+    expect(readStaleEntries(query)).toBeNull();
+  });
+
+  it("merges the buckets and de-duplicates by id", () => {
+    const shared = makeEntry({ id: "dup", kind: "游戏内活动" });
+    seedBucket("ys", "activity", [shared, makeEntry({ id: "a", kind: "游戏内活动" })]);
+    seedBucket("ys", "banner", [makeEntry({ id: "b", kind: "卡池" })]);
+    seedBucket("ys", "schedule", [shared]);
+
+    const merged = readCachedEntries(query)!;
+    expect(merged).toHaveLength(3);
+    expect(merged.filter((e) => e.id === "dup")).toHaveLength(1);
+  });
+
+  it("is independent of the query window (the cache-key fix)", () => {
+    seedBucket("ys", "activity", [makeEntry({ id: "a" })]);
+
+    // 不同窗口必须命中同一份缓存，否则跨天就会重拉
+    expect(readCachedEntries({ ...query, from: "2026-09-02", to: "2027-09-03" })).toHaveLength(1);
+    expect(hasCachedEntries({ ...query, from: "2026-09-10", to: "2027-09-11" })).toBe(true);
+  });
+
+  it("ignores an expired bucket while readStaleEntries still returns it", () => {
+    // TTL 0：写入即过期（用 0 而非极小值，避免同一毫秒内的时序抖动）
+    seedBucket("ys", "activity", [makeEntry({ id: "old" })], 0);
+
+    expect(readCachedEntries(query)).toBeNull();
+    // 远端拿不到数据时的兜底来源
+    expect(readStaleEntries(query)).toHaveLength(1);
+    expect(readStaleEntries(query)![0]!.id).toBe("old");
+  });
+
+  it("treats a game with no cache as a miss even if another game has one", () => {
+    seedBucket("ys", "activity", [makeEntry({ id: "a" })]);
+    expect(readCachedEntries({ ...query, gameId: "sr" })).toBeNull();
   });
 });

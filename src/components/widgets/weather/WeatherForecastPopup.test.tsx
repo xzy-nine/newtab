@@ -16,7 +16,23 @@ const FORECAST = {
 };
 
 const ok = (payload: unknown): Response =>
-  ({ ok: true, status: 200, json: async () => payload }) as Response;
+  ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(payload),
+    json: async () => payload,
+    headers: new Headers(),
+  }) as unknown as Response;
+
+/** 构造失败响应；`uapiFetch` 会按状态码决定是否退避重试。 */
+const fail = (status: number, payload: unknown = {}): Response =>
+  ({
+    ok: false,
+    status,
+    text: async () => JSON.stringify(payload),
+    json: async () => payload,
+    headers: new Headers(),
+  }) as unknown as Response;
 
 /** 缓存里保存的是规范化后的结构（camelCase），而非接口原始结构。 */
 const NORMALIZED_FORECAST = {
@@ -152,12 +168,17 @@ describe("WeatherForecastPopup", () => {
   });
 
   it("shows an error state instead of crashing when the request fails", async () => {
-    fetchMock.mockResolvedValue({ ok: false, status: 503, json: async () => ({}) } as Response);
+    // 503 可重试：会退避重试到次数上限后才报错
+    fetchMock.mockResolvedValue(fail(503));
+
     render(<WeatherForecastPopup data={{ city: "北京" }} />);
 
-    await waitFor(() => {
-      expect(screen.queryByText("预报获取失败")).not.toBeNull();
-    });
+    await waitFor(
+      () => {
+        expect(screen.queryByText("预报获取失败")).not.toBeNull();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it("recovers from a corrupted cached value instead of rendering undefined", async () => {
