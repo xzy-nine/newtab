@@ -2274,6 +2274,12 @@ html.dark .desktop-folder-panel,
   white-space: nowrap;
 }
 
+/* 被窗口边界裁出的碎片块：放不下文字，隐藏以免溢出成"7/2"这种断片 */
+.activity-gantt-week.is-narrow .activity-gantt-week-index,
+.activity-gantt-week.is-narrow .activity-gantt-week-range {
+  display: none;
+}
+
 .activity-gantt-week-range {
   font-size: 10px;
   color: var(--color-muted-foreground);
@@ -2396,6 +2402,15 @@ html.dark .desktop-folder-panel,
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 过窄的条（长窗口里几天的活动）：只留色块，文字与按钮都放不下 */
+.activity-gantt-bar.is-narrow {
+  padding: 0;
+}
+
+.activity-gantt-bar.is-narrow .activity-gantt-bar-title {
+  display: none;
 }
 
 /* 极短事件（前瞻为 1 分钟）：只画起点标记，宽度为 0 的条不可见 */

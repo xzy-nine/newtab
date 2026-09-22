@@ -9,7 +9,7 @@ import {
   activityStatus,
   addDaysToDayKey,
   applySelectionFilter,
-  buildWeekColumns,
+  buildAxisColumns,
   computeDefaultSelection,
   computeGanttLayout,
   fetchActivityEntries,
@@ -43,11 +43,35 @@ interface ActivityCalendarPopupProps {
   onDataChange?: (data: Record<string, unknown>) => void;
 }
 
-/** 窗口天数可选项。 */
-const WINDOW_OPTIONS = [7, 14, 30] as const;
+/**
+ * 窗口跨度可选项（天数）。
+ *
+ * 上限 365 天与接口默认 `to = from + 366 天` 对齐，一次请求即可覆盖；
+ * 半年/一年正好对应"2~3 个月一个赛季/版本"的多个版本跨度。
+ */
+const WINDOW_OPTIONS = [7, 14, 30, 180, 365] as const;
 
 /** 甘特泳道高度（像素），与 CSS 中的条高对应。 */
 const GANTT_LANE_HEIGHT_PX = 34;
+
+/** 横轴刻度窄于该百分比时隐藏文字（被窗口边界裁出的碎片块）。 */
+const NARROW_AXIS_PCT = 3.5;
+
+/**
+ * 甘特条窄于该百分比时只画色块：不显示标题、也不显示固定按钮。
+ *
+ * 长窗口（半年/一年）里几天的活动只有 2~4% 宽，18px 的按钮加省略号
+ * 会把条塞成一个"…"+图标，既看不懂也点不准。此时整条靠 hover 提示，
+ * 双击条体仍可固定。
+ */
+const NARROW_BAR_PCT = 7;
+
+/** 窗口跨度的显示文案：短跨度用「N 天」，长跨度用「半年 / 一年」。 */
+function windowOptionLabel(days: number): string {
+  if (days === 180) return getMessage("hoyoActivityHalfYear", "半年");
+  if (days === 365) return getMessage("hoyoActivityOneYear", "一年");
+  return `${days} ${getMessage("hoyoActivityDays", "天")}`;
+}
 
 function remainingLabel(remaining: RemainingText): string {
   if (remaining.unit === "ended") return getMessage("hoyoActivityEnded", "已结束");
@@ -243,7 +267,7 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
    * 回看是为了让"进行中"的长活动不被裁在左边界上。
    */
   const win = useMemo(() => ganttWindow(now, days), [now, days]);
-  const weekColumns = useMemo(() => buildWeekColumns(win), [win]);
+  const axisColumns = useMemo(() => buildAxisColumns(win), [win]);
   const layout = useMemo(
     () => computeGanttLayout(filtered, win.startMs, win.endMs),
     [filtered, win],
@@ -329,7 +353,7 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
                   className={`activity-calendar-window-btn ${days === option ? "is-active" : ""}`}
                   onClick={() => onDaysChange(option)}
                 >
-                  {option} {getMessage("hoyoActivityDays", "天")}
+                  {windowOptionLabel(option)}
                 </button>
               ))}
             </div>
@@ -380,21 +404,23 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
               </span>
             </div>
 
-            {/* 横轴：整周分块，与参考日程表的「第 N 周」一致 */}
+            {/*
+              横轴刻度：短窗口按「第 N 周 + 日期区间」，长窗口按月。
+              半年/一年用周块会到 26/52 块，标签必然挤成一团。
+              首尾被裁剪出的窄块不显示文字，否则会溢出成"7/2"这种碎片。
+            */}
             <div className="activity-gantt-head">
-              {weekColumns.map((column) => (
+              {axisColumns.map((column) => (
                 <span
-                  key={column.startDayKey}
-                  className="activity-gantt-week"
+                  key={column.key}
+                  className={`activity-gantt-week ${column.widthPct < NARROW_AXIS_PCT ? "is-narrow" : ""}`}
                   style={{ left: `${column.leftPct}%`, width: `${column.widthPct}%` }}
+                  title={column.subLabel ? `${column.label} ${column.subLabel}` : column.label}
                 >
-                  <span className="activity-gantt-week-index">
-                    {getMessage("hoyoActivityWeek", "第 {n} 周").replace(
-                      "{n}",
-                      String(column.index),
-                    )}
-                  </span>
-                  <span className="activity-gantt-week-range">{column.rangeLabel}</span>
+                  <span className="activity-gantt-week-index">{column.label}</span>
+                  {column.subLabel && (
+                    <span className="activity-gantt-week-range">{column.subLabel}</span>
+                  )}
                 </span>
               ))}
             </div>
@@ -405,10 +431,10 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
               </div>
             ) : (
               <div className="activity-gantt-body">
-                {/* 周分隔线 */}
-                {weekColumns.map((column) => (
+                {/* 刻度分隔线 */}
+                {axisColumns.map((column) => (
                   <span
-                    key={`grid-${column.startDayKey}`}
+                    key={`grid-${column.key}`}
                     className="activity-gantt-gridline"
                     style={{ left: `${column.leftPct}%` }}
                   />
@@ -425,36 +451,43 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
                   className="activity-gantt-lanes"
                   style={{ height: `${layout.laneCount * GANTT_LANE_HEIGHT_PX}px` }}
                 >
-                  {layout.bars.map((bar) => (
-                    <div
-                      key={bar.entry.id}
-                      className={`activity-gantt-bar ${statusOf(bar.entry, now)} ${
-                        bar.isPoint ? "is-point" : ""
-                      } ${bar.clippedStart ? "is-clipped-start" : ""} ${
-                        bar.clippedEnd ? "is-clipped-end" : ""
-                      }`}
-                      style={{
-                        left: `${bar.leftPct}%`,
-                        width: bar.isPoint ? undefined : `${bar.widthPct}%`,
-                        top: `${bar.lane * GANTT_LANE_HEIGHT_PX}px`,
-                      }}
-                      title={`${bar.entry.title} · ${formatRange(bar.entry)}`}
-                    >
-                      <span className="activity-gantt-bar-title">{bar.entry.title}</span>
-                      <button
-                        className={`activity-gantt-pin ${
-                          pinnedIds.includes(bar.entry.id) ? "is-pinned" : ""
-                        }`}
-                        title={getMessage("hoyoActivityPin", "固定")}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTogglePin(bar.entry.id);
+                  {layout.bars.map((bar) => {
+                    const isNarrow = !bar.isPoint && bar.widthPct < NARROW_BAR_PCT;
+                    return (
+                      <div
+                        key={bar.entry.id}
+                        className={`activity-gantt-bar ${statusOf(bar.entry, now)} ${
+                          bar.isPoint ? "is-point" : ""
+                        } ${isNarrow ? "is-narrow" : ""} ${
+                          bar.clippedStart ? "is-clipped-start" : ""
+                        } ${bar.clippedEnd ? "is-clipped-end" : ""}`}
+                        style={{
+                          left: `${bar.leftPct}%`,
+                          width: bar.isPoint ? undefined : `${bar.widthPct}%`,
+                          top: `${bar.lane * GANTT_LANE_HEIGHT_PX}px`,
                         }}
+                        title={`${bar.entry.title} · ${formatRange(bar.entry)}`}
+                        // 窄条放不下按钮，双击条体固定/取消固定
+                        onDoubleClick={() => onTogglePin(bar.entry.id)}
                       >
-                        <Pin className="activity-gantt-pin-icon" />
-                      </button>
-                    </div>
-                  ))}
+                        <span className="activity-gantt-bar-title">{bar.entry.title}</span>
+                        {!bar.isPoint && !isNarrow && (
+                          <button
+                            className={`activity-gantt-pin ${
+                              pinnedIds.includes(bar.entry.id) ? "is-pinned" : ""
+                            }`}
+                            title={getMessage("hoyoActivityPin", "固定")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTogglePin(bar.entry.id);
+                            }}
+                          >
+                            <Pin className="activity-gantt-pin-icon" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -493,10 +493,15 @@ export const POINT_THRESHOLD_MS = 60 * 60 * 1000;
 /** 甘特条的最小宽度百分比，避免极短事件被压成 0 宽而消失。 */
 export const MIN_BAR_WIDTH_PCT = 1.2;
 
-/** 甘特窗口向前回看的比例：今天落在窗口偏左处，便于看清"进行中"的已持续跨度。 */
-export const GANTT_LOOKBACK_RATIO = 0.2;
+/**
+ * 今天在甘特窗口中的横向位置：**前 30% 回看、后 70% 前瞻**。
+ *
+ * 以今天为基准而不是"从今天往后铺"：这样既能看到已经进行中的活动
+ * 已经跑了多久（左侧 30%），又把大部分宽度留给未来（右侧 70%）。
+ */
+export const GANTT_LOOKBACK_RATIO = 0.3;
 
-/** 甘特图的时间窗口（总天数已对齐到整周，便于切成整数个周块）。 */
+/** 甘特图的时间窗口（总天数已取整到整周，便于切成整数个周块）。 */
 export interface GanttWindow {
   startMs: number;
   endMs: number;
@@ -507,68 +512,129 @@ export interface GanttWindow {
 }
 
 /**
- * 由「今天 + 前向天数」推出甘特窗口。
+ * 由「今天 + 期望的总跨度天数」推出甘特窗口。
  *
- * - 向前回看若干天：否则进行中的长活动会被裁到左边界，看不出已跑了多久；
- * - **起点对齐到周一**：这样每个周块都是真实的自然周（周一~周日），
- *   「第 N 周」才对得上用户的直觉；否则会得到"周六~周五"这种奇怪的区间；
- * - 总天数向上取整到 7 的倍数，使横轴恰好切成整数个周块。
+ * - **今天固定在 30% 处**（前 30% 回看 / 后 70% 前瞻）；
+ * - 总天数取整到**整周**，使横轴恰好切成等宽的周块；
+ * - 回看天数取整到整天，保持日边界干净。
+ *
+ * 注意：这里刻意**不做"起点对齐到周一"**。日历周对齐与"今天恰好 30%"
+ * 是互斥的（今天距周一的偏移由星期几决定，无法同时满足）。
+ * 30/70 的可读性更重要，因此周块改为"从窗口起点起的连续 7 天"，
+ * 并用 `09/14-09/20` 这样的区间标签消除歧义。
  */
-export function ganttWindow(now: number, forwardDays: number): GanttWindow {
-  const forward = Math.max(1, Math.floor(forwardDays));
-  const lookback = Math.max(2, Math.round(forward * GANTT_LOOKBACK_RATIO));
-  const todayStartMs = utc8MidnightMs(utc8DayKey(now));
-
-  // 把起点回退到本周周一（UTC+8 下的星期：0=周日 … 6=周六）
-  const targetStartMs = todayStartMs - lookback * DAY_MS;
-  const weekday = utc8Parts(targetStartMs).weekday;
-  const daysSinceMonday = (weekday + 6) % 7;
-  const startMs = targetStartMs - daysSinceMonday * DAY_MS;
-
-  // 需要覆盖「今天 + 前向天数」，并补齐到整周
-  const neededDays = Math.ceil((todayStartMs + forward * DAY_MS - startMs) / DAY_MS);
-  const weeks = Math.max(1, Math.ceil(neededDays / 7));
+export function ganttWindow(now: number, totalDays: number): GanttWindow {
+  const requested = Math.max(1, Math.floor(totalDays));
+  // 取整到整周：保证每个周块等宽
+  const weeks = Math.max(1, Math.round(requested / 7));
   const days = weeks * 7;
+  // 今天落在 30% 处；取整到整天，避免窗口起点落在半天上
+  const back = Math.round(days * GANTT_LOOKBACK_RATIO);
+
+  const todayStartMs = utc8MidnightMs(utc8DayKey(now));
+  const startMs = todayStartMs - back * DAY_MS;
   return { startMs, endMs: startMs + days * DAY_MS, days, weeks };
 }
 
-/** 今天在该窗口中的百分比位置。 */
+/**
+ * 今天在该窗口中的百分比位置。
+ *
+ * 用「今天 00:00（UTC+8）」定位，而不是当前时刻：
+ * 否则同一天内随着时间推移竖线会缓慢右移，且 30% 的基准会漂移。
+ */
 export function ganttTodayPct(win: GanttWindow, now: number): number {
   const span = win.endMs - win.startMs;
   if (!(span > 0)) return 0;
-  return ((now - win.startMs) / span) * 100;
+  const todayStartMs = utc8MidnightMs(utc8DayKey(now));
+  return ((todayStartMs - win.startMs) / span) * 100;
 }
 
-/** 甘特图横轴的一个周块。 */
-export interface GanttWeekColumn {
-  /** 1 起的周序号。 */
-  index: number;
-  startDayKey: string;
-  /** 区间末日（含当天）。 */
-  endDayKey: string;
-  /** 日期区间标签，如 `09/10-09/16`。 */
-  rangeLabel: string;
+/**
+ * 横轴粒度：短窗口按周，长窗口按月。
+ *
+ * 赛季/版本约 2~3 个月，所以半年窗口只跨 2~3 个版本、一年跨 4~6 个。
+ * 若长窗口仍按周分块，半年会有 26 块、一年 52 块，标签必然挤成一团；
+ * 改用月块既能容纳标签，也正好对得上"一个版本一两个月"的阅读习惯。
+ */
+export type GanttAxisUnit = "week" | "month";
+
+/** 超过该天数改用月粒度（约两个月以上，周块已密到放不下文字）。 */
+export const GANTT_MONTH_UNIT_THRESHOLD_DAYS = 70;
+
+/** 按窗口长度选择横轴粒度。 */
+export function ganttAxisUnit(win: GanttWindow): GanttAxisUnit {
+  return win.days > GANTT_MONTH_UNIT_THRESHOLD_DAYS ? "month" : "week";
+}
+
+/** 甘特图横轴的一个刻度块。 */
+export interface GanttAxisColumn {
+  /** 稳定 key（含起止日），可直接用作 React key。 */
+  key: string;
+  /** 主标签，如「第 1 周」「9月」。 */
+  label: string;
+  /** 次标签，如 `09/14-09/20`，或跨年时的年份；可能为空。 */
+  subLabel: string;
   leftPct: number;
   widthPct: number;
 }
 
-/** 生成横轴的周块（每块恰好 7 天）。 */
-export function buildWeekColumns(win: GanttWindow): GanttWeekColumn[] {
-  const columns: GanttWeekColumn[] = [];
+/** 周粒度的刻度块（每块恰好 7 天）。 */
+function buildWeekAxis(win: GanttWindow): GanttAxisColumn[] {
+  const columns: GanttAxisColumn[] = [];
   for (let i = 0; i < win.weeks; i++) {
     const startMs = win.startMs + i * 7 * DAY_MS;
     // 区间标签取"含当天"的末日，便于直接阅读
     const lastMs = startMs + 6 * DAY_MS;
     columns.push({
-      index: i + 1,
-      startDayKey: utc8DayKey(startMs),
-      endDayKey: utc8DayKey(lastMs),
-      rangeLabel: `${utc8DateLabelPadded(startMs)}-${utc8DateLabelPadded(lastMs)}`,
+      key: `w-${utc8DayKey(startMs)}`,
+      label: `第 ${i + 1} 周`,
+      subLabel: `${utc8DateLabelPadded(startMs)}-${utc8DateLabelPadded(lastMs)}`,
       leftPct: ((i * 7) / win.days) * 100,
       widthPct: (7 / win.days) * 100,
     });
   }
   return columns;
+}
+
+/** 月粒度的刻度块；首尾两块按窗口边界裁剪。 */
+function buildMonthAxis(win: GanttWindow): GanttAxisColumn[] {
+  const span = win.endMs - win.startMs;
+  const columns: GanttAxisColumn[] = [];
+  const first = utc8Parts(win.startMs);
+  const lastParts = utc8Parts(win.endMs - 1); // 末端的最后一天
+  // 跨年时才显示年份，否则半年窗口里年份会重复多次
+  const spansYears = first.year !== lastParts.year;
+
+  let year = first.year;
+  let month = first.month;
+  while (year < lastParts.year || (year === lastParts.year && month <= lastParts.month)) {
+    const monthStartMs = utc8MidnightMs(`${year}-${pad2(month)}-01`);
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const monthEndMs = utc8MidnightMs(`${nextYear}-${pad2(nextMonth)}-01`);
+
+    const clippedStart = Math.max(monthStartMs, win.startMs);
+    const clippedEnd = Math.min(monthEndMs, win.endMs);
+    if (clippedEnd > clippedStart) {
+      columns.push({
+        key: `m-${year}-${pad2(month)}`,
+        label: `${month}月`,
+        // 跨年窗口里标出年份：首个整月与每年 1 月
+        subLabel: spansYears && (columns.length === 0 || month === 1) ? String(year) : "",
+        leftPct: ((clippedStart - win.startMs) / span) * 100,
+        widthPct: ((clippedEnd - clippedStart) / span) * 100,
+      });
+    }
+
+    year = nextYear;
+    month = nextMonth;
+  }
+  return columns;
+}
+
+/** 生成横轴刻度；粒度随窗口长度自动切换。 */
+export function buildAxisColumns(win: GanttWindow, unit = ganttAxisUnit(win)): GanttAxisColumn[] {
+  return unit === "month" ? buildMonthAxis(win) : buildWeekAxis(win);
 }
 
 /** 一条甘特条的布局结果。 */

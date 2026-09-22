@@ -727,6 +727,14 @@
     "message": "天",
     "description": "天数单位"
   },
+  "hoyoActivityHalfYear": {
+    "message": "半年",
+    "description": "甘特图半年跨度"
+  },
+  "hoyoActivityOneYear": {
+    "message": "一年",
+    "description": "甘特图一年跨度"
+  },
   "hoyoActivityWeek": {
     "message": "第 {n} 周",
     "description": "甘特图周块序号"

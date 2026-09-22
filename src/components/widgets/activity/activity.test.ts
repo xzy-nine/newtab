@@ -11,7 +11,7 @@ import {
   activityStatus,
   bucketOfKind,
   buildCalendarUrl,
-  buildWeekColumns,
+  buildAxisColumns,
   computeDefaultSelection,
   computeGanttLayout,
   dayKeyDiff,
@@ -20,6 +20,7 @@ import {
   filterPreview,
   formatRange,
   gameLabel,
+  ganttAxisUnit,
   ganttTodayPct,
   ganttWindow,
   isChildChecked,
@@ -570,8 +571,8 @@ describe("computeGanttLayout", () => {
   });
 });
 
-describe("ganttWindow / buildWeekColumns", () => {
-  it("aligns the window to whole weeks", () => {
+describe("ganttWindow / 横轴刻度", () => {
+  it("rounds the span to whole weeks", () => {
     const now = utc8MidnightMs("2026-09-22");
     const win = ganttWindow(now, 14);
     expect(win.days % 7).toBe(0);
@@ -581,6 +582,40 @@ describe("ganttWindow / buildWeekColumns", () => {
     expect(win.endMs).toBeGreaterThan(now);
   });
 
+  it("puts today at ~30% (30% lookback / 70% forward)", () => {
+    const now = utc8MidnightMs("2026-09-22") + 9 * 60 * 60 * 1000;
+    for (const requested of [7, 14, 30, 180, 365]) {
+      const win = ganttWindow(now, requested);
+      // 回看天数取整到整天（日边界必须干净），所以短窗口会有零点几个百分点的偏差；
+      // 上界即"半天的占比"。
+      const tolerance = (0.5 / win.days) * 100 + 0.01;
+      const pct = ganttTodayPct(win, now);
+      expect(Math.abs(pct - 30)).toBeLessThanOrEqual(tolerance);
+      // 兜底：无论如何都应明显偏左（远小于 50%），而不是居中或靠右
+      expect(pct).toBeLessThan(35);
+      expect(pct).toBeGreaterThan(25);
+    }
+  });
+
+  it("keeps the forward part clearly larger than the lookback part", () => {
+    // 用户要求：前 30% 回看、后 70% 前瞻 —— 未来必须占大头
+    const now = utc8MidnightMs("2026-09-22");
+    for (const requested of [7, 30, 180, 365]) {
+      const win = ganttWindow(now, requested);
+      const backMs = utc8MidnightMs(utc8DayKey(now)) - win.startMs;
+      const forwardMs = win.endMs - utc8MidnightMs(utc8DayKey(now));
+      expect(forwardMs).toBeGreaterThan(backMs * 2);
+    }
+  });
+
+  it("keeps today's position stable through the day", () => {
+    // 基准是"今天 00:00"，否则竖线会在一天内缓慢右移
+    const win = ganttWindow(utc8MidnightMs("2026-09-22"), 14);
+    const morning = ganttTodayPct(win, utc8MidnightMs("2026-09-22") + 60 * 1000);
+    const night = ganttTodayPct(win, utc8MidnightMs("2026-09-22") + 23 * 60 * 60 * 1000);
+    expect(morning).toBeCloseTo(night, 10);
+  });
+
   it("looks back so ongoing events are not clipped at the left edge", () => {
     const now = utc8MidnightMs("2026-09-22");
     const win = ganttWindow(now, 14);
@@ -588,24 +623,21 @@ describe("ganttWindow / buildWeekColumns", () => {
     expect(win.startMs).toBeLessThan(utc8MidnightMs("2026-09-22"));
   });
 
-  it("snaps the window start to a Monday so weeks are real calendar weeks", () => {
-    // 2026-09-22 是周二；起点必须落在周一，否则「第 N 周」会变成"周六~周五"
-    const win = ganttWindow(utc8MidnightMs("2026-09-22"), 14);
-    const startWeekday = new Date(win.startMs + 8 * 60 * 60 * 1000).getUTCDay();
-    expect(startWeekday).toBe(1); // 1 = 周一
-    expect(win.startMs).toBeLessThanOrEqual(utc8MidnightMs("2026-09-22"));
-    expect(win.endMs).toBeGreaterThan(utc8MidnightMs("2026-09-22"));
+  it("uses week granularity for short spans and month granularity for long ones", () => {
+    // 半年=180天、一年=365天；周块会到 26/52 块，必须切到月块
+    expect(ganttAxisUnit(ganttWindow(utc8MidnightMs("2026-09-22"), 7))).toBe("week");
+    expect(ganttAxisUnit(ganttWindow(utc8MidnightMs("2026-09-22"), 30))).toBe("week");
+    expect(ganttAxisUnit(ganttWindow(utc8MidnightMs("2026-09-22"), 180))).toBe("month");
+    expect(ganttAxisUnit(ganttWindow(utc8MidnightMs("2026-09-22"), 365))).toBe("month");
   });
 
-  it("splits the axis into consecutive 7-day week blocks", () => {
+  it("splits the axis into consecutive equal week blocks", () => {
     const win = ganttWindow(utc8MidnightMs("2026-09-22"), 14);
-    const columns = buildWeekColumns(win);
+    const columns = buildAxisColumns(win);
     expect(columns).toHaveLength(win.weeks);
-    expect(columns[0]!.index).toBe(1);
-    // 每块宽度相等且合计 100%
+    expect(columns[0]!.label).toBe("第 1 周");
     const total = columns.reduce((sum, c) => sum + c.widthPct, 0);
     expect(total).toBeCloseTo(100, 5);
-    // 相邻块首尾相接
     for (let i = 1; i < columns.length; i++) {
       expect(columns[i]!.leftPct).toBeCloseTo(
         columns[i - 1]!.leftPct + columns[i - 1]!.widthPct,
@@ -616,9 +648,37 @@ describe("ganttWindow / buildWeekColumns", () => {
 
   it("labels each week block as a date range", () => {
     const win = ganttWindow(utc8MidnightMs("2026-09-22"), 14);
-    const [first] = buildWeekColumns(win);
-    // 形如 09/17-09/23
-    expect(first!.rangeLabel).toMatch(/^\d{2}\/\d{2}-\d{2}\/\d{2}$/);
+    const [first] = buildAxisColumns(win);
+    expect(first!.subLabel).toMatch(/^\d{2}\/\d{2}-\d{2}\/\d{2}$/);
+  });
+
+  it("covers a half-year span with ~6-7 month blocks", () => {
+    const win = ganttWindow(utc8MidnightMs("2026-09-22"), 180);
+    const columns = buildAxisColumns(win);
+    // 180 天取整到 26 周；跨 7 个月（首尾各被裁剪）
+    expect(columns.length).toBeGreaterThanOrEqual(6);
+    expect(columns.length).toBeLessThanOrEqual(8);
+    // 月块标签形如「9月」
+    expect(columns.every((c) => /^\d{1,2}月$/.test(c.label))).toBe(true);
+    // 覆盖完整窗口
+    const covered = columns.reduce((sum, c) => sum + c.widthPct, 0);
+    expect(covered).toBeCloseTo(100, 5);
+    // 首尾块被窗口边界裁剪 → 宽度应小于整月占比
+    expect(columns[0]!.leftPct).toBe(0);
+    const last = columns.at(-1)!;
+    expect(last.leftPct + last.widthPct).toBeCloseTo(100, 5);
+  });
+
+  it("shows the year only when a long span crosses a year boundary", () => {
+    // 同一自然年内的半年：不该反复标年份
+    const sameYear = buildAxisColumns(ganttWindow(utc8MidnightMs("2026-03-15"), 180));
+    expect(sameYear.filter((c) => c.subLabel !== "").length).toBeLessThanOrEqual(1);
+
+    // 跨越 2027 的一年版：应标出年份
+    const crossing = buildAxisColumns(ganttWindow(utc8MidnightMs("2026-09-22"), 365));
+    const years = crossing.map((c) => c.subLabel).filter((s) => s !== "");
+    expect(years).toContain("2026");
+    expect(years).toContain("2027");
   });
 
   it("puts today inside the window and reports its position", () => {

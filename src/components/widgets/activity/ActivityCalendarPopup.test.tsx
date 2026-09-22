@@ -280,6 +280,54 @@ describe("ActivityCalendarPopup", () => {
     expect(new Set(tops).size).toBe(1);
   });
 
+  it("uses a monthly axis for a half-year span and a weekly one for short spans", async () => {
+    fetchMock.mockImplementation(routeFetch({}));
+
+    const { container, unmount } = render(
+      <ActivityCalendarPopup data={{ view: "gantt", days: 180 }} />,
+    );
+    await waitFor(() => {
+      expect(container.querySelectorAll(".activity-gantt-week").length).toBeGreaterThan(0);
+    });
+    const labels = Array.from(container.querySelectorAll(".activity-gantt-week-index")).map(
+      (el) => el.textContent,
+    );
+    // 月粒度：标签形如「9月」，而不是「第 N 周」
+    expect(labels.some((text) => /^\d{1,2}月$/.test(text ?? ""))).toBe(true);
+    expect(labels.some((text) => (text ?? "").startsWith("第 "))).toBe(false);
+    // 半年若用周块会有 26 块；月块应远少于此
+    expect(labels.length).toBeLessThanOrEqual(10);
+    unmount();
+
+    // 短跨度仍是周粒度
+    const { container: shortContainer } = render(
+      <ActivityCalendarPopup data={{ view: "gantt", days: 14 }} />,
+    );
+    await waitFor(() => {
+      expect(shortContainer.querySelectorAll(".activity-gantt-week").length).toBeGreaterThan(0);
+    });
+    const shortLabels = Array.from(
+      shortContainer.querySelectorAll(".activity-gantt-week-index"),
+    ).map((el) => el.textContent);
+    expect(shortLabels.some((text) => (text ?? "").startsWith("第 "))).toBe(true);
+  });
+
+  it("clips the first month block to the window edge", async () => {
+    fetchMock.mockImplementation(routeFetch({}));
+
+    const { container } = render(<ActivityCalendarPopup data={{ view: "gantt", days: 180 }} />);
+
+    await waitFor(() => {
+      expect(container.querySelectorAll(".activity-gantt-week").length).toBeGreaterThan(0);
+    });
+    const weeks = Array.from(container.querySelectorAll<HTMLElement>(".activity-gantt-week"));
+    const widths = weeks.map((el) => Number.parseFloat(el.style.width));
+    // 首块从月中开始，必然比后续整月窄
+    expect(widths[0]!).toBeLessThan(widths[1]!);
+    // 首块紧贴窗口左边界
+    expect(Number.parseFloat(weeks[0]!.style.left)).toBe(0);
+  });
+
   it("switches game data in place without waiting for the parent to feed gameId back", async () => {
     // 回归：曾经这里会卡在"加载中"——弹窗清空了自己的状态，
     // 却只依赖父级回灌新 gameId 来触发重新加载；父级没回灌就永久卡住。

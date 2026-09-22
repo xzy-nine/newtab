@@ -1671,6 +1671,14 @@
     "message": "days",
     "description": "天数单位"
   },
+  "hoyoActivityHalfYear": {
+    "message": "6 months",
+    "description": "甘特图半年跨度"
+  },
+  "hoyoActivityOneYear": {
+    "message": "1 year",
+    "description": "甘特图一年跨度"
+  },
   "hoyoActivityWeek": {
     "message": "Week {n}",
     "description": "甘特图周块序号"
