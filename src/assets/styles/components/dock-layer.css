@@ -19,7 +19,6 @@
   overflow: hidden;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
 .dock-layer-header {
@@ -263,7 +262,6 @@
   border-radius: 12px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 .dock-menu-item {
