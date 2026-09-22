@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 import { registerWidget, getAllTypes } from "@/lib/widget-registry";
 import { getMessage } from "@/lib/i18n";
-import { CounterWidget } from "@/components/widgets/CounterWidget";
-import { TimerWidget } from "@/components/widgets/TimerWidget";
-import { NoteWidget } from "@/components/widgets/NoteWidget";
+import { CounterWidget } from "@/components/widgets/counter/CounterWidget";
+import { TimerWidget } from "@/components/widgets/timer/TimerWidget";
+import { NoteWidget } from "@/components/widgets/note/NoteWidget";
+import { WeatherWidget } from "@/components/widgets/weather/WeatherWidget";
+import { WeatherForecastPopup } from "@/components/widgets/weather/WeatherForecastPopup";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -49,6 +51,28 @@ export function useWidgetRegistration() {
         maxHeight: 300,
       },
       component: NoteWidget,
+    });
+    registerWidget("weather", {
+      meta: {
+        type: "weather",
+        name: getMessage("weatherWidgetName", "天气"),
+        description: getMessage("weatherWidgetDesc", "实时天气与所在地区，城市可用 IP 自动定位"),
+        icon: "weather",
+      },
+      config: {
+        defaultWidth: 200,
+        defaultHeight: 150,
+        minWidth: 140,
+        minHeight: 110,
+        maxWidth: 400,
+        maxHeight: 300,
+      },
+      component: WeatherWidget,
+      // 展开后按需拉取逐小时/逐天预报（24h 缓存），磁贴本身只显示实时天气
+      popup: {
+        title: getMessage("weatherForecastTitle", "天气预报"),
+        content: WeatherForecastPopup,
+      },
     });
   }, []);
 }

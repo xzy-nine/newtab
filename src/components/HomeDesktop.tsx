@@ -12,6 +12,7 @@ import { LayoutGrid, Link2, Pin, PinOff, Puzzle } from "lucide-react";
 import { DesktopGridView } from "@/components/DesktopGridView";
 import { WidgetAddDialog } from "@/components/WidgetSystem";
 import { FolderPopup } from "@/components/FolderPopup";
+import { WidgetPopupHost } from "@/components/WidgetPopupHost";
 import { BOOKMARK_DRAG_TYPE } from "@/components/DockFolderLayer";
 import { useContextMenu, type ContextMenuItem } from "@/hooks/useContextMenu";
 import { getMessage } from "@/lib/i18n";
@@ -21,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { normalizeBrowserUrl } from "@/lib/browser";
 import { isInSidePanel, openUrl } from "@/lib/open-url";
 import { createDesktopItemId, useHomeDesktop } from "@/lib/home-desktop-store";
+import { hasWidgetPopup } from "@/lib/widget-registry";
 import {
   DEFAULT_ITEM_NAME,
   DEFAULT_SHORTCUT_COLOR,
@@ -30,6 +32,7 @@ import {
   isWidgetItem,
   type BookmarkLike,
   type DesktopItem,
+  type WidgetItemData,
 } from "@/lib/desktop-items";
 
 export interface HomeDesktopHandle {
@@ -86,6 +89,8 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
   const [shortcutForm, setShortcutForm] = useState({ name: "", url: "" });
   /** 正在弹窗展示的文件夹 id。 */
   const [popupFolderId, setPopupFolderId] = useState<string | null>(null);
+  /** 已展开的小部件（有 popup 定义的那些）。 */
+  const [expandedWidget, setExpandedWidget] = useState<WidgetItemData | null>(null);
   /** 初始加载是否已完成；未完成前不做任何落盘，避免覆盖已有数据。 */
   const [loaded, setLoaded] = useState(false);
   const loadStartedRef = useRef(false);
@@ -250,6 +255,14 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
       }
 
       if (isWidgetItem(item)) {
+        // 支持展开的小部件（如天气）在右键菜单里也给一个入口，
+        // 与磁贴右上角的按钮等价。
+        if (hasWidgetPopup(item.widgetType)) {
+          menuItems.push({
+            label: getMessage("widgetExpand", "展开详情"),
+            onSelect: () => setExpandedWidget(item),
+          });
+        }
         menuItems.push({
           label: getMessage("removeWidget", "删除小部件"),
           onSelect: () => handleRemoveItem(item.id),
@@ -370,6 +383,7 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
           onItemResizeEnd={handleResizeEnd}
           onOpenBookmark={openUrl}
           onOpenFolderPopup={setPopupFolderId}
+          onExpandWidget={setExpandedWidget}
           emptyState={emptyState}
           className="home-desktop"
         >
@@ -381,6 +395,12 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
         folderId={popupFolderId}
         title={popupFolderId ? folderTitles[popupFolderId] : undefined}
         onClose={() => setPopupFolderId(null)}
+      />
+
+      <WidgetPopupHost
+        item={expandedWidget}
+        onClose={() => setExpandedWidget(null)}
+        onDataChange={updateItemData}
       />
 
       <WidgetAddDialog

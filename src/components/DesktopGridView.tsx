@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Maximize2 } from "lucide-react";
+import { isInteractiveTarget } from "@/lib/dom-interaction";
+import { getMessage } from "@/lib/i18n";
+import { hasWidgetPopup } from "@/lib/widget-registry";
 import {
   folderTileForm,
   isFolderItem,
@@ -59,6 +62,8 @@ export interface DesktopGridViewProps {
   onOpenBookmark?: (url: string) => void;
   /** 点击展开块里的 "+N"（查看该文件夹全部书签）。 */
   onOpenFolderPopup?: (folderId: string) => void;
+  /** 展开支持弹窗的小部件（磁贴右上角按钮）。 */
+  onExpandWidget?: (item: WidgetItemData) => void;
   /** 列表为空时展示的内容。 */
   emptyState?: ReactNode;
   /** 网格之外的浮层（如右键菜单、对话框）。 */
@@ -83,6 +88,7 @@ export function DesktopGridView({
   onItemResizeEnd,
   onOpenBookmark,
   onOpenFolderPopup,
+  onExpandWidget,
   emptyState,
   children,
   className,
@@ -93,6 +99,8 @@ export function DesktopGridView({
   const [containerWidth, setContainerWidth] = useState(800);
   const dragIndexRef = useRef<number | null>(null);
   const resizeState = useRef<{ id: string; startX: number; origW: number } | null>(null);
+  /** 正在交互控件的磁贴 id：期间关闭其 draggable。 */
+  const [dragDisabledId, setDragDisabledId] = useState<string | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -145,6 +153,28 @@ export function DesktopGridView({
   const handleDragEnd = useCallback(() => {
     dragIndexRef.current = null;
   }, []);
+
+  /**
+   * 磁贴是可拖拽的（用于排序），但内部的输入框/按钮必须能正常交互。
+   * 若在控件上按下时磁贴仍可拖拽，浏览器会把这次按下当成拖拽起点，
+   * 导致输入框无法获得焦点、按钮点击被吞掉。
+   * 因此按下控件时记下该磁贴，暂时关掉它的 draggable，指针抬起后恢复。
+   */
+  const handleTilePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, id: string) => {
+    if (!isInteractiveTarget(e.target)) return;
+    setDragDisabledId(id);
+  }, []);
+
+  useEffect(() => {
+    if (dragDisabledId === null) return;
+    const restore = () => setDragDisabledId(null);
+    window.addEventListener("pointerup", restore);
+    window.addEventListener("pointercancel", restore);
+    return () => {
+      window.removeEventListener("pointerup", restore);
+      window.removeEventListener("pointercancel", restore);
+    };
+  }, [dragDisabledId]);
 
   const handleResizeStart = useCallback(
     (e: React.PointerEvent, item: WidgetItemData | FolderItem) => {
@@ -212,7 +242,8 @@ export function DesktopGridView({
                   key={item.id}
                   className={`desktop-item ${itemClassName(item)}`}
                   style={{ width: itemWidth }}
-                  draggable
+                  draggable={dragDisabledId !== item.id}
+                  onPointerDown={(e) => handleTilePointerDown(e, item.id)}
                   onDragStart={(e) => handleDragStart(e, globalIdx)}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, globalIdx)}
@@ -243,6 +274,18 @@ export function DesktopGridView({
                   )}
                   {(isWidgetItem(item) || isFolderItem(item)) && (
                     <WidgetResizeHandle onPointerDown={(e) => handleResizeStart(e, item)} />
+                  )}
+                  {isWidgetItem(item) && hasWidgetPopup(item.widgetType) && (
+                    <button
+                      className="desktop-item-expand-handle"
+                      title={getMessage("widgetExpand", "展开详情")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onExpandWidget?.(item);
+                      }}
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                    </button>
                   )}
                   <div className="desktop-item-drag-handle">
                     <GripVertical className="w-3 h-3 opacity-40" />

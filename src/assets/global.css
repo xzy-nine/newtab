@@ -704,6 +704,28 @@ html.light .desktop-shortcut-name {
   opacity: 1;
 }
 
+/* 展开手柄（支持弹窗的小部件） */
+.desktop-item-expand-handle {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 3px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  cursor: pointer;
+  z-index: 6;
+  pointer-events: auto;
+  line-height: 0;
+}
+
+.desktop-item:hover .desktop-item-expand-handle {
+  opacity: 1;
+}
+
 /* 自定义滚动条 - 圆角矩形风格 */
 ::-webkit-scrollbar {
   width: 6px;
@@ -1426,4 +1448,430 @@ html.dark .desktop-folder-panel,
 /* 主桌面：稍微降低玻璃遮挡，突出图标 */
 .home-desktop {
   border-radius: 12px;
+}
+
+/* ===== 天气小部件 ===== */
+.weather-widget {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  gap: 6px;
+  color: var(--color-foreground);
+  overflow: hidden;
+  /* 小部件内有输入框等控件，需要允许选中与编辑 */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* 控件区域恢复文本选择，避免继承 body 的 user-select: none */
+.weather-widget input {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.weather-widget-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.weather-widget-place {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  padding: 2px 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.weather-widget-place:hover {
+  background: var(--widget-btn-bg, rgba(128, 128, 128, 0.2));
+}
+
+.weather-widget-pin {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.weather-widget-place-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.weather-widget-input {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px dashed color-mix(in oklch, currentColor 45%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.3;
+  outline: none;
+}
+
+.weather-widget-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+}
+
+.weather-widget-refresh:hover {
+  opacity: 1;
+  background: var(--widget-btn-bg, rgba(128, 128, 128, 0.2));
+}
+
+.weather-widget-refresh-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.weather-widget-refresh-icon.is-spinning {
+  animation: weather-spin 1s linear infinite;
+}
+
+@keyframes weather-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.weather-widget-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.weather-widget-emoji {
+  font-size: 34px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.weather-widget-temp-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.weather-widget-temp {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-widget-desc {
+  font-size: 12px;
+  line-height: 1.3;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.weather-widget-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 8px;
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  opacity: 0.75;
+}
+
+.weather-widget-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  /* 文字完整显示，不做纵向裁切 */
+  overflow: visible;
+}
+
+.weather-widget-meta-icon {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.weather-widget-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex-shrink: 0;
+  font-size: 9px;
+  line-height: 1.4;
+  opacity: 0.55;
+}
+
+.weather-widget-foot-icon {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+}
+
+.weather-widget-loading,
+.weather-widget-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  min-height: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.weather-widget-error {
+  color: #f87171;
+  opacity: 0.9;
+}
+
+.weather-widget-error-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+/* ===== 天气展开弹窗（逐小时 / 逐天预报） ===== */
+.weather-forecast {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--color-foreground);
+}
+
+.weather-forecast-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.weather-forecast-city {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weather-forecast-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.weather-forecast-refresh:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+  color: var(--color-foreground);
+}
+
+.weather-forecast-refresh:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.weather-forecast-refresh-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.weather-forecast-refresh-icon.is-spinning,
+.weather-forecast-state-icon.is-spinning {
+  animation: weather-spin 1s linear infinite;
+}
+
+.weather-forecast-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 28px 0;
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+}
+
+.weather-forecast-state-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.weather-forecast-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.weather-forecast-heading {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted-foreground);
+}
+
+/* 逐小时：横向滚动 */
+.weather-hourly {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.weather-hourly-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 52px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--color-foreground) 6%, transparent);
+}
+
+.weather-hourly-time {
+  font-size: 10px;
+  color: var(--color-muted-foreground);
+  line-height: 1.3;
+}
+
+.weather-hourly-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.weather-hourly-temp {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.weather-hourly-pop {
+  font-size: 9px;
+  color: #60a5fa;
+  line-height: 1.3;
+}
+
+/* 逐天：行式布局 */
+.weather-daily {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.weather-daily-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.weather-daily-row:hover {
+  background: color-mix(in oklch, var(--color-foreground) 8%, transparent);
+}
+
+.weather-daily-day {
+  flex-shrink: 0;
+  width: 62px;
+  color: var(--color-foreground);
+}
+
+.weather-daily-emoji {
+  flex-shrink: 0;
+  width: 22px;
+  font-size: 15px;
+  line-height: 1;
+  text-align: center;
+}
+
+.weather-daily-desc {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-muted-foreground);
+}
+
+.weather-daily-sun {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--color-muted-foreground);
+}
+
+.weather-daily-sun-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.weather-daily-sun-icon {
+  width: 10px;
+  height: 10px;
+}
+
+.weather-daily-temp {
+  flex-shrink: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 62px;
 }

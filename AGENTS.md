@@ -38,7 +38,11 @@ src/
 ├── entrypoints/       # newtab, sidepanel, background
 ├── components/
 │   ├── ui/            # shadcn
-│   └── widgets/       # CounterWidget, NoteWidget, TimerWidget
+│   └── widgets/       # 每个小部件一个子目录
+│       ├── counter/   # CounterWidget.tsx
+│       ├── timer/     # TimerWidget.tsx
+│       ├── note/      # NoteWidget.tsx
+│       └── weather/   # WeatherWidget.tsx + weather.ts（数据与纯逻辑）
 ├── hooks/             # useTheme, useBookmarkFolders, useDesktopGrid, useContextMenu
 ├── lib/
 │   ├── app-settings.ts / app-settings-store.ts

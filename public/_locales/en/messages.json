@@ -1546,5 +1546,73 @@
   "hideFolderPreview": {
     "message": "Hide folder preview",
     "description": "隐藏文件夹预览"
+  },
+  "weatherWidgetName": {
+    "message": "Weather",
+    "description": "天气小部件名称"
+  },
+  "weatherWidgetDesc": {
+    "message": "Live weather for your area, located automatically by IP",
+    "description": "天气小部件描述"
+  },
+  "weatherLocating": {
+    "message": "Locating...",
+    "description": "正在定位"
+  },
+  "weatherLoading": {
+    "message": "Loading...",
+    "description": "天气加载中"
+  },
+  "weatherLoadFailed": {
+    "message": "Failed to load weather",
+    "description": "天气获取失败"
+  },
+  "weatherCityNotFound": {
+    "message": "City not found",
+    "description": "未找到该城市"
+  },
+  "weatherNoData": {
+    "message": "No weather data",
+    "description": "暂无天气数据"
+  },
+  "weatherRefresh": {
+    "message": "Refresh",
+    "description": "刷新天气"
+  },
+  "weatherChangeCity": {
+    "message": "Click to change city",
+    "description": "点击修改城市"
+  },
+  "weatherCityPlaceholder": {
+    "message": "City, e.g. Beijing",
+    "description": "城市输入占位符"
+  },
+  "weatherFeelsLike": {
+    "message": "Feels",
+    "description": "体感温度"
+  },
+  "widgetExpand": {
+    "message": "Expand details",
+    "description": "展开小部件详情"
+  },
+  "weatherForecastTitle": {
+    "message": "Weather forecast",
+    "description": "天气预报弹窗标题"
+  },
+  "weatherForecastFailed": {
+    "message": "Failed to load forecast",
+    "description": "预报获取失败"
+  },
+  "weatherHourly": {
+    "message": "Hourly forecast",
+    "description": "逐小时预报"
+  },
+  "weatherDaily": {
+    "message": "Daily forecast",
+    "description": "逐天预报"
+  },
+  "weatherCurrent": {
+    "message": "Current location",
+    "description": "当前位置"
   }
 }
