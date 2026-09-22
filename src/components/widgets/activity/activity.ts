@@ -161,6 +161,12 @@ export function utc8TimeLabel(ms: number): string {
   return `${pad2(p.hour)}:${pad2(p.minute)}`;
 }
 
+/** UTC+8 下的零填充日期，如 `09/23`（横轴区间标签用，保证等宽对齐）。 */
+export function utc8DateLabelPadded(ms: number): string {
+  const p = utc8Parts(ms);
+  return `${pad2(p.month)}/${pad2(p.day)}`;
+}
+
 /** UTC+8 下的星期，如 `周三`。 */
 export function utc8WeekdayLabel(ms: number): string {
   const names = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -477,17 +483,6 @@ export function isPinned(pinnedIds: readonly string[], id: string): boolean {
 
 // ───────────────────────────── 甘特图布局（纯计算） ─────────────────────────────
 
-/** 一行甘特条的布局结果。 */
-export interface GanttRow {
-  entry: ParsedActivityEntry;
-  /** 左边界百分比 0~100。 */
-  leftPct: number;
-  /** 宽度百分比 0~100；点标记为 0。 */
-  widthPct: number;
-  /** 事件过短（如 1 分钟的前瞻），只画起点标记而不画条。 */
-  isPoint: boolean;
-}
-
 /**
  * 短于该阈值的事件按「点标记」处理。
  *
@@ -498,6 +493,108 @@ export const POINT_THRESHOLD_MS = 60 * 60 * 1000;
 /** 甘特条的最小宽度百分比，避免极短事件被压成 0 宽而消失。 */
 export const MIN_BAR_WIDTH_PCT = 1.2;
 
+/** 甘特窗口向前回看的比例：今天落在窗口偏左处，便于看清"进行中"的已持续跨度。 */
+export const GANTT_LOOKBACK_RATIO = 0.2;
+
+/** 甘特图的时间窗口（总天数已对齐到整周，便于切成整数个周块）。 */
+export interface GanttWindow {
+  startMs: number;
+  endMs: number;
+  /** 窗口总天数，为 7 的倍数。 */
+  days: number;
+  /** 周数。 */
+  weeks: number;
+}
+
+/**
+ * 由「今天 + 前向天数」推出甘特窗口。
+ *
+ * - 向前回看若干天：否则进行中的长活动会被裁到左边界，看不出已跑了多久；
+ * - **起点对齐到周一**：这样每个周块都是真实的自然周（周一~周日），
+ *   「第 N 周」才对得上用户的直觉；否则会得到"周六~周五"这种奇怪的区间；
+ * - 总天数向上取整到 7 的倍数，使横轴恰好切成整数个周块。
+ */
+export function ganttWindow(now: number, forwardDays: number): GanttWindow {
+  const forward = Math.max(1, Math.floor(forwardDays));
+  const lookback = Math.max(2, Math.round(forward * GANTT_LOOKBACK_RATIO));
+  const todayStartMs = utc8MidnightMs(utc8DayKey(now));
+
+  // 把起点回退到本周周一（UTC+8 下的星期：0=周日 … 6=周六）
+  const targetStartMs = todayStartMs - lookback * DAY_MS;
+  const weekday = utc8Parts(targetStartMs).weekday;
+  const daysSinceMonday = (weekday + 6) % 7;
+  const startMs = targetStartMs - daysSinceMonday * DAY_MS;
+
+  // 需要覆盖「今天 + 前向天数」，并补齐到整周
+  const neededDays = Math.ceil((todayStartMs + forward * DAY_MS - startMs) / DAY_MS);
+  const weeks = Math.max(1, Math.ceil(neededDays / 7));
+  const days = weeks * 7;
+  return { startMs, endMs: startMs + days * DAY_MS, days, weeks };
+}
+
+/** 今天在该窗口中的百分比位置。 */
+export function ganttTodayPct(win: GanttWindow, now: number): number {
+  const span = win.endMs - win.startMs;
+  if (!(span > 0)) return 0;
+  return ((now - win.startMs) / span) * 100;
+}
+
+/** 甘特图横轴的一个周块。 */
+export interface GanttWeekColumn {
+  /** 1 起的周序号。 */
+  index: number;
+  startDayKey: string;
+  /** 区间末日（含当天）。 */
+  endDayKey: string;
+  /** 日期区间标签，如 `09/10-09/16`。 */
+  rangeLabel: string;
+  leftPct: number;
+  widthPct: number;
+}
+
+/** 生成横轴的周块（每块恰好 7 天）。 */
+export function buildWeekColumns(win: GanttWindow): GanttWeekColumn[] {
+  const columns: GanttWeekColumn[] = [];
+  for (let i = 0; i < win.weeks; i++) {
+    const startMs = win.startMs + i * 7 * DAY_MS;
+    // 区间标签取"含当天"的末日，便于直接阅读
+    const lastMs = startMs + 6 * DAY_MS;
+    columns.push({
+      index: i + 1,
+      startDayKey: utc8DayKey(startMs),
+      endDayKey: utc8DayKey(lastMs),
+      rangeLabel: `${utc8DateLabelPadded(startMs)}-${utc8DateLabelPadded(lastMs)}`,
+      leftPct: ((i * 7) / win.days) * 100,
+      widthPct: (7 / win.days) * 100,
+    });
+  }
+  return columns;
+}
+
+/** 一条甘特条的布局结果。 */
+export interface GanttBar {
+  entry: ParsedActivityEntry;
+  /** 所在泳道（0 起）。互不重叠的活动会共用同一泳道。 */
+  lane: number;
+  /** 左边界百分比 0~100。 */
+  leftPct: number;
+  /** 宽度百分比 0~100；点标记为 0。 */
+  widthPct: number;
+  /** 事件过短（如 1 分钟的前瞻），只画起点标记而不画条。 */
+  isPoint: boolean;
+  /** 左端被窗口截断（说明实际开始早于窗口）。 */
+  clippedStart: boolean;
+  /** 右端被窗口截断（说明实际结束晚于窗口）。 */
+  clippedEnd: boolean;
+}
+
+/** 甘特图布局结果。 */
+export interface GanttLayout {
+  bars: GanttBar[];
+  /** 泳道总数；为 0 表示没有可见活动。 */
+  laneCount: number;
+}
+
 export interface GanttLayoutOptions {
   /** 点标记阈值，缺省 1 小时。 */
   pointThresholdMs?: number;
@@ -506,26 +603,43 @@ export interface GanttLayoutOptions {
 }
 
 /**
- * 计算甘特图每一行的位置。
+ * 计算甘特图布局：**泳道装箱** + 两端裁剪。
  *
- * 只保留与窗口相交的事件（`end > windowStart && start < windowEnd`），
- * 两端各做 clamp，避免早于窗口开始或晚于结束的长条溢出画布。
- * 返回结果按开始时间升序。
+ * 与"每个活动一行"的进度条式布局不同，这里把互不重叠的活动放进同一泳道
+ * （贪心：放进第一条「上一段已结束」的泳道，都不满足则新开一条），
+ * 这样短时间内先后发生的多个活动共享一行，行数更少、也更像真正的时间轴。
+ *
+ * 只保留与窗口相交的事件（`end > start_w && start < end_w`），两端各做 clamp，
+ * 避免早于窗口开始或晚于结束的长条溢出画布。
  */
-export function computeGanttRows(
+export function computeGanttLayout(
   entries: ParsedActivityEntry[],
   windowStartMs: number,
   windowEndMs: number,
   options: GanttLayoutOptions = {},
-): GanttRow[] {
+): GanttLayout {
   const span = windowEndMs - windowStartMs;
-  if (!(span > 0)) return [];
+  if (!(span > 0)) return { bars: [], laneCount: 0 };
   const pointThreshold = options.pointThresholdMs ?? POINT_THRESHOLD_MS;
   const minWidth = options.minWidthPct ?? MIN_BAR_WIDTH_PCT;
 
-  const rows: GanttRow[] = [];
-  for (const entry of entries) {
-    if (entry.endMs <= windowStartMs || entry.startMs >= windowEndMs) continue;
+  const visible = entries
+    .filter((entry) => entry.endMs > windowStartMs && entry.startMs < windowEndMs)
+    .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
+
+  const bars: GanttBar[] = [];
+  /** 每条泳道当前的占用结束时间。 */
+  const laneEnds: number[] = [];
+
+  for (const entry of visible) {
+    // 贪心找一条空闲泳道；找不到就新开一条
+    let lane = laneEnds.findIndex((end) => end <= entry.startMs);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(entry.endMs);
+    } else {
+      laneEnds[lane] = Math.max(laneEnds[lane]!, entry.endMs);
+    }
 
     const clippedStart = Math.max(entry.startMs, windowStartMs);
     const clippedEnd = Math.min(entry.endMs, windowEndMs);
@@ -533,47 +647,25 @@ export function computeGanttRows(
 
     // 点标记：事件本身很短（前瞻），或窗口内可见部分极短
     const isPoint = entry.endMs - entry.startMs <= pointThreshold;
-    if (isPoint) {
-      rows.push({ entry, leftPct, widthPct: 0, isPoint: true });
-      continue;
+    let widthPct = isPoint ? 0 : ((clippedEnd - clippedStart) / span) * 100;
+    if (!isPoint) {
+      if (widthPct < minWidth) widthPct = minWidth;
+      // 右边界不得超出画布，否则条会溢出被裁掉
+      if (leftPct + widthPct > 100) widthPct = Math.max(0, 100 - leftPct);
     }
 
-    let widthPct = ((clippedEnd - clippedStart) / span) * 100;
-    if (widthPct < minWidth) widthPct = minWidth;
-    // 右边界不得超出画布，否则条会溢出被裁掉
-    if (leftPct + widthPct > 100) widthPct = Math.max(0, 100 - leftPct);
-
-    rows.push({ entry, leftPct, widthPct, isPoint: false });
+    bars.push({
+      entry,
+      lane,
+      leftPct,
+      widthPct,
+      isPoint,
+      clippedStart: entry.startMs < windowStartMs,
+      clippedEnd: entry.endMs > windowEndMs,
+    });
   }
 
-  // rows 是本函数新建的数组，直接排序不会影响入参
-  return rows.sort((a, b) => a.entry.startMs - b.entry.startMs);
-}
-
-/** 甘特图横轴的一天。 */
-export interface GanttDayColumn {
-  dayKey: string;
-  /** 日期标签，如 `9/23`。 */
-  label: string;
-  /** 是否今天。 */
-  isToday: boolean;
-}
-
-/** 生成横轴的天列（按 UTC+8）。 */
-export function buildDayColumns(
-  windowStartMs: number,
-  days: number,
-  now: number,
-): GanttDayColumn[] {
-  const todayKey = utc8DayKey(now);
-  const columns: GanttDayColumn[] = [];
-  const count = Math.max(0, Math.floor(days));
-  for (let i = 0; i < count; i++) {
-    const ms = windowStartMs + i * DAY_MS;
-    const dayKey = utc8DayKey(ms);
-    columns.push({ dayKey, label: utc8DateLabel(ms), isToday: dayKey === todayKey });
-  }
-  return columns;
+  return { bars, laneCount: laneEnds.length };
 }
 
 /**

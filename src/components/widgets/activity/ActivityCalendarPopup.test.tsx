@@ -158,10 +158,10 @@ describe("ActivityCalendarPopup", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector(".activity-gantt-point")).not.toBeNull();
+      expect(container.querySelector(".activity-gantt-bar.is-point")).not.toBeNull();
     });
-    // 点标记而非条：宽度为 0 的条会完全不可见
-    expect(container.querySelector(".activity-gantt-bar")).toBeNull();
+    // 点标记而非实心条：宽度为 0 的条会完全不可见
+    expect(container.querySelector(".activity-gantt-bar:not(.is-point)")).toBeNull();
   });
 
   it("hides 前瞻 by default in gantt view", async () => {
@@ -188,7 +188,96 @@ describe("ActivityCalendarPopup", () => {
     await waitFor(() => {
       expect(screen.queryByText("暂无活动")).not.toBeNull();
     });
-    expect(container.querySelector(".activity-gantt-point")).toBeNull();
+    expect(container.querySelector(".activity-gantt-bar.is-point")).toBeNull();
+  });
+
+  it("renders a weekly axis, a today marker and time-spanning bars", async () => {
+    // 关键区别：条的宽度是真实时间跨度，并且横轴按整周分块、有贯穿的今天线
+    fetchMock.mockImplementation(
+      routeFetch({
+        calendar: jsonResponse({
+          total: 2,
+          items: [
+            calendarItem({
+              id: "overlap-1",
+              title: "重叠活动甲",
+              start: isoInDays(1),
+              end: isoInDays(10),
+            }),
+            calendarItem({
+              id: "overlap-2",
+              title: "重叠活动乙",
+              start: isoInDays(3),
+              end: isoInDays(8),
+            }),
+          ],
+        }),
+      }),
+    );
+
+    const { container } = render(<ActivityCalendarPopup data={{ view: "gantt" }} />);
+
+    await waitFor(() => {
+      expect(container.querySelectorAll(".activity-gantt-bar:not(.is-point)").length).toBe(2);
+    });
+
+    // 周分块横轴 + 周序号/区间标签
+    const weeks = container.querySelectorAll(".activity-gantt-week");
+    expect(weeks.length).toBeGreaterThanOrEqual(1);
+    expect(container.querySelector(".activity-gantt-week-index")!.textContent).toContain("第 1 周");
+    expect(container.querySelector(".activity-gantt-week-range")!.textContent).toMatch(
+      /^\d{2}\/\d{2}-\d{2}\/\d{2}$/,
+    );
+
+    // 贯穿全高的今天线 + 标签
+    expect(container.querySelector(".activity-gantt-today")).not.toBeNull();
+    expect(screen.getByText(/今天/)).not.toBeNull();
+
+    // 两个活动时间上重叠 → 必须分到不同泳道（纵向错开），否则会互相压住
+    const bars = Array.from(
+      container.querySelectorAll<HTMLElement>(".activity-gantt-bar:not(.is-point)"),
+    );
+    const tops = bars.map((bar) => bar.style.top);
+    expect(new Set(tops).size).toBe(2);
+
+    // 条宽是真实跨度：更长的活动应更宽
+    const widths = bars.map((bar) => Number.parseFloat(bar.style.width));
+    expect(Math.max(...widths)).toBeGreaterThan(Math.min(...widths));
+  });
+
+  it("shares one lane when activities do not overlap", async () => {
+    fetchMock.mockImplementation(
+      routeFetch({
+        calendar: jsonResponse({
+          total: 2,
+          items: [
+            calendarItem({
+              id: "seq-1",
+              title: "先发生的",
+              start: isoInDays(1),
+              end: isoInDays(3),
+            }),
+            calendarItem({
+              id: "seq-2",
+              title: "后发生的",
+              start: isoInDays(5),
+              end: isoInDays(7),
+            }),
+          ],
+        }),
+      }),
+    );
+
+    const { container } = render(<ActivityCalendarPopup data={{ view: "gantt" }} />);
+
+    await waitFor(() => {
+      expect(container.querySelectorAll(".activity-gantt-bar:not(.is-point)").length).toBe(2);
+    });
+    // 互不重叠 → 共用同一泳道（top 相同），行数不浪费
+    const tops = Array.from(
+      container.querySelectorAll<HTMLElement>(".activity-gantt-bar:not(.is-point)"),
+    ).map((bar) => bar.style.top);
+    expect(new Set(tops).size).toBe(1);
   });
 
   it("switches game data in place without waiting for the parent to feed gameId back", async () => {

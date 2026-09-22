@@ -9,11 +9,14 @@ import {
   activityStatus,
   addDaysToDayKey,
   applySelectionFilter,
-  buildDayColumns,
+  buildWeekColumns,
   computeDefaultSelection,
-  computeGanttRows,
+  computeGanttLayout,
   fetchActivityEntries,
   fetchCapabilities,
+  formatRange,
+  ganttTodayPct,
+  ganttWindow,
   isChildChecked,
   isParentChecked,
   readGameId,
@@ -26,7 +29,9 @@ import {
   selectionToIncludes,
   togglePinned,
   toggleSelectorValue,
+  utc8DateLabel,
   utc8DayKey,
+  utc8WeekdayLabel,
   type CalendarCapabilities,
   type ParsedActivityEntry,
   type RemainingText,
@@ -40,6 +45,9 @@ interface ActivityCalendarPopupProps {
 
 /** 窗口天数可选项。 */
 const WINDOW_OPTIONS = [7, 14, 30] as const;
+
+/** 甘特泳道高度（像素），与 CSS 中的条高对应。 */
+const GANTT_LANE_HEIGHT_PX = 34;
 
 function remainingLabel(remaining: RemainingText): string {
   if (remaining.unit === "ended") return getMessage("hoyoActivityEnded", "已结束");
@@ -230,25 +238,18 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
     return applySelectionFilter(entries, selected, { previewMode });
   }, [entries, selected, previewMode]);
 
-  // 甘特窗口：今天起 N 天，按 UTC+8 的日边界
-  const windowStartMs = useMemo(() => {
-    const utc = Date.UTC(
-      Number(from.slice(0, 4)),
-      Number(from.slice(5, 7)) - 1,
-      Number(from.slice(8, 10)),
-    );
-    return utc - 8 * 60 * 60 * 1000;
-  }, [from]);
-  const windowEndMs = windowStartMs + days * 24 * 60 * 60 * 1000;
+  /**
+   * 甘特窗口：向前回看若干天 + 向前看 N 天，并向上取整到整周。
+   * 回看是为了让"进行中"的长活动不被裁在左边界上。
+   */
+  const win = useMemo(() => ganttWindow(now, days), [now, days]);
+  const weekColumns = useMemo(() => buildWeekColumns(win), [win]);
+  const layout = useMemo(
+    () => computeGanttLayout(filtered, win.startMs, win.endMs),
+    [filtered, win],
+  );
+  const todayPct = ganttTodayPct(win, now);
 
-  const columns = useMemo(
-    () => buildDayColumns(windowStartMs, days, now),
-    [windowStartMs, days, now],
-  );
-  const ganttRows = useMemo(
-    () => computeGanttRows(filtered, windowStartMs, windowEndMs),
-    [filtered, windowStartMs, windowEndMs],
-  );
   // 纯日程列表：只展示窗口内仍有效或即将开始的，按开始时间排序
   const listRows = useMemo(
     () => filtered.filter((entry) => entry.endMs > now).sort((a, b) => a.startMs - b.startMs),
@@ -359,54 +360,105 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
         </div>
       ) : view === "gantt" ? (
         <div className="activity-gantt">
-          <div className="activity-gantt-axis">
-            {columns.map((column) => (
+          {/*
+            时间轴网格：今天标记条 + 周标题 + 泳道区共用一个定位上下文，
+            这样"今天"竖线才能从顶部贯穿到底（与参考日程表一致）。
+          */}
+          <div className="activity-gantt-grid">
+            {/*
+              今天标记单独占一条：它是贯穿全高的竖线的"头部"，
+              若塞进周标题行会与「第 N 周 / 日期区间」文字重叠。
+            */}
+            <div className="activity-gantt-today-strip">
               <span
-                key={column.dayKey}
-                className={`activity-gantt-axis-cell ${column.isToday ? "is-today" : ""}`}
+                className="activity-gantt-today-label"
+                style={{ left: `${todayPct}%` }}
+                title={getMessage("hoyoActivityToday", "今天")}
               >
-                {column.label}
+                {getMessage("hoyoActivityToday", "今天")} {utc8DateLabel(now)}{" "}
+                {utc8WeekdayLabel(now)}
               </span>
-            ))}
-          </div>
-          {ganttRows.length === 0 ? (
-            <div className="activity-calendar-state">
-              {getMessage("hoyoActivityEmpty", "暂无活动")}
             </div>
-          ) : (
-            <div className="activity-gantt-rows">
-              {ganttRows.map((row) => (
-                <div key={row.entry.id} className="activity-gantt-row">
-                  <span className="activity-gantt-label" title={row.entry.title}>
-                    {row.entry.title}
-                  </span>
-                  <div className="activity-gantt-track">
-                    {row.isPoint ? (
-                      // 极短事件（前瞻为 1 分钟）只画起点标记，否则宽度为 0 不可见
-                      <span
-                        className={`activity-gantt-point ${statusOf(row.entry, now)}`}
-                        style={{ left: `${row.leftPct}%` }}
-                        title={row.entry.title}
-                      />
-                    ) : (
-                      <span
-                        className={`activity-gantt-bar ${statusOf(row.entry, now)}`}
-                        style={{ left: `${row.leftPct}%`, width: `${row.widthPct}%` }}
-                        title={row.entry.title}
-                      />
+
+            {/* 横轴：整周分块，与参考日程表的「第 N 周」一致 */}
+            <div className="activity-gantt-head">
+              {weekColumns.map((column) => (
+                <span
+                  key={column.startDayKey}
+                  className="activity-gantt-week"
+                  style={{ left: `${column.leftPct}%`, width: `${column.widthPct}%` }}
+                >
+                  <span className="activity-gantt-week-index">
+                    {getMessage("hoyoActivityWeek", "第 {n} 周").replace(
+                      "{n}",
+                      String(column.index),
                     )}
-                  </div>
-                  <button
-                    className={`activity-gantt-pin ${pinnedIds.includes(row.entry.id) ? "is-pinned" : ""}`}
-                    title={getMessage("hoyoActivityPin", "固定")}
-                    onClick={() => onTogglePin(row.entry.id)}
-                  >
-                    <Pin className="activity-gantt-pin-icon" />
-                  </button>
-                </div>
+                  </span>
+                  <span className="activity-gantt-week-range">{column.rangeLabel}</span>
+                </span>
               ))}
             </div>
-          )}
+
+            {layout.bars.length === 0 ? (
+              <div className="activity-calendar-state">
+                {getMessage("hoyoActivityEmpty", "暂无活动")}
+              </div>
+            ) : (
+              <div className="activity-gantt-body">
+                {/* 周分隔线 */}
+                {weekColumns.map((column) => (
+                  <span
+                    key={`grid-${column.startDayKey}`}
+                    className="activity-gantt-gridline"
+                    style={{ left: `${column.leftPct}%` }}
+                  />
+                ))}
+
+                {/* 今天：贯穿全高的竖线（位于网格层，纵向覆盖整块时间轴） */}
+                <span className="activity-gantt-today" style={{ left: `${todayPct}%` }} />
+
+                {/*
+                  泳道布局：互不重叠的活动共用同一行，按 lane 决定纵向位置。
+                  条的宽度即真实时间跨度——这正是它与"纯进度条"的区别。
+                */}
+                <div
+                  className="activity-gantt-lanes"
+                  style={{ height: `${layout.laneCount * GANTT_LANE_HEIGHT_PX}px` }}
+                >
+                  {layout.bars.map((bar) => (
+                    <div
+                      key={bar.entry.id}
+                      className={`activity-gantt-bar ${statusOf(bar.entry, now)} ${
+                        bar.isPoint ? "is-point" : ""
+                      } ${bar.clippedStart ? "is-clipped-start" : ""} ${
+                        bar.clippedEnd ? "is-clipped-end" : ""
+                      }`}
+                      style={{
+                        left: `${bar.leftPct}%`,
+                        width: bar.isPoint ? undefined : `${bar.widthPct}%`,
+                        top: `${bar.lane * GANTT_LANE_HEIGHT_PX}px`,
+                      }}
+                      title={`${bar.entry.title} · ${formatRange(bar.entry)}`}
+                    >
+                      <span className="activity-gantt-bar-title">{bar.entry.title}</span>
+                      <button
+                        className={`activity-gantt-pin ${
+                          pinnedIds.includes(bar.entry.id) ? "is-pinned" : ""
+                        }`}
+                        title={getMessage("hoyoActivityPin", "固定")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTogglePin(bar.entry.id);
+                        }}
+                      >
+                        <Pin className="activity-gantt-pin-icon" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div className="activity-list">

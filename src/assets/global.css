@@ -2231,102 +2231,187 @@ html.dark .desktop-folder-panel,
   flex-shrink: 0;
 }
 
-/* 甘特图：横轴 + 每行一条 */
+/* ===== 甘特图（真正的时间轴：周分块 + 今天线 + 泳道条） ===== */
 .activity-gantt {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
   min-width: 0;
-  max-height: 46vh;
-  overflow-y: auto;
+  max-height: 50vh;
+  overflow: auto;
   overscroll-behavior: contain;
 }
 
-.activity-gantt-axis {
-  display: flex;
+/* 横轴：整周分块 */
+.activity-gantt-head {
+  position: relative;
   flex-shrink: 0;
-  border-bottom: 1px solid color-mix(in oklch, var(--color-foreground) 12%, transparent);
-  padding-bottom: 3px;
+  height: 34px;
+  /* 与内容区同宽：两者都填满容器，百分比才对得齐 */
+  min-width: 0;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-foreground) 14%, transparent);
 }
 
-.activity-gantt-axis-cell {
-  flex: 1;
-  min-width: 0;
-  font-size: 9px;
+.activity-gantt-week {
+  position: absolute;
+  top: 0;
+  /* inset 会与 left/width 冲突，这里只用右内边距做分隔留白 */
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding-left: 8px;
+  border-right: 1px solid color-mix(in oklch, var(--color-foreground) 14%, transparent);
+  overflow: hidden;
+}
+
+.activity-gantt-week-index {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.activity-gantt-week-range {
+  font-size: 10px;
   color: var(--color-muted-foreground);
-  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-.activity-gantt-axis-cell.is-today {
-  color: var(--color-foreground);
-  font-weight: 600;
-}
-
-.activity-gantt-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.activity-gantt-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-}
-
-.activity-gantt-label {
-  flex-shrink: 0;
-  /* 给标题固定宽度，保证各行时间轴起点对齐 */
-  width: 34%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--color-muted-foreground);
-}
-
-.activity-gantt-track {
+/* 内容区：分隔线、今天线、泳道都以此为坐标原点 */
+.activity-gantt-body {
   position: relative;
   flex: 1;
   min-width: 0;
-  height: 14px;
-  border-radius: 4px;
-  background: color-mix(in oklch, var(--color-foreground) 5%, transparent);
+  min-height: 0;
 }
 
+.activity-gantt-gridline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+  pointer-events: none;
+}
+
+/* 今天：贯穿整块时间轴的竖线（相对 .activity-gantt-grid 定位） */
+.activity-gantt-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ef4444;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.activity-gantt-today-label {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 时间轴网格：今天条 + 周标题 + 泳道共用一个定位上下文 */
+.activity-gantt-grid {
+  position: relative;
+  min-width: 0;
+}
+
+/* 今天标记条：给贯穿线的头部标签留出独立空间，避免压住周标题 */
+.activity-gantt-today-strip {
+  position: relative;
+  flex-shrink: 0;
+  height: 26px;
+  min-width: 0;
+}
+
+.activity-gantt-lanes {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+/* 每条活动就是一根真实时间跨度的条 */
 .activity-gantt-bar {
   position: absolute;
-  top: 2px;
-  height: 10px;
-  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 28px;
+  /* 泳道高 34px，上下各留 3px 间隙 */
+  margin-top: 3px;
+  padding: 0 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  color: #1f1300;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
   /* 最小宽度由 JS 保证（MIN_BAR_WIDTH_PCT），这里只兜底 */
-  min-width: 2px;
+  min-width: 3px;
 }
 
-.activity-gantt-point {
-  position: absolute;
-  top: 2px;
-  width: 8px;
-  height: 10px;
-  /* 点标记以起点为中心偏移一半，让"起点"落在正确位置 */
-  margin-left: -4px;
-  border-radius: 2px;
+.activity-gantt-bar.ongoing {
+  background: linear-gradient(180deg, #ffb43f, #ff9e1f);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.12);
 }
 
-.activity-gantt-bar.ongoing,
-.activity-gantt-point.ongoing {
-  background: #34d399;
+.activity-gantt-bar.upcoming {
+  background: linear-gradient(180deg, #ffd27a, #ffc24d);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.1);
 }
 
-.activity-gantt-bar.upcoming,
-.activity-gantt-point.upcoming {
-  background: #60a5fa;
+.activity-gantt-bar.ended {
+  background: rgba(128, 128, 128, 0.5);
+  color: rgba(255, 255, 255, 0.85);
 }
 
-.activity-gantt-bar.ended,
-.activity-gantt-point.ended {
-  background: rgba(128, 128, 128, 0.55);
+/* 被窗口截断的一侧压平并加淡出，提示"还延伸到窗口之外" */
+.activity-gantt-bar.is-clipped-start {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+
+.activity-gantt-bar.is-clipped-end {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+
+.activity-gantt-bar-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 极短事件（前瞻为 1 分钟）：只画起点标记，宽度为 0 的条不可见 */
+.activity-gantt-bar.is-point {
+  width: 10px;
+  min-width: 10px;
+  /* 以起点为中心偏移一半，让"起点"落在正确位置 */
+  margin-left: -5px;
+  padding: 0;
+  border-radius: 3px;
+  background: #ef4444;
+}
+
+.activity-gantt-bar.is-point .activity-gantt-bar-title,
+.activity-gantt-bar.is-point .activity-gantt-pin {
+  display: none;
 }
 
 .activity-gantt-pin,
@@ -2341,21 +2426,20 @@ html.dark .desktop-folder-panel,
   border: none;
   border-radius: 5px;
   background: transparent;
-  color: var(--color-muted-foreground);
+  color: inherit;
   cursor: pointer;
-  opacity: 0.4;
+  opacity: 0.45;
 }
 
 .activity-gantt-pin:hover,
 .activity-list-pin:hover {
-  opacity: 0.85;
-  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+  opacity: 0.9;
+  background: rgba(0, 0, 0, 0.12);
 }
 
 .activity-gantt-pin.is-pinned,
 .activity-list-pin.is-pinned {
   opacity: 1;
-  color: var(--color-foreground);
 }
 
 .activity-gantt-pin-icon,

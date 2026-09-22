@@ -1671,6 +1671,14 @@
     "message": "days",
     "description": "天数单位"
   },
+  "hoyoActivityWeek": {
+    "message": "Week {n}",
+    "description": "甘特图周块序号"
+  },
+  "hoyoActivityToday": {
+    "message": "Today",
+    "description": "甘特图今天标记"
+  },
   "hoyoActivityPreviewPoint": {
     "message": "Preview: start only",
     "description": "前瞻只显示起点"

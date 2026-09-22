@@ -11,15 +11,17 @@ import {
   activityStatus,
   bucketOfKind,
   buildCalendarUrl,
-  buildDayColumns,
+  buildWeekColumns,
   computeDefaultSelection,
-  computeGanttRows,
+  computeGanttLayout,
   dayKeyDiff,
   defaultQuery,
   daysUntilEnd,
   filterPreview,
   formatRange,
   gameLabel,
+  ganttTodayPct,
+  ganttWindow,
   isChildChecked,
   isParentChecked,
   isPreviewEntry,
@@ -383,7 +385,7 @@ describe("活动状态与排序", () => {
   });
 });
 
-describe("computeGanttRows", () => {
+describe("computeGanttLayout", () => {
   const windowStart = utc8MidnightMs("2026-09-01");
   const windowEnd = utc8MidnightMs("2026-09-11");
 
@@ -393,30 +395,33 @@ describe("computeGanttRows", () => {
       startMs: utc8MidnightMs("2026-09-03"),
       endMs: utc8MidnightMs("2026-09-05"),
     });
-    const [row] = computeGanttRows([entry], windowStart, windowEnd);
-    expect(row!.leftPct).toBeCloseTo(20, 5);
-    expect(row!.widthPct).toBeCloseTo(20, 5);
-    expect(row!.isPoint).toBe(false);
+    const { bars } = computeGanttLayout([entry], windowStart, windowEnd);
+    expect(bars[0]!.leftPct).toBeCloseTo(20, 5);
+    expect(bars[0]!.widthPct).toBeCloseTo(20, 5);
+    expect(bars[0]!.isPoint).toBe(false);
   });
 
-  it("clamps an event that starts before the window", () => {
+  it("clamps an event that starts before the window and flags the clip", () => {
     const entry = makeEntry({
       startMs: utc8MidnightMs("2026-08-01"),
       endMs: utc8MidnightMs("2026-09-03"),
     });
-    const [row] = computeGanttRows([entry], windowStart, windowEnd)!;
-    expect(row!.leftPct).toBe(0);
-    expect(row!.widthPct).toBeCloseTo(20, 5);
+    const { bars } = computeGanttLayout([entry], windowStart, windowEnd);
+    expect(bars[0]!.leftPct).toBe(0);
+    expect(bars[0]!.widthPct).toBeCloseTo(20, 5);
+    expect(bars[0]!.clippedStart).toBe(true);
+    expect(bars[0]!.clippedEnd).toBe(false);
   });
 
-  it("clamps an event that ends after the window", () => {
+  it("clamps an event that ends after the window and flags the clip", () => {
     const entry = makeEntry({
       startMs: utc8MidnightMs("2026-09-09"),
       endMs: utc8MidnightMs("2026-12-01"),
     });
-    const [row] = computeGanttRows([entry], windowStart, windowEnd)!;
-    expect(row!.leftPct).toBeCloseTo(80, 5);
-    expect(row!.widthPct).toBeCloseTo(20, 5);
+    const { bars } = computeGanttLayout([entry], windowStart, windowEnd);
+    expect(bars[0]!.leftPct).toBeCloseTo(80, 5);
+    expect(bars[0]!.widthPct).toBeCloseTo(20, 5);
+    expect(bars[0]!.clippedEnd).toBe(true);
   });
 
   it("splits at the UTC+8 day boundary, not the host day boundary", () => {
@@ -428,10 +433,10 @@ describe("computeGanttRows", () => {
       startMs: Date.parse("2026-09-01T22:00:00Z"),
       endMs: Date.parse("2026-09-02T22:00:00Z"),
     });
-    const [row] = computeGanttRows([entry], windowStart, windowEnd)!;
-    expect(row!.leftPct).toBeCloseTo(12.5, 5);
+    const { bars } = computeGanttLayout([entry], windowStart, windowEnd);
+    expect(bars[0]!.leftPct).toBeCloseTo(12.5, 5);
     // 明确否定"按 UTC 天数"的错误算法
-    expect(row!.leftPct).not.toBeCloseTo(10, 1);
+    expect(bars[0]!.leftPct).not.toBeCloseTo(10, 1);
   });
 
   it("drops events entirely outside the window", () => {
@@ -443,7 +448,8 @@ describe("computeGanttRows", () => {
       startMs: utc8MidnightMs("2026-10-01"),
       endMs: utc8MidnightMs("2026-10-10"),
     });
-    expect(computeGanttRows([before, after], windowStart, windowEnd)).toEqual([]);
+    expect(computeGanttLayout([before, after], windowStart, windowEnd).bars).toEqual([]);
+    expect(computeGanttLayout([before, after], windowStart, windowEnd).laneCount).toBe(0);
   });
 
   it("marks a 1-minute preview as a point instead of a zero-width bar", () => {
@@ -452,9 +458,9 @@ describe("computeGanttRows", () => {
       startMs: Date.parse("2026-09-03T11:30:00Z"),
       endMs: Date.parse("2026-09-03T11:31:00Z"),
     });
-    const [row] = computeGanttRows([entry], windowStart, windowEnd)!;
-    expect(row!.isPoint).toBe(true);
-    expect(row!.widthPct).toBe(0);
+    const { bars } = computeGanttLayout([entry], windowStart, windowEnd);
+    expect(bars[0]!.isPoint).toBe(true);
+    expect(bars[0]!.widthPct).toBe(0);
   });
 
   it("enforces a minimum width so short bars stay visible", () => {
@@ -463,12 +469,12 @@ describe("computeGanttRows", () => {
       startMs: utc8MidnightMs("2026-09-03"),
       endMs: utc8MidnightMs("2026-09-03") + 2 * 60 * 60 * 1000,
     });
-    const [row] = computeGanttRows([entry], windowStart, windowEnd, {
+    const { bars } = computeGanttLayout([entry], windowStart, windowEnd, {
       pointThresholdMs: 60 * 1000,
       minWidthPct: 1.2,
-    })!;
-    expect(row!.isPoint).toBe(false);
-    expect(row!.widthPct).toBeGreaterThanOrEqual(1.2);
+    });
+    expect(bars[0]!.isPoint).toBe(false);
+    expect(bars[0]!.widthPct).toBeGreaterThanOrEqual(1.2);
   });
 
   it("never lets a bar overflow the right edge", () => {
@@ -479,42 +485,148 @@ describe("computeGanttRows", () => {
         endMs: utc8MidnightMs("2026-09-11"),
       }),
     ];
-    for (const row of computeGanttRows(entries, windowStart, windowEnd, {
+    for (const bar of computeGanttLayout(entries, windowStart, windowEnd, {
       pointThresholdMs: 1,
-    })) {
-      expect(row.leftPct + row.widthPct).toBeLessThanOrEqual(100.0001);
+    }).bars) {
+      expect(bar.leftPct + bar.widthPct).toBeLessThanOrEqual(100.0001);
     }
   });
 
-  it("sorts rows by start time", () => {
-    const late = makeEntry({
-      id: "late",
-      startMs: utc8MidnightMs("2026-09-08"),
-      endMs: utc8MidnightMs("2026-09-09"),
-    });
-    const early = makeEntry({
-      id: "early",
+  it("packs non-overlapping events onto the same lane", () => {
+    // 先后发生、互不重叠 → 应共用一条泳道（这是与"每活动一行"的关键区别）
+    const first = makeEntry({
+      id: "first",
       startMs: utc8MidnightMs("2026-09-02"),
       endMs: utc8MidnightMs("2026-09-03"),
     });
-    const rows = computeGanttRows([late, early], windowStart, windowEnd);
-    expect(rows.map((r) => r.entry.id)).toEqual(["early", "late"]);
+    const second = makeEntry({
+      id: "second",
+      startMs: utc8MidnightMs("2026-09-05"),
+      endMs: utc8MidnightMs("2026-09-06"),
+    });
+    const { bars, laneCount } = computeGanttLayout([first, second], windowStart, windowEnd);
+    expect(laneCount).toBe(1);
+    expect(bars.map((b) => b.lane)).toEqual([0, 0]);
+  });
+
+  it("gives overlapping events separate lanes", () => {
+    const a = makeEntry({
+      id: "a",
+      startMs: utc8MidnightMs("2026-09-02"),
+      endMs: utc8MidnightMs("2026-09-06"),
+    });
+    const b = makeEntry({
+      id: "b",
+      startMs: utc8MidnightMs("2026-09-03"),
+      endMs: utc8MidnightMs("2026-09-05"),
+    });
+    const { bars, laneCount } = computeGanttLayout([a, b], windowStart, windowEnd);
+    expect(laneCount).toBe(2);
+    expect(bars.find((x) => x.entry.id === "a")!.lane).toBe(0);
+    expect(bars.find((x) => x.entry.id === "b")!.lane).toBe(1);
+  });
+
+  it("reuses a freed lane instead of always adding new ones", () => {
+    // A 与 C 不重叠，可与 B 交错：最多只需 2 条泳道
+    const a = makeEntry({
+      id: "a",
+      startMs: utc8MidnightMs("2026-09-02"),
+      endMs: utc8MidnightMs("2026-09-04"),
+    });
+    const b = makeEntry({
+      id: "b",
+      startMs: utc8MidnightMs("2026-09-03"),
+      endMs: utc8MidnightMs("2026-09-07"),
+    });
+    const c = makeEntry({
+      id: "c",
+      startMs: utc8MidnightMs("2026-09-06"),
+      endMs: utc8MidnightMs("2026-09-08"),
+    });
+    const { bars, laneCount } = computeGanttLayout([a, b, c], windowStart, windowEnd);
+    expect(laneCount).toBe(2);
+    // c 应复用 a 让出的 0 号泳道
+    expect(bars.find((x) => x.entry.id === "c")!.lane).toBe(0);
+  });
+
+  it("treats back-to-back events as non-overlapping", () => {
+    // 前一个的 end 正好等于后一个的 start → 可共用泳道（半开区间）
+    const a = makeEntry({
+      id: "a",
+      startMs: utc8MidnightMs("2026-09-02"),
+      endMs: utc8MidnightMs("2026-09-04"),
+    });
+    const b = makeEntry({
+      id: "b",
+      startMs: utc8MidnightMs("2026-09-04"),
+      endMs: utc8MidnightMs("2026-09-06"),
+    });
+    expect(computeGanttLayout([a, b], windowStart, windowEnd).laneCount).toBe(1);
   });
 
   it("returns nothing for a non-positive window", () => {
-    expect(computeGanttRows([makeEntry()], windowEnd, windowStart)).toEqual([]);
-    expect(computeGanttRows([makeEntry()], windowStart, windowStart)).toEqual([]);
+    expect(computeGanttLayout([makeEntry()], windowEnd, windowStart).bars).toEqual([]);
+    expect(computeGanttLayout([makeEntry()], windowStart, windowStart).bars).toEqual([]);
   });
 });
 
-describe("buildDayColumns", () => {
-  it("marks today and labels each column", () => {
-    const start = utc8MidnightMs("2026-09-01");
-    const now = utc8MidnightMs("2026-09-03") + 60 * 1000;
-    const columns = buildDayColumns(start, 3, now);
-    expect(columns.map((c) => c.dayKey)).toEqual(["2026-09-01", "2026-09-02", "2026-09-03"]);
-    expect(columns.map((c) => c.label)).toEqual(["9/1", "9/2", "9/3"]);
-    expect(columns.map((c) => c.isToday)).toEqual([false, false, true]);
+describe("ganttWindow / buildWeekColumns", () => {
+  it("aligns the window to whole weeks", () => {
+    const now = utc8MidnightMs("2026-09-22");
+    const win = ganttWindow(now, 14);
+    expect(win.days % 7).toBe(0);
+    expect(win.days).toBe(win.weeks * 7);
+    // 窗口必须包含今天
+    expect(win.startMs).toBeLessThanOrEqual(now);
+    expect(win.endMs).toBeGreaterThan(now);
+  });
+
+  it("looks back so ongoing events are not clipped at the left edge", () => {
+    const now = utc8MidnightMs("2026-09-22");
+    const win = ganttWindow(now, 14);
+    // 起点严格早于今天（有回看），否则进行中的活动会贴左边界
+    expect(win.startMs).toBeLessThan(utc8MidnightMs("2026-09-22"));
+  });
+
+  it("snaps the window start to a Monday so weeks are real calendar weeks", () => {
+    // 2026-09-22 是周二；起点必须落在周一，否则「第 N 周」会变成"周六~周五"
+    const win = ganttWindow(utc8MidnightMs("2026-09-22"), 14);
+    const startWeekday = new Date(win.startMs + 8 * 60 * 60 * 1000).getUTCDay();
+    expect(startWeekday).toBe(1); // 1 = 周一
+    expect(win.startMs).toBeLessThanOrEqual(utc8MidnightMs("2026-09-22"));
+    expect(win.endMs).toBeGreaterThan(utc8MidnightMs("2026-09-22"));
+  });
+
+  it("splits the axis into consecutive 7-day week blocks", () => {
+    const win = ganttWindow(utc8MidnightMs("2026-09-22"), 14);
+    const columns = buildWeekColumns(win);
+    expect(columns).toHaveLength(win.weeks);
+    expect(columns[0]!.index).toBe(1);
+    // 每块宽度相等且合计 100%
+    const total = columns.reduce((sum, c) => sum + c.widthPct, 0);
+    expect(total).toBeCloseTo(100, 5);
+    // 相邻块首尾相接
+    for (let i = 1; i < columns.length; i++) {
+      expect(columns[i]!.leftPct).toBeCloseTo(
+        columns[i - 1]!.leftPct + columns[i - 1]!.widthPct,
+        5,
+      );
+    }
+  });
+
+  it("labels each week block as a date range", () => {
+    const win = ganttWindow(utc8MidnightMs("2026-09-22"), 14);
+    const [first] = buildWeekColumns(win);
+    // 形如 09/17-09/23
+    expect(first!.rangeLabel).toMatch(/^\d{2}\/\d{2}-\d{2}\/\d{2}$/);
+  });
+
+  it("puts today inside the window and reports its position", () => {
+    const now = utc8MidnightMs("2026-09-22") + 12 * 60 * 60 * 1000;
+    const win = ganttWindow(now, 14);
+    const pct = ganttTodayPct(win, now);
+    expect(pct).toBeGreaterThan(0);
+    expect(pct).toBeLessThan(100);
   });
 });
 
