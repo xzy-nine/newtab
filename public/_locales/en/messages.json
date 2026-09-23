@@ -1870,5 +1870,21 @@
   "uapiErrorUnavailable": {
     "message": "The API is temporarily unavailable, please try again later",
     "description": "服务不可用错误"
+  },
+  "migrationChooseFolderTitle": {
+    "message": "Choose a folder to release to the home desktop",
+    "description": "迁移选择文件夹对话框标题"
+  },
+  "migrationChooseFolderDesc": {
+    "message": "After the upgrade the home desktop is independent of folders. Pick a pinned folder to release its bookmarks directly onto the home desktop and unpin it; the other folders stay pinned.",
+    "description": "迁移选择文件夹对话框说明"
+  },
+  "migrationSkip": {
+    "message": "Skip",
+    "description": "迁移选择文件夹跳过按钮"
+  },
+  "migrationRelease": {
+    "message": "Release to home desktop",
+    "description": "迁移选择文件夹确认按钮"
   }
 }

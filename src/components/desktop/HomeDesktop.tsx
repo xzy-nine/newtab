@@ -13,6 +13,7 @@ import { DesktopGridView } from "@/components/desktop/DesktopGridView";
 import { WidgetAddDialog } from "@/components/widget-system/WidgetSystem";
 import { FolderPopup } from "@/components/folder/FolderPopup";
 import { WidgetPopupHost } from "@/components/widget-system/WidgetPopupHost";
+import { MigrationFolderDialog } from "@/components/desktop/MigrationFolderDialog";
 import { BOOKMARK_DRAG_TYPE } from "@/components/dock/DockFolderLayer";
 import { useContextMenu, type ContextMenuItem } from "@/hooks/useContextMenu";
 import { getMessage } from "@/lib/i18n";
@@ -81,6 +82,9 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     moveItemIndex,
     syncFolderItems,
     pinBookmarks,
+    pendingFolderChoice,
+    releaseFolder,
+    dismissFolderChoice,
   } = useHomeDesktop();
 
   const [showAddWidget, setShowAddWidget] = useState(false);
@@ -232,6 +236,20 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     setShortcutForm({ name: "", url: "" });
     setShowAddShortcut(false);
   }, [addItem, shortcutForm]);
+
+  /**
+   * 迁移选择确认：把所选固定文件夹的书签释放到主桌面并取消其固定。
+   *
+   * `releaseFolder` 负责主桌面侧（加快捷方式、移图标、清待决）；
+   * `onUnpinFolder` 负责固定列表侧（更新状态与存储，随后 reconcile 兜底）。
+   */
+  const handleMigrationRelease = useCallback(
+    (folderId: string, bookmarks: BookmarkLike[]) => {
+      releaseFolder(folderId, bookmarks);
+      onUnpinFolder(folderId);
+    },
+    [releaseFolder, onUnpinFolder],
+  );
 
   const handleItemContextMenu = useCallback(
     (e: React.MouseEvent, item: DesktopItem) => {
@@ -470,6 +488,16 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 一次性迁移：多个固定文件夹时让用户选一个释放到主桌面 */}
+      {loaded && pendingFolderChoice && (
+        <MigrationFolderDialog
+          candidateFolderIds={pendingFolderChoice.candidateFolderIds}
+          folderTitles={folderTitles}
+          onRelease={handleMigrationRelease}
+          onDismiss={dismissFolderChoice}
+        />
+      )}
     </>
   );
 });
