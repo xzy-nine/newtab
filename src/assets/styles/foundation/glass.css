@@ -1,0 +1,126 @@
+/*
+ * 玻璃拟态：xb-glass 系列 + data-glass 浮层 + 文件夹按钮栏
+ *
+ * 参考 xb 项目实现：backdrop-filter 模糊 + color-mix 主题令牌混色。
+ * 亮/暗色由 --color-card / --color-popover / --color-background 令牌自动适配，
+ * 无需 .dark 覆盖规则。模糊量由 --xb-glass-blur 控制，透明度由 --xb-glass-opacity 控制。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+
+/* 玻璃效果基础：仅模糊，不设背景（背景由具体类按令牌混色） */
+.xb-glass {
+  backdrop-filter: blur(var(--xb-glass-blur));
+}
+
+/* 玻璃卡片：令牌混色 + 模糊 */
+.xb-glass-card {
+  background-color: color-mix(
+    in srgb,
+    var(--color-card) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--xb-glass-blur));
+  border-color: color-mix(
+    in srgb,
+    var(--color-border) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+}
+
+/* 玻璃弹窗 */
+.xb-glass-popover {
+  background-color: color-mix(
+    in srgb,
+    var(--color-popover) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--xb-glass-blur));
+  border-color: color-mix(
+    in srgb,
+    var(--color-border) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* 玻璃效果 CSS 变量默认值 */
+  --xb-glass-opacity: 0.8;
+  --xb-glass-blur: 12px;
+
+  /*
+   * 桌面磁贴的统一高度基准（文件夹行与小部件行等高）。
+   * 单一来源是 TS：src/lib/widget-layout.ts 的 WIDGET_TILE_HEIGHT，
+   * 两处必须一致；桌面小部件磁贴与文件夹面板都引用它，避免行与行高度漂移。
+   */
+  --desktop-tile-height: 150px;
+}
+
+/* data-glass 属性选择器 - 浮动组件玻璃效果 */
+:root[data-glass] [data-slot="dialog-content"] {
+  background-color: color-mix(
+    in srgb,
+    var(--color-background) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--xb-glass-blur));
+  border-color: color-mix(
+    in srgb,
+    var(--color-border) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+}
+
+:root[data-glass] [data-slot="dialog-overlay"] {
+  background-color: color-mix(
+    in srgb,
+    black calc((1 - var(--xb-glass-opacity)) * 60% + var(--xb-glass-opacity) * 30%),
+    transparent
+  );
+}
+
+:root[data-glass] [data-slot="select-content"] {
+  background-color: color-mix(
+    in srgb,
+    var(--color-popover) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--xb-glass-blur));
+  border-color: color-mix(
+    in srgb,
+    var(--color-border) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+}
+
+/* 玻璃卡片浮层（参考 xb：data-glass 下 card 也启用玻璃） */
+:root[data-glass] [data-slot="card"] {
+  background-color: color-mix(
+    in srgb,
+    var(--color-card) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--xb-glass-blur));
+  border-color: color-mix(
+    in srgb,
+    var(--color-border) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+}
+
+/* 文件夹按钮栏背景块 */
+.xb-folder-bar {
+  background-color: color-mix(
+    in srgb,
+    var(--color-card) calc(var(--xb-glass-opacity) * 100%),
+    transparent
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--color-border) calc(var(--xb-glass-opacity) * 100%), transparent);
+  border-radius: 10px;
+  padding: 4px 8px;
+  backdrop-filter: blur(var(--xb-glass-blur));
+}

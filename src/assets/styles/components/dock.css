@@ -1,0 +1,94 @@
+/*
+ * Dock 容器与按钮
+ *
+ * 由 src/assets/global.css 第 854-943 行原样拆分而来（未改动任何规则与顺序）。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+/* Dock 容器 */
+.dock-container {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding: 4px 16px 6px;
+  pointer-events: none;
+}
+
+.dock-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px;
+  border-radius: 20px;
+  background: rgba(30, 30, 30, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  min-width: 200px;
+  justify-content: space-between;
+}
+
+[data-theme="dark"] .dock-inner {
+  background: rgba(20, 20, 20, 0.85);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dock-left,
+.dock-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dock-pages {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.15s;
+}
+
+.dock-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+  transform: scale(1.05);
+}
+
+.dock-btn:active {
+  transform: scale(0.92);
+}
+
+.dock-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.dock-icon-text {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  transform: translate(-1px, 1px);
+}
+
+/* Dock 中处于开启状态的按钮（如文件夹抽屉） */
+.dock-btn-active {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.98);
+}

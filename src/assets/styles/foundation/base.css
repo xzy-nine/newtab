@@ -1,0 +1,28 @@
+/*
+ * 页面基础：html / body / img（含 --desktop-tile-height 基准）
+ *
+ * 由 src/assets/global.css 第 457-479 行原样拆分而来（未改动任何规则与顺序）。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  transition:
+    background-color 300ms ease,
+    color 300ms ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-select: none;
+}

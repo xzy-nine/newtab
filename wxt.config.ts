@@ -66,7 +66,7 @@ export default defineConfig({
   manifest: {
     name: "__MSG_appName__",
     description: "__MSG_appDescription__",
-    default_locale: "zh_CN",
+    default_locale: "en",
     icons: {
       16: "icons/icon16.png",
       19: "icons/icon19.png",

@@ -458,5 +458,473 @@
   "newChatStartedWithHistory": {
     "message": "已复制从对话开始到该消息的所有内容",
     "description": "新对话开始通知描述（包含历史）"
+  },
+  "homeDesktop": {
+    "message": "主桌面",
+    "description": "主桌面按钮文本"
+  },
+  "backToHomeDesktop": {
+    "message": "返回主桌面",
+    "description": "返回主桌面"
+  },
+  "folderDrawer": {
+    "message": "文件夹",
+    "description": "Dock 文件夹抽屉按钮标题"
+  },
+  "folderDrawerTitle": {
+    "message": "文件夹与书签",
+    "description": "文件夹抽屉标题"
+  },
+  "drawerSelectFolder": {
+    "message": "选择左侧的文件夹以查看书签",
+    "description": "抽屉内未选择文件夹时的提示"
+  },
+  "emptyFolder": {
+    "message": "该文件夹内没有书签",
+    "description": "文件夹内没有书签的提示"
+  },
+  "openFolder": {
+    "message": "打开文件夹",
+    "description": "打开文件夹桌面"
+  },
+  "openFolderDesktop": {
+    "message": "打开该文件夹桌面",
+    "description": "打开该文件夹桌面按钮"
+  },
+  "addFolderToDesktop": {
+    "message": "添加文件夹到主桌面",
+    "description": "添加文件夹到主桌面"
+  },
+  "addFolderToDesktopDesc": {
+    "message": "选择要固定在主桌面的书签文件夹",
+    "description": "添加文件夹到主桌面的说明"
+  },
+  "allFoldersPinned": {
+    "message": "所有文件夹都已固定在主桌面",
+    "description": "所有文件夹都已固定在主桌面"
+  },
+  "unpinFromDesktop": {
+    "message": "从主桌面移除",
+    "description": "从主桌面移除文件夹图标"
+  },
+  "addShortcut": {
+    "message": "添加快捷方式",
+    "description": "添加网址快捷方式"
+  },
+  "shortcutName": {
+    "message": "名称（可选）",
+    "description": "快捷方式名称占位符"
+  },
+  "removeShortcut": {
+    "message": "删除快捷方式",
+    "description": "删除快捷方式"
+  },
+  "addToDesktop": {
+    "message": "添加到主桌面",
+    "description": "添加到主桌面按钮标题"
+  },
+  "homeDesktopEmptyHint": {
+    "message": "右键添加文件夹、快捷方式或小部件",
+    "description": "主桌面空状态提示"
+  },
+  "selectFolder": {
+    "message": "选择文件夹",
+    "description": "选择文件夹"
+  },
+  "refreshBackground": {
+    "message": "更换背景",
+    "description": "更换背景按钮标题"
+  },
+  "pinToDesktop": {
+    "message": "固定到主桌面",
+    "description": "固定到主桌面"
+  },
+  "pinFolderHint": {
+    "message": "在文件夹树上点击图钉，即可固定到主桌面",
+    "description": "主桌面固定文件夹提示"
+  },
+  "collapseFolder": {
+    "message": "收起为图标",
+    "description": "收起为图标"
+  },
+  "folder": {
+    "message": "文件夹",
+    "description": "文件夹通用名称"
+  },
+  "showAllBookmarks": {
+    "message": "查看全部书签",
+    "description": "查看全部书签"
+  },
+  "pinShortcutToDesktop": {
+    "message": "固定到桌面",
+    "description": "把书签固定到桌面"
+  },
+  "unpinShortcutFromDesktop": {
+    "message": "从桌面移除",
+    "description": "把书签从桌面移除"
+  },
+  "pinAllToDesktop": {
+    "message": "固定到桌面",
+    "description": "批量固定到桌面"
+  },
+  "unpinAllFromDesktop": {
+    "message": "从桌面移除",
+    "description": "批量从桌面移除"
+  },
+  "selectMultiple": {
+    "message": "多选",
+    "description": "多选"
+  },
+  "selectAll": {
+    "message": "全选",
+    "description": "全选"
+  },
+  "clearSelection": {
+    "message": "取消全选",
+    "description": "取消全选"
+  },
+  "selectedCount": {
+    "message": "已选",
+    "description": "已选数量前缀"
+  },
+  "pinnedShortcut": {
+    "message": "已在桌面",
+    "description": "该书签已在桌面"
+  },
+  "openInNewTab": {
+    "message": "在新标签页打开",
+    "description": "在新标签页打开"
+  },
+  "showFolderPreview": {
+    "message": "显示文件夹预览",
+    "description": "显示文件夹预览"
+  },
+  "hideFolderPreview": {
+    "message": "隐藏文件夹预览",
+    "description": "隐藏文件夹预览"
+  },
+  "weatherWidgetName": {
+    "message": "天气",
+    "description": "天气小部件名称"
+  },
+  "weatherWidgetDesc": {
+    "message": "实时天气与所在地区，城市可用 IP 自动定位",
+    "description": "天气小部件描述"
+  },
+  "weatherLocating": {
+    "message": "定位中...",
+    "description": "正在定位"
+  },
+  "weatherLoading": {
+    "message": "加载中...",
+    "description": "天气加载中"
+  },
+  "weatherLoadFailed": {
+    "message": "天气获取失败",
+    "description": "天气获取失败"
+  },
+  "weatherCityNotFound": {
+    "message": "未找到该城市",
+    "description": "未找到该城市"
+  },
+  "weatherNoData": {
+    "message": "暂无天气数据",
+    "description": "暂无天气数据"
+  },
+  "weatherRefresh": {
+    "message": "刷新",
+    "description": "刷新天气"
+  },
+  "weatherChangeCity": {
+    "message": "点击修改城市",
+    "description": "点击修改城市"
+  },
+  "weatherCityPlaceholder": {
+    "message": "城市，如 北京",
+    "description": "城市输入占位符"
+  },
+  "weatherFeelsLike": {
+    "message": "体感",
+    "description": "体感温度"
+  },
+  "widgetExpand": {
+    "message": "展开详情",
+    "description": "展开小部件详情"
+  },
+  "weatherForecastTitle": {
+    "message": "天气预报",
+    "description": "天气预报弹窗标题"
+  },
+  "weatherForecastFailed": {
+    "message": "预报获取失败",
+    "description": "预报获取失败"
+  },
+  "weatherHourly": {
+    "message": "逐小时预报",
+    "description": "逐小时预报"
+  },
+  "weatherDaily": {
+    "message": "逐天预报",
+    "description": "逐天预报"
+  },
+  "weatherCurrent": {
+    "message": "当前位置",
+    "description": "当前位置"
+  },
+  "hoyoActivityWidgetName": {
+    "message": "米哈游活动",
+    "description": "米哈游活动小部件名称"
+  },
+  "hoyoActivityWidgetDesc": {
+    "message": "即将到期与固定的游戏活动，支持甘特图与日程列表",
+    "description": "米哈游活动小部件描述"
+  },
+  "hoyoActivityTitle": {
+    "message": "游戏活动日程",
+    "description": "活动日程弹窗标题"
+  },
+  "hoyoActivityLoading": {
+    "message": "加载中...",
+    "description": "活动加载中"
+  },
+  "hoyoActivityLoadFailed": {
+    "message": "活动获取失败",
+    "description": "活动获取失败"
+  },
+  "hoyoActivityEmpty": {
+    "message": "暂无活动",
+    "description": "暂无活动"
+  },
+  "hoyoActivityUnavailable": {
+    "message": "该游戏暂无日程",
+    "description": "该游戏暂无日程"
+  },
+  "hoyoActivityRefresh": {
+    "message": "刷新",
+    "description": "刷新活动"
+  },
+  "hoyoActivityEnded": {
+    "message": "已结束",
+    "description": "已结束"
+  },
+  "hoyoActivityDaysLeft": {
+    "message": "剩 {n} 天",
+    "description": "剩余天数"
+  },
+  "hoyoActivityHoursLeft": {
+    "message": "剩 {n} 小时",
+    "description": "剩余小时数"
+  },
+  "hoyoActivityGantt": {
+    "message": "甘特图",
+    "description": "甘特图视图"
+  },
+  "hoyoActivityList": {
+    "message": "日程列表",
+    "description": "日程列表视图"
+  },
+  "hoyoActivityDays": {
+    "message": "天",
+    "description": "天数单位"
+  },
+  "hoyoActivityHalfYear": {
+    "message": "半年",
+    "description": "甘特图半年跨度"
+  },
+  "hoyoActivityOneYear": {
+    "message": "一年",
+    "description": "甘特图一年跨度"
+  },
+  "hoyoActivityWeek": {
+    "message": "第 {n} 周",
+    "description": "甘特图周块序号"
+  },
+  "hoyoActivityToday": {
+    "message": "今天",
+    "description": "甘特图今天标记"
+  },
+  "hoyoActivityPreviewPoint": {
+    "message": "前瞻只显示起点",
+    "description": "前瞻只显示起点"
+  },
+  "hoyoActivityPin": {
+    "message": "固定",
+    "description": "固定活动"
+  },
+  "hoyoActivityOngoing": {
+    "message": "进行中",
+    "description": "进行中"
+  },
+  "hoyoActivityUpcoming": {
+    "message": "未开始",
+    "description": "未开始"
+  },
+  "hoyoActivityDisplayGames": {
+    "message": "磁贴外显",
+    "description": "磁贴外显游戏设置区标题"
+  },
+  "hoyoActivityDisplayHint": {
+    "message": "与上方查看的游戏无关；固定项始终显示",
+    "description": "磁贴外显游戏设置区说明"
+  },
+  "hoyoActivityPinnedCount": {
+    "message": "已固定 {n} 项",
+    "description": "某游戏已固定的活动条数"
+  },
+  "hoyoActivityViewGame": {
+    "message": "在弹窗内查看该游戏的日程",
+    "description": "游戏切换按钮的提示"
+  },
+  "hoyoActivityAllGames": {
+    "message": "游戏活动",
+    "description": "磁贴表头：全部游戏外显时"
+  },
+  "hoyoActivityPinnedOnly": {
+    "message": "仅固定",
+    "description": "磁贴表头：未勾选任何外显游戏时"
+  },
+  "hoyoActivityNoGameSelected": {
+    "message": "未勾选外显游戏",
+    "description": "磁贴空态：未勾选任何外显游戏且无固定项"
+  },
+  "hoyoActivityUrgentHint": {
+    "message": "即将截止",
+    "description": "即将截止的提示"
+  },
+  "uapiSettingsTitle": {
+    "message": "UAPI 接口",
+    "description": "UAPI 设置页标题"
+  },
+  "uapiSettingsDesc": {
+    "message": "本项目多处使用 uapis.cn 的免费接口。默认以游客身份调用（按 IP 计积分、有速率限制），触及限制后会自动改用你配置的密钥。",
+    "description": "UAPI 设置页说明"
+  },
+  "uapiApiKey": {
+    "message": "API 密钥",
+    "description": "API 密钥"
+  },
+  "uapiApiKeyPlaceholder": {
+    "message": "粘贴在 uapis.cn 控制台创建的密钥",
+    "description": "密钥输入框占位符"
+  },
+  "uapiApiKeySaved": {
+    "message": "密钥已保存",
+    "description": "密钥保存成功"
+  },
+  "uapiApiKeyCleared": {
+    "message": "密钥已清除",
+    "description": "密钥清除成功"
+  },
+  "uapiKeyLocalOnly": {
+    "message": "密钥仅保存在本机，不会参与云同步。",
+    "description": "密钥存储位置说明"
+  },
+  "uapiCreateKey": {
+    "message": "创建密钥",
+    "description": "前往控制台创建密钥"
+  },
+  "uapiTestKey": {
+    "message": "测试密钥",
+    "description": "测试密钥按钮"
+  },
+  "uapiTestCostHint": {
+    "message": "测试会真实调用一次接口，消耗 1 积分。",
+    "description": "测试密钥的积分消耗提示"
+  },
+  "uapiTestTesting": {
+    "message": "测试中...",
+    "description": "测试进行中"
+  },
+  "uapiTestOk": {
+    "message": "密钥可用",
+    "description": "密钥测试成功"
+  },
+  "uapiTestFailed": {
+    "message": "密钥不可用",
+    "description": "密钥测试失败"
+  },
+  "uapiPreferKey": {
+    "message": "始终使用密钥",
+    "description": "优先使用密钥开关"
+  },
+  "uapiPreferKeyDesc": {
+    "message": "开启后不再以游客身份调用，直接使用密钥（默认关闭：优先用免费游客额度）。",
+    "description": "优先使用密钥说明"
+  },
+  "uapiStatusTitle": {
+    "message": "调用状态",
+    "description": "调用状态标题"
+  },
+  "uapiStatusAnonymous": {
+    "message": "当前以游客身份调用（未触发限制）",
+    "description": "匿名状态"
+  },
+  "uapiStatusKeyActive": {
+    "message": "当前使用密钥调用",
+    "description": "密钥生效状态"
+  },
+  "uapiStatusBlocked": {
+    "message": "游客调用受限，已临时切换到密钥",
+    "description": "游客被限流状态"
+  },
+  "uapiBlockedUntil": {
+    "message": "冷却至 {time}",
+    "description": "冷却截止时间"
+  },
+  "uapiBlockedQuota": {
+    "message": "原因：本月游客额度已用尽（下月重置）",
+    "description": "额度耗尽原因"
+  },
+  "uapiBlockedRateLimit": {
+    "message": "原因：触发速率限制",
+    "description": "速率限制原因"
+  },
+  "uapiResetAnonymous": {
+    "message": "重新尝试游客调用",
+    "description": "清除冷却按钮"
+  },
+  "uapiNoKeyWarning": {
+    "message": "尚未配置密钥：一旦游客额度受限，接口将不可用。建议前往控制台免费创建一个。",
+    "description": "未配置密钥警告"
+  },
+  "uapiClearCache": {
+    "message": "清除接口缓存",
+    "description": "清除缓存按钮"
+  },
+  "uapiClearCacheDesc": {
+    "message": "清除天气、壁纸等接口的本地缓存，下次使用时重新获取。",
+    "description": "清除缓存说明"
+  },
+  "uapiCacheCleared": {
+    "message": "接口缓存已清除",
+    "description": "缓存清除成功"
+  },
+  "uapiDocs": {
+    "message": "查看接口文档",
+    "description": "接口文档链接"
+  },
+  "uapiErrorRateLimited": {
+    "message": "请求过于频繁，请稍后再试",
+    "description": "限速错误"
+  },
+  "uapiErrorQuotaExhausted": {
+    "message": "本月游客额度已用尽，请在设置中配置密钥",
+    "description": "游客额度耗尽错误"
+  },
+  "uapiErrorUnauthorized": {
+    "message": "密钥无效，请在设置中检查",
+    "description": "密钥无效错误"
+  },
+  "uapiErrorInsufficientCredits": {
+    "message": "账户余额不足",
+    "description": "余额不足错误"
+  },
+  "uapiErrorNotFound": {
+    "message": "未找到相关数据",
+    "description": "未找到错误"
+  },
+  "uapiErrorUnavailable": {
+    "message": "接口暂时不可用，请稍后再试",
+    "description": "服务不可用错误"
   }
 }

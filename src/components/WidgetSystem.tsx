@@ -1,9 +1,13 @@
 import { useEffect } from "react";
 import { registerWidget, getAllTypes } from "@/lib/widget-registry";
 import { getMessage } from "@/lib/i18n";
-import { CounterWidget } from "@/components/widgets/CounterWidget";
-import { TimerWidget } from "@/components/widgets/TimerWidget";
-import { NoteWidget } from "@/components/widgets/NoteWidget";
+import { CounterWidget } from "@/components/widgets/counter/CounterWidget";
+import { TimerWidget } from "@/components/widgets/timer/TimerWidget";
+import { NoteWidget } from "@/components/widgets/note/NoteWidget";
+import { WeatherWidget } from "@/components/widgets/weather/WeatherWidget";
+import { WeatherForecastPopup } from "@/components/widgets/weather/WeatherForecastPopup";
+import { ActivityWidget } from "@/components/widgets/activity/ActivityWidget";
+import { ActivityCalendarPopup } from "@/components/widgets/activity/ActivityCalendarPopup";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -49,6 +53,54 @@ export function useWidgetRegistration() {
         maxHeight: 300,
       },
       component: NoteWidget,
+    });
+    registerWidget("weather", {
+      meta: {
+        type: "weather",
+        name: getMessage("weatherWidgetName", "天气"),
+        description: getMessage("weatherWidgetDesc", "实时天气与所在地区，城市可用 IP 自动定位"),
+        icon: "weather",
+      },
+      config: {
+        defaultWidth: 200,
+        defaultHeight: 150,
+        minWidth: 140,
+        minHeight: 110,
+        maxWidth: 400,
+        maxHeight: 300,
+      },
+      component: WeatherWidget,
+      // 展开后按需拉取逐小时/逐天预报（24h 缓存），磁贴本身只显示实时天气
+      popup: {
+        title: getMessage("weatherForecastTitle", "天气预报"),
+        content: WeatherForecastPopup,
+      },
+    });
+    registerWidget("hoyo-activity", {
+      meta: {
+        type: "hoyo-activity",
+        name: getMessage("hoyoActivityWidgetName", "米哈游活动"),
+        description: getMessage(
+          "hoyoActivityWidgetDesc",
+          "即将到期与固定的游戏活动，支持甘特图与日程列表（原神/星铁/绝区零）",
+        ),
+        icon: "activity",
+      },
+      config: {
+        defaultWidth: 240,
+        defaultHeight: 170,
+        minWidth: 170,
+        minHeight: 120,
+        maxWidth: 480,
+        maxHeight: 360,
+      },
+      component: ActivityWidget,
+      // 展开后才拉取日程；筛选与固定都在弹窗内完成
+      popup: {
+        title: getMessage("hoyoActivityTitle", "游戏活动日程"),
+        content: ActivityCalendarPopup,
+        contentClassName: "max-w-2xl max-h-[80vh]",
+      },
     });
   }, []);
 }

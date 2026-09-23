@@ -22,6 +22,7 @@ interface AppSettingsStore extends AppSettings {
   setBgType: (type: AppSettings["bgType"]) => void;
   setCustomImage: (image: string | null) => void;
   setGlassOpacity: (opacity: number) => void;
+  setGlassBlur: (blur: number) => void;
   setAiEnabled: (enabled: boolean) => void;
   setAiProviders: (providers: AppSettings["aiProviders"]) => void;
   setAiCurrentProviderIndex: (index: number) => void;
@@ -108,6 +109,11 @@ export const useAppSettings = create<AppSettingsStore>((set, get) => ({
 
   setGlassOpacity: (glassOpacity) => {
     set({ glassOpacity });
+    persistAppSettings(get());
+  },
+
+  setGlassBlur: (glassBlur) => {
+    set({ glassBlur });
     persistAppSettings(get());
   },
 

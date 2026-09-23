@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getMessage } from "@/lib/i18n";
+import { resolveWidgetSizeMode, widgetPadding } from "@/lib/widget-layout";
 
 interface TimerWidgetProps {
   data?: Record<string, unknown>;
@@ -27,7 +28,7 @@ export function TimerWidget({
   data,
   onDataChange,
   containerWidth = 200,
-  containerHeight: _containerHeight = 150,
+  containerHeight = 150,
 }: TimerWidgetProps) {
   const [time, setTime] = useState<number>((data?.time as number) ?? 0);
   const [isRunning, setIsRunning] = useState(false);
@@ -276,10 +277,15 @@ export function TimerWidget({
   const title = isCountdown
     ? getMessage("timerCountdown", "倒计时")
     : getMessage("timerStopwatch", "秒表");
-  const isCompact = containerWidth < 160;
+  // 与其它小部件共用同一套高度模式：宽或高偏小即紧凑
+  const mode = resolveWidgetSizeMode({ width: containerWidth, height: containerHeight });
+  const isCompact = mode === "compact";
 
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full select-none overflow-hidden">
+    <div
+      className="flex flex-col items-center justify-center h-full w-full select-none overflow-hidden"
+      style={{ padding: widgetPadding(mode) }}
+    >
       <div className="widget-title text-xs truncate mb-1">{title}</div>
       <div
         className="flex items-center justify-center gap-0.5 font-mono"

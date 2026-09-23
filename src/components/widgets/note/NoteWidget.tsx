@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getMessage } from "@/lib/i18n";
+import { resolveWidgetSizeMode, widgetPadding } from "@/lib/widget-layout";
 import { marked } from "marked";
 
 interface NoteWidgetProps {
@@ -65,8 +66,8 @@ function renderMarkdown(content: string): string {
 export function NoteWidget({
   data,
   onDataChange,
-  containerWidth: _containerWidth,
-  containerHeight: _containerHeight,
+  containerWidth = 200,
+  containerHeight = 150,
 }: NoteWidgetProps) {
   const [content, setContent] = useState<string>((data?.content as string) ?? "");
   const [isEditing, setIsEditing] = useState(false);
@@ -152,6 +153,16 @@ export function NoteWidget({
   }, [isEditing]);
 
   const previewHtml = renderMarkdown(content);
+  // 便签此前完全忽略传入尺寸，内边距与字号写死；现与其它小部件共用同一套高度模式
+  const mode = resolveWidgetSizeMode({ width: containerWidth, height: containerHeight });
+  const compact = mode === "compact";
+  /** 编辑器与预览共用的排版：紧凑时收紧内边距与字号，避免小磁贴里正文被裁。 */
+  const textStyle: React.CSSProperties = {
+    fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
+    fontSize: compact ? "13px" : "14px",
+    lineHeight: 1.4,
+    textAlign: "left",
+  };
 
   return (
     <div
@@ -162,16 +173,14 @@ export function NoteWidget({
       {isEditing ? (
         <div
           ref={editorRef}
-          className="note-editor flex-1 w-full p-3 overflow-y-auto outline-none"
+          className="note-editor flex-1 w-full overflow-y-auto outline-none"
           contentEditable
           suppressContentEditableWarning
           style={{
-            fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
-            fontSize: "14px",
-            lineHeight: 1.4,
+            ...textStyle,
+            padding: widgetPadding(mode),
             whiteSpace: "pre-wrap",
             wordWrap: "break-word",
-            textAlign: "left",
           }}
           onInput={handleEditorInput}
           onBlur={handleEditorBlur}
@@ -180,13 +189,8 @@ export function NoteWidget({
       ) : (
         <div
           ref={previewRef}
-          className="note-preview flex-1 w-full p-3 overflow-y-auto"
-          style={{
-            fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
-            fontSize: "14px",
-            lineHeight: 1.4,
-            textAlign: "left",
-          }}
+          className="note-preview flex-1 w-full overflow-y-auto"
+          style={{ ...textStyle, padding: widgetPadding(mode) }}
           dangerouslySetInnerHTML={
             previewHtml
               ? { __html: previewHtml }

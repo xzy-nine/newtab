@@ -1402,5 +1402,473 @@
   "newChatStartedDesc": {
     "message": "Started new chat based on this message",
     "description": "新对话开始通知描述"
+  },
+  "homeDesktop": {
+    "message": "Home",
+    "description": "主桌面按钮文本"
+  },
+  "backToHomeDesktop": {
+    "message": "Back to Home",
+    "description": "返回主桌面"
+  },
+  "folderDrawer": {
+    "message": "Folders",
+    "description": "Dock 文件夹抽屉按钮标题"
+  },
+  "folderDrawerTitle": {
+    "message": "Folders & Bookmarks",
+    "description": "文件夹抽屉标题"
+  },
+  "drawerSelectFolder": {
+    "message": "Select a folder on the left to view its bookmarks",
+    "description": "抽屉内未选择文件夹时的提示"
+  },
+  "emptyFolder": {
+    "message": "This folder has no bookmarks",
+    "description": "文件夹内没有书签的提示"
+  },
+  "openFolder": {
+    "message": "Open Folder",
+    "description": "打开文件夹桌面"
+  },
+  "openFolderDesktop": {
+    "message": "Open Folder Desktop",
+    "description": "打开该文件夹桌面按钮"
+  },
+  "addFolderToDesktop": {
+    "message": "Add Folder to Home",
+    "description": "添加文件夹到主桌面"
+  },
+  "addFolderToDesktopDesc": {
+    "message": "Choose the bookmark folders to pin on the home desktop",
+    "description": "添加文件夹到主桌面的说明"
+  },
+  "allFoldersPinned": {
+    "message": "All folders are already pinned to the home desktop",
+    "description": "所有文件夹都已固定在主桌面"
+  },
+  "unpinFromDesktop": {
+    "message": "Remove from Home",
+    "description": "从主桌面移除文件夹图标"
+  },
+  "addShortcut": {
+    "message": "Add Shortcut",
+    "description": "添加网址快捷方式"
+  },
+  "shortcutName": {
+    "message": "Name (optional)",
+    "description": "快捷方式名称占位符"
+  },
+  "removeShortcut": {
+    "message": "Remove Shortcut",
+    "description": "删除快捷方式"
+  },
+  "addToDesktop": {
+    "message": "Add to Home",
+    "description": "添加到主桌面按钮标题"
+  },
+  "homeDesktopEmptyHint": {
+    "message": "Right-click to add folders, shortcuts or widgets",
+    "description": "主桌面空状态提示"
+  },
+  "selectFolder": {
+    "message": "Select Folder",
+    "description": "选择文件夹"
+  },
+  "refreshBackground": {
+    "message": "Change Background",
+    "description": "更换背景按钮标题"
+  },
+  "pinToDesktop": {
+    "message": "Pin to Home",
+    "description": "固定到主桌面"
+  },
+  "pinFolderHint": {
+    "message": "Click the pin on a folder in the tree to pin it to the home desktop",
+    "description": "主桌面固定文件夹提示"
+  },
+  "collapseFolder": {
+    "message": "Collapse to Icon",
+    "description": "收起为图标"
+  },
+  "folder": {
+    "message": "Folder",
+    "description": "文件夹通用名称"
+  },
+  "showAllBookmarks": {
+    "message": "Show all bookmarks",
+    "description": "查看全部书签"
+  },
+  "pinShortcutToDesktop": {
+    "message": "Pin to Home",
+    "description": "把书签固定到桌面"
+  },
+  "unpinShortcutFromDesktop": {
+    "message": "Remove from Home",
+    "description": "把书签从桌面移除"
+  },
+  "pinAllToDesktop": {
+    "message": "Pin selected to Home",
+    "description": "批量固定到桌面"
+  },
+  "unpinAllFromDesktop": {
+    "message": "Remove selected",
+    "description": "批量从桌面移除"
+  },
+  "selectMultiple": {
+    "message": "Select",
+    "description": "多选"
+  },
+  "selectAll": {
+    "message": "Select all",
+    "description": "全选"
+  },
+  "clearSelection": {
+    "message": "Clear selection",
+    "description": "取消全选"
+  },
+  "selectedCount": {
+    "message": "Selected",
+    "description": "已选数量前缀"
+  },
+  "pinnedShortcut": {
+    "message": "On home desktop",
+    "description": "该书签已在桌面"
+  },
+  "openInNewTab": {
+    "message": "Open in new tab",
+    "description": "在新标签页打开"
+  },
+  "showFolderPreview": {
+    "message": "Show folder preview",
+    "description": "显示文件夹预览"
+  },
+  "hideFolderPreview": {
+    "message": "Hide folder preview",
+    "description": "隐藏文件夹预览"
+  },
+  "weatherWidgetName": {
+    "message": "Weather",
+    "description": "天气小部件名称"
+  },
+  "weatherWidgetDesc": {
+    "message": "Live weather for your area, located automatically by IP",
+    "description": "天气小部件描述"
+  },
+  "weatherLocating": {
+    "message": "Locating...",
+    "description": "正在定位"
+  },
+  "weatherLoading": {
+    "message": "Loading...",
+    "description": "天气加载中"
+  },
+  "weatherLoadFailed": {
+    "message": "Failed to load weather",
+    "description": "天气获取失败"
+  },
+  "weatherCityNotFound": {
+    "message": "City not found",
+    "description": "未找到该城市"
+  },
+  "weatherNoData": {
+    "message": "No weather data",
+    "description": "暂无天气数据"
+  },
+  "weatherRefresh": {
+    "message": "Refresh",
+    "description": "刷新天气"
+  },
+  "weatherChangeCity": {
+    "message": "Click to change city",
+    "description": "点击修改城市"
+  },
+  "weatherCityPlaceholder": {
+    "message": "City, e.g. Beijing",
+    "description": "城市输入占位符"
+  },
+  "weatherFeelsLike": {
+    "message": "Feels",
+    "description": "体感温度"
+  },
+  "widgetExpand": {
+    "message": "Expand details",
+    "description": "展开小部件详情"
+  },
+  "weatherForecastTitle": {
+    "message": "Weather forecast",
+    "description": "天气预报弹窗标题"
+  },
+  "weatherForecastFailed": {
+    "message": "Failed to load forecast",
+    "description": "预报获取失败"
+  },
+  "weatherHourly": {
+    "message": "Hourly forecast",
+    "description": "逐小时预报"
+  },
+  "weatherDaily": {
+    "message": "Daily forecast",
+    "description": "逐天预报"
+  },
+  "weatherCurrent": {
+    "message": "Current location",
+    "description": "当前位置"
+  },
+  "hoyoActivityWidgetName": {
+    "message": "HoYo Activity",
+    "description": "米哈游活动小部件名称"
+  },
+  "hoyoActivityWidgetDesc": {
+    "message": "Expiring and pinned game events, with Gantt and list views",
+    "description": "米哈游活动小部件描述"
+  },
+  "hoyoActivityTitle": {
+    "message": "Game activity calendar",
+    "description": "活动日程弹窗标题"
+  },
+  "hoyoActivityLoading": {
+    "message": "Loading...",
+    "description": "活动加载中"
+  },
+  "hoyoActivityLoadFailed": {
+    "message": "Failed to load activity",
+    "description": "活动获取失败"
+  },
+  "hoyoActivityEmpty": {
+    "message": "No activity",
+    "description": "暂无活动"
+  },
+  "hoyoActivityUnavailable": {
+    "message": "No calendar for this game",
+    "description": "该游戏暂无日程"
+  },
+  "hoyoActivityRefresh": {
+    "message": "Refresh",
+    "description": "刷新活动"
+  },
+  "hoyoActivityEnded": {
+    "message": "Ended",
+    "description": "已结束"
+  },
+  "hoyoActivityDaysLeft": {
+    "message": "{n}d left",
+    "description": "剩余天数"
+  },
+  "hoyoActivityHoursLeft": {
+    "message": "{n}h left",
+    "description": "剩余小时数"
+  },
+  "hoyoActivityGantt": {
+    "message": "Gantt",
+    "description": "甘特图视图"
+  },
+  "hoyoActivityList": {
+    "message": "List",
+    "description": "日程列表视图"
+  },
+  "hoyoActivityDays": {
+    "message": "days",
+    "description": "天数单位"
+  },
+  "hoyoActivityHalfYear": {
+    "message": "6 months",
+    "description": "甘特图半年跨度"
+  },
+  "hoyoActivityOneYear": {
+    "message": "1 year",
+    "description": "甘特图一年跨度"
+  },
+  "hoyoActivityWeek": {
+    "message": "Week {n}",
+    "description": "甘特图周块序号"
+  },
+  "hoyoActivityToday": {
+    "message": "Today",
+    "description": "甘特图今天标记"
+  },
+  "hoyoActivityPreviewPoint": {
+    "message": "Preview: start only",
+    "description": "前瞻只显示起点"
+  },
+  "hoyoActivityPin": {
+    "message": "Pin",
+    "description": "固定活动"
+  },
+  "hoyoActivityOngoing": {
+    "message": "Ongoing",
+    "description": "进行中"
+  },
+  "hoyoActivityUpcoming": {
+    "message": "Upcoming",
+    "description": "未开始"
+  },
+  "hoyoActivityDisplayGames": {
+    "message": "Tile games",
+    "description": "磁贴外显游戏设置区标题"
+  },
+  "hoyoActivityDisplayHint": {
+    "message": "Independent of the game viewed above; pinned items always show",
+    "description": "磁贴外显游戏设置区说明"
+  },
+  "hoyoActivityPinnedCount": {
+    "message": "{n} pinned",
+    "description": "某游戏已固定的活动条数"
+  },
+  "hoyoActivityViewGame": {
+    "message": "View this game's calendar in the popup",
+    "description": "游戏切换按钮的提示"
+  },
+  "hoyoActivityAllGames": {
+    "message": "Game events",
+    "description": "磁贴表头：全部游戏外显时"
+  },
+  "hoyoActivityPinnedOnly": {
+    "message": "Pinned only",
+    "description": "磁贴表头：未勾选任何外显游戏时"
+  },
+  "hoyoActivityNoGameSelected": {
+    "message": "No tile games selected",
+    "description": "磁贴空态：未勾选任何外显游戏且无固定项"
+  },
+  "hoyoActivityUrgentHint": {
+    "message": "Ending soon",
+    "description": "即将截止的提示"
+  },
+  "uapiSettingsTitle": {
+    "message": "UAPI",
+    "description": "UAPI 设置页标题"
+  },
+  "uapiSettingsDesc": {
+    "message": "This project calls several free uapis.cn endpoints. Requests are made anonymously by default (per-IP credits with rate limits); once a limit is hit, your API key is used automatically.",
+    "description": "UAPI 设置页说明"
+  },
+  "uapiApiKey": {
+    "message": "API Key",
+    "description": "API 密钥"
+  },
+  "uapiApiKeyPlaceholder": {
+    "message": "Paste a key created at the uapis.cn console",
+    "description": "密钥输入框占位符"
+  },
+  "uapiApiKeySaved": {
+    "message": "API key saved",
+    "description": "密钥保存成功"
+  },
+  "uapiApiKeyCleared": {
+    "message": "API key cleared",
+    "description": "密钥清除成功"
+  },
+  "uapiKeyLocalOnly": {
+    "message": "The key is stored only on this device and is never synced.",
+    "description": "密钥存储位置说明"
+  },
+  "uapiCreateKey": {
+    "message": "Create a key",
+    "description": "前往控制台创建密钥"
+  },
+  "uapiTestKey": {
+    "message": "Test key",
+    "description": "测试密钥按钮"
+  },
+  "uapiTestCostHint": {
+    "message": "Testing makes one real request and costs 1 credit.",
+    "description": "测试密钥的积分消耗提示"
+  },
+  "uapiTestTesting": {
+    "message": "Testing...",
+    "description": "测试进行中"
+  },
+  "uapiTestOk": {
+    "message": "Key works",
+    "description": "密钥测试成功"
+  },
+  "uapiTestFailed": {
+    "message": "Key is not usable",
+    "description": "密钥测试失败"
+  },
+  "uapiPreferKey": {
+    "message": "Always use the API key",
+    "description": "优先使用密钥开关"
+  },
+  "uapiPreferKeyDesc": {
+    "message": "When enabled, requests always use the key instead of the free anonymous quota (off by default).",
+    "description": "优先使用密钥说明"
+  },
+  "uapiStatusTitle": {
+    "message": "Call status",
+    "description": "调用状态标题"
+  },
+  "uapiStatusAnonymous": {
+    "message": "Calling anonymously (no limits hit)",
+    "description": "匿名状态"
+  },
+  "uapiStatusKeyActive": {
+    "message": "Calling with your API key",
+    "description": "密钥生效状态"
+  },
+  "uapiStatusBlocked": {
+    "message": "Anonymous calls are limited; switched to your API key",
+    "description": "游客被限流状态"
+  },
+  "uapiBlockedUntil": {
+    "message": "Cooling down until {time}",
+    "description": "冷却截止时间"
+  },
+  "uapiBlockedQuota": {
+    "message": "Reason: this month's anonymous quota is exhausted (resets next month)",
+    "description": "额度耗尽原因"
+  },
+  "uapiBlockedRateLimit": {
+    "message": "Reason: rate limit reached",
+    "description": "速率限制原因"
+  },
+  "uapiResetAnonymous": {
+    "message": "Retry anonymous calls",
+    "description": "清除冷却按钮"
+  },
+  "uapiNoKeyWarning": {
+    "message": "No API key configured: once the anonymous quota is limited, these endpoints will stop working. Consider creating a free key.",
+    "description": "未配置密钥警告"
+  },
+  "uapiClearCache": {
+    "message": "Clear API cache",
+    "description": "清除缓存按钮"
+  },
+  "uapiClearCacheDesc": {
+    "message": "Clears cached weather, wallpaper and other API responses so they are fetched again.",
+    "description": "清除缓存说明"
+  },
+  "uapiCacheCleared": {
+    "message": "API cache cleared",
+    "description": "缓存清除成功"
+  },
+  "uapiDocs": {
+    "message": "API documentation",
+    "description": "接口文档链接"
+  },
+  "uapiErrorRateLimited": {
+    "message": "Too many requests, please try again later",
+    "description": "限速错误"
+  },
+  "uapiErrorQuotaExhausted": {
+    "message": "This month's anonymous quota is used up. Configure an API key in settings.",
+    "description": "游客额度耗尽错误"
+  },
+  "uapiErrorUnauthorized": {
+    "message": "Invalid API key. Check it in settings.",
+    "description": "密钥无效错误"
+  },
+  "uapiErrorInsufficientCredits": {
+    "message": "Insufficient account credits",
+    "description": "余额不足错误"
+  },
+  "uapiErrorNotFound": {
+    "message": "No matching data found",
+    "description": "未找到错误"
+  },
+  "uapiErrorUnavailable": {
+    "message": "The API is temporarily unavailable, please try again later",
+    "description": "服务不可用错误"
   }
 }

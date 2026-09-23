@@ -18,7 +18,7 @@ export interface AIProvider {
   reasoningEffort?: "high" | "max";
 }
 
-export type SyncMode = "disabled" | "upload" | "download";
+type SyncMode = "disabled" | "upload" | "download";
 
 export interface AppSettings {
   theme: AppTheme;
@@ -36,6 +36,8 @@ export interface AppSettings {
   bgType: BgType;
   customImage: string | null;
   glassOpacity: number;
+  /** 玻璃模糊半径（px），0-20，0 表示关闭模糊 */
+  glassBlur: number;
   aiEnabled: boolean;
   aiProviders: AIProvider[];
   aiCurrentProviderIndex: number;
@@ -46,13 +48,13 @@ export interface AppSettings {
   syncInterval: number;
 }
 
-export const DEFAULT_SEARCH_ENGINES: SearchEngine[] = [
+const DEFAULT_SEARCH_ENGINES: SearchEngine[] = [
   { name: "Bing", url: "https://bing.com/search?q=" },
   { name: "Baidu", url: "https://www.baidu.com/s?wd=" },
   { name: "Google", url: "https://www.google.com/search?q=" },
 ];
 
-export const DEFAULT_AI_PROVIDERS: AIProvider[] = [
+const DEFAULT_AI_PROVIDERS: AIProvider[] = [
   {
     name: "DeepSeek",
     apiUrl: "https://api.deepseek.com",
@@ -87,6 +89,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   bgType: "bing",
   customImage: null,
   glassOpacity: 80,
+  glassBlur: 12,
   aiEnabled: false,
   aiProviders: DEFAULT_AI_PROVIDERS,
   aiCurrentProviderIndex: 0,
@@ -105,7 +108,7 @@ export function resolveIsDarkMode(theme: AppTheme, prefersDark: boolean): boolea
   return prefersDark;
 }
 
-export function normalizeSearchEngines(engines: unknown): SearchEngine[] {
+function normalizeSearchEngines(engines: unknown): SearchEngine[] {
   if (!Array.isArray(engines)) return DEFAULT_SEARCH_ENGINES;
 
   const valid = engines.filter(
@@ -119,7 +122,7 @@ export function normalizeSearchEngines(engines: unknown): SearchEngine[] {
   return valid.length > 0 ? valid : DEFAULT_SEARCH_ENGINES;
 }
 
-export function normalizeAIProviders(providers: unknown): AIProvider[] {
+function normalizeAIProviders(providers: unknown): AIProvider[] {
   if (!Array.isArray(providers)) return DEFAULT_AI_PROVIDERS;
   const valid = providers
     .filter(
@@ -211,6 +214,12 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       candidate.glassOpacity <= 100
         ? candidate.glassOpacity
         : DEFAULT_APP_SETTINGS.glassOpacity,
+    glassBlur:
+      typeof candidate.glassBlur === "number" &&
+      candidate.glassBlur >= 0 &&
+      candidate.glassBlur <= 20
+        ? candidate.glassBlur
+        : DEFAULT_APP_SETTINGS.glassBlur,
     aiEnabled:
       typeof candidate.aiEnabled === "boolean"
         ? candidate.aiEnabled
@@ -384,6 +393,7 @@ async function migrateFromLegacyStorage(): Promise<AppSettings> {
       result.backgroundBlur <= 100
         ? result.backgroundBlur
         : DEFAULT_APP_SETTINGS.glassOpacity,
+    glassBlur: DEFAULT_APP_SETTINGS.glassBlur,
     aiEnabled,
     aiProviders,
     aiCurrentProviderIndex,

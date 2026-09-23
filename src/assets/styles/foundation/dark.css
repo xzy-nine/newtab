@@ -1,0 +1,23 @@
+/*
+ * 暗色主题令牌（html.dark）
+ *
+ * 由 src/assets/global.css 第 480-497 行原样拆分而来（未改动任何规则与顺序）。
+ * 层叠顺序 = styles/index.css 的导入顺序，调整顺序会改变样式优先级。
+ */
+html.dark {
+  --color-background: oklch(0.1448 0 0);
+  --color-foreground: oklch(0.9789 0.0012 264.54);
+  --color-card: oklch(0.1908 0.002 106.59);
+  --color-card-foreground: oklch(0.9789 0.0012 264.54);
+  --color-popover: oklch(0.1908 0.002 106.59);
+  --color-popover-foreground: oklch(0.9789 0.0012 264.54);
+  --color-secondary: oklch(0.2448 0.0036 257.41);
+  --color-secondary-foreground: oklch(0.9789 0.0012 264.54);
+  --color-muted: oklch(0.2448 0.0036 257.41);
+  --color-muted-foreground: oklch(0.6487 0.0411 257.41);
+  --color-accent: oklch(0.2448 0.0036 257.41);
+  --color-accent-foreground: oklch(0.9789 0.0012 264.54);
+  --color-border: oklch(0.2868 0.0051 257.41);
+  --color-input: oklch(0.2448 0.0036 257.41);
+  --color-ring: oklch(0.6333 0.286 264.24);
+}

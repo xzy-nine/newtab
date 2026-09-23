@@ -10,7 +10,7 @@ interface IconResult {
   score: number;
 }
 
-export async function getIconUrl(url: string): Promise<string> {
+async function getIconUrl(url: string): Promise<string> {
   if (!url) return "";
 
   try {

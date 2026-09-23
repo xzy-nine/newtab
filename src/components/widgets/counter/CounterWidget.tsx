@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getMessage } from "@/lib/i18n";
+import { resolveWidgetSizeMode, widgetPadding } from "@/lib/widget-layout";
 
 interface CounterWidgetProps {
   data?: Record<string, unknown>;
@@ -159,12 +160,14 @@ export function CounterWidget({
   const fontSize = calcFontSize(count.toString().length, containerWidth, containerHeight);
   const titleFontSize =
     containerHeight < 120 ? 11 : Math.max(12, Math.min(16, containerWidth / 14));
-  const isCompact = containerWidth <= 135 || containerHeight <= 100;
+  // 高度模式与会话内的其它小部件共用同一套阈值（宽或高偏小即紧凑）
+  const mode = resolveWidgetSizeMode({ width: containerWidth, height: containerHeight });
+  const isCompact = mode === "compact";
 
   return (
     <div
       className="flex flex-col items-center justify-center h-full w-full select-none overflow-hidden"
-      style={{ padding: isCompact ? "6px" : undefined }}
+      style={{ padding: widgetPadding(mode) }}
     >
       {isEditing ? (
         <input

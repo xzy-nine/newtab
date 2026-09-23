@@ -1,70 +1,55 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect } from "react";
 import { useAppSettings } from "@/lib/app-settings-store";
+import { ensureUapiSettingsHydrated } from "@/lib/uapi-settings-store";
 import { useTheme } from "@/hooks/useTheme";
-import { useBookmarkFolders } from "@/hooks/useBookmarkFolders";
 import { useBackgroundStyle } from "@/components/Background";
 import { ClockWidget } from "@/components/ClockWidget";
 import { SearchBox } from "@/components/SearchBox";
-import { DesktopSystem, type DesktopSystemHandle } from "@/components/DesktopSystem";
 import { NotificationCenter } from "@/components/NotificationCenter";
-import { FolderTreeView } from "@/components/FolderTreeView";
+import { DesktopWorkspace } from "@/components/DesktopWorkspace";
 import { useWidgetRegistration } from "@/components/WidgetSystem";
-import { getMessage } from "@/lib/i18n";
-import { Folder } from "lucide-react";
 
 export function SidePanelHome() {
-  const { hydrate, showClock, showWidgets, glassOpacity } = useAppSettings();
+  const { hydrate, showClock, glassOpacity, glassBlur } = useAppSettings();
   useTheme();
   useWidgetRegistration();
   const backgroundStyle = useBackgroundStyle();
 
-  const {
-    currentFolder,
-    folders,
-    folderTree,
-    expandedFolders,
-    pinnedFolders,
-    toggleFolder,
-    selectFolder,
-    pinFolder,
-    unpinFolder,
-  } = useBookmarkFolders();
-  const desktopRef = useRef<DesktopSystemHandle>(null);
-
-  const [showFolderPicker, setShowFolderPicker] = useState(false);
-
   useEffect(() => {
     hydrate();
+    // UAPI 密钥/冷却状态独立存储，需与设置一起就绪
+    void ensureUapiSettingsHydrated();
   }, [hydrate]);
 
-  // 玻璃效果同步：将设置值应用到 documentElement 的 CSS 变量和 data 属性
+  // 玻璃效果同步：将透明度与模糊设置应用到 documentElement 的 CSS 变量和 data 属性
   useEffect(() => {
     const el = document.documentElement;
-    const isGlassActive = glassOpacity < 100;
+    const isGlassActive = glassBlur > 0 || glassOpacity < 100;
     if (isGlassActive) {
       el.setAttribute("data-glass", "");
     } else {
       el.removeAttribute("data-glass");
     }
     el.style.setProperty("--xb-glass-opacity", `${glassOpacity / 100}`);
-  }, [glassOpacity]);
-
-  const handleFolderSelect = useCallback(
-    async (fid: string) => {
-      await selectFolder(fid);
-      setShowFolderPicker(false);
-    },
-    [selectFolder],
-  );
+    el.style.setProperty("--xb-glass-blur", `${glassBlur}px`);
+  }, [glassOpacity, glassBlur]);
 
   return (
-    <div
-      className="h-full w-full overflow-hidden flex flex-col bg-background text-foreground relative"
-      style={backgroundStyle}
-    >
+    <div className="h-full w-full overflow-hidden flex flex-col bg-background text-foreground relative">
       <NotificationCenter />
 
-      <div className="flex-1 flex flex-col">
+      {/*
+       * 同 NewTab：壁纸必须画在玻璃元素背后（同级、更低 z-index），
+       * 不能挂在玻璃元素的祖先上并附带 opacity 淡入——那会让祖先成为 backdrop root，
+       * 使 backdrop-filter 采样不到壁纸而不生效。
+       */}
+      <div
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={backgroundStyle}
+        aria-hidden
+      />
+
+      <div className="relative z-10 flex-1 flex flex-col" style={{ minHeight: 0 }}>
         <header className="flex flex-col items-center pt-2 pb-0 px-3 gap-1">
           {showClock && (
             <div className="scale-[0.6] origin-top -mb-6">
@@ -76,67 +61,8 @@ export function SidePanelHome() {
           </div>
         </header>
 
-        <div className="xb-folder-bar inline-flex items-center gap-1 flex-wrap relative mb-2 self-start">
-          <button
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-foreground hover:bg-foreground/10 transition-colors"
-            onClick={() => setShowFolderPicker(!showFolderPicker)}
-          >
-            <Folder className="w-3 h-3" />
-            <span className="truncate max-w-[100px]">
-              {folders.find((f) => f.id === currentFolder)?.title ||
-                getMessage("selectFolder", "选择文件夹")}
-            </span>
-          </button>
-
-          {pinnedFolders.map((pid) => {
-            const pf = folders.find((f) => f.id === pid);
-            if (!pf) return null;
-            const isActive = pid === currentFolder;
-            return (
-              <button
-                key={pid}
-                className={`pinned-folder-btn flex items-center gap-1 px-1.5 py-1 rounded-md text-xs transition-colors ${
-                  isActive
-                    ? "bg-foreground/15 text-foreground"
-                    : "text-foreground hover:bg-foreground/10"
-                }`}
-                onClick={() => handleFolderSelect(pid)}
-              >
-                <span className="max-w-[80px] truncate">{pf.title}</span>
-              </button>
-            );
-          })}
-
-          {showFolderPicker && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowFolderPicker(false)} />
-              <div className="absolute left-0 top-full mt-1 w-72 max-h-[50vh] overflow-y-auto rounded-xl xb-glass-popover shadow-2xl z-50">
-                <FolderTreeView
-                  nodes={folderTree}
-                  currentFolder={currentFolder}
-                  expandedFolders={expandedFolders}
-                  pinnedFolders={pinnedFolders}
-                  onSelect={handleFolderSelect}
-                  onToggle={toggleFolder}
-                  onPin={pinFolder}
-                  onUnpin={unpinFolder}
-                  level={0}
-                />
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex-1 flex flex-col px-3 pb-2">
-          <div className="flex-1 rounded-xl">
-            {showWidgets && currentFolder ? (
-              <DesktopSystem ref={desktopRef} folderId={currentFolder} />
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground/40 text-sm">
-                {getMessage("selectFolderToStart", "请选择一个书签文件夹")}
-              </div>
-            )}
-          </div>
+        <div className="flex-1 flex flex-col px-3 pb-2" style={{ minHeight: 0 }}>
+          <DesktopWorkspace compact />
         </div>
       </div>
     </div>

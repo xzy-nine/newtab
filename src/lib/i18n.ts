@@ -73,7 +73,7 @@ async function loadTranslationsFromFiles(language: string) {
   } catch {}
 }
 
-export async function initI18n() {
+async function initI18n() {
   try {
     const result = (await chrome.storage.sync.get("language")) as { language?: string };
     currentLanguage = result.language || "zh";
@@ -101,7 +101,7 @@ export function getCurrentLanguage(): string {
   return currentLanguage;
 }
 
-export async function changeLanguage(language: string) {
+async function changeLanguage(language: string) {
   currentLanguage = language;
   try {
     await chrome.storage.sync.set({ language });
