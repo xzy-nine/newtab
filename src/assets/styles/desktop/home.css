@@ -8,3 +8,11 @@
 .home-desktop {
   border-radius: 12px;
 }
+
+/*
+ * 紧凑模式（侧边栏）：去掉桌面容器的 60vh 最小高度，让其填满可用高度
+ * 并在内部滚动。侧边栏列数少、项目换行多，保留 60vh 会把底部顶出可视区。
+ */
+.home-desktop-compact .desktop-box {
+  min-height: 0;
+}

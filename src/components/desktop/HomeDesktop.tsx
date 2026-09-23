@@ -52,6 +52,11 @@ interface HomeDesktopProps {
   /** 是否显示小部件（关闭时仅隐藏主桌面上的小部件）。 */
   showWidgets?: boolean;
   /**
+   * 紧凑模式（侧边栏）：去掉桌面容器的最小高度限制，让其填满可用空间
+   * 并在内部滚动，避免窄列下底部项目够不到。
+   */
+  compact?: boolean;
+  /**
    * 书签文件夹与固定列表是否已加载完成。
    * 未完成前不加载/不同步主桌面，避免用空的固定列表误删文件夹图标。
    */
@@ -69,7 +74,7 @@ interface HomeDesktopProps {
  * 两种形态下点击书签都只是"打开"，不会固定任何东西。
  */
 export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(function HomeDesktop(
-  { folders, pinnedFolderIds, onUnpinFolder, showWidgets = true, ready = true },
+  { folders, pinnedFolderIds, onUnpinFolder, showWidgets = true, compact = false, ready = true },
   ref,
 ) {
   const {
@@ -392,7 +397,7 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     <>
       {/* 文件夹视图里的书签可直接拖到桌面固定（见 DockFolderLayer 的 dataTransfer） */}
       <div
-        className="home-desktop-drop"
+        className={`home-desktop-drop h-full ${compact ? "home-desktop-compact" : ""}`}
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)) {
             e.preventDefault();

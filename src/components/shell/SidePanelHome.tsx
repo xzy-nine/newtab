@@ -50,7 +50,7 @@ export function SidePanelHome() {
       />
 
       <div className="relative z-10 flex-1 flex flex-col" style={{ minHeight: 0 }}>
-        <header className="flex flex-col items-center pt-2 pb-0 px-3 gap-1">
+        <header className="flex flex-col items-center pt-2 pb-3 px-3 gap-1">
           {showClock && (
             <div className="scale-[0.6] origin-top -mb-6">
               <ClockWidget />
