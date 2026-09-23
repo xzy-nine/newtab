@@ -1,4 +1,84 @@
 # newtab
 
-微软应用商店的[xzy新标签页拓展](https://microsoftedge.microsoft.com/addons/detail/xzy%E6%96%B0%E6%A0%87%E7%AD%BE%E9%A1%B5%E6%8B%93%E5%B1%95/lpdhbhkcbnhldcpcbocplhgeooabhbme)的开源地址
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/xzy-nine/newtab)
+一个简洁美观的浏览器新标签页扩展，支持自定义主桌面、文件夹与书签管理、AI 助手、桌面小部件、多搜索引擎、主题与背景切换等。
+
+> 微软应用商店：[xzy 新标签页拓展](https://microsoftedge.microsoft.com/addons/detail/xzy%E6%96%B0%E6%A0%87%E7%AD%BE%E9%A1%B5%E6%8B%93%E5%B1%95/lpdhbhkcbnhldcpcbocplhgeooabhbme)
+
+## 功能
+
+### 主桌面
+
+新标签页拥有一个独立的主桌面，可放置文件夹图标、网址快捷方式与桌面小部件，完全独立于书签文件夹结构。
+
+- **文件夹图标**：把书签文件夹固定到主桌面后以图标形式显示。点击弹出该文件夹的书签；横向拉伸到 2 列以上则内联展开成书签网格，向右轻拉切换 2×2 迷你预览。
+- **快捷方式**：右键添加网址快捷方式，或在文件夹浮层里把书签拖到桌面固定。
+- **小部件**：右键添加小部件磁贴，可拖拽排序、缩放。
+
+### 文件夹与书签
+
+通过底部 Dock 的文件夹按钮打开浮层：左侧是文件夹树，右侧是所选文件夹的书签列表。
+
+- 点击书签直接打开；右键可"固定到桌面 / 从桌面移除"。
+- 支持多选（Ctrl/Cmd 点击、Shift 连选、空白框选、全选）后批量固定。
+- 文件夹树上的图钉可固定 / 取消固定文件夹到主桌面。
+
+### 桌面小部件
+
+- **时钟** — 显示在搜索框上方。
+- **天气** — 实时天气与逐时/逐天预报（展开弹窗）。
+- **米哈游活动** — 游戏活动日历与甘特图，支持自定义外显游戏与紧急提醒。
+- **计数器** / **秒表** / **笔记** — 通用小工具。
+
+### AI 助手
+
+支持配置多个 AI 提供商（DeepSeek、OpenAI 兼容接口等），流式对话、会话历史持久化、模型选择与快捷提示词。入口按钮悬停时预加载，避免拖慢首屏。
+
+### 搜索
+
+多搜索引擎切换，可自定义添加搜索引擎。支持搜索建议。
+
+### 主题与背景
+
+- 亮色 / 暗色 / 跟随系统主题。
+- 背景：Bing 每日壁纸、自定义图片、默认背景。
+- 玻璃模糊效果，可在设置中调节透明度与模糊强度。
+
+### 侧边栏
+
+提供独立侧边栏面板，复用同一主桌面，窄列下自动内部滚动；可在侧边栏内打开网页（支持移动端 UA 切换）。
+
+## 从旧版升级的迁移
+
+从旧版（固定文件夹模型）升级到独立主桌面时，首次加载会按原有固定文件夹数量自动迁移：
+
+- **没有固定文件夹** — 把收藏夹栏（书签栏根目录）本身的书签释放为主桌面快捷方式。
+- **只有一个固定文件夹** — 直接解除固定，把该文件夹的书签释放为主桌面快捷方式。
+- **多个固定文件夹** — 弹出一次性选择对话框，由用户挑选一个文件夹释放到主桌面并取消固定，其余文件夹仍保持固定。
+
+迁移同时会把旧版散落在文件夹布局与 `widgets` 键中的小部件搬到主桌面。
+
+## 开发
+
+```bash
+pnpm install
+
+pnpm run dev           # 开发（Chrome）
+pnpm run dev:edge      # 开发（Edge）
+pnpm run dev:firefox   # 开发（Firefox）
+
+pnpm run build         # 构建（Chrome）
+pnpm run build:edge    # 构建（Edge）
+pnpm run build:firefox # 构建（Firefox）
+
+pnpm run test:unit     # 单元测试
+pnpm run compile       # 类型检查
+pnpm run lint          # 格式化 + lint
+```
+
+## 技术栈
+
+[WXT](https://wxt.dev/) · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · Zustand · `@reactuses/core`
+
+## 许可证
+
+MIT
