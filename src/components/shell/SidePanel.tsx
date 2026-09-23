@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ArrowLeft, Smartphone } from "lucide-react";
-import { SidePanelHome } from "@/components/SidePanelHome";
-import { BrowserView } from "@/components/BrowserView";
+import { SidePanelHome } from "@/components/shell/SidePanelHome";
+import { BrowserView } from "@/components/browser/BrowserView";
 import { onSidebarNavigate } from "@/lib/sidebar-nav";
 import { registerLinkInterception } from "@/lib/link-intercept";
 

@@ -9,11 +9,11 @@ import {
   type ReactNode,
 } from "react";
 import { LayoutGrid, Link2, Pin, PinOff, Puzzle } from "lucide-react";
-import { DesktopGridView } from "@/components/DesktopGridView";
-import { WidgetAddDialog } from "@/components/WidgetSystem";
-import { FolderPopup } from "@/components/FolderPopup";
-import { WidgetPopupHost } from "@/components/WidgetPopupHost";
-import { BOOKMARK_DRAG_TYPE } from "@/components/DockFolderLayer";
+import { DesktopGridView } from "@/components/desktop/DesktopGridView";
+import { WidgetAddDialog } from "@/components/widget-system/WidgetSystem";
+import { FolderPopup } from "@/components/folder/FolderPopup";
+import { WidgetPopupHost } from "@/components/widget-system/WidgetPopupHost";
+import { BOOKMARK_DRAG_TYPE } from "@/components/dock/DockFolderLayer";
 import { useContextMenu, type ContextMenuItem } from "@/hooks/useContextMenu";
 import { getMessage } from "@/lib/i18n";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { DesktopGridView } from "@/components/DesktopGridView";
+import { DesktopGridView } from "@/components/desktop/DesktopGridView";
 import { registerWidget } from "@/lib/widget-registry";
 import { WIDGET_TILE_HEIGHT } from "@/lib/widget-layout";
 import type { WidgetItemData } from "@/lib/desktop-items";

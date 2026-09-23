@@ -17,7 +17,7 @@ import {
   ShortcutTile,
   WidgetGridItem,
   WidgetResizeHandle,
-} from "@/components/DesktopItemViews";
+} from "@/components/desktop/DesktopItemViews";
 
 /** 桌面网格的行高基准与间距。 */
 const GRID_GAP = 14;

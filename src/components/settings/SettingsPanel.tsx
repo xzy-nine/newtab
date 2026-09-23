@@ -30,8 +30,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useAppSettings } from "@/lib/app-settings-store";
-import { BackgroundSettings } from "@/components/BackgroundSettings";
-import { UapiSettings } from "@/components/UapiSettings";
+import { BackgroundSettings } from "@/components/background/BackgroundSettings";
+import { UapiSettings } from "@/components/settings/UapiSettings";
 import {
   showNotification,
   getDuration,

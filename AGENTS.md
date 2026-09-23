@@ -44,14 +44,25 @@ src/
 │       ├── components/  # dock / dock-layer / folder-tree / folder-popup
 │       └── widgets/     # clock / weather / activity
 ├── components/
-│   ├── ui/            # shadcn
-│   ├── ai/            # AI 助手 UI（AIAssistant / AIChatPanel / 子组件）
-│   └── widgets/       # 每个小部件一个子目录
-│       ├── counter/   # CounterWidget.tsx
-│       ├── timer/     # TimerWidget.tsx
-│       ├── note/      # NoteWidget.tsx
-│       ├── weather/   # WeatherWidget.tsx + weather.ts（数据与纯逻辑）
-│       └── activity/  # ActivityWidget.tsx + activity.ts（数据与纯逻辑）
+│   ├── ui/              # shadcn 基础组件
+│   ├── ai/              # AI 助手 UI（AIAssistant / AIChatPanel / 子组件）
+│   ├── widgets/         # 每个小部件一个子目录
+│   │   ├── counter/     # CounterWidget.tsx
+│   │   ├── timer/       # TimerWidget.tsx
+│   │   ├── note/        # NoteWidget.tsx
+│   │   ├── weather/     # WeatherWidget.tsx + weather.ts（数据与纯逻辑）
+│   │   └── activity/    # ActivityWidget.tsx + activity.ts（数据与纯逻辑）
+│   ├── shell/           # 页面外壳（NewTab / SidePanel / SidePanelHome）
+│   ├── desktop/         # 桌面系统（DesktopWorkspace / HomeDesktop / DesktopGridView / DesktopItemViews）
+│   ├── dock/            # Dock 栏与文件夹浮层（Dock / DockFolderLayer）
+│   ├── folder/          # 文件夹树与弹窗（FolderTreeView / FolderPopup）
+│   ├── background/      # 背景与背景设置（Background / BackgroundSettings）
+│   ├── settings/        # 设置面板（SettingsPanel / UapiSettings）
+│   ├── search/          # 搜索框（SearchBox）
+│   ├── browser/         # 侧边栏浏览器视图（BrowserView）
+│   ├── notification/    # 通知中心（NotificationCenter）
+│   ├── clock/           # 时钟小组件（ClockWidget）
+│   └── widget-system/   # 小部件注册与弹窗宿主（WidgetSystem / WidgetPopupHost）
 ├── hooks/             # useTheme, useBookmarkFolders, useDesktopGrid, useContextMenu
 ├── lib/
 │   ├── app-settings.ts / app-settings-store.ts

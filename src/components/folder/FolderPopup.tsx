@@ -1,6 +1,6 @@
 import { Folder } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { ShortcutIcon } from "@/components/DesktopItemViews";
+import { ShortcutIcon } from "@/components/desktop/DesktopItemViews";
 import { useFolderBookmarks } from "@/hooks/useFolderBookmarks";
 import { getMessage } from "@/lib/i18n";
 import { openUrl } from "@/lib/open-url";

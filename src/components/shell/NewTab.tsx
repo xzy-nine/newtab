@@ -2,13 +2,13 @@ import { useEffect, useState, useCallback } from "react";
 import { useAppSettings } from "@/lib/app-settings-store";
 import { ensureUapiSettingsHydrated } from "@/lib/uapi-settings-store";
 import { useTheme } from "@/hooks/useTheme";
-import { useBackgroundStyle } from "@/components/Background";
-import { ClockWidget } from "@/components/ClockWidget";
-import { SearchBox } from "@/components/SearchBox";
-import { SettingsPanel } from "@/components/SettingsPanel";
-import { NotificationCenter } from "@/components/NotificationCenter";
-import { DesktopWorkspace } from "@/components/DesktopWorkspace";
-import { useWidgetRegistration } from "@/components/WidgetSystem";
+import { useBackgroundStyle } from "@/components/background/Background";
+import { ClockWidget } from "@/components/clock/ClockWidget";
+import { SearchBox } from "@/components/search/SearchBox";
+import { SettingsPanel } from "@/components/settings/SettingsPanel";
+import { NotificationCenter } from "@/components/notification/NotificationCenter";
+import { DesktopWorkspace } from "@/components/desktop/DesktopWorkspace";
+import { useWidgetRegistration } from "@/components/widget-system/WidgetSystem";
 
 export function NewTab() {
   const { hydrate, showClock, glassOpacity, glassBlur } = useAppSettings();

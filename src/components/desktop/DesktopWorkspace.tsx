@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useBookmarkFolders } from "@/hooks/useBookmarkFolders";
-import { HomeDesktop, type HomeDesktopHandle } from "@/components/HomeDesktop";
-import { Dock } from "@/components/Dock";
+import { HomeDesktop, type HomeDesktopHandle } from "@/components/desktop/HomeDesktop";
+import { Dock } from "@/components/dock/Dock";
 import { useAppSettings } from "@/lib/app-settings-store";
 
 interface DesktopWorkspaceProps {

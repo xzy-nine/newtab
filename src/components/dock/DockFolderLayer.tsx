@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Folder, Pin, PinOff, X } from "lucide-react";
-import { FolderTreeView, type FolderTreeViewProps } from "@/components/FolderTreeView";
-import { ShortcutIcon } from "@/components/DesktopItemViews";
+import { FolderTreeView, type FolderTreeViewProps } from "@/components/folder/FolderTreeView";
+import { ShortcutIcon } from "@/components/desktop/DesktopItemViews";
 import { useContextMenu } from "@/hooks/useContextMenu";
 import { useFolderBookmarks } from "@/hooks/useFolderBookmarks";
 import { useHomeDesktop } from "@/lib/home-desktop-store";

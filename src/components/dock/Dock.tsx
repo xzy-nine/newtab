@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Settings, RefreshCw, Sun, Moon, Folder, Plus } from "lucide-react";
 import { useAppSettings } from "@/lib/app-settings-store";
 import { getMessage } from "@/lib/i18n";
-import { DockFolderLayer, type DockFolderLayerProps } from "@/components/DockFolderLayer";
+import { DockFolderLayer, type DockFolderLayerProps } from "@/components/dock/DockFolderLayer";
 
 interface DockProps {
   onOpenSettings?: () => void;
