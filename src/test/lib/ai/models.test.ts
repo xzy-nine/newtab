@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildModelsUrl, isReasoningModel, isReasoningModelName } from "./models";
+import { buildModelsUrl, isReasoningModel, isReasoningModelName } from "@/lib/ai/models";
 
 describe("buildModelsUrl", () => {
   it("appends /v1/models to a plain host", () => {

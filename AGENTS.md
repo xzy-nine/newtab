@@ -59,7 +59,10 @@ src/
 │   ├── widget-registry.ts
 │   ├── i18n.ts / icon-manager.ts / notification.ts
 │   └── data-sync.ts / search-suggestions.ts / dialog-z-index.ts
-└── test/
+└── test/              # 全部测试集中于此，目录层级镜像 src/（见"测试"）
+    ├── setup.ts       # Vitest setup（jsdom 补丁 + jest-dom matchers）
+    ├── components/    # 对应 src/components 的层级
+    └── lib/           # 对应 src/lib 的层级
 ```
 
 ### AI 模块分层（`src/lib/ai/`）
@@ -162,7 +165,11 @@ const {
 ## 测试
 
 - Vitest + `jsdom`; setup: `src/test/setup.ts`
-- Tests: `*.test.ts` / `*.spec.ts` alongside source; components use `@testing-library/react`
+- Tests: `*.test.ts` / `*.spec.ts` **全部集中在 `src/test/` 下**，不再与源码同目录；
+  目录层级镜像 `src/`，便于按被测模块定位（如 `src/test/lib/ai/chat.test.ts` ↔ `src/lib/ai/chat.ts`）
+- 测试内一律使用 `@/` 别名引用源码与被 mock 模块（不再用 `./`、`../` 相对路径）
+- 组件测试使用 `@testing-library/react`
+- `tsconfig.json` **不排除** `src/test`，因此 `pnpm run compile` 会一并类型检查测试代码
 
 ## 代码质量
 

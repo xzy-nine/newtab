@@ -40,16 +40,16 @@ vi.mock("@/lib/app-settings-store", () => ({
   }),
 }));
 
-vi.mock("./useModelCatalog", () => ({
+vi.mock("@/components/ai/useModelCatalog", () => ({
   useModelCatalog: () => ({ models: [], loading: false, refresh: vi.fn() }),
 }));
 
 // 子组件与面板本身的渲染无关，替换为空实现以隔离被测连线。
-vi.mock("./ChatComposer", () => ({ ChatComposer: () => null }));
-vi.mock("./ConversationSidebar", () => ({ ConversationSidebar: () => null }));
-vi.mock("./MessageBubble", () => ({ MessageBubble: () => null }));
+vi.mock("@/components/ai/ChatComposer", () => ({ ChatComposer: () => null }));
+vi.mock("@/components/ai/ConversationSidebar", () => ({ ConversationSidebar: () => null }));
+vi.mock("@/components/ai/MessageBubble", () => ({ MessageBubble: () => null }));
 
-import { AIChatPanel } from "./AIChatPanel";
+import { AIChatPanel } from "@/components/ai/AIChatPanel";
 
 describe("AIChatPanel", () => {
   beforeEach(() => {

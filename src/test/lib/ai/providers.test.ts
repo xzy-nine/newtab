@@ -6,7 +6,7 @@ import {
   resolveBaseUrl,
   resolveReasoning,
   resolveTemperature,
-} from "./providers";
+} from "@/lib/ai/providers";
 
 function provider(overrides: Partial<AIProvider> = {}): AIProvider {
   return {

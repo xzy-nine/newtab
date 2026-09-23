@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getCategoryName, parseQuickPrompt, parseQuickPrompts } from "./quick-prompts";
+import { getCategoryName, parseQuickPrompt, parseQuickPrompts } from "@/lib/ai/quick-prompts";
 
 describe("parseQuickPrompt", () => {
   it("treats a plain string as general with the default temperature", () => {

@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MarkdownContent } from "./MarkdownContent";
+import { MarkdownContent } from "@/components/ai/MarkdownContent";
 
 describe("MarkdownContent", () => {
   it("returns nothing for empty content", () => {

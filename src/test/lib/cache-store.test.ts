@@ -8,7 +8,7 @@ import {
   readThroughCache,
   removeCache,
   writeCache,
-} from "./cache-store";
+} from "@/lib/cache-store";
 
 describe("cache-store", () => {
   beforeEach(() => {

@@ -5,8 +5,8 @@ import {
   isTitleTriggerRound,
   pickTitleProvider,
   toApiMessages,
-} from "./chat";
-import type { AIMessage } from "./types";
+} from "@/lib/ai/chat";
+import type { AIMessage } from "@/lib/ai/types";
 import type { AIProvider } from "@/lib/app-settings";
 
 function msg(role: AIMessage["role"], content: string): AIMessage {

@@ -15,7 +15,7 @@ import {
   stripWidgetsFromLayouts,
   type DesktopItem,
   type FolderItem,
-} from "./desktop-items";
+} from "@/lib/desktop-items";
 
 describe("normalizeDesktopItem", () => {
   it("keeps folder items with their folderId", () => {

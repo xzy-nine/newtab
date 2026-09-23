@@ -5,8 +5,8 @@ import {
   createConversationId,
   parseConversations,
   pruneConversations,
-} from "./persistence";
-import type { Conversation } from "./types";
+} from "@/lib/ai/persistence";
+import type { Conversation } from "@/lib/ai/types";
 
 function conversation(id: string, lastUpdated: number): Conversation {
   return { id, title: id, messages: [], createdAt: 0, lastUpdated };

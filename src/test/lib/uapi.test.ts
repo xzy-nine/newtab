@@ -15,8 +15,8 @@ import {
   testUapiKey,
   uapiErrorMessageKey,
   uapiFetch,
-} from "./uapi";
-import { useUapiSettings } from "./uapi-settings-store";
+} from "@/lib/uapi";
+import { useUapiSettings } from "@/lib/uapi-settings-store";
 
 /** 构造一个 fetch 响应替身：`uapiFetch` 依赖 status / text() / headers。 */
 function rawResponse(

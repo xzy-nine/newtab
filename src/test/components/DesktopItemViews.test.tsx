@@ -21,7 +21,7 @@ vi.mock("@/lib/icon-manager", () => ({
   generateInitialBasedIcon: () => "",
 }));
 
-const { FolderPanelTile, FolderTile } = await import("./DesktopItemViews");
+const { FolderPanelTile, FolderTile } = await import("@/components/DesktopItemViews");
 
 const item: FolderItem = {
   id: folderItemId("f1"),

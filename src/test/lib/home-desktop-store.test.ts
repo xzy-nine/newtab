@@ -15,7 +15,7 @@ vi.mock("@/lib/desktop-storage", () => ({
   loadHomeDesktop: () => loadHomeDesktop(),
 }));
 
-const { useHomeDesktop, shortcutFromBookmark } = await import("./home-desktop-store");
+const { useHomeDesktop, shortcutFromBookmark } = await import("@/lib/home-desktop-store");
 
 const bookmark = (id: string, url: string, title = id) => ({ id, url, title });
 

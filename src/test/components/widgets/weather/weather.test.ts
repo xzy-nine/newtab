@@ -23,8 +23,8 @@ import {
   weatherGlyph,
   weatherIconInfo,
   weatherTextEmoji,
-} from "./weather";
-import { WEATHER_ICONS } from "./weather-icons";
+} from "@/components/widgets/weather/weather";
+import { WEATHER_ICONS } from "@/components/widgets/weather/weather-icons";
 
 describe("weatherEmoji", () => {
   it("maps known icon codes to their emoji", () => {

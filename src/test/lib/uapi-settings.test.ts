@@ -5,9 +5,9 @@ import {
   loadUapiSettings,
   normalizeUapiSettings,
   persistUapiSettings,
-} from "./uapi-settings";
-import { ensureUapiSettingsHydrated, useUapiSettings } from "./uapi-settings-store";
-import { DEFAULT_APP_SETTINGS, normalizeAppSettings } from "./app-settings";
+} from "@/lib/uapi-settings";
+import { ensureUapiSettingsHydrated, useUapiSettings } from "@/lib/uapi-settings-store";
+import { DEFAULT_APP_SETTINGS, normalizeAppSettings } from "@/lib/app-settings";
 
 /** 最小可用的 browser.storage.local 替身。 */
 function stubBrowserStorage() {

@@ -5,7 +5,7 @@ import {
   embeddabilityOf,
   extractFrameAncestors,
   type BrowserProbeResult,
-} from "./browser";
+} from "@/lib/browser";
 
 describe("normalizeBrowserUrl", () => {
   it("rejects empty input", () => {

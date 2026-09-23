@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { APICallError } from "ai";
-import { describeApiError, toChatError } from "./errors";
+import { describeApiError, toChatError } from "@/lib/ai/errors";
 
 /** 构造一个带状态码与响应体的 APICallError，与 openai-compatible 抛出的形态一致。 */
 function apiError(statusCode: number | undefined, responseBody?: string): APICallError {

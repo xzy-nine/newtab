@@ -66,7 +66,7 @@ import {
   type CalendarSelector,
   type DisplayGamesSetting,
   type ParsedActivityEntry,
-} from "./activity";
+} from "@/components/widgets/activity/activity";
 
 /** 构造一条日程（测试用）。 */
 function makeEntry(overrides: Partial<ParsedActivityEntry> = {}): ParsedActivityEntry {

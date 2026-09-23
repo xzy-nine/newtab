@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { resolveBaseUrl } from "./providers";
+import { resolveBaseUrl } from "@/lib/ai/providers";
 
 /** 旧实现 buildChatUrl 的规则：已含 /chat/completions 原样返回；deepseek 去 /v1；否则追加。 */
 function legacyChatUrl(apiUrl: string): string {

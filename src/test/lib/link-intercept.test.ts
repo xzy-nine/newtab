@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shouldInterceptLink, isPlainLeftClick } from "./link-intercept";
+import { shouldInterceptLink, isPlainLeftClick } from "@/lib/link-intercept";
 
 const SELF = "chrome-extension://abcdefg";
 

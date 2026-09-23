@@ -6,7 +6,7 @@ import {
   LINE_HEIGHT_PX,
   normalizeWheelDelta,
   shouldConvertWheelToHorizontal,
-} from "./wheel-scroll";
+} from "@/lib/wheel-scroll";
 
 describe("normalizeWheelDelta", () => {
   it("passes pixel deltas through unchanged", () => {

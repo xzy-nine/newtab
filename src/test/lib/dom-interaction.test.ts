@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isDragBlockedTarget, isInteractiveTarget } from "./dom-interaction";
+import { isDragBlockedTarget, isInteractiveTarget } from "@/lib/dom-interaction";
 
 /**
  * 磁贴拖拽与内部控件的冲突判定。

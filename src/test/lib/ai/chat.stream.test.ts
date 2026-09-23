@@ -9,9 +9,9 @@
 
 import { describe, it, expect } from "vitest";
 import type { AIProvider } from "@/lib/app-settings";
-import { createProvider, resolveModel } from "./providers";
-import { generateTitle, streamChat } from "./chat";
-import type { AIMessage } from "./types";
+import { createProvider, resolveModel } from "@/lib/ai/providers";
+import { generateTitle, streamChat } from "@/lib/ai/chat";
+import type { AIMessage } from "@/lib/ai/types";
 
 /** 构造一个 SSE 假响应。 */
 function sseResponse(chunks: string[]): Response {
