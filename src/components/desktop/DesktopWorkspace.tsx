@@ -22,6 +22,7 @@ interface DesktopWorkspaceProps {
  * 在浮层或文件夹树上都能把文件夹固定到主桌面。
  */
 export function DesktopWorkspace({
+  compact = false,
   showDock = true,
   onOpenSettings,
   onRefreshBackground,
@@ -49,6 +50,10 @@ export function DesktopWorkspace({
     homeRef.current?.openAddWidget();
   }, []);
 
+  // 紧凑模式（侧边栏）不渲染底部 Dock：侧边栏已有自己的顶部工具栏，
+  // 且窄列下 Dock 会挤占空间、其按钮也够不到。
+  const renderDock = showDock && !compact;
+
   return (
     <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
       <div className="flex-1" style={{ minHeight: 0 }}>
@@ -59,10 +64,11 @@ export function DesktopWorkspace({
           onUnpinFolder={unpinFolder}
           showWidgets={showWidgets}
           ready={ready}
+          compact={compact}
         />
       </div>
 
-      {showDock && (
+      {renderDock && (
         <Dock
           onOpenSettings={onOpenSettings}
           onRefreshBackground={onRefreshBackground}

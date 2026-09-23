@@ -926,5 +926,21 @@
   "uapiErrorUnavailable": {
     "message": "接口暂时不可用，请稍后再试",
     "description": "服务不可用错误"
+  },
+  "migrationChooseFolderTitle": {
+    "message": "选择一个文件夹释放到主桌面",
+    "description": "迁移选择文件夹对话框标题"
+  },
+  "migrationChooseFolderDesc": {
+    "message": "升级后主桌面独立于文件夹。请选择一个固定文件夹，将其书签直接释放到主桌面并取消固定，其余文件夹仍保持固定。",
+    "description": "迁移选择文件夹对话框说明"
+  },
+  "migrationSkip": {
+    "message": "跳过",
+    "description": "迁移选择文件夹跳过按钮"
+  },
+  "migrationRelease": {
+    "message": "释放到主桌面",
+    "description": "迁移选择文件夹确认按钮"
   }
 }

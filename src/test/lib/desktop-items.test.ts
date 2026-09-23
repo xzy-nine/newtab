@@ -12,6 +12,7 @@ import {
   reconcileFolderItems,
   resolveFolderResize,
   seedFolderItems,
+  shortcutsFromBookmarks,
   stripWidgetsFromLayouts,
   type DesktopItem,
   type FolderItem,
@@ -124,6 +125,44 @@ describe("seedFolderItems", () => {
 
   it("uses a placeholder name for unknown folders", () => {
     expect(seedFolderItems(["x"])[0]!.name).toBe("未命名");
+  });
+});
+
+describe("shortcutsFromBookmarks", () => {
+  it("builds 1x1 shortcuts from bookmarks in order", () => {
+    const items = shortcutsFromBookmarks([
+      { id: "a", title: "A", url: "https://a.com" },
+      { id: "b", title: "B", url: "https://b.com" },
+    ]);
+    expect(items.map((i) => i.id)).toEqual(["shortcut:a", "shortcut:b"]);
+    expect(items[0]).toMatchObject({
+      type: "shortcut",
+      name: "A",
+      url: "https://a.com",
+      w: 1,
+      h: 1,
+    });
+  });
+
+  it("deduplicates by URL keeping the first occurrence", () => {
+    const items = shortcutsFromBookmarks([
+      { id: "a", title: "A", url: "https://a.com" },
+      { id: "b", title: "A2", url: "https://a.com" },
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.name).toBe("A");
+  });
+
+  it("skips bookmarks without a URL", () => {
+    expect(shortcutsFromBookmarks([{ id: "a", title: "A", url: "" }])).toEqual([]);
+  });
+
+  it("falls back to the URL as the name when the title is empty", () => {
+    expect(shortcutsFromBookmarks([{ id: "a", title: "", url: "https://a.com" }])[0]).toMatchObject(
+      {
+        name: "https://a.com",
+      },
+    );
   });
 });
 

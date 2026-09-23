@@ -110,17 +110,3 @@ html {
     transparent
   );
 }
-
-/* 文件夹按钮栏背景块 */
-.xb-folder-bar {
-  background-color: color-mix(
-    in srgb,
-    var(--color-card) calc(var(--xb-glass-opacity) * 100%),
-    transparent
-  );
-  border: 1px solid
-    color-mix(in srgb, var(--color-border) calc(var(--xb-glass-opacity) * 100%), transparent);
-  border-radius: 10px;
-  padding: 4px 8px;
-  backdrop-filter: blur(var(--xb-glass-blur));
-}

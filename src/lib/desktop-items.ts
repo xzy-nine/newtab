@@ -273,6 +273,31 @@ export function normalizeDesktopItems(raw: unknown): DesktopItem[] {
 }
 
 /**
+ * 由书签列表构造桌面快捷方式（按 URL 去重，先出现的优先）。
+ *
+ * 迁移时把某个文件夹或收藏夹栏的书签"释放"到主桌面用此函数；
+ * 运行时固定书签走 store 的 `pinBookmarks`（还会对已存在项去重）。
+ */
+export function shortcutsFromBookmarks(bookmarks: BookmarkLike[]): ShortcutItem[] {
+  const seen = new Set<string>();
+  const result: ShortcutItem[] = [];
+  for (const bookmark of bookmarks) {
+    if (!bookmark.url || seen.has(bookmark.url)) continue;
+    seen.add(bookmark.url);
+    result.push({
+      id: `shortcut:${bookmark.id}`,
+      type: "shortcut",
+      name: bookmark.title || bookmark.url || DEFAULT_ITEM_NAME,
+      url: bookmark.url,
+      color: DEFAULT_SHORTCUT_COLOR,
+      w: 1,
+      h: 1,
+    });
+  }
+  return result;
+}
+
+/**
  * 按固定文件夹列表生成文件夹图标（保持列表顺序）。
  */
 export function seedFolderItems(

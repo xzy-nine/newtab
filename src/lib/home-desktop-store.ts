@@ -3,6 +3,7 @@ import {
   DEFAULT_ITEM_NAME,
   DEFAULT_SHORTCUT_COLOR,
   hasSameItemIdentity,
+  isFolderItem,
   isWidgetItem,
   reconcileFolderItems,
   type BookmarkFolderLike,
@@ -10,7 +11,7 @@ import {
   type DesktopItem,
   type ShortcutItem,
 } from "@/lib/desktop-items";
-import { loadHomeDesktop, saveHomeDesktop } from "@/lib/desktop-storage";
+import { loadHomeDesktop, saveHomeDesktop, type PendingFolderChoice } from "@/lib/desktop-storage";
 
 /**
  * 主桌面项目的共享状态。
@@ -51,6 +52,11 @@ export function shortcutFromBookmark(bookmark: BookmarkLike): ShortcutItem {
 
 interface HomeDesktopState {
   items: DesktopItem[];
+  /**
+   * 一次性迁移待决：旧版有多个固定文件夹时，需用户选择释放哪一个。
+   * 由 UI 弹窗处理，选择后调用 `releaseFolder`，跳过则 `dismissFolderChoice`。
+   */
+  pendingFolderChoice: PendingFolderChoice | null;
   /** 读取主桌面（首次会执行一次性迁移）；需在书签文件夹就绪后调用。 */
   hydrate: (folders: BookmarkFolderLike[]) => Promise<void>;
   /** 直接替换列表并保存。 */
@@ -65,14 +71,22 @@ interface HomeDesktopState {
   pinBookmarks: (bookmarks: BookmarkLike[]) => void;
   /** 按 URL 取消固定（只移除快捷方式，不动文件夹图标与小部件）。 */
   unpinBookmarks: (urls: string[]) => void;
+  /**
+   * 释放某个固定文件夹到主桌面：把其书签变成快捷方式、移除该文件夹图标、
+   * 清除待决选择。调用方还需自行取消固定（更新固定列表与存储）。
+   */
+  releaseFolder: (folderId: string, bookmarks: BookmarkLike[]) => void;
+  /** 跳过迁移选择，保留全部固定文件夹图标。 */
+  dismissFolderChoice: () => void;
 }
 
 export const useHomeDesktop = create<HomeDesktopState>((set, get) => ({
   items: [],
+  pendingFolderChoice: null,
 
   hydrate: async (folders) => {
-    const items = await loadHomeDesktop(folders);
-    set({ items });
+    const { items, pendingFolderChoice } = await loadHomeDesktop(folders);
+    set({ items, pendingFolderChoice: pendingFolderChoice ?? null });
   },
 
   replaceItems: (items) => {
@@ -147,6 +161,31 @@ export const useHomeDesktop = create<HomeDesktopState>((set, get) => ({
     if (items.length === prev.length) return;
     set({ items });
     schedulePersist(items);
+  },
+
+  releaseFolder: (folderId, bookmarks) => {
+    const prev = get().items;
+    // 移除该文件夹图标（即时反馈，不等 reconcile）。
+    const withoutFolder = prev.filter((it) => !(isFolderItem(it) && it.folderId === folderId));
+    // 追加书签快捷方式（对已存在 URL 去重）。
+    const pinnedUrls = new Set(
+      withoutFolder.filter((it): it is ShortcutItem => it.type === "shortcut").map((it) => it.url),
+    );
+    const seen = new Set<string>();
+    const additions: ShortcutItem[] = [];
+    for (const bookmark of bookmarks) {
+      if (!bookmark.url || pinnedUrls.has(bookmark.url) || seen.has(bookmark.url)) continue;
+      seen.add(bookmark.url);
+      additions.push(shortcutFromBookmark(bookmark));
+    }
+    const items = [...withoutFolder, ...additions];
+    set({ items, pendingFolderChoice: null });
+    schedulePersist(items);
+  },
+
+  dismissFolderChoice: () => {
+    if (get().pendingFolderChoice === null) return;
+    set({ pendingFolderChoice: null });
   },
 }));
 

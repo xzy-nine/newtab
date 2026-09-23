@@ -72,7 +72,7 @@ export function NewTab() {
       />
 
       <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
-        <header className="flex flex-col items-center justify-center pt-1 pb-0">
+        <header className="flex flex-col items-center justify-center pt-1 pb-3">
           {showClock && <ClockWidget />}
           <div className="mt-0 w-full max-w-lg px-4">
             <SearchBox />

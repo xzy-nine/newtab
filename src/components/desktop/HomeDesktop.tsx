@@ -13,6 +13,7 @@ import { DesktopGridView } from "@/components/desktop/DesktopGridView";
 import { WidgetAddDialog } from "@/components/widget-system/WidgetSystem";
 import { FolderPopup } from "@/components/folder/FolderPopup";
 import { WidgetPopupHost } from "@/components/widget-system/WidgetPopupHost";
+import { MigrationFolderDialog } from "@/components/desktop/MigrationFolderDialog";
 import { BOOKMARK_DRAG_TYPE } from "@/components/dock/DockFolderLayer";
 import { useContextMenu, type ContextMenuItem } from "@/hooks/useContextMenu";
 import { getMessage } from "@/lib/i18n";
@@ -51,6 +52,11 @@ interface HomeDesktopProps {
   /** 是否显示小部件（关闭时仅隐藏主桌面上的小部件）。 */
   showWidgets?: boolean;
   /**
+   * 紧凑模式（侧边栏）：去掉桌面容器的最小高度限制，让其填满可用空间
+   * 并在内部滚动，避免窄列下底部项目够不到。
+   */
+  compact?: boolean;
+  /**
    * 书签文件夹与固定列表是否已加载完成。
    * 未完成前不加载/不同步主桌面，避免用空的固定列表误删文件夹图标。
    */
@@ -68,7 +74,7 @@ interface HomeDesktopProps {
  * 两种形态下点击书签都只是"打开"，不会固定任何东西。
  */
 export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(function HomeDesktop(
-  { folders, pinnedFolderIds, onUnpinFolder, showWidgets = true, ready = true },
+  { folders, pinnedFolderIds, onUnpinFolder, showWidgets = true, compact = false, ready = true },
   ref,
 ) {
   const {
@@ -81,6 +87,9 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     moveItemIndex,
     syncFolderItems,
     pinBookmarks,
+    pendingFolderChoice,
+    releaseFolder,
+    dismissFolderChoice,
   } = useHomeDesktop();
 
   const [showAddWidget, setShowAddWidget] = useState(false);
@@ -233,6 +242,20 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     setShowAddShortcut(false);
   }, [addItem, shortcutForm]);
 
+  /**
+   * 迁移选择确认：把所选固定文件夹的书签释放到主桌面并取消其固定。
+   *
+   * `releaseFolder` 负责主桌面侧（加快捷方式、移图标、清待决）；
+   * `onUnpinFolder` 负责固定列表侧（更新状态与存储，随后 reconcile 兜底）。
+   */
+  const handleMigrationRelease = useCallback(
+    (folderId: string, bookmarks: BookmarkLike[]) => {
+      releaseFolder(folderId, bookmarks);
+      onUnpinFolder(folderId);
+    },
+    [releaseFolder, onUnpinFolder],
+  );
+
   const handleItemContextMenu = useCallback(
     (e: React.MouseEvent, item: DesktopItem) => {
       e.preventDefault();
@@ -374,7 +397,7 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
     <>
       {/* 文件夹视图里的书签可直接拖到桌面固定（见 DockFolderLayer 的 dataTransfer） */}
       <div
-        className="home-desktop-drop"
+        className={`home-desktop-drop h-full ${compact ? "home-desktop-compact" : ""}`}
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)) {
             e.preventDefault();
@@ -470,6 +493,16 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 一次性迁移：多个固定文件夹时让用户选一个释放到主桌面 */}
+      {loaded && pendingFolderChoice && (
+        <MigrationFolderDialog
+          candidateFolderIds={pendingFolderChoice.candidateFolderIds}
+          folderTitles={folderTitles}
+          onRelease={handleMigrationRelease}
+          onDismiss={dismissFolderChoice}
+        />
+      )}
     </>
   );
 });
