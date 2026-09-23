@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAppSettings } from "@/lib/app-settings-store";
 import { getMessage } from "@/lib/i18n";
 import type { SearchEngine } from "@/lib/app-settings";
-import { AIAssistant } from "@/components/AIAssistant";
+import { AIAssistant, preloadAIChatPanel } from "@/components/ai/AIAssistant";
 import { cn } from "@/lib/utils";
 import { emitSidebarNavigate } from "@/lib/sidebar-nav";
 import {
@@ -263,6 +263,8 @@ export function SearchBox() {
           <button
             type="button"
             onClick={() => setAiOpen(true)}
+            onPointerEnter={preloadAIChatPanel}
+            onFocus={preloadAIChatPanel}
             className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-all duration-200 flex-shrink-0"
             title={getMessage("aiAssistant", "AI 助手")}
           >

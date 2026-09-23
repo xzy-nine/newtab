@@ -38,23 +38,50 @@ src/
 ├── entrypoints/       # newtab, sidepanel, background
 ├── components/
 │   ├── ui/            # shadcn
+│   ├── ai/            # AI 助手 UI（AIAssistant / AIChatPanel / 子组件）
 │   └── widgets/       # CounterWidget, NoteWidget, TimerWidget
 ├── hooks/             # useTheme, useBookmarkFolders, useDesktopGrid, useContextMenu
 ├── lib/
 │   ├── app-settings.ts / app-settings-store.ts
-│   ├── ai-store.ts
+│   ├── ai/            # AI 模块（分层，见下）
 │   ├── widget-store.ts / widget-registry.ts
 │   ├── i18n.ts / icon-manager.ts / notification.ts
 │   └── data-sync.ts / search-suggestions.ts / dialog-z-index.ts
 └── test/
 ```
 
+### AI 模块分层（`src/lib/ai/`）
+
+自下而上分层，只通过 `index.ts` 对组件暴露最小接口：
+
+| 文件               | 职责                                           |
+| ------------------ | ---------------------------------------------- |
+| `types.ts`         | 纯类型（消息、对话、回调）                     |
+| `errors.ts`        | `APICallError` → 用户可读文案                  |
+| `providers.ts`     | 提供商配置 → AI SDK 模型句柄（baseURL 收敛等） |
+| `models.ts`        | 模型能力判定与 `/v1/models` 查询               |
+| `persistence.ts`   | 对话历史读写 + zod 校验                        |
+| `quick-prompts.ts` | 快捷提示词解析（纯文本 / JSON 字符串）         |
+| `chat.ts`          | 流式对话、标题生成等用例编排                   |
+| `store.ts`         | Zustand 状态编排                               |
+
+**AI 相关依赖一律复用成熟库，不要手写**：
+
+- `ai` + `@ai-sdk/openai-compatible`：请求构造、SSE 流式解析、`reasoning_content`、错误体解析
+- `zod`：外部数据（存储、接口响应、设置项）校验
+- `react-markdown` + `remark-gfm`：Markdown 渲染（不再用 `dangerouslySetInnerHTML`）
+- `react-textarea-autosize`：输入框高度自适应
+- `@reactuses/core`：通用 hooks（如 `useClickOutside`、`useAsyncEffect`）
+
+AI SDK 体积较大，`AIAssistant` 通过 `lazy` + `Suspense` 懒加载，入口按钮
+`hover`/`focus` 时用 `preloadAIChatPanel()` 预取，避免拖累新标签页首屏。
+
 ## 架构注意事项
 
 - **Extension Pages**: WXT 构建的新标签页和侧边栏页面
 - **Settings Store**: `app-settings-store.ts` → `browser.storage.local`; 调用 `hydrate()` 后使用
 - **Widget System**: `widget-registry.ts` + `widget-store.ts` → 动态小组件注册和状态管理
-- **AI Assistant**: `ai-store.ts` → AI 提供商配置和对话历史
+- **AI Assistant**: `lib/ai/store.ts` → AI 提供商配置和对话历史（分层见上）
 - **Bookmark Management**: `useBookmarkFolders` hook → 书签文件夹树和固定功能
 - **Theme System**: `useTheme` hook → 亮色/暗色/系统主题切换
 - **Desktop Grid**: `useDesktopGrid` hook → 桌面图标网格布局

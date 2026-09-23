@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Markdown 排版：AI 助手回答与笔记预览使用 prose 类 */
+@plugin "@tailwindcss/typography";
 
 /* 数码管时钟样式 */
 .time {
