@@ -46,6 +46,11 @@ export interface WidgetDefinition {
   config: WidgetConfig;
   component: ComponentType<WidgetComponentProps>;
   /**
+   * 新建实例时的初始 `data`（缺省为空对象）。
+   * 用于带"默认配置"的小部件（如 RSS 的默认订阅地址）。
+   */
+  defaultData?: Record<string, unknown>;
+  /**
    * 提供后，小部件磁贴会出现"展开"入口，点击弹出该内容。
    * 未提供即不支持展开。
    */
@@ -80,6 +85,17 @@ function hasWidget(type: string): boolean {
 /** 取小部件的展开弹窗定义；未声明时返回 undefined。 */
 export function getWidgetPopup(type: string): WidgetPopup | undefined {
   return registry.get(type)?.popup;
+}
+
+/**
+ * 取新建小部件实例的初始 `data`。
+ *
+ * 每次调用返回**新的浅拷贝**，避免多个实例共享同一份初始数据对象
+ * 而在落盘时互相串改。
+ */
+export function getWidgetDefaultData(type: string): Record<string, unknown> {
+  const defaults = registry.get(type)?.defaultData;
+  return defaults ? { ...defaults } : {};
 }
 
 /** 小部件是否支持展开弹窗。 */

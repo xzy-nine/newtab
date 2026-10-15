@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { normalizeBrowserUrl } from "@/lib/browser";
 import { isInSidePanel, openUrl } from "@/lib/open-url";
 import { createDesktopItemId, useHomeDesktop } from "@/lib/home-desktop-store";
-import { hasWidgetPopup } from "@/lib/widget-registry";
+import { hasWidgetPopup, getWidgetDefaultData } from "@/lib/widget-registry";
 import {
   DEFAULT_ITEM_NAME,
   DEFAULT_SHORTCUT_COLOR,
@@ -456,7 +456,8 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
             type: "widget",
             widgetType: type,
             title: type,
-            data: {},
+            // 带默认配置的小部件（如 RSS 的默认订阅）在新建时即写入
+            data: getWidgetDefaultData(type),
             w: 2,
             h: 2,
           });

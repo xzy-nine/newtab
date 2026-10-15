@@ -1,0 +1,372 @@
+/*
+ * RSS 订阅小部件 + 展开弹窗（订阅设置 / 完整条目列表）
+ *
+ * 追加在样式清单末尾：RSS 是新增组件，不存在需要覆盖的历史规则，
+ * 放在最后可保证自身规则不被同名旧规则影响。
+ */
+/* ===== RSS 订阅小部件（磁贴） ===== */
+.rss-widget {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  gap: 6px;
+  color: var(--color-foreground);
+  /* 磁贴不滚动：纵向滚动只由内部列表承担，避免内容溢出圆角 */
+  overflow: hidden;
+  /* 整块可点击展开；内部控件各自覆盖光标 */
+  cursor: pointer;
+}
+
+.rss-widget-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.rss-widget-source-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.rss-widget-source {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 旧内容标记：刷新失败但仍展示兜底快照时出现。
+ * 静态而非闪烁——它表达的是"这份内容可能不新"，不是"正在加载"。
+ */
+.rss-widget-stale {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: #f87171;
+}
+
+.rss-widget-stale-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.rss-feed-stale {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #f87171;
+}
+
+.rss-feed-stale-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.rss-widget-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+}
+
+.rss-widget-refresh:hover {
+  opacity: 1;
+  background: var(--widget-btn-bg, rgba(128, 128, 128, 0.2));
+}
+
+.rss-widget-refresh-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.rss-widget-refresh-icon.is-spinning,
+.rss-feed-refresh-icon.is-spinning,
+.rss-feed-state-icon.is-spinning {
+  animation: rss-spin 1s linear infinite;
+}
+
+@keyframes rss-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+ * 条目列表：内容全部渲染，放不下时内部纵向滚动。
+ * `overscroll-behavior: contain` 阻止滚到边界后把整个桌面一起滚走；
+ * `scrollbar-gutter: stable` 让滚动条出现/消失时行宽不跳变。
+ */
+.rss-widget-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.rss-widget-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 5px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+  min-width: 0;
+  /* 条目多时不允许被 flex 压扁，行高保持恒定才能滚动阅读 */
+  flex-shrink: 0;
+  background: color-mix(in oklch, var(--color-foreground) 5%, transparent);
+}
+
+.rss-widget-item-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rss-widget-item-time {
+  flex-shrink: 0;
+  font-size: 10px;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rss-widget-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  min-height: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.rss-widget-state.is-error {
+  color: #f87171;
+  opacity: 0.9;
+}
+
+.rss-widget-state-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+/* ===== RSS 展开弹窗（订阅设置 / 完整条目列表） ===== */
+.rss-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--color-foreground);
+  /*
+   * 关键：min-width: 0 允许本列在弹窗内收窄。
+   * 缺了它，flex 子项会被长标题/长地址撑到内容宽度而横向溢出被裁掉。
+   */
+  min-width: 0;
+}
+
+.rss-feed-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rss-feed-url {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.rss-feed-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.rss-feed-refresh:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+  color: var(--color-foreground);
+}
+
+.rss-feed-refresh:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.rss-feed-refresh-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.rss-feed-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rss-feed-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rss-feed-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--color-muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.rss-feed-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 0;
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+}
+
+.rss-feed-state.is-error {
+  color: #f87171;
+}
+
+.rss-feed-state-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/*
+ * 条目列表：独立纵向滚动容器，限高用视口比例而不是硬编码像素，
+ * 避免内容被弹窗裁掉；滚动到边界不把滚动传给外层弹窗。
+ */
+.rss-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 52vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-width: 0;
+}
+
+.rss-feed-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.rss-feed-item:hover {
+  background: color-mix(in oklch, var(--color-foreground) 8%, transparent);
+}
+
+.rss-feed-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rss-feed-item-title {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  /* 长标题折两行以内，超出截断，保证条目高度可预期 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.rss-feed-item-title:hover {
+  color: var(--color-primary, inherit);
+  text-decoration: underline;
+}
+
+span.rss-feed-item-title {
+  cursor: default;
+}
+
+.rss-feed-item-time {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--color-muted-foreground);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rss-feed-item-summary {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}

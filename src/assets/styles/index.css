@@ -27,3 +27,4 @@
 @import "./desktop/home.css"; /* 12 原第 1443-1447 行 · 主桌面容器微调 */
 @import "./widgets/weather.css"; /* 13 原第 1448-1899 行 · 天气小部件 + 展开弹窗（逐小时 / 逐天） */
 @import "./widgets/activity.css"; /* 14 原第 1900-2713 行 · 米哈游活动小部件 + 展开弹窗（筛选 / 甘特图 / 日程列表） */
+@import "./widgets/rss.css"; /* 15 新增 · RSS 订阅小部件 + 展开弹窗（订阅设置 / 完整条目列表） */

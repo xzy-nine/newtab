@@ -42,7 +42,7 @@ src/
 │       ├── foundation/  # theme(设计令牌) / glass(玻璃) / base / dark
 │       ├── desktop/     # surface / folder-panel / home
 │       ├── components/  # dock / dock-layer / folder-tree / folder-popup
-│       └── widgets/     # clock / weather / activity
+│       └── widgets/     # clock / weather / activity / rss
 ├── components/
 │   ├── ui/              # shadcn 基础组件
 │   ├── ai/              # AI 助手 UI（AIAssistant / AIChatPanel / 子组件）
@@ -51,7 +51,8 @@ src/
 │   │   ├── timer/       # TimerWidget.tsx
 │   │   ├── note/        # NoteWidget.tsx
 │   │   ├── weather/     # WeatherWidget.tsx + weather.ts（数据与纯逻辑）
-│   │   └── activity/    # ActivityWidget.tsx + activity.ts（数据与纯逻辑）
+│   │   ├── activity/    # ActivityWidget.tsx + activity.ts（数据与纯逻辑）
+│   │   └── rss/         # RssWidget.tsx + RssFeedPopup.tsx + rss.ts（数据与纯逻辑）
 │   ├── shell/           # 页面外壳（NewTab / SidePanel / SidePanelHome）
 │   ├── desktop/         # 桌面系统（DesktopWorkspace / HomeDesktop / DesktopGridView / DesktopItemViews）
 │   ├── dock/            # Dock 栏与文件夹浮层（Dock / DockFolderLayer）
