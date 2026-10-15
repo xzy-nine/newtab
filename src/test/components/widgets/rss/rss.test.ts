@@ -3,13 +3,17 @@ import {
   DEFAULT_FEED_URL,
   MAX_ENTRIES,
   RssError,
+  extractStatus,
   feedTimeLabel,
   fetchFeed,
+  htmlToParagraphs,
   normalizeFeedUrl,
   parseFeedDocument,
   readCachedSnapshot,
+  readFeedKind,
   readFeedUrl,
   stripHtmlToText,
+  tileEntryLimit,
 } from "@/components/widgets/rss/rss";
 
 /**
@@ -28,14 +32,14 @@ const RSS_XML = `<?xml version="1.0" encoding="UTF-8"?>
     <item>
       <title>DeepSeek 网页/API 部分中断</title>
       <link>https://status.deepseek.com/incidents/7116348214287</link>
-      <description>&lt;p&gt;&lt;strong&gt;Status:&lt;/strong&gt; identified&lt;/p&gt;</description>
+      <description>&lt;p&gt;&lt;strong&gt;Status:&lt;/strong&gt; identified&lt;/p&gt;&lt;p&gt;已定位原因，正在实施修复。&#xA;&#xA;The cause has been identified and a fix is being implemented.&lt;/p&gt;</description>
       <guid>urn:flashduty:change:7116348214287</guid>
       <pubDate>Thu, 15 Oct 2026 08:11:35 +0800</pubDate>
     </item>
     <item>
       <title>DeepSeek API 性能下降</title>
       <link>https://status.deepseek.com/incidents/7104277696287</link>
-      <description>已恢复</description>
+      <description>&lt;p&gt;&lt;strong&gt;Status:&lt;/strong&gt; resolved&lt;/p&gt;&lt;p&gt;本次问题已解决，服务已恢复。&lt;/p&gt;</description>
       <guid>urn:flashduty:change:7104277696287</guid>
       <pubDate>Mon, 12 Oct 2026 14:42:23 +0800</pubDate>
     </item>
@@ -119,11 +123,86 @@ describe("stripHtmlToText", () => {
     expect(stripHtmlToText("第一行\n\n第二行")).toBe("第一行 第二行");
   });
 
+  it("keeps block boundaries so adjacent paragraphs do not merge", () => {
+    // 不插入分隔时 textContent 会把两段粘成 "resolved本次问题已解决"
+    expect(stripHtmlToText("<p>Status: resolved</p><p>本次问题已解决</p>")).toBe(
+      "Status: resolved 本次问题已解决",
+    );
+  });
+
   it("returns an empty string for non-strings and empty markup", () => {
     expect(stripHtmlToText(undefined)).toBe("");
     expect(stripHtmlToText(null)).toBe("");
     expect(stripHtmlToText("   ")).toBe("");
     expect(stripHtmlToText(123)).toBe("");
+  });
+});
+
+describe("htmlToParagraphs", () => {
+  it("splits on block boundaries and on blank lines inside a block", () => {
+    expect(htmlToParagraphs("<p>甲</p><p>乙</p>")).toEqual(["甲", "乙"]);
+    // 双语源的常见写法：同一 <p> 内用空行分隔中英
+    expect(htmlToParagraphs("<p>中文一段\n\nEnglish paragraph</p>")).toEqual([
+      "中文一段",
+      "English paragraph",
+    ]);
+  });
+
+  it("treats <br> as a line break, not a paragraph break", () => {
+    expect(htmlToParagraphs("<p>第一行<br>第二行</p>")).toEqual(["第一行 第二行"]);
+  });
+});
+
+describe("readFeedKind", () => {
+  it("defaults to the status kind", () => {
+    // 内置的 DeepSeek 订阅是状态页，未设置时按状态类处理
+    expect(readFeedKind(undefined)).toBe("status");
+    expect(readFeedKind({})).toBe("status");
+    expect(readFeedKind({ kind: "status" })).toBe("status");
+  });
+
+  it("accepts the list kind and ignores unknown values", () => {
+    expect(readFeedKind({ kind: "list" })).toBe("list");
+    expect(readFeedKind({ kind: "whatever" })).toBe("status");
+  });
+});
+
+describe("tileEntryLimit", () => {
+  it("shows a single entry for the status kind", () => {
+    // 状态类的最新一条即当前状况，历史进展没有外显价值
+    expect(tileEntryLimit("status")).toBe(1);
+  });
+
+  it("shows several entries for the list kind", () => {
+    expect(tileEntryLimit("list")).toBeGreaterThan(1);
+  });
+});
+
+describe("extractStatus", () => {
+  it("pulls the status out of the body and strips the marker", () => {
+    expect(extractStatus("Status: resolved 本次问题已解决")).toEqual({
+      status: "resolved",
+      summary: "本次问题已解决",
+    });
+  });
+
+  it("keeps the remote value as-is instead of translating it", () => {
+    // 状态值是远端机器值，且源本身已是双语；不替它另造文案
+    expect(extractStatus("Status: investigating 正在排查").status).toBe("investigating");
+    expect(extractStatus("Status: IDENTIFIED 已定位").status).toBe("IDENTIFIED");
+  });
+
+  it("tolerates trailing punctuation on the status value", () => {
+    expect(extractStatus("Status: resolved.").status).toBe("resolved");
+    expect(extractStatus("Status: resolved,").status).toBe("resolved");
+  });
+
+  it("leaves text without a leading status marker untouched", () => {
+    expect(extractStatus("本次问题已解决")).toEqual({ summary: "本次问题已解决" });
+    // 中段的 status: 不是状态字段，不能误判
+    expect(extractStatus("说明 status: resolved 的含义")).toEqual({
+      summary: "说明 status: resolved 的含义",
+    });
   });
 });
 
@@ -134,11 +213,19 @@ describe("parseFeedDocument", () => {
     expect(snapshot.link).toBe("https://status.deepseek.com");
     expect(snapshot.description).toBe("Status updates for DeepSeek");
     expect(snapshot.entries).toHaveLength(2);
+    // 状态标记被摘出为 status，正文不再重复它；正文完整保留（不再按语言取段）
     expect(snapshot.entries[0]).toMatchObject({
       id: "urn:flashduty:change:7116348214287",
       title: "DeepSeek 网页/API 部分中断",
       link: "https://status.deepseek.com/incidents/7116348214287",
-      summary: "Status: identified",
+      status: "identified",
+      summary:
+        "已定位原因，正在实施修复。 The cause has been identified and a fix is being implemented.",
+    });
+    // 第二条的状态与正文各自独立提取
+    expect(snapshot.entries[1]).toMatchObject({
+      status: "resolved",
+      summary: "本次问题已解决，服务已恢复。",
     });
     // pubDate 换算成毫秒时间戳
     expect(snapshot.entries[0]!.publishedAt).toBe(Date.parse("Thu, 15 Oct 2026 08:11:35 +0800"));
@@ -168,6 +255,15 @@ describe("parseFeedDocument", () => {
       link: "https://example.com/j1",
       summary: "正文内容",
     });
+  });
+
+  it("keeps the status badge and the whole body", async () => {
+    // 不再按语言取段：状态与正文都完整保留（双语源会中英各一段）
+    const xml = `<?xml version="1.0"?><rss version="2.0"><channel><title>T</title><link>https://e.com</link><description>d</description><item><title>网页中断</title><description>&lt;p&gt;&lt;strong&gt;Status:&lt;/strong&gt; resolved&lt;/p&gt;&lt;p&gt;本次问题已解决。&#xA;&#xA;The incident has been resolved.&lt;/p&gt;</description></item></channel></rss>`;
+    const snapshot = await parseFeedDocument(xml);
+    expect(snapshot.entries[0]!.status).toBe("resolved");
+    expect(snapshot.entries[0]!.summary).toBe("本次问题已解决。 The incident has been resolved.");
+    expect(snapshot.entries[0]!.title).toBe("网页中断");
   });
 
   it("falls back to a link or index when a title is missing", async () => {

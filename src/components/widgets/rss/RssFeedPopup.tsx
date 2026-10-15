@@ -11,10 +11,15 @@ import {
   fetchFeed,
   normalizeFeedUrl,
   readCachedSnapshot,
+  readFeedKind,
   readFeedUrl,
   truncateText,
+  type RssFeedKind,
   type RssSnapshot,
 } from "@/components/widgets/rss/rss";
+
+/** 订阅类型选项（顺序即展示顺序）。 */
+const FEED_KINDS: RssFeedKind[] = ["status", "list"];
 
 interface RssFeedPopupProps {
   data?: Record<string, unknown>;
@@ -38,6 +43,8 @@ export function RssFeedPopup({ data, onDataChange }: RssFeedPopupProps) {
    */
   const [override, setOverride] = useState<{ from: string; to: string } | null>(null);
   const url = override && override.from === storedUrl ? override.to : storedUrl;
+  /** 订阅类型：状态类磁贴只外显最新 1 条，列表类多条。 */
+  const kind = readFeedKind(data);
   /** 输入框草稿：只由用户编辑与提交改写，避免外部回灌覆盖正在输入的内容。 */
   const [draft, setDraft] = useState(storedUrl);
   /** 拉取结果连同它所属的地址一起存，切换订阅时渲染期即可判定是否过期。 */
@@ -74,7 +81,7 @@ export function RssFeedPopup({ data, onDataChange }: RssFeedPopupProps) {
     }
   }, []);
 
-  // 挂载与切换订阅时取数：每次都会联网
+  // 挂载、切换订阅与切换语言/开关时取数：每次都会联网
   useEffect(() => {
     void (async () => {
       await load(url);
@@ -153,6 +160,31 @@ export function RssFeedPopup({ data, onDataChange }: RssFeedPopupProps) {
         )}
       </div>
 
+      {/*
+        订阅类型：决定磁贴外显多少条。
+        状态类（状态页）只看最新 1 条——最新一条即当前状况；
+        列表类按时间列出多条。两类由用户自行选择。
+      */}
+      <div className="rss-feed-kinds">
+        <span className="rss-feed-kinds-label">{getMessage("rssFeedKind", "订阅类型")}</span>
+        {FEED_KINDS.map((value) => (
+          <button
+            key={value}
+            className={`rss-feed-kind ${kind === value ? "is-active" : ""}`}
+            onClick={() => onDataChange?.({ kind: value, updatedAt: Date.now() })}
+          >
+            {value === "status"
+              ? getMessage("rssFeedKindStatus", "状态")
+              : getMessage("rssFeedKindList", "列表")}
+          </button>
+        ))}
+        <span className="rss-feed-kinds-hint">
+          {kind === "status"
+            ? getMessage("rssFeedKindStatusHint", "磁贴只显示最新一条")
+            : getMessage("rssFeedKindListHint", "磁贴按时间列出多条")}
+        </span>
+      </div>
+
       {entries.length === 0 ? (
         error ? (
           <div className="rss-feed-state is-error">
@@ -176,6 +208,8 @@ export function RssFeedPopup({ data, onDataChange }: RssFeedPopupProps) {
           {entries.map((entry) => (
             <div key={entry.id} className="rss-feed-item">
               <div className="rss-feed-item-head">
+                {/* 状态徽标前置：它比标题更能回答"现在怎么样了"；值原样展示 */}
+                {entry.status && <span className="rss-status">{entry.status}</span>}
                 {entry.link ? (
                   <button
                     className="rss-feed-item-title"

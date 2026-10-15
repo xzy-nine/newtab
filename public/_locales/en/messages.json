@@ -1934,5 +1934,25 @@
   "rssStaleContent": {
     "message": "Refresh failed, content may be out of date",
     "description": "展示兜底旧内容时的提示"
+  },
+  "rssFeedKind": {
+    "message": "Feed type",
+    "description": "订阅类型选择标签"
+  },
+  "rssFeedKindStatus": {
+    "message": "Status",
+    "description": "订阅类型：状态页"
+  },
+  "rssFeedKindList": {
+    "message": "List",
+    "description": "订阅类型：列表"
+  },
+  "rssFeedKindStatusHint": {
+    "message": "Tile shows the latest entry only",
+    "description": "状态类说明"
+  },
+  "rssFeedKindListHint": {
+    "message": "Tile lists entries by time",
+    "description": "列表类说明"
   }
 }

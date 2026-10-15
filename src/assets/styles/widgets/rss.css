@@ -62,6 +62,23 @@
   opacity: 0.9;
 }
 
+/*
+ * 状态徽标：回答"现在怎么样了"，因此比标题更靠前。
+ *
+ * 刻意**只有一种中性配色**：状态值来自远端（`resolved` / `investigating` …），
+ * 给它们分"好/坏"色等于替远端做语义判断，而各状态页的取值集合并不固定。
+ */
+.rss-status {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1.6;
+  white-space: nowrap;
+  background: color-mix(in oklch, var(--color-foreground) 14%, transparent);
+  opacity: 0.9;
+}
+
 .rss-feed-stale {
   display: inline-flex;
   align-items: center;
@@ -118,6 +135,64 @@
   }
 }
 
+/* ===== 状态类磁贴：正文为主体 ===== */
+
+/*
+ * 状态类把磁贴内空间让给正文：表头（来源 + 刷新）保持不变，
+ * 其下依次是状态行、次要的标题、以及**占满剩余高度的正文**。
+ * 四层结构下 6px 间距过于松散，收紧以让正文拿到更多高度。
+ */
+.rss-widget-status {
+  gap: 3px;
+}
+
+.rss-status-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+/*
+ * 标题退为次要信息：它是"发生了什么故障"，而正文才说明"现在是否已解决"。
+ * 单行截断，不与正文争空间。
+ */
+.rss-status-title {
+  margin: 0;
+  flex-shrink: 0;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.65;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 正文主体：`flex: 1` 占满表头之外的剩余空间。
+ * 字号比列表类明显放大——它是这块磁贴要传达的主要内容。
+ * 放不下时内部滚动（`overscroll-behavior: contain` 防止滚动链传给桌面），
+ * 而不是把内容截断成省略号。
+ */
+.rss-status-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: 13px;
+  line-height: 1.5;
+  /* 中文正文按词换行，避免长英文串撑破容器 */
+  overflow-wrap: anywhere;
+}
+
+/* 紧凑模式：空间不足，正文回到常规字号并收紧行高 */
+.rss-widget.is-compact .rss-status-body {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 /*
  * 条目列表：内容全部渲染，放不下时内部纵向滚动。
  * `overscroll-behavior: contain` 阻止滚到边界后把整个桌面一起滚走；
@@ -134,10 +209,14 @@
   scrollbar-gutter: stable;
 }
 
+/*
+ * 条目：两行结构——上行「状态 + 标题 + 时间」，下行正文摘要。
+ * 正文在这里不是附属信息，它往往比标题更能说明当前状况（见 .rss-widget-item-summary）。
+ */
 .rss-widget-item {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  gap: 2px;
   padding: 3px 5px;
   border-radius: 6px;
   font-size: 11px;
@@ -148,12 +227,36 @@
   background: color-mix(in oklch, var(--color-foreground) 5%, transparent);
 }
 
+.rss-widget-item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .rss-widget-item-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/*
+ * 正文摘要：**比标题更重要**——标题只说"发生了什么故障"，
+ * 正文才说明"现在是否已解决"。因此它在磁贴里占一整行，
+ * 用两行截断保证每条高度可预期，完整内容靠 title 与弹窗查看。
+ */
+.rss-widget-item-summary {
+  margin: 0;
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  opacity: 0.7;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .rss-widget-item-time {
@@ -279,6 +382,50 @@
   padding: 24px 0;
   font-size: 12px;
   color: var(--color-muted-foreground);
+}
+
+/* 订阅类型选择：决定磁贴外显条数，属低频设置 */
+.rss-feed-kinds {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+}
+
+.rss-feed-kinds-label {
+  flex-shrink: 0;
+}
+
+.rss-feed-kind {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border: 1px solid color-mix(in oklch, var(--color-foreground) 20%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.rss-feed-kind:hover {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+}
+
+.rss-feed-kind.is-active {
+  border-color: transparent;
+  background: color-mix(in oklch, var(--color-foreground) 18%, transparent);
+  color: var(--color-foreground);
+}
+
+.rss-feed-kinds-hint {
+  font-size: 11px;
+  opacity: 0.75;
 }
 
 .rss-feed-state.is-error {

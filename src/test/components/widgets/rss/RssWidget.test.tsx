@@ -20,14 +20,14 @@ const FEED_XML = `<?xml version="1.0" encoding="UTF-8"?>
     <item>
       <title>DeepSeek 网页/API 部分中断</title>
       <link>https://status.deepseek.com/incidents/1</link>
-      <description>&lt;p&gt;已定位原因，正在实施修复。&lt;/p&gt;</description>
+      <description>&lt;p&gt;&lt;strong&gt;Status:&lt;/strong&gt; identified&lt;/p&gt;&lt;p&gt;已定位原因，正在实施修复。&lt;/p&gt;</description>
       <guid>urn:flashduty:change:1</guid>
       <pubDate>Thu, 15 Oct 2026 08:11:35 +0800</pubDate>
     </item>
     <item>
       <title>DeepSeek API 性能下降</title>
       <link>https://status.deepseek.com/incidents/2</link>
-      <description>&lt;p&gt;本次问题已解决。&lt;/p&gt;</description>
+      <description>&lt;p&gt;&lt;strong&gt;Status:&lt;/strong&gt; resolved&lt;/p&gt;&lt;p&gt;本次问题已解决。&lt;/p&gt;</description>
       <guid>urn:flashduty:change:2</guid>
       <pubDate>Mon, 12 Oct 2026 14:42:23 +0800</pubDate>
     </item>
@@ -61,6 +61,60 @@ describe("RssWidget", () => {
       expect(screen.queryByText("DeepSeek 网页/API 部分中断")).not.toBeNull();
     });
     expect(screen.queryByText("DeepSeek")).not.toBeNull();
+  });
+
+  it("makes the body the main content for the status kind", async () => {
+    // 状态页的标题只说"发生了什么故障"，正文才说明"现在是否已解决"，
+    // 因此状态类把正文作为主体（占满剩余空间），标题退为次要一行。
+    fetchMock.mockResolvedValue(textResponse(FEED_XML));
+
+    const { container } = render(<RssWidget />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("已定位原因，正在实施修复。")).not.toBeNull();
+    });
+
+    // 状态值原样展示，不做翻译
+    expect(screen.queryByText("identified")).not.toBeNull();
+    // 正文在专用的主体容器里（不是列表条目）
+    const body = container.querySelector(".rss-status-body");
+    expect(body).not.toBeNull();
+    expect(body!.textContent).toContain("已定位原因，正在实施修复。");
+    // 状态标记已从正文中摘出，不在正文里重复出现
+    expect(body!.textContent).not.toContain("Status:");
+    // 标题作为次要信息保留
+    expect(container.querySelector(".rss-status-title")).not.toBeNull();
+    // 状态类不渲染列表结构
+    expect(container.querySelector(".rss-widget-list")).toBeNull();
+  });
+
+  it("shows only the latest entry for the status kind", async () => {
+    // 状态类：最新一条即当前状况，历史进展没有外显价值
+    fetchMock.mockResolvedValue(textResponse(FEED_XML));
+
+    render(<RssWidget />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("DeepSeek 网页/API 部分中断")).not.toBeNull();
+    });
+    // 第二条（较旧）不出现在磁贴里
+    expect(screen.queryByText("DeepSeek API 性能下降")).toBeNull();
+  });
+
+  it("keeps the list layout for the list kind", async () => {
+    fetchMock.mockResolvedValue(textResponse(FEED_XML));
+
+    const { container } = render(<RssWidget data={{ kind: "list" }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("DeepSeek 网页/API 部分中断")).not.toBeNull();
+    });
+    await waitFor(() => {
+      expect(container.querySelectorAll(".rss-widget-item").length).toBeGreaterThan(1);
+    });
+    // 列表类不套用状态类的正文主体布局
+    expect(container.querySelector(".rss-status-body")).toBeNull();
+    expect(container.querySelector(".rss-widget-list")).not.toBeNull();
   });
 
   it("uses the configured URL from the widget data", async () => {
@@ -99,9 +153,9 @@ describe("RssWidget", () => {
     fetchMock.mockRejectedValue(new Error("network down"));
     const { container } = render(<RssWidget />);
 
-    // 旧条目仍在展示，而不是被清空成错误态
+    // 旧条目仍在展示（状态类只显最新 1 条），而不是被清空成错误态
     await waitFor(() => {
-      expect(screen.queryAllByText("DeepSeek API 性能下降").length).toBeGreaterThan(0);
+      expect(screen.queryAllByText("DeepSeek 网页/API 部分中断").length).toBeGreaterThan(0);
     });
     // 同时给出"可能不新"的标记，避免用户误当成当前状态
     await waitFor(() => {

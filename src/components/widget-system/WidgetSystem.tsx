@@ -10,7 +10,7 @@ import { ActivityWidget } from "@/components/widgets/activity/ActivityWidget";
 import { ActivityCalendarPopup } from "@/components/widgets/activity/ActivityCalendarPopup";
 import { RssWidget } from "@/components/widgets/rss/RssWidget";
 import { RssFeedPopup } from "@/components/widgets/rss/RssFeedPopup";
-import { DEFAULT_FEED_URL } from "@/components/widgets/rss/rss";
+import { DEFAULT_FEED_KIND, DEFAULT_FEED_URL } from "@/components/widgets/rss/rss";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -124,8 +124,8 @@ export function useWidgetRegistration() {
         maxHeight: 300,
       },
       component: RssWidget,
-      // 新建实例即带默认订阅，开箱即可用
-      defaultData: { url: DEFAULT_FEED_URL },
+      // 新建实例即带默认订阅，开箱即可用；内置的 DeepSeek 是状态页，故用状态类
+      defaultData: { url: DEFAULT_FEED_URL, kind: DEFAULT_FEED_KIND },
       // 完整条目与订阅地址设置放在弹窗内，磁贴只做摘要
       popup: {
         title: getMessage("rssFeedTitle", "订阅内容"),

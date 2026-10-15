@@ -990,5 +990,25 @@
   "rssStaleContent": {
     "message": "刷新失败，内容可能不是最新",
     "description": "展示兜底旧内容时的提示"
+  },
+  "rssFeedKind": {
+    "message": "订阅类型",
+    "description": "订阅类型选择标签"
+  },
+  "rssFeedKindStatus": {
+    "message": "状态",
+    "description": "订阅类型：状态页"
+  },
+  "rssFeedKindList": {
+    "message": "列表",
+    "description": "订阅类型：列表"
+  },
+  "rssFeedKindStatusHint": {
+    "message": "磁贴只显示最新一条",
+    "description": "状态类说明"
+  },
+  "rssFeedKindListHint": {
+    "message": "磁贴按时间列出多条",
+    "description": "列表类说明"
   }
 }

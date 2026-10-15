@@ -2,8 +2,8 @@
  * RSS 小部件的纯逻辑与数据访问。
  *
  * 解析一律交给 feedsmith（RSS 2.0 / Atom / RDF / JSON Feed 通用解析器），
- * 本模块只承担：订阅地址规范化、解析结果归一化、正文取纯文本、
- * 时间的相对展示，以及带 TTL 缓存的取数。
+ * 本模块只承担：订阅地址与类型、解析结果归一化、正文取纯文本、
+ * 时间的相对展示，以及"每次联网 + 失败兜底"的取数。
  *
  * 除 `fetchFeed` 外全部是纯函数（不依赖 React 与浏览器存储），便于单元测试。
  */
@@ -26,23 +26,76 @@ const FEED_TIMEOUT_MS = 12 * 1000;
 /** 单次最多归一化的条目数（解析与渲染的上限）。 */
 export const MAX_ENTRIES = 50;
 
-/** 磁贴内展示的条目数上限。 */
-export const TILE_ENTRY_LIMIT = 5;
+/**
+ * 列表类磁贴内展示的条目数上限。
+ *
+ * 取 3 而不是更多：每条都带一段正文，磁贴高度固定，
+ * 塞太多条会让每条都只剩标题可读，反而丢掉关键信息。
+ * 状态类不看这个值——它只外显最新 1 条。
+ */
+const TILE_ENTRY_LIMIT = 3;
 
 /** 弹窗内摘要的截断长度。 */
 export const SUMMARY_MAX_LENGTH = 240;
 
+/**
+ * 磁贴内摘要的截断长度。
+ *
+ * 磁贴很窄，因此比弹窗短得多；但**必须给出这段正文**——
+ * 状态页的标题只说明故障现象，正文才说明"现在是否已解决"。
+ */
+export const SUMMARY_TILE_LENGTH = 90;
+/** 紧凑模式下的磁贴摘要长度。 */
+export const SUMMARY_TILE_COMPACT_LENGTH = 50;
+
 /** 缓存键前缀（与 cache-store 的命名空间拼接）。 */
 const CACHE_PREFIX = "rss:";
 
+/**
+ * 订阅类型。
+ *
+ * - `status`：状态页（Statuspage / FlashDuty 之类），每条是一次事件进展，
+ *   标题只说故障现象、正文才说明"是否已解决"，因此磁贴只外显**最新 1 条**
+ *   并突出状态徽标；
+ * - `list`：普通资讯/博客类订阅，按时间列出多条。
+ */
+export type RssFeedKind = "status" | "list";
+
+/** 内置默认订阅的类型：DeepSeek 服务状态页。 */
+export const DEFAULT_FEED_KIND: RssFeedKind = "status";
+
+/** 读取小部件里的订阅类型；未设置时按默认（状态页）。 */
+export function readFeedKind(data?: Record<string, unknown>): RssFeedKind {
+  return data?.kind === "list" ? "list" : DEFAULT_FEED_KIND;
+}
+
+/**
+ * 磁贴外显的条目数。
+ *
+ * - 状态类恒为 **1**：最新一条即当前状况，历史进展没有外显价值；
+ * - 列表类按上限列出，紧凑模式再少一条（每条都带正文，宁可少而可读）。
+ */
+export function tileEntryLimit(kind: RssFeedKind, compact = false): number {
+  if (kind === "status") return 1;
+  return Math.max(1, TILE_ENTRY_LIMIT - (compact ? 1 : 0));
+}
+
 /** 归一化后的订阅条目。 */
-interface RssEntry {
+export interface RssEntry {
   /** 稳定 id：优先源里的 guid/id，退化为链接，最后退化为下标。 */
   id: string;
   title: string;
   link: string;
-  /** 正文纯文本（已去标签）。 */
+  /** 正文纯文本（已去标签，且已摘掉开头的状态标记）。 */
   summary: string;
+  /**
+   * 正文开头的状态值（如 `resolved` / `identified`）。
+   *
+   * 状态页（Statuspage / FlashDuty）把"当前是否已解决"放在正文里，
+   * 标题只说明故障现象，因此这个字段往往比标题更能回答"现在怎么样了"。
+   * 源里没有该约定时为 undefined。
+   */
+  status?: string;
   /** 发布时间戳（毫秒）；源里没有或不可解析时为 null。 */
   publishedAt: number | null;
 }
@@ -93,11 +146,6 @@ export function readFeedUrl(data?: Record<string, unknown>): string {
   return normalizeFeedUrl(data?.url) ?? DEFAULT_FEED_URL;
 }
 
-/** 订阅缓存键（按地址区分）。 */
-function rssCacheKey(url: string): string {
-  return `${CACHE_PREFIX}${url}`;
-}
-
 /** 快照是否可用（防御旧版本或损坏的缓存）。 */
 function isUsableSnapshot(value: unknown): value is RssSnapshot {
   if (!value || typeof value !== "object") return false;
@@ -105,27 +153,80 @@ function isUsableSnapshot(value: unknown): value is RssSnapshot {
   return typeof snapshot.title === "string" && Array.isArray(snapshot.entries);
 }
 
-/** 把 HTML 片段取成单行纯文本；非字符串返回空串。 */
-export function stripHtmlToText(value: unknown): string {
-  if (typeof value !== "string") return "";
+/** 块级元素选择器：这些元素的后面是段落边界。 */
+const BLOCK_SELECTOR = "p, div, li, tr, blockquote, section, h1, h2, h3, h4, h5, h6";
+
+/**
+ * 把 HTML 片段切成段落数组。
+ *
+ * 段落边界有两种：块级元素之间，以及同一块内的空行——后者是状态页的常见写法，
+ * 同一个 `<p>` 里用空行分隔两段说明文字。
+ *
+ * 必须**保留段落结构**而不是压成一行：状态标记只在**首段**开头，
+ * 摘除它需要知道首段的边界；压平后标记会与后文粘连，状态值随之被污染。
+ */
+export function htmlToParagraphs(value: unknown): string[] {
+  if (typeof value !== "string") return [];
   const raw = value.trim();
-  if (!raw) return "";
+  if (!raw) return [];
   let text = raw;
   if (typeof DOMParser !== "undefined") {
     try {
       const doc = new DOMParser().parseFromString(raw, "text/html");
+      // `<br>` 只是折行，按单换行处理（下面会被归一化成空格）
+      doc.body?.querySelectorAll("br").forEach((el) => {
+        el.insertAdjacentText("afterend", "\n");
+      });
+      // 块级边界补空行，与块内空行走同一套切分规则
+      doc.body?.querySelectorAll(BLOCK_SELECTOR).forEach((el) => {
+        el.insertAdjacentText("afterend", "\n\n");
+      });
       text = doc.body?.textContent ?? raw;
     } catch {
       text = raw;
     }
   }
-  return text.replace(/\s+/g, " ").trim();
+  return text
+    .split(/\n{2,}/)
+    .map((part) => part.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+/** 把 HTML 片段取成单行纯文本；非字符串返回空串。 */
+export function stripHtmlToText(value: unknown): string {
+  return htmlToParagraphs(value).join(" ");
 }
 
 /** 按长度截断文本，超出时补省略号。 */
 export function truncateText(text: string, maxLength: number): string {
   if (maxLength <= 0 || text.length <= maxLength) return text;
   return `${text.slice(0, maxLength).trimEnd()}…`;
+}
+
+/**
+ * 状态页正文开头的状态标记，如 `Status: resolved`。
+ *
+ * 只认**正文开头**（允许前置空白）：正文中段出现 "status:" 的往往是
+ * 描述性文字而非状态字段，一并匹配会把普通内容误当成状态。
+ */
+const STATUS_PREFIX_RE = /^\s*status\s*[:：]\s*([^\s。.,，;；)）]+)/i;
+
+/**
+ * 从正文里摘出状态值，并返回去掉状态标记后的正文。
+ *
+ * 状态值**原样返回、不做翻译**：它是远端给出的机器值，
+ * 替它另造一套文案既无必要也不可靠。
+ *
+ * 摘掉标记是因为它已由状态徽标单独表达，留在正文里会在弹窗中重复一遍。
+ */
+export function extractStatus(summary: string): { status?: string; summary: string } {
+  const match = STATUS_PREFIX_RE.exec(summary);
+  if (!match) return { summary };
+  return {
+    // 去掉尾随标点（`resolved.` / `resolved,`），保留远端原始大小写
+    status: match[1]!.replace(/[.,;)]+$/, ""),
+    summary: summary.slice(match[0].length).trim(),
+  };
 }
 
 /** 把任意日期表示换算成毫秒时间戳；不可用时返回 null。 */
@@ -163,7 +264,12 @@ function pickLink(links?: Array<{ href?: string; rel?: string }>): string {
   return firstText(alternate?.href, links[0]?.href);
 }
 
-/** 组装条目；标题缺失时用链接或正文兜底。 */
+/**
+ * 组装条目；标题缺失时用链接或正文兜底。
+ *
+ * 正文按段落取出并**摘掉开头的状态标记**：该标记已由状态徽标单独表达，
+ * 留在正文里会重复一遍。
+ */
 function buildEntry(
   index: number,
   input: {
@@ -175,13 +281,20 @@ function buildEntry(
   },
 ): RssEntry {
   const link = input.link?.trim() ?? "";
-  const summary = stripHtmlToText(input.summary);
-  const title = firstText(input.title, summary, link) || `${index + 1}`;
+  const paragraphs = htmlToParagraphs(input.summary);
+  const first = paragraphs[0];
+  const extracted = first === undefined ? { summary: "" } : extractStatus(first);
+  const rest = extracted.summary
+    ? [extracted.summary, ...paragraphs.slice(1)]
+    : paragraphs.slice(1);
+  const summary = rest.join(" ");
+  // 标题缺失时优先用去掉了状态标记的正文，避免标题变成 "Status: resolved"
   return {
     id: firstText(input.id, link, `${index}`),
-    title,
+    title: firstText(input.title, summary, link) || `${index + 1}`,
     link,
     summary,
+    status: extracted.status,
     publishedAt: input.publishedAt,
   };
 }
@@ -322,8 +435,13 @@ export interface RssFetchResult {
   fresh: boolean;
 }
 
+/** 缓存键（按订阅地址区分）。 */
+function rssCacheKey(target: string): string {
+  return `${CACHE_PREFIX}${target}`;
+}
+
 /**
- * 进行中的请求（按地址）。仅用于避免同一地址的并发重复取数，
+ * 进行中的请求。仅用于避免同一地址的并发重复取数，
  * 不承担"新鲜度"语义。
  */
 const inflight = new Map<string, Promise<RssFetchResult>>();
@@ -345,32 +463,33 @@ const inflight = new Map<string, Promise<RssFetchResult>>();
 export function fetchFeed(url: string): Promise<RssFetchResult> {
   const target = normalizeFeedUrl(url);
   if (!target) return Promise.reject(new RssError("invalid-url"));
+  const key = rssCacheKey(target);
 
-  const existing = inflight.get(target);
+  const existing = inflight.get(key);
   if (existing) return existing;
 
   const task = (async (): Promise<RssFetchResult> => {
     try {
       const snapshot = await parseFeedDocument(await requestFeed(target));
-      writeCache(rssCacheKey(target), snapshot);
+      writeCache(key, snapshot);
       return { snapshot, fresh: true };
     } catch (error) {
       // 兜底不设年龄上限：过期的状态页内容仍比空磁贴有用
-      const fallback = readStaleSnapshot(target);
+      const fallback = readStaleSnapshot(key);
       if (fallback) return { snapshot: fallback, fresh: false };
       throw error;
     }
   })();
 
-  inflight.set(target, task);
+  inflight.set(key, task);
   return task.finally(() => {
-    inflight.delete(target);
+    inflight.delete(key);
   });
 }
 
 /** 读取已落盘的上次成功快照（不发请求）。 */
-function readStaleSnapshot(target: string): RssSnapshot | null {
-  const stale = readStaleCache<unknown>(rssCacheKey(target));
+function readStaleSnapshot(key: string): RssSnapshot | null {
+  const stale = readStaleCache<unknown>(key);
   return isUsableSnapshot(stale) ? stale : null;
 }
 
@@ -381,7 +500,7 @@ function readStaleSnapshot(target: string): RssSnapshot | null {
  */
 export function readCachedSnapshot(url: string): RssSnapshot | null {
   const target = normalizeFeedUrl(url);
-  return target ? readStaleSnapshot(target) : null;
+  return target ? readStaleSnapshot(rssCacheKey(target)) : null;
 }
 
 /** date-fns 的展示语言：中文用 zhCN，其余用 enUS。 */
