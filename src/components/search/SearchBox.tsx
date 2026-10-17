@@ -207,57 +207,42 @@ export function SearchBox() {
     'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>';
 
   return (
-    <div className="w-full max-w-xl mx-auto relative">
-      <form
-        onSubmit={handleSearch}
-        className={cn(
-          "relative flex items-center h-12",
-          "bg-white/80 dark:bg-gray-800/80",
-          "backdrop-blur-xl",
-          "rounded-full",
-          "border border-gray-200 dark:border-gray-700",
-          "shadow-lg hover:shadow-xl",
-          "transition-all duration-300",
-          "focus-within:border-blue-400 dark:focus-within:border-blue-500",
-          "focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.15)] dark:focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.25)]",
-          "focus-within:-translate-y-0.5",
-        )}
-      >
+    <div className="w-full max-w-xl mx-auto relative search-box-host">
+      <form onSubmit={handleSearch} className="search-box relative flex items-center h-12">
         <button
           type="button"
           ref={iconRef}
           onClick={() => setMenuOpen((v) => !v)}
-          className="group flex items-center justify-center w-10 h-10 ml-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-200 flex-shrink-0"
+          className="search-box-engine"
+          title={currentEngine.name}
         >
           <img
             src={engineIconSrc(currentEngine)}
             alt={currentEngine.name}
-            className="w-5 h-5 object-contain transition-transform duration-300 group-hover:rotate-12"
+            className="search-box-engine-icon"
             onError={(e) => {
               (e.target as HTMLImageElement).src = defaultFallbackIcon;
             }}
           />
         </button>
 
-        <div className="flex-1 flex items-center min-w-0">
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => {
-              const value = e.target.value;
-              setQuery(value);
-              debouncedFetchSuggestions(value);
-            }}
-            onFocus={() => {
-              if (query.trim() && suggestions.length > 0) {
-                setShowSuggestions(true);
-              }
-            }}
-            placeholder={getMessage("searchPlaceholder", "搜索...")}
-            className="flex-1 bg-transparent border-none outline-none shadow-none px-2.5 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 text-base h-full min-w-0 focus:ring-0"
-          />
-        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => {
+            const value = e.target.value;
+            setQuery(value);
+            debouncedFetchSuggestions(value);
+          }}
+          onFocus={() => {
+            if (query.trim() && suggestions.length > 0) {
+              setShowSuggestions(true);
+            }
+          }}
+          placeholder={getMessage("searchPlaceholder", "搜索...")}
+          className="search-box-input"
+        />
 
         {aiEnabled && !(window as any).__IN_SIDEPANEL__ && (
           <button
@@ -265,29 +250,22 @@ export function SearchBox() {
             onClick={() => setAiOpen(true)}
             onPointerEnter={preloadAIChatPanel}
             onFocus={preloadAIChatPanel}
-            className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-all duration-200 flex-shrink-0"
+            className="search-box-ai"
             title={getMessage("aiAssistant", "AI 助手")}
           >
             <Bot className="w-5 h-5" />
           </button>
         )}
 
-        <button
-          type="submit"
-          className="flex items-center justify-center w-9 h-9 mr-1.5 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 flex-shrink-0"
-          title={getMessage("search", "搜索")}
-        >
+        <button type="submit" className="search-box-submit" title={getMessage("search", "搜索")}>
           <Search className="w-[18px] h-[18px]" />
         </button>
       </form>
 
       {/* 搜索建议下拉菜单 */}
       {showSuggestions && suggestions.length > 0 && (
-        <div
-          ref={suggestionsRef}
-          className="absolute top-full mt-2 left-0 right-0 w-full max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1.5 z-40 overflow-hidden"
-        >
-          <div className="max-h-96 overflow-y-auto">
+        <div ref={suggestionsRef} className="search-dropdown">
+          <div className="search-dropdown-scroll">
             {suggestions.map((suggestion) => (
               <button
                 key={suggestion.id}
@@ -301,7 +279,7 @@ export function SearchBox() {
                   setShowSuggestions(false);
                   setQuery("");
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                className="search-option"
               >
                 {/* 图标 */}
                 <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
@@ -318,17 +296,13 @@ export function SearchBox() {
                 </div>
 
                 {/* 书签信息 */}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                    {suggestion.title}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {suggestion.url}
-                  </div>
+                <div className="search-option-main">
+                  <div className="search-option-title">{suggestion.title}</div>
+                  <div className="search-option-sub">{suggestion.url}</div>
                 </div>
 
                 {/* 书签图标指示 */}
-                <Bookmark className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+                <Bookmark className="search-option-tail" />
               </button>
             ))}
           </div>
@@ -336,11 +310,8 @@ export function SearchBox() {
       )}
 
       {menuOpen && (
-        <div
-          ref={menuRef}
-          className="absolute top-full mt-2 left-0 w-60 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1.5 z-50 overflow-hidden origin-top-right"
-        >
-          <div className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 font-medium">
+        <div ref={menuRef} className="search-dropdown is-engines">
+          <div className="search-dropdown-heading">
             {getMessage("switchEngine", "切换搜索引擎")}
           </div>
           {searchEngines.map((engine, index) => (
@@ -351,40 +322,34 @@ export function SearchBox() {
                 setCurrentEngineIndex(index);
                 setMenuOpen(false);
               }}
-              className={cn(
-                "w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors",
-                index === currentEngineIndex
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50",
-              )}
+              className={cn("search-option", index === currentEngineIndex && "is-active")}
             >
               <img
                 src={engineIconSrc(engine)}
                 alt={engine.name}
-                className="w-4 h-4 object-contain flex-shrink-0"
+                className="search-option-icon"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = "";
                 }}
               />
-              <span className="flex-1 text-left truncate">{engine.name}</span>
+              <span className="search-option-main search-option-title">{engine.name}</span>
               {index === currentEngineIndex && (
-                <Check className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                <Check className="search-option-tail text-blue-500" />
               )}
             </button>
           ))}
-          <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
-            <button
-              type="button"
-              onClick={() => {
-                setEditorOpen(true);
-                setMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              {getMessage("manageEngines", "管理搜索引擎")}
-            </button>
-          </div>
+          <div className="search-dropdown-divider" />
+          <button
+            type="button"
+            onClick={() => {
+              setEditorOpen(true);
+              setMenuOpen(false);
+            }}
+            className="search-option"
+          >
+            <Plus className="search-option-icon" />
+            {getMessage("manageEngines", "管理搜索引擎")}
+          </button>
         </div>
       )}
 
