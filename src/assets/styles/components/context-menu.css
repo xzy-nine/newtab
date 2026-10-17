@@ -1,0 +1,27 @@
+/*
+ * 右键菜单（通用浮层）
+ *
+ * 背景与边框由 `.xb-glass-popover` 提供（令牌混色 + backdrop-filter），
+ * 本文件只补菜单自身需要的交互态：悬停/按下时的浅色叠层。
+ *
+ * 悬停刻意不用 Tailwind 的 `bg-accent`：那是实色，在玻璃背景上会盖出一块
+ * 不透明白底，与周围的通透感割裂。这里改用与玻璃同源的"前景色低透明度"叠层，
+ * 亮/暗主题下都能自然融入。
+ */
+.ctx-menu-item {
+  /* 菜单项是可点击控件，恢复文本选择语义下的光标 */
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.ctx-menu-item:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+}
+
+.ctx-menu-item:active:not(:disabled) {
+  background: color-mix(in oklch, var(--color-foreground) 16%, transparent);
+}
+
+.ctx-menu-item:disabled {
+  cursor: default;
+}

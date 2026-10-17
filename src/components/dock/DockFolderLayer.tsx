@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Folder, Pin, PinOff, X } from "lucide-react";
 import { FolderTreeView, type FolderTreeViewProps } from "@/components/folder/FolderTreeView";
 import { ShortcutIcon } from "@/components/desktop/DesktopItemViews";
+import { ContextMenu } from "@/components/ui/context-menu";
 import { useContextMenu } from "@/hooks/useContextMenu";
 import { useFolderBookmarks } from "@/hooks/useFolderBookmarks";
 import { useHomeDesktop } from "@/lib/home-desktop-store";
@@ -223,29 +224,13 @@ export function DockFolderLayer({
   );
 
   const ctxMenuEl = ctxMenuState.isOpen && (
-    <div
-      ref={menuRef}
-      className="fixed z-[9999] min-w-[160px] rounded-lg border bg-popover p-1 shadow-md"
-      style={{ left: ctxMenuState.x, top: ctxMenuState.y }}
-    >
-      {ctxMenuState.items.map((item, i) =>
-        item.divider ? (
-          <div key={i} className="my-1 h-px bg-border" />
-        ) : (
-          <button
-            key={i}
-            className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-accent disabled:opacity-50"
-            disabled={item.disabled}
-            onClick={() => {
-              item.onSelect?.();
-              hideCtxMenu();
-            }}
-          >
-            {item.label}
-          </button>
-        ),
-      )}
-    </div>
+    <ContextMenu
+      x={ctxMenuState.x}
+      y={ctxMenuState.y}
+      items={ctxMenuState.items}
+      menuRef={menuRef}
+      onSelect={hideCtxMenu}
+    />
   );
 
   return (

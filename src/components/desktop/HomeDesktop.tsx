@@ -13,6 +13,7 @@ import { DesktopGridView } from "@/components/desktop/DesktopGridView";
 import { WidgetAddDialog } from "@/components/widget-system/WidgetSystem";
 import { FolderPopup } from "@/components/folder/FolderPopup";
 import { WidgetPopupHost } from "@/components/widget-system/WidgetPopupHost";
+import { ContextMenu } from "@/components/ui/context-menu";
 import { MigrationFolderDialog } from "@/components/desktop/MigrationFolderDialog";
 import { BOOKMARK_DRAG_TYPE } from "@/components/dock/DockFolderLayer";
 import { useContextMenu, type ContextMenuItem } from "@/hooks/useContextMenu";
@@ -339,29 +340,13 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
   );
 
   const ctxMenuEl: ReactNode = ctxMenuState.isOpen && (
-    <div
-      ref={menuRef}
-      className="fixed z-[9999] min-w-[160px] rounded-lg border bg-popover p-1 shadow-md"
-      style={{ left: ctxMenuState.x, top: ctxMenuState.y }}
-    >
-      {ctxMenuState.items.map((item, i) =>
-        item.divider ? (
-          <div key={i} className="my-1 h-px bg-border" />
-        ) : (
-          <button
-            key={i}
-            className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-accent disabled:opacity-50"
-            disabled={item.disabled}
-            onClick={() => {
-              item.onSelect?.();
-              hideCtxMenu();
-            }}
-          >
-            {item.label}
-          </button>
-        ),
-      )}
-    </div>
+    <ContextMenu
+      x={ctxMenuState.x}
+      y={ctxMenuState.y}
+      items={ctxMenuState.items}
+      menuRef={menuRef}
+      onSelect={hideCtxMenu}
+    />
   );
 
   const emptyState = (
