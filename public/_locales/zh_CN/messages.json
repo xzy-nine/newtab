@@ -942,5 +942,73 @@
   "migrationRelease": {
     "message": "释放到主桌面",
     "description": "迁移选择文件夹确认按钮"
+  },
+  "rssWidgetName": {
+    "message": "RSS 订阅",
+    "description": "RSS 小部件名称"
+  },
+  "rssWidgetDesc": {
+    "message": "订阅 RSS/Atom 源并按时间列出更新，默认订阅 DeepSeek 服务状态",
+    "description": "RSS 小部件描述"
+  },
+  "rssFeedTitle": {
+    "message": "订阅内容",
+    "description": "RSS 订阅弹窗标题"
+  },
+  "rssLoading": {
+    "message": "加载中...",
+    "description": "订阅加载中"
+  },
+  "rssLoadFailed": {
+    "message": "订阅获取失败",
+    "description": "订阅获取失败"
+  },
+  "rssEmpty": {
+    "message": "暂无更新",
+    "description": "订阅暂无条目"
+  },
+  "rssRefresh": {
+    "message": "刷新",
+    "description": "刷新订阅"
+  },
+  "rssUrlPlaceholder": {
+    "message": "订阅地址（RSS/Atom/JSON Feed）",
+    "description": "订阅地址输入占位符"
+  },
+  "rssApplyUrl": {
+    "message": "订阅",
+    "description": "应用订阅地址按钮"
+  },
+  "rssResetUrl": {
+    "message": "默认",
+    "description": "恢复默认订阅地址按钮"
+  },
+  "rssEntryCount": {
+    "message": "共 {n} 条",
+    "description": "订阅条目总数"
+  },
+  "rssStaleContent": {
+    "message": "刷新失败，内容可能不是最新",
+    "description": "展示兜底旧内容时的提示"
+  },
+  "rssFeedKind": {
+    "message": "订阅类型",
+    "description": "订阅类型选择标签"
+  },
+  "rssFeedKindStatus": {
+    "message": "状态",
+    "description": "订阅类型：状态页"
+  },
+  "rssFeedKindList": {
+    "message": "列表",
+    "description": "订阅类型：列表"
+  },
+  "rssFeedKindStatusHint": {
+    "message": "磁贴只显示最新一条",
+    "description": "状态类说明"
+  },
+  "rssFeedKindListHint": {
+    "message": "磁贴按时间列出多条",
+    "description": "列表类说明"
   }
 }

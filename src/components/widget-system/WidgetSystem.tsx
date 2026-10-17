@@ -8,6 +8,9 @@ import { WeatherWidget } from "@/components/widgets/weather/WeatherWidget";
 import { WeatherForecastPopup } from "@/components/widgets/weather/WeatherForecastPopup";
 import { ActivityWidget } from "@/components/widgets/activity/ActivityWidget";
 import { ActivityCalendarPopup } from "@/components/widgets/activity/ActivityCalendarPopup";
+import { RssWidget } from "@/components/widgets/rss/RssWidget";
+import { RssFeedPopup } from "@/components/widgets/rss/RssFeedPopup";
+import { DEFAULT_FEED_KIND, DEFAULT_FEED_URL } from "@/components/widgets/rss/rss";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -99,6 +102,34 @@ export function useWidgetRegistration() {
       popup: {
         title: getMessage("hoyoActivityTitle", "游戏活动日程"),
         content: ActivityCalendarPopup,
+        contentClassName: "max-w-2xl max-h-[80vh]",
+      },
+    });
+    registerWidget("rss", {
+      meta: {
+        type: "rss",
+        name: getMessage("rssWidgetName", "RSS 订阅"),
+        description: getMessage(
+          "rssWidgetDesc",
+          "订阅 RSS/Atom 源并按时间列出更新，默认订阅 DeepSeek 服务状态",
+        ),
+        icon: "rss",
+      },
+      config: {
+        defaultWidth: 240,
+        defaultHeight: 150,
+        minWidth: 160,
+        minHeight: 110,
+        maxWidth: 480,
+        maxHeight: 300,
+      },
+      component: RssWidget,
+      // 新建实例即带默认订阅，开箱即可用；内置的 DeepSeek 是状态页，故用状态类
+      defaultData: { url: DEFAULT_FEED_URL, kind: DEFAULT_FEED_KIND },
+      // 完整条目与订阅地址设置放在弹窗内，磁贴只做摘要
+      popup: {
+        title: getMessage("rssFeedTitle", "订阅内容"),
+        content: RssFeedPopup,
         contentClassName: "max-w-2xl max-h-[80vh]",
       },
     });

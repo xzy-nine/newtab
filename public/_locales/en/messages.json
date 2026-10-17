@@ -1886,5 +1886,73 @@
   "migrationRelease": {
     "message": "Release to home desktop",
     "description": "迁移选择文件夹确认按钮"
+  },
+  "rssWidgetName": {
+    "message": "RSS Feed",
+    "description": "RSS 小部件名称"
+  },
+  "rssWidgetDesc": {
+    "message": "Subscribe to RSS/Atom feeds and list updates by time; DeepSeek status by default",
+    "description": "RSS 小部件描述"
+  },
+  "rssFeedTitle": {
+    "message": "Feed entries",
+    "description": "RSS 订阅弹窗标题"
+  },
+  "rssLoading": {
+    "message": "Loading...",
+    "description": "订阅加载中"
+  },
+  "rssLoadFailed": {
+    "message": "Failed to load feed",
+    "description": "订阅获取失败"
+  },
+  "rssEmpty": {
+    "message": "No updates",
+    "description": "订阅暂无条目"
+  },
+  "rssRefresh": {
+    "message": "Refresh",
+    "description": "刷新订阅"
+  },
+  "rssUrlPlaceholder": {
+    "message": "Feed URL (RSS/Atom/JSON Feed)",
+    "description": "订阅地址输入占位符"
+  },
+  "rssApplyUrl": {
+    "message": "Subscribe",
+    "description": "应用订阅地址按钮"
+  },
+  "rssResetUrl": {
+    "message": "Default",
+    "description": "恢复默认订阅地址按钮"
+  },
+  "rssEntryCount": {
+    "message": "{n} entries",
+    "description": "订阅条目总数"
+  },
+  "rssStaleContent": {
+    "message": "Refresh failed, content may be out of date",
+    "description": "展示兜底旧内容时的提示"
+  },
+  "rssFeedKind": {
+    "message": "Feed type",
+    "description": "订阅类型选择标签"
+  },
+  "rssFeedKindStatus": {
+    "message": "Status",
+    "description": "订阅类型：状态页"
+  },
+  "rssFeedKindList": {
+    "message": "List",
+    "description": "订阅类型：列表"
+  },
+  "rssFeedKindStatusHint": {
+    "message": "Tile shows the latest entry only",
+    "description": "状态类说明"
+  },
+  "rssFeedKindListHint": {
+    "message": "Tile lists entries by time",
+    "description": "列表类说明"
   }
 }

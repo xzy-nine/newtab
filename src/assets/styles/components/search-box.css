@@ -1,0 +1,375 @@
+/*
+ * 搜索框
+ *
+ * 接入玻璃系统：背景/边框走 `--color-card` 与 `--color-border` 的令牌混色，
+ * 模糊量由 `--xb-glass-blur`、透明度由 `--xb-glass-opacity` 控制，
+ * 因此设置面板里的玻璃滑块对它同样生效。
+ *
+ * 与玻璃系统其他浮层（xb-glass-popover / xb-glass-card）的差异：
+ * 搜索框是首屏主控件，需要**略重一点**——底色比标准玻璃更实（见 --search-veil）、
+ * 边框更清晰、并额外带一层内高光与投影，避免在大面积壁纸上"飘"起来看不清。
+ *
+ * 聚焦时向两侧拉长：用**宽度**动画而不是 `scaleX`——
+ * 横向缩放会把文字与圆角一起拉扁变形，而宽度变化只让两端向外扩展，
+ * 内容字号与形状保持原样。只动这一个元素的 width/margin-left，
+ * 每帧布局成本可以忽略。
+ */
+
+/*
+ * 搜索框宿主：允许拉长后的溢出可见，并**统一提供共用的玻璃参数**。
+ *
+ * `--search-veil` 必须定义在这里而不是 `.search-box` 上：
+ * 下拉菜单与搜索框是**兄弟**节点，兄弟之间不继承自定义属性，
+ * 定义在 `.search-box` 上的话下拉菜单取到的是空值、背景直接失效。
+ *
+ * 刻意**不用** `container-type`：它会为后代建立新的包含块，
+ * 进而改变 `backdrop-filter` 的采样范围（本项目壁纸层是刻意放在
+ * 玻璃元素同级背后供其采样的）。用固定像素 + clamp 已足够控制幅度。
+ */
+.search-box-host {
+  /*
+   * 搜索框相对标准玻璃的"加重"量：混入更高比例的底色，
+   * 使其在大面积壁纸上比普通玻璃更实、更易读。
+   * 下拉菜单同样取用，保持两者观感一致。
+   *
+   * 用**百分比**而不是无单位数字：它要和 `--xb-glass-opacity`（0.8）
+   * 相加后一起进 color-mix，单位必须一致，否则 calc() 非法、整条声明失效。
+   */
+  --search-veil: 20%;
+
+  /* flex 居中：子元素宽度变化时两端对称外扩，不依赖 margin 反算 */
+  display: flex;
+  justify-content: center;
+  overflow: visible;
+}
+
+/*
+ * 搜索框的"加重"底色。
+ *
+ * `--xb-glass-opacity` 是**无单位数字**（0.8），而 `--search-veil` 是百分比，
+ * 两者不能直接相加：`calc(0.8 + 20%)` 单位不兼容，会让整条
+ * background-color 被浏览器丢弃、只剩回退的实色，玻璃透明度滑块因此失效。
+ * 正确做法是先把 opacity 转成百分比（`* 100%`）再相加。
+ *
+ * 用 `min()` 钳到 100%：玻璃透明度调到 100% 时相加会越界。
+ */
+.search-box {
+  --search-grow: clamp(48px, 8vw, 110px);
+
+  /*
+   * 文字色与投影。
+   *
+   * 壁纸可随时更换，玻璃底色又半透明，单靠字色无法保证可读性。
+   * 但**不用硬描边**：多向 1px 阴影会叠出显眼的白边/黑边，观感廉价。
+   * 这里只用一层极淡的柔和投影，仅在字形下方形成轻微暗角，
+   * 主要对比由上面更实的底色保证。
+   */
+  --search-ink: var(--color-foreground);
+  --search-ink-shadow: 0 1px 2px color-mix(in srgb, var(--color-background) 35%, transparent);
+  --search-placeholder-ink: color-mix(in srgb, var(--color-foreground) 62%, transparent);
+
+  /*
+   * 单侧外扩量。
+   *
+   * 搜索框被外层 `max-w-lg` 限制在约 512px，因此用固定区间而不是视口单位：
+   * 下限 48px 保证小容器（侧边栏）也有可见幅度，
+   * 上限 110px 避免宽屏下把两端顶到 header 边缘。
+   * 中间随视口平滑变化。
+   */
+  --search-grow: clamp(48px, 8vw, 110px);
+
+  position: relative;
+  /*
+   * 居中拉长：宿主用 flex 居中，这里只改宽度，两端自然对称外扩。
+   * 用 flex 而不是 left/transform/margin 反算，避免钳制后偏心。
+   * `min()` 以视口宽度兜底：极窄窗口下若不钳制，
+   * 总宽会超出屏幕、两端被裁掉。
+   */
+  width: min(calc(100% + var(--search-grow) * 2), calc(100vw - 16px));
+  /*
+   * 必须禁止收缩：宿主是 flex 容器，外扩后的宽度已超过容器，
+   * 默认的 `flex-shrink: 1` 会把它压回原宽，聚焦时的拉长动画等于被吃掉。
+   */
+  flex-shrink: 0;
+  background-color: color-mix(
+    in srgb,
+    var(--color-card) min(100%, calc(var(--xb-glass-opacity) * 100% + var(--search-veil))),
+    transparent
+  );
+  backdrop-filter: blur(calc(var(--xb-glass-blur) + 2px));
+  border: 1px solid
+    color-mix(in srgb, var(--color-border) calc(var(--xb-glass-opacity) * 100%), transparent);
+  border-radius: 9999px;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 color-mix(in srgb, white 35%, transparent);
+
+  transition:
+    width 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.42s ease,
+    border-color 0.42s ease,
+    background-color 0.42s ease;
+}
+
+/* 未聚焦：外扩量为 0，与常规宽度一致 */
+.search-box:not(:focus-within) {
+  --search-grow: 0px;
+}
+
+/* 聚焦：向两侧拉长，并加强边框与光晕 */
+.search-box:focus-within {
+  border-color: color-mix(in srgb, var(--color-ring) 70%, transparent);
+  box-shadow:
+    0 10px 34px rgba(0, 0, 0, 0.18),
+    0 0 0 3px color-mix(in srgb, var(--color-ring) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 45%, transparent);
+}
+
+/* 输入框：透明底，聚焦环由外层统一表达，避免出现两套焦点样式 */
+/*
+ * 输入框。
+ *
+ * 背景是可随时更换的壁纸，玻璃底色又半透明，因此不能只靠前景色保证可读性。
+ * 这里用**一层极淡的柔和投影**托住文字，而不是多向硬描边——
+ * 多层 1px 阴影会叠出明显的白边/黑边，看起来像劣质描边字；
+ * 单层大半径低透明度只在字形下方形成柔和暗角，几乎无感却足以拉开与背景的层次。
+ */
+.search-box-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 10px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--search-ink);
+  font-size: 16px;
+  text-shadow: var(--search-ink-shadow);
+}
+
+/* 占位符是次要信息，沿用同一层投影即可，不额外加重 */
+.search-box-input::placeholder {
+  color: var(--search-placeholder-ink);
+  opacity: 1;
+  text-shadow: var(--search-ink-shadow);
+}
+
+/* 搜索引擎按钮：悬停用前景色叠层，与玻璃背景同源 */
+.search-box-engine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-left: 6px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.search-box-engine:hover {
+  background: color-mix(in oklch, var(--color-foreground) 8%, transparent);
+}
+
+/*
+ * 引擎图标是各站点的彩色 favicon，颜色不可控。
+ * 深色壁纸下深色 logo 会消失，因此给按钮加一层极淡的白色衬底 +
+ * 投影，让图标始终落在可预期的背景上。
+ */
+/*
+ * 引擎图标是各站点的彩色 favicon，颜色不可控。
+ * 只加一层柔和投影托底，不铺白色衬底——衬底会在圆角图标外露出方角，
+ * 与玻璃质感割裂。
+ */
+.search-box-engine-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+  transition: transform 0.3s ease;
+}
+
+.search-box-engine:hover .search-box-engine-icon {
+  transform: rotate(12deg);
+}
+
+/*
+ * AI 入口图标。
+ *
+ * 用 `--search-ink` 而不是 `--color-muted-foreground`：
+ * 后者在半透明玻璃上、深色壁纸背景下对比不足（这正是搜索框整体的问题）。
+ * 同时加一层与文字一致的描边，保证图标在任何壁纸上都能辨认。
+ */
+.search-box-ai {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--search-ink);
+  opacity: 0.75;
+  cursor: pointer;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.search-box-ai:hover {
+  background: color-mix(in oklch, var(--color-foreground) 10%, transparent);
+  color: var(--search-ink);
+  opacity: 1;
+}
+
+/* 提交按钮：唯一保留品牌色的元素，作为首屏视觉落点 */
+.search-box-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-right: 6px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  cursor: pointer;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 35%, transparent);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.search-box-submit:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.search-box-submit:active {
+  transform: scale(0.95);
+}
+
+/* ===== 下拉：搜索建议与引擎切换，同样走玻璃系统 ===== */
+.search-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 8px;
+  z-index: 40;
+  padding: 6px 0;
+  border-radius: 12px;
+  border: 1px solid
+    color-mix(in srgb, var(--color-border) calc(var(--xb-glass-opacity) * 100%), transparent);
+  background-color: color-mix(
+    in srgb,
+    var(--color-popover) min(100%, calc(var(--xb-glass-opacity) * 100% + var(--search-veil))),
+    transparent
+  );
+  backdrop-filter: blur(calc(var(--xb-glass-blur) + 2px));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+/* 引擎切换菜单靠左且更窄 */
+.search-dropdown.is-engines {
+  right: auto;
+  width: 240px;
+}
+
+.search-dropdown-scroll {
+  max-height: 384px;
+  overflow-y: auto;
+}
+
+.search-dropdown-heading {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+}
+
+/* 下拉项：悬停用前景色叠层，与玻璃背景同源 */
+.search-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.search-option:hover {
+  background: color-mix(in oklch, var(--color-foreground) 8%, transparent);
+}
+
+.search-option.is-active {
+  background: color-mix(in oklch, var(--color-foreground) 12%, transparent);
+}
+
+.search-option-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.search-option-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-option-title {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-option-sub {
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-option-tail {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  opacity: 0.4;
+}
+
+/* 引擎菜单的分隔线与底部操作区 */
+.search-dropdown-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: color-mix(in srgb, var(--color-border) 70%, transparent);
+}
+
+/*
+ * 暗色主题：字色提亮，投影改为深色。
+ *
+ * 亮色主题的投影取 `--color-background`（浅色），暗色主题下它会自动变深；
+ * 但这里显式给出深色投影，让浅字在深色壁纸上也有稳定的层次。
+ */
+html.dark .search-box {
+  --search-ink: oklch(0.99 0 0);
+  --search-ink-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --search-placeholder-ink: rgba(255, 255, 255, 0.66);
+}
