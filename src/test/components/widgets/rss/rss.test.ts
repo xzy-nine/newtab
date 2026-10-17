@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { format } from "date-fns";
 import {
   DEFAULT_FEED_URL,
   MAX_ENTRIES,
@@ -418,8 +419,15 @@ describe("feedTimeLabel", () => {
   });
 
   it("shows an absolute date beyond 30 days", () => {
+    /*
+     * 绝对日期按**浏览器本地时区**渲染（用户熟悉的口径），因此断言不能写死
+     * "某个带时区的时间戳 → 某个固定日期串"：CI 跑在 UTC、开发机常在 UTC+8，
+     * 同一时间戳会落在不同日期上（2026-01-02T00:00+08:00 在 UTC 下是 01-01）。
+     * 这里改为用同一套本地时区自行算出期望值，从而与运行环境无关。
+     */
+    const publishedAt = Date.parse("2026-01-02T00:00:00+08:00");
     const now = Date.parse("2026-10-15T12:00:00+08:00");
-    expect(feedTimeLabel(Date.parse("2026-01-02T00:00:00+08:00"), now)).toBe("2026-01-02");
+    expect(feedTimeLabel(publishedAt, now)).toBe(format(new Date(publishedAt), "yyyy-MM-dd"));
   });
 
   it("returns an empty string when the date is unknown", () => {
