@@ -13,6 +13,7 @@ import {
   readCachedSnapshot,
   readFeedKind,
   readFeedUrl,
+  resolveEntryLink,
   stripHtmlToText,
   tileEntryLimit,
 } from "@/components/widgets/rss/rss";
@@ -113,6 +114,39 @@ describe("readFeedUrl", () => {
 
   it("returns a configured URL", () => {
     expect(readFeedUrl({ url: "https://example.com/feed" })).toBe("https://example.com/feed");
+  });
+});
+
+describe("resolveEntryLink", () => {
+  it("resolves relative links against the feed URL", () => {
+    // 订阅源里出现相对链接并不罕见；直接用会被 chrome.tabs.create 拒绝
+    expect(resolveEntryLink("/post/1", "https://example.com/feed.rss")).toBe(
+      "https://example.com/post/1",
+    );
+    expect(resolveEntryLink("post/1", "https://example.com/blog/feed.rss")).toBe(
+      "https://example.com/blog/post/1",
+    );
+  });
+
+  it("keeps absolute http(s) links as-is", () => {
+    expect(resolveEntryLink("https://example.com/a", "https://example.com/feed")).toBe(
+      "https://example.com/a",
+    );
+    expect(resolveEntryLink("http://example.com/a", "https://example.com/feed")).toBe(
+      "http://example.com/a",
+    );
+  });
+
+  it("drops non-http(s) protocols", () => {
+    // 链接会交给 openUrl 直接打开，这里是唯一的协议把关点
+    expect(resolveEntryLink("javascript:alert(1)", "https://example.com/feed")).toBe("");
+    expect(resolveEntryLink("data:text/html,hi", "https://example.com/feed")).toBe("");
+    expect(resolveEntryLink("file:///etc/passwd", "https://example.com/feed")).toBe("");
+  });
+
+  it("returns an empty string for empty or unparsable input", () => {
+    expect(resolveEntryLink(undefined, "https://example.com/feed")).toBe("");
+    expect(resolveEntryLink("   ", "https://example.com/feed")).toBe("");
   });
 });
 

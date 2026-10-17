@@ -265,10 +265,34 @@ function pickLink(links?: Array<{ href?: string; rel?: string }>): string {
 }
 
 /**
+ * 把条目链接归一化为可直接打开的绝对地址。
+ *
+ * - 相对链接（`/post/1`、`post/1`）以**订阅地址**为基准解析——
+ *   订阅源里出现相对链接并不罕见，直接用会被 `chrome.tabs.create` 拒绝；
+ * - 只保留 http/https：`javascript:` / `data:` 这类协议一律丢弃，
+ *   因为链接会交给 `openUrl` 直接打开，此处是唯一的把关点
+ *   （`BrowserView` 的校验只作用于其自身的输入，不覆盖这里）。
+ * - 解析失败或协议不合法时返回空串，由调用方回退。
+ */
+export function resolveEntryLink(raw: string | undefined, feedUrl: string): string {
+  const text = raw?.trim() ?? "";
+  if (!text) return "";
+  try {
+    const base = normalizeFeedUrl(feedUrl) ?? DEFAULT_FEED_URL;
+    const url = new URL(text, base);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
  * 组装条目；标题缺失时用链接或正文兜底。
  *
  * 正文按段落取出并**摘掉开头的状态标记**：该标记已由状态徽标单独表达，
  * 留在正文里会重复一遍。
+ *
+ * `feedUrl` 用于把相对链接解析成绝对地址，并过滤掉非 http(s) 协议。
  */
 function buildEntry(
   index: number,
@@ -279,8 +303,9 @@ function buildEntry(
     summary?: string;
     publishedAt: number | null;
   },
+  feedUrl: string,
 ): RssEntry {
-  const link = input.link?.trim() ?? "";
+  const link = resolveEntryLink(input.link, feedUrl);
   const paragraphs = htmlToParagraphs(input.summary);
   const first = paragraphs[0];
   const extracted = first === undefined ? { summary: "" } : extractStatus(first);
@@ -300,80 +325,96 @@ function buildEntry(
 }
 
 /** 归一化 RSS 2.0 解析结果。 */
-function normalizeRss(feed: RssFeed.Feed<number | null>): RssSnapshot {
+function normalizeRss(feed: RssFeed.Feed<number | null>, feedUrl: string): RssSnapshot {
   const items = feed.items ?? [];
   return {
     title: firstText(feed.title, feed.link, DEFAULT_FEED_URL),
     link: firstText(feed.link),
     description: stripHtmlToText(feed.description),
     entries: items.slice(0, MAX_ENTRIES).map((item, index) =>
-      buildEntry(index, {
-        id: item.guid?.value,
-        title: item.title,
-        link: item.link,
-        summary: item.description ?? item.content?.encoded ?? item.dc?.descriptions?.[0],
-        publishedAt: toTimestamp(item.pubDate) ?? toTimestamp(item.dc?.dates?.[0]),
-      }),
+      buildEntry(
+        index,
+        {
+          id: item.guid?.value,
+          title: item.title,
+          link: item.link,
+          summary: item.description ?? item.content?.encoded ?? item.dc?.descriptions?.[0],
+          publishedAt: toTimestamp(item.pubDate) ?? toTimestamp(item.dc?.dates?.[0]),
+        },
+        feedUrl,
+      ),
     ),
     fetchedAt: Date.now(),
   };
 }
 
 /** 归一化 Atom 解析结果。 */
-function normalizeAtom(feed: AtomFeed.Feed<number | null>): RssSnapshot {
+function normalizeAtom(feed: AtomFeed.Feed<number | null>, feedUrl: string): RssSnapshot {
   const entries = feed.entries ?? [];
   return {
     title: firstText(feed.title?.value, pickLink(feed.links), DEFAULT_FEED_URL),
     link: pickLink(feed.links),
     description: stripHtmlToText(feed.subtitle?.value),
     entries: entries.slice(0, MAX_ENTRIES).map((entry, index) =>
-      buildEntry(index, {
-        id: entry.id,
-        title: entry.title?.value,
-        link: pickLink(entry.links),
-        summary: entry.summary?.value ?? entry.content?.value,
-        publishedAt: toTimestamp(entry.published) ?? toTimestamp(entry.updated),
-      }),
+      buildEntry(
+        index,
+        {
+          id: entry.id,
+          title: entry.title?.value,
+          link: pickLink(entry.links),
+          summary: entry.summary?.value ?? entry.content?.value,
+          publishedAt: toTimestamp(entry.published) ?? toTimestamp(entry.updated),
+        },
+        feedUrl,
+      ),
     ),
     fetchedAt: Date.now(),
   };
 }
 
 /** 归一化 RDF（RSS 1.0）解析结果。 */
-function normalizeRdf(feed: RdfFeed.Feed<number | null>): RssSnapshot {
+function normalizeRdf(feed: RdfFeed.Feed<number | null>, feedUrl: string): RssSnapshot {
   const items = feed.items ?? [];
   return {
     title: firstText(feed.title, feed.link, DEFAULT_FEED_URL),
     link: firstText(feed.link),
     description: stripHtmlToText(feed.description),
     entries: items.slice(0, MAX_ENTRIES).map((item, index) =>
-      buildEntry(index, {
-        id: item.rdf?.about,
-        title: item.title,
-        link: item.link,
-        summary: item.description ?? item.dc?.descriptions?.[0] ?? item.content?.encoded,
-        publishedAt: toTimestamp(item.dc?.dates?.[0]),
-      }),
+      buildEntry(
+        index,
+        {
+          id: item.rdf?.about,
+          title: item.title,
+          link: item.link,
+          summary: item.description ?? item.dc?.descriptions?.[0] ?? item.content?.encoded,
+          publishedAt: toTimestamp(item.dc?.dates?.[0]),
+        },
+        feedUrl,
+      ),
     ),
     fetchedAt: Date.now(),
   };
 }
 
 /** 归一化 JSON Feed 解析结果。 */
-function normalizeJson(feed: JsonFeed.Feed<number | null>): RssSnapshot {
+function normalizeJson(feed: JsonFeed.Feed<number | null>, feedUrl: string): RssSnapshot {
   const items = feed.items ?? [];
   return {
     title: firstText(feed.title, feed.home_page_url, DEFAULT_FEED_URL),
     link: firstText(feed.home_page_url, feed.feed_url),
     description: stripHtmlToText(feed.description),
     entries: items.slice(0, MAX_ENTRIES).map((item, index) =>
-      buildEntry(index, {
-        id: item.id,
-        title: item.title,
-        link: item.url ?? item.external_url,
-        summary: item.content_text ?? item.content_html ?? item.summary,
-        publishedAt: toTimestamp(item.date_published) ?? toTimestamp(item.date_modified),
-      }),
+      buildEntry(
+        index,
+        {
+          id: item.id,
+          title: item.title,
+          link: item.url ?? item.external_url,
+          summary: item.content_text ?? item.content_html ?? item.summary,
+          publishedAt: toTimestamp(item.date_published) ?? toTimestamp(item.date_modified),
+        },
+        feedUrl,
+      ),
     ),
     fetchedAt: Date.now(),
   };
@@ -382,12 +423,18 @@ function normalizeJson(feed: JsonFeed.Feed<number | null>): RssSnapshot {
 /**
  * 解析订阅内容，返回归一化快照。
  *
+ * `feedUrl` 是这份内容的来源地址，用于把条目里的相对链接解析成绝对地址
+ * （订阅源写相对链接并不罕见），并过滤掉非 http(s) 协议。
+ *
  * feedsmith 以动态导入加载：订阅解析只在真正取数时发生，
  * 不进入新标签页首屏依赖。
  *
  * @throws 内容不符合任何订阅格式时抛 `RssError("parse-error")`。
  */
-export async function parseFeedDocument(content: string): Promise<RssSnapshot> {
+export async function parseFeedDocument(
+  content: string,
+  feedUrl: string = DEFAULT_FEED_URL,
+): Promise<RssSnapshot> {
   const { parseFeed } = await import("feedsmith");
   try {
     const parsed = parseFeed<number | null>(content, {
@@ -396,13 +443,13 @@ export async function parseFeedDocument(content: string): Promise<RssSnapshot> {
     });
     switch (parsed.format) {
       case "rss":
-        return normalizeRss(parsed.feed);
+        return normalizeRss(parsed.feed, feedUrl);
       case "atom":
-        return normalizeAtom(parsed.feed);
+        return normalizeAtom(parsed.feed, feedUrl);
       case "rdf":
-        return normalizeRdf(parsed.feed);
+        return normalizeRdf(parsed.feed, feedUrl);
       case "json":
-        return normalizeJson(parsed.feed);
+        return normalizeJson(parsed.feed, feedUrl);
       default:
         throw new RssError("parse-error");
     }
@@ -470,7 +517,8 @@ export function fetchFeed(url: string): Promise<RssFetchResult> {
 
   const task = (async (): Promise<RssFetchResult> => {
     try {
-      const snapshot = await parseFeedDocument(await requestFeed(target));
+      // 订阅地址同时作为相对链接的解析基准
+      const snapshot = await parseFeedDocument(await requestFeed(target), target);
       writeCache(key, snapshot);
       return { snapshot, fresh: true };
     } catch (error) {

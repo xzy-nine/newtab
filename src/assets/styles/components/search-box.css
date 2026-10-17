@@ -16,13 +16,27 @@
  */
 
 /*
- * 搜索框宿主：只负责允许拉长后的溢出可见。
+ * 搜索框宿主：允许拉长后的溢出可见，并**统一提供共用的玻璃参数**。
+ *
+ * `--search-veil` 必须定义在这里而不是 `.search-box` 上：
+ * 下拉菜单与搜索框是**兄弟**节点，兄弟之间不继承自定义属性，
+ * 定义在 `.search-box` 上的话下拉菜单取到的是空值、背景直接失效。
  *
  * 刻意**不用** `container-type`：它会为后代建立新的包含块，
  * 进而改变 `backdrop-filter` 的采样范围（本项目壁纸层是刻意放在
  * 玻璃元素同级背后供其采样的）。用固定像素 + clamp 已足够控制幅度。
  */
 .search-box-host {
+  /*
+   * 搜索框相对标准玻璃的"加重"量：混入更高比例的底色，
+   * 使其在大面积壁纸上比普通玻璃更实、更易读。
+   * 下拉菜单同样取用，保持两者观感一致。
+   *
+   * 用**百分比**而不是无单位数字：它要和 `--xb-glass-opacity`（0.8）
+   * 相加后一起进 color-mix，单位必须一致，否则 calc() 非法、整条声明失效。
+   */
+  --search-veil: 20%;
+
   /* flex 居中：子元素宽度变化时两端对称外扩，不依赖 margin 反算 */
   display: flex;
   justify-content: center;
@@ -30,17 +44,17 @@
 }
 
 /*
- * 搜索框相对标准玻璃的"加重"量：混入更高比例的底色，
- * 使其在大面积壁纸上比普通玻璃更实、更易读。
+ * 搜索框的"加重"底色。
  *
- * 可读性主要由这个更实的底色承担，而不是靠文字描边——
- * 底色实了，文字与背景的对比自然就够，观感也更干净。
+ * `--xb-glass-opacity` 是**无单位数字**（0.8），而 `--search-veil` 是百分比，
+ * 两者不能直接相加：`calc(0.8 + 20%)` 单位不兼容，会让整条
+ * background-color 被浏览器丢弃、只剩回退的实色，玻璃透明度滑块因此失效。
+ * 正确做法是先把 opacity 转成百分比（`* 100%`）再相加。
  *
- * 用 `min()` 钳到 100%：用户把玻璃透明度调到 100% 时，
- * 直接相加会得到越界值（color-mix 百分比不允许超过 100%）。
+ * 用 `min()` 钳到 100%：玻璃透明度调到 100% 时相加会越界。
  */
 .search-box {
-  --search-veil: 20%;
+  --search-grow: clamp(48px, 8vw, 110px);
 
   /*
    * 文字色与投影。
@@ -72,9 +86,14 @@
    * 总宽会超出屏幕、两端被裁掉。
    */
   width: min(calc(100% + var(--search-grow) * 2), calc(100vw - 16px));
+  /*
+   * 必须禁止收缩：宿主是 flex 容器，外扩后的宽度已超过容器，
+   * 默认的 `flex-shrink: 1` 会把它压回原宽，聚焦时的拉长动画等于被吃掉。
+   */
+  flex-shrink: 0;
   background-color: color-mix(
     in srgb,
-    var(--color-card) min(100%, calc((var(--xb-glass-opacity) + var(--search-veil)) * 100%)),
+    var(--color-card) min(100%, calc(var(--xb-glass-opacity) * 100% + var(--search-veil))),
     transparent
   );
   backdrop-filter: blur(calc(var(--xb-glass-blur) + 2px));
@@ -254,7 +273,7 @@
     color-mix(in srgb, var(--color-border) calc(var(--xb-glass-opacity) * 100%), transparent);
   background-color: color-mix(
     in srgb,
-    var(--color-popover) min(100%, calc((var(--xb-glass-opacity) + var(--search-veil)) * 100%)),
+    var(--color-popover) min(100%, calc(var(--xb-glass-opacity) * 100% + var(--search-veil))),
     transparent
   );
   backdrop-filter: blur(calc(var(--xb-glass-blur) + 2px));

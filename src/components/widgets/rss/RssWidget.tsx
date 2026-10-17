@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, RefreshCw, Rss } from "lucide-react";
 import { getMessage } from "@/lib/i18n";
 import { resolveWidgetSizeMode, widgetPadding } from "@/lib/widget-layout";
@@ -56,6 +56,8 @@ export function RssWidget({
   const [error, setError] = useState("");
   /** 当前展示的是回落的旧内容而非本次联网结果。 */
   const [stale, setStale] = useState(false);
+  /** 每次请求的序号：丢弃迟到的旧响应，避免覆盖切换订阅后的新状态。 */
+  const requestRef = useRef(0);
   /**
    * 当前时间作为 state（而非渲染期直接调用 Date.now()）。
    * 每 60 秒刷新一次，让「x 分钟前」这类相对时间自行走动。
@@ -68,17 +70,29 @@ export function RssWidget({
   }, []);
 
   const load = useCallback(async () => {
+    /*
+     * 请求序号：切换订阅地址或连点刷新时，可能有多份请求在飞。
+     * 迟到的旧响应不能覆盖当前状态——尤其 `stale`/`error`/`loading`
+     * 不与地址绑定，若被旧请求改写，界面会显示错误的"可能不新"或"加载中"。
+     * （`fetched` 自带 url，渲染期已能判定，但其余三个状态需要这里把关。）
+     */
+    const token = ++requestRef.current;
     setLoading(true);
     setError("");
+    // 新一轮请求开始即清掉上一轮的过期标记，避免旧标记残留到新结果
+    setStale(false);
     try {
       const { snapshot: next, fresh } = await fetchFeed(url);
+      if (requestRef.current !== token) return;
       setFetched({ url, snapshot: next });
       // 回落到了旧内容：列表照常展示（比空磁贴有用），但要标记"可能不新"
       setStale(!fresh);
     } catch {
-      setError(getMessage("rssLoadFailed", "订阅获取失败"));
+      if (requestRef.current === token) {
+        setError(getMessage("rssLoadFailed", "订阅获取失败"));
+      }
     } finally {
-      setLoading(false);
+      if (requestRef.current === token) setLoading(false);
     }
   }, [url]);
 
