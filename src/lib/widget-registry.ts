@@ -74,14 +74,6 @@ export function getAllTypes(): WidgetMeta[] {
   return Array.from(registry.values()).map((d) => d.meta);
 }
 
-function getWidgetConfig(type: string): WidgetConfig | undefined {
-  return registry.get(type)?.config;
-}
-
-function hasWidget(type: string): boolean {
-  return registry.has(type);
-}
-
 /** 取小部件的展开弹窗定义；未声明时返回 undefined。 */
 export function getWidgetPopup(type: string): WidgetPopup | undefined {
   return registry.get(type)?.popup;
