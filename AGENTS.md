@@ -1,217 +1,52 @@
 # AGENTS.md
 
-文档地图：`AGENTS.md`（本文，HOW）· `README.md`（面向用户）· `src/lib/app-settings.ts`（设置项默认值）
+本文件是 NewTab 对 agent 的常驻指令：只放**每个会话都需要在上下文里的命令**，每条一到三行，并链接它的正家。文档地图：本文（HOW）· [README.md](README.md)（面向用户）· [docs/](docs/AGENTS.md)（当前状态的参考页）· [.agents/notes/](.agents/notes/README.md)（决策记录）。
 
-## Project Overview
+## 分层
 
-newtab 是一个浏览器新标签页扩展，提供自定义桌面、AI 助手、书签管理、时钟小组件、搜索引擎、主题管理等功能。使用 WXT、React 19、TypeScript、Tailwind CSS 4、shadcn/ui、Zustand 和 `@reactuses/core` 构建。
+指令分三层：常驻指令（本文件与各子树 `AGENTS.md`）、技能（[.agents/skills/](.agents/skills/)，按场景加载）、文档（[docs/](docs/AGENTS.md)，当前状态的事实）。各层放什么、一个事实归谁，见[层级分类](docs/AGENTS.md#the-tier-taxonomy-one-home-per-fact)。
 
-## 开发者命令
+## 项目
 
-```bash
-pnpm run dev           # Start dev server (Chrome)
-pnpm run dev:edge      # Start dev server (Edge)
-pnpm run dev:firefox   # Start dev server (Firefox)
-pnpm run build         # Build for Chrome/Chromium
-pnpm run build:edge    # Build for Edge
-pnpm run build:firefox # Build for Firefox
-pnpm run test:unit     # Run unit tests (Vitest + jsdom)
-pnpm run test:watch    # Run tests in watch mode
-pnpm run compile       # TypeScript type check only
-pnpm run lint          # Format + lint with oxfmt/oxlint
-pnpm run knip          # Find unused files/exports/dependencies
-pnpm run zip           # Package as .zip (Chrome)
-pnpm run zip:edge      # Package as .zip (Edge)
-pnpm run zip:firefox   # Package as .zip (Firefox)
+NewTab 是浏览器新标签页扩展：WXT + React 19 + TypeScript + Tailwind CSS 4 + shadcn/ui + Zustand + `@reactuses/core`，Manifest v3。仓库文档、注释与提示词只用中文；扩展对外文案另有 `en` locale，走[国际化约定](docs/architecture.md#国际化)。目录与模块职责见[项目地图](docs/project-map.md)，架构约束与代码模式见[架构](docs/architecture.md)，测试布局见[测试](docs/testing.md)，设置项默认值以 `src/lib/app-settings.ts` 为准。
+
+## 命令
+
+```sh
+pnpm install        # 安装依赖
+pnpm run dev        # 开发服务器（Chrome）；dev:edge / dev:firefox 换目标浏览器
+pnpm run build      # 构建（Chrome）；build:edge / build:firefox 换目标浏览器
+pnpm run compile    # 仅类型检查
+pnpm run test:unit  # 单元测试（Vitest + jsdom）
+pnpm run knip       # 未使用文件、导出与依赖检查
+pnpm run lint       # oxfmt 格式化 + oxlint 修复
+pnpm run verify-all # 全部门禁（文档、Agent Note、技能、槽位）
+pnpm run zip        # 打包 .zip；zip:edge / zip:firefox 换目标浏览器
 ```
 
-- 包管理器使用 **pnpm**（项目已配置 `only-allow pnpm`）
+## 不可协商的规则
 
-## 验证顺序
+- **文档、Agent Note 与技能遵守[文档标准](docs/AGENTS.md#writing-rules)。** 新增或修改任何文档前先读它，散文判断细则见[散文标准](.agents/skills/newtab-prose-standard/SKILL.md)。
+- **决策留痕。** 影响长期维护的判断写入 [Agent Note](.agents/notes/README.md#何时需要写一份)；豁免情形也在那里。
+- **规则必须可执行。** 新增一条被评审强制的规则时，同时给出它能变红的门禁；只靠人记的规则会被忘掉。
+- **改代码就改它拥有的文档。** 配置、默认值、错误、对外行为在同一变更里更新对应 README 与 JSDoc。
+- **共享状态必须有归属者。** 模块级缓存、单例、全局注册表都要挂到服务、实例或显式作用域上。
+- **失败要结构化。** 定义失败类型、处理归属、遏制方式与失败后仍然成立的保证；只打日志不算恢复。
+- **包管理器只用 pnpm。** 清单里的 `preinstall` 用 `only-allow pnpm` 拒绝其他包管理器。
+- **注释与 UI 文案用中文。** UI 文本一律走[国际化约定](docs/architecture.md#国际化)，不在组件里硬编码展示文案。
+- **UI 同时适配亮色、暗色与窄列布局。** 主题状态由 `useTheme` 统一驱动，不硬编码颜色。
+- **样式层级顺序是契约。** 改样式前读[样式分层](docs/project-map.md#样式分层)。
 
-lint → typecheck → test → build
+## 校验
 
-## 项目结构
+提交前按改动面选择最小充分证据，不要反射性地跑全量。CI 拥有穷尽矩阵。
 
-```
-src/
-├── entrypoints/       # newtab, sidepanel, background
-├── assets/
-│   ├── global.css     # 全局样式入口，只转发到 styles/index.css
-│   └── styles/        # 分层样式（index.css 是唯一聚合入口）
-│       ├── foundation/  # theme(设计令牌) / glass(玻璃) / base / dark
-│       ├── desktop/     # surface / folder-panel / home
-│       ├── components/  # dock / dock-layer / folder-tree / folder-popup
-│       └── widgets/     # clock / weather / activity / rss
-├── components/
-│   ├── ui/              # shadcn 基础组件
-│   ├── ai/              # AI 助手 UI（AIAssistant / AIChatPanel / 子组件）
-│   ├── widgets/         # 每个小部件一个子目录
-│   │   ├── counter/     # CounterWidget.tsx
-│   │   ├── timer/       # TimerWidget.tsx
-│   │   ├── note/        # NoteWidget.tsx
-│   │   ├── weather/     # WeatherWidget.tsx + weather.ts（数据与纯逻辑）
-│   │   ├── activity/    # ActivityWidget.tsx + activity.ts（数据与纯逻辑）
-│   │   └── rss/         # RssWidget.tsx + RssFeedPopup.tsx + rss.ts（数据与纯逻辑）
-│   ├── shell/           # 页面外壳（NewTab / SidePanel / SidePanelHome）
-│   ├── desktop/         # 桌面系统（DesktopWorkspace / HomeDesktop / DesktopGridView / DesktopItemViews）
-│   ├── dock/            # Dock 栏与文件夹浮层（Dock / DockFolderLayer）
-│   ├── folder/          # 文件夹树与弹窗（FolderTreeView / FolderPopup）
-│   ├── background/      # 背景与背景设置（Background / BackgroundSettings）
-│   ├── settings/        # 设置面板（SettingsPanel / UapiSettings）
-│   ├── search/          # 搜索框（SearchBox）
-│   ├── browser/         # 侧边栏浏览器视图（BrowserView）
-│   ├── notification/    # 通知中心（NotificationCenter）
-│   ├── clock/           # 时钟小组件（ClockWidget）
-│   └── widget-system/   # 小部件注册与弹窗宿主（WidgetSystem / WidgetPopupHost）
-├── hooks/             # useTheme, useBookmarkFolders, useDesktopGrid, useContextMenu
-├── lib/
-│   ├── app-settings.ts / app-settings-store.ts
-│   ├── ai/            # AI 模块（分层，见下）
-│   ├── widget-registry.ts
-│   ├── i18n.ts / icon-manager.ts / notification.ts
-│   └── data-sync.ts / search-suggestions.ts / dialog-z-index.ts
-└── test/              # 全部测试集中于此，目录层级镜像 src/（见"测试"）
-    ├── setup.ts       # Vitest setup（jsdom 补丁 + jest-dom matchers）
-    ├── components/    # 对应 src/components 的层级
-    └── lib/           # 对应 src/lib 的层级
-```
+| 改动                   | 最小证据                                        |
+| ---------------------- | ----------------------------------------------- |
+| 文档、Agent Note、技能 | `pnpm run verify-all`                           |
+| 门禁脚本本身           | 该脚本的单元测试，加上一次故意违规的负向验证    |
+| 组件、hooks、`src/lib` | `pnpm run compile` 与 `pnpm run test:unit`      |
+| 样式分层               | `pnpm run build`，比对构建产物 CSS 与改动前一致 |
+| 扩展清单、入口、权限   | `pnpm run build`，确认 manifest 与入口产物      |
 
-### AI 模块分层（`src/lib/ai/`）
-
-自下而上分层，只通过 `index.ts` 对组件暴露最小接口：
-
-| 文件               | 职责                                           |
-| ------------------ | ---------------------------------------------- |
-| `types.ts`         | 纯类型（消息、对话、回调）                     |
-| `errors.ts`        | `APICallError` → 用户可读文案                  |
-| `providers.ts`     | 提供商配置 → AI SDK 模型句柄（baseURL 收敛等） |
-| `models.ts`        | 模型能力判定与 `/v1/models` 查询               |
-| `persistence.ts`   | 对话历史读写 + zod 校验                        |
-| `quick-prompts.ts` | 快捷提示词解析（纯文本 / JSON 字符串）         |
-| `chat.ts`          | 流式对话、标题生成等用例编排                   |
-| `store.ts`         | Zustand 状态编排                               |
-
-**AI 相关依赖一律复用成熟库，不要手写**：
-
-- `ai` + `@ai-sdk/openai-compatible`：请求构造、SSE 流式解析、`reasoning_content`、错误体解析
-- `zod`：外部数据（存储、接口响应、设置项）校验
-- `react-markdown` + `remark-gfm`：Markdown 渲染（不再用 `dangerouslySetInnerHTML`）
-- `react-textarea-autosize`：输入框高度自适应
-- `@reactuses/core`：通用 hooks（如 `useClickOutside`、`useAsyncEffect`）
-
-AI SDK 体积较大，`AIAssistant` 通过 `lazy` + `Suspense` 懒加载，入口按钮
-`hover`/`focus` 时用 `preloadAIChatPanel()` 预取，避免拖累新标签页首屏。
-
-## 架构注意事项
-
-- **Extension Pages**: WXT 构建的新标签页和侧边栏页面
-- **Settings Store**: `app-settings-store.ts` → `browser.storage.local`; 调用 `hydrate()` 后使用
-- **Widget System**: `widget-registry.ts` + `widget-store.ts` → 动态小组件注册和状态管理
-- **AI Assistant**: `lib/ai/store.ts` → AI 提供商配置和对话历史（分层见上）
-- **Bookmark Management**: `useBookmarkFolders` hook → 书签文件夹树和固定功能
-- **Theme System**: `useTheme` hook → 亮色/暗色/系统主题切换
-- **Desktop Grid**: `useDesktopGrid` hook → 桌面图标网格布局
-- **Styles**: `assets/global.css` 仅转发 `assets/styles/index.css`；层级文件的 `@import` 顺序**即层叠优先级**，必须沿用原单文件书写顺序（已非按目录分组），重排会静默改变样式。改动后请比对构建产物 CSS 是否与改动前一致。
-
-## 关键模式
-
-- **Hooks**: 优先使用 `@reactuses/core` 而非重新实现通用 hooks
-- **Components**: 主要组件包括 `NewTab`、`SidePanel`、`DesktopSystem`、`Dock`、`NotificationCenter`
-- **Widgets**: 小组件系统支持动态注册，包括计时器、笔记、计数器等
-- **Background**: Bing 每日壁纸、自定义图片、默认背景三种模式
-- **Search**: 多搜索引擎支持，可自定义添加
-- **AI**: 支持多个 AI 提供商（DeepSeek、OpenAI 等），可配置 API 和模型
-
-## Code Patterns
-
-### Settings
-
-`useAppSettings` 选择性订阅；开关与默认值以 `app-settings.ts` 为准。
-
-```typescript
-const theme = useAppSettings((s) => s.theme);
-const setTheme = useAppSettings((s) => s.setTheme);
-
-// 使用前需要 hydrate
-useEffect(() => {
-  hydrate();
-}, [hydrate]);
-```
-
-### Widget Registration
-
-小组件通过 `widget-registry.ts` 注册，使用 `useWidgetRegistration` hook 初始化。
-
-```typescript
-// 在组件中注册小组件
-useWidgetRegistration();
-```
-
-### Theme Management
-
-使用 `useTheme` hook 管理主题，自动响应系统主题变化。
-
-```typescript
-useTheme(); // 在根组件中调用
-```
-
-### Bookmark Folders
-
-书签文件夹使用 `useBookmarkFolders` hook 管理，支持文件夹树、展开/折叠、固定等功能。
-
-```typescript
-const {
-  currentFolder,
-  folders,
-  folderTree,
-  expandedFolders,
-  pinnedFolders,
-  toggleFolder,
-  selectFolder,
-  pinFolder,
-  unpinFolder,
-} = useBookmarkFolders();
-```
-
-## 测试
-
-- Vitest + `jsdom`; setup: `src/test/setup.ts`
-- Tests: `*.test.ts` / `*.spec.ts` **全部集中在 `src/test/` 下**，不再与源码同目录；
-  目录层级镜像 `src/`，便于按被测模块定位（如 `src/test/lib/ai/chat.test.ts` ↔ `src/lib/ai/chat.ts`）
-- 测试内一律使用 `@/` 别名引用源码与被 mock 模块（不再用 `./`、`../` 相对路径）
-- 组件测试使用 `@testing-library/react`
-- `tsconfig.json` **不排除** `src/test`，因此 `pnpm run compile` 会一并类型检查测试代码
-
-## 代码质量
-
-- **Linter**: oxlint (typescript, unicorn, oxc, react, react-perf plugins)
-- **Formatter**: oxfmt (no semicolons, single quotes, trailing comma es5)
-- **TypeScript**: extends `.wxt/tsconfig.json`
-
-## 浏览器扩展说明
-
-- Manifest v3 (WXT)
-- Permissions: `storage`, `bookmarks`, `activeTab`, `tabs`, `sidePanel`, `declarativeNetRequestWithHostAccess`
-- Host permissions: `https://*/*`, `http://*/*`
-- Default locale: `zh_CN`
-- Entry points:
-  - `newtab.html` - 新标签页
-  - `sidepanel.html` - 侧边栏
-  - `background.ts` - 后台脚本
-
-## 国际化说明
-
-- 支持中文（zh_CN）和英文（en）
-- 扩展本身的 UI 文本需要在 `_locales/` 中添加键值
-- 业务逻辑中的中文文本可以直接使用，无需添加到 messages.json
-- 使用 `getMessage()` 函数获取国际化文本
-
-## AI 提示词建议
-
-- 代码需兼容 Chromium 浏览器扩展环境
-- 保持模块化，优先复用已有工具函数
-- UI 需适配暗色/亮色主题，遵循响应式设计
-- 新增功能需支持国际化（i18n），文本请用 `lib/i18n.ts` 相关方法处理
-- 交互逻辑尽量解耦，便于后续维护和扩展
-- 代码注释请用中文使用 JSDoc 格式，便于辨认
+**新增门禁必须自证**：写一个非法用例，看它变红，再回退。只证明它能通过，等于没证明它有用。
