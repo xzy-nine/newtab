@@ -1,0 +1,30 @@
+{
+  "$comment": "本仓库携带的实例身份。每条把一个具体字符串映射到一个占位符；`--export` 正向替换并重命名路径，`--instantiate` 反向还原。占位符必须是小写 kebab-case：技能的 name 与目录名受 `^[a-z0-9]+(?:-[a-z0-9]+)*$` 约束，含大写或下划线的占位符会让技能被加载器静默忽略。",
+  "placeholders": [
+    {
+      "key": "prompt-infra-slot-repo-name",
+      "means": "仓库的人类可读全名",
+      "example": "NewTab"
+    },
+    {
+      "key": "prompt-infra-slot-repo-slug",
+      "means": "仓库 slug，用于包名、域名与路径",
+      "example": "newtab"
+    },
+    {
+      "key": "prompt-infra-slot-cli-name",
+      "means": "CLI 命令名，同时是包名前缀与技能目录前缀",
+      "example": "newtab"
+    },
+    {
+      "key": "prompt-infra-slot-cmd-doc-sync",
+      "means": "综合文档门禁脚本",
+      "example": "verify-all"
+    },
+    {
+      "key": "PROMPT_INFRA_SLOT_ENV_ARCHIVE_BASE_REF",
+      "means": "归档基线提交的环境变量；必须保持合法标识符，因为它出现在 TypeScript 源码里",
+      "example": "NEWTAB_ARCHIVE_BASE_REF"
+    }
+  ]
+}
