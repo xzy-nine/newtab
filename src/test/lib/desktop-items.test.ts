@@ -482,17 +482,20 @@ describe("reconcileFolderItems keeps stretched state", () => {
   });
 });
 
+/** 一份同时含小部件与快捷方式的文件夹布局。 */
+const MIXED_LAYOUT = {
+  "1": {
+    items: [
+      { id: "w1", type: "widget", widgetType: "note", w: 2, h: 2 },
+      { id: "s1", type: "shortcut", name: "A", url: "https://a.com", w: 1, h: 1 },
+    ],
+  },
+};
+
 describe("collectWidgetItems", () => {
   it("collects widgets from folder layouts and legacy widget containers", () => {
     const items = collectWidgetItems({
-      layouts: {
-        "1": {
-          items: [
-            { id: "w1", type: "widget", widgetType: "note", w: 2, h: 2 },
-            { id: "s1", type: "shortcut", name: "A", url: "https://a.com", w: 1, h: 1 },
-          ],
-        },
-      },
+      layouts: MIXED_LAYOUT,
       legacyContainers: [
         { id: "c1", folderId: "1", items: [{ id: "w2", type: "counter", data: { count: 3 } }] },
       ],
@@ -520,14 +523,7 @@ describe("collectWidgetItems", () => {
 
 describe("stripWidgetsFromLayouts", () => {
   it("removes widgets but keeps shortcuts and folders", () => {
-    const stripped = stripWidgetsFromLayouts({
-      "1": {
-        items: [
-          { id: "w1", type: "widget", widgetType: "note", w: 2, h: 2 },
-          { id: "s1", type: "shortcut", name: "A", url: "https://a.com", w: 1, h: 1 },
-        ],
-      },
-    });
+    const stripped = stripWidgetsFromLayouts(MIXED_LAYOUT);
     expect(stripped["1"]!.items.map((i) => i.id)).toEqual(["s1"]);
   });
 

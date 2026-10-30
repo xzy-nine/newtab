@@ -48,7 +48,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
           version: 11.21.0
 
@@ -133,7 +133,7 @@ jobs:
         with:
           ref: ${{ needs.release.outputs.release_git_tag }}
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
           version: 11.21.0
 
@@ -157,11 +157,12 @@ jobs:
           pnpm run zip:firefox
 
       - name: 上传构建产物（Artifact）
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: build-output
           path: .output/*.zip
           retention-days: 7
+          include-hidden-files: true
 
       - name: 上传构建产物到 Release
         env:

@@ -1,6 +1,15 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { ActivityCalendarPopup } from "@/components/widgets/activity/ActivityCalendarPopup";
+import { useFetchStub } from "@/test/support/fetch";
+import {
+  calendarFetch,
+  calendarItem,
+  isoInDays,
+  jsonResponse,
+  previewFetch,
+  routeFetch,
+} from "@/test/support/activity-fixtures";
 
 /**
  * 活动弹窗的行为测试。
@@ -14,56 +23,6 @@ import { ActivityCalendarPopup } from "@/components/widgets/activity/ActivityCal
  * 4. 切换游戏必须就地生效，且**不能卡在"加载中"**（曾因等待父级回灌 gameId 而卡死）；
  * 5. 迟到的旧请求结果不能覆盖新游戏的数据。
  */
-
-const CAPABILITIES_YS = {
-  json: "/api/v1/games/ys/calendar",
-  ics: "/api/v1/games/ys/calendar.ics",
-  selectors: [
-    {
-      value: "游戏内活动",
-      label: "游戏内活动",
-      children: [{ value: "游戏内活动:七圣召唤", label: "七圣召唤" }],
-    },
-    { value: "版本日程", label: "版本日程", children: [] },
-  ],
-};
-
-function isoInDays(days: number): string {
-  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
-}
-
-function calendarItem(overrides: Record<string, unknown>) {
-  return {
-    id: "e1",
-    kind: "游戏内活动",
-    title: "活动 A",
-    start: isoInDays(-1),
-    end: isoInDays(5),
-    all_day: false,
-    labels: [],
-    url: "https://example.com/a",
-    ...overrides,
-  };
-}
-
-function jsonResponse(payload: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => payload,
-  } as Response;
-}
-
-/** 按 URL 分派响应：capabilities 与 calendar 走不同分支。 */
-function routeFetch(handlers: { capabilities?: Response; calendar?: Response }) {
-  return vi.fn(async (input: RequestInfo | URL) => {
-    const url = String(input);
-    if (url.includes("/capabilities")) {
-      return handlers.capabilities ?? jsonResponse(CAPABILITIES_YS);
-    }
-    return handlers.calendar ?? jsonResponse({ total: 0, items: [] });
-  });
-}
 
 /**
  * 弹窗顶部"查看游戏"的单选按钮。
@@ -80,17 +39,23 @@ function gameViewButton(name: string): HTMLElement {
 }
 
 describe("ActivityCalendarPopup", () => {
-  const fetchMock = vi.fn();
+  const { fetchMock } = useFetchStub();
 
-  beforeEach(() => {
-    localStorage.clear();
-    fetchMock.mockReset();
-    vi.stubGlobal("fetch", fetchMock);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  /**
+   * 渲染甘特视图，并等指定数量的实心条出现。
+   * @param count 期望的实心条数量。
+   * @returns 渲染容器与实心条元素。
+   */
+  async function renderGantt(count: number) {
+    const { container } = render(<ActivityCalendarPopup data={{ view: "gantt" }} />);
+    await waitFor(() => {
+      expect(container.querySelectorAll(".activity-gantt-bar:not(.is-point)").length).toBe(count);
+    });
+    const bars = Array.from(
+      container.querySelectorAll<HTMLElement>(".activity-gantt-bar:not(.is-point)"),
+    );
+    return { container, bars };
+  }
 
   it("shows the unavailable state when capabilities 404s", async () => {
     // 崩坏3 / 未定事件簿等游戏实测返回 404 "calendar is not available"
@@ -150,21 +115,7 @@ describe("ActivityCalendarPopup", () => {
 
   it("draws 前瞻特别节目 as a point when point mode is enabled", async () => {
     fetchMock.mockImplementation(
-      routeFetch({
-        calendar: jsonResponse({
-          total: 1,
-          items: [
-            calendarItem({
-              id: "p",
-              kind: "版本日程",
-              title: "3.1版本前瞻特别节目",
-              labels: ["前瞻特别节目"],
-              start: isoInDays(1),
-              end: new Date(Date.now() + 24 * 60 * 60 * 1000 + 60 * 1000).toISOString(),
-            }),
-          ],
-        }),
-      }),
+      previewFetch(new Date(Date.now() + 24 * 60 * 60 * 1000 + 60 * 1000).toISOString()),
     );
 
     const { container } = render(
@@ -179,23 +130,7 @@ describe("ActivityCalendarPopup", () => {
   });
 
   it("hides 前瞻 by default in gantt view", async () => {
-    fetchMock.mockImplementation(
-      routeFetch({
-        calendar: jsonResponse({
-          total: 1,
-          items: [
-            calendarItem({
-              id: "p",
-              kind: "版本日程",
-              title: "3.1版本前瞻特别节目",
-              labels: ["前瞻特别节目"],
-              start: isoInDays(1),
-              end: isoInDays(1.1),
-            }),
-          ],
-        }),
-      }),
-    );
+    fetchMock.mockImplementation(previewFetch());
 
     const { container } = render(<ActivityCalendarPopup data={{ view: "gantt" }} />);
 
@@ -208,32 +143,23 @@ describe("ActivityCalendarPopup", () => {
   it("renders a weekly axis, a today marker and time-spanning bars", async () => {
     // 关键区别：条的宽度是真实时间跨度，并且横轴按整周分块、有贯穿的今天线
     fetchMock.mockImplementation(
-      routeFetch({
-        calendar: jsonResponse({
-          total: 2,
-          items: [
-            calendarItem({
-              id: "overlap-1",
-              title: "重叠活动甲",
-              start: isoInDays(1),
-              end: isoInDays(10),
-            }),
-            calendarItem({
-              id: "overlap-2",
-              title: "重叠活动乙",
-              start: isoInDays(3),
-              end: isoInDays(8),
-            }),
-          ],
+      calendarFetch([
+        calendarItem({
+          id: "overlap-1",
+          title: "重叠活动甲",
+          start: isoInDays(1),
+          end: isoInDays(10),
         }),
-      }),
+        calendarItem({
+          id: "overlap-2",
+          title: "重叠活动乙",
+          start: isoInDays(3),
+          end: isoInDays(8),
+        }),
+      ]),
     );
 
-    const { container } = render(<ActivityCalendarPopup data={{ view: "gantt" }} />);
-
-    await waitFor(() => {
-      expect(container.querySelectorAll(".activity-gantt-bar:not(.is-point)").length).toBe(2);
-    });
+    const { container, bars } = await renderGantt(2);
 
     // 周分块横轴 + 周序号/区间标签
     const weeks = container.querySelectorAll(".activity-gantt-week");
@@ -248,9 +174,6 @@ describe("ActivityCalendarPopup", () => {
     expect(screen.getByText(/今天/)).not.toBeNull();
 
     // 两个活动时间上重叠 → 必须分到不同泳道（纵向错开），否则会互相压住
-    const bars = Array.from(
-      container.querySelectorAll<HTMLElement>(".activity-gantt-bar:not(.is-point)"),
-    );
     const tops = bars.map((bar) => bar.style.top);
     expect(new Set(tops).size).toBe(2);
 
@@ -261,36 +184,15 @@ describe("ActivityCalendarPopup", () => {
 
   it("shares one lane when activities do not overlap", async () => {
     fetchMock.mockImplementation(
-      routeFetch({
-        calendar: jsonResponse({
-          total: 2,
-          items: [
-            calendarItem({
-              id: "seq-1",
-              title: "先发生的",
-              start: isoInDays(1),
-              end: isoInDays(3),
-            }),
-            calendarItem({
-              id: "seq-2",
-              title: "后发生的",
-              start: isoInDays(5),
-              end: isoInDays(7),
-            }),
-          ],
-        }),
-      }),
+      calendarFetch([
+        calendarItem({ id: "seq-1", title: "先发生的", start: isoInDays(1), end: isoInDays(3) }),
+        calendarItem({ id: "seq-2", title: "后发生的", start: isoInDays(5), end: isoInDays(7) }),
+      ]),
     );
 
-    const { container } = render(<ActivityCalendarPopup data={{ view: "gantt" }} />);
-
-    await waitFor(() => {
-      expect(container.querySelectorAll(".activity-gantt-bar:not(.is-point)").length).toBe(2);
-    });
     // 互不重叠 → 共用同一泳道（top 相同），行数不浪费
-    const tops = Array.from(
-      container.querySelectorAll<HTMLElement>(".activity-gantt-bar:not(.is-point)"),
-    ).map((bar) => bar.style.top);
+    const { bars } = await renderGantt(2);
+    const tops = bars.map((bar) => bar.style.top);
     expect(new Set(tops).size).toBe(1);
   });
 

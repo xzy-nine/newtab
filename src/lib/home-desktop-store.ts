@@ -1,15 +1,13 @@
 import { create } from "zustand";
 import {
-  DEFAULT_ITEM_NAME,
-  DEFAULT_SHORTCUT_COLOR,
   hasSameItemIdentity,
   isFolderItem,
   isWidgetItem,
+  mergeBookmarkShortcuts,
   reconcileFolderItems,
   type BookmarkFolderLike,
   type BookmarkLike,
   type DesktopItem,
-  type ShortcutItem,
 } from "@/lib/desktop-items";
 import { loadHomeDesktop, saveHomeDesktop, type PendingFolderChoice } from "@/lib/desktop-storage";
 
@@ -35,19 +33,6 @@ function schedulePersist(items: DesktopItem[]) {
 
 function generateId(): string {
   return `desktop-item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-/** 由书签构造桌面快捷方式。 */
-export function shortcutFromBookmark(bookmark: BookmarkLike): ShortcutItem {
-  return {
-    id: `shortcut:${bookmark.id}`,
-    type: "shortcut",
-    name: bookmark.title || bookmark.url || DEFAULT_ITEM_NAME,
-    url: bookmark.url,
-    color: DEFAULT_SHORTCUT_COLOR,
-    w: 1,
-    h: 1,
-  };
 }
 
 interface HomeDesktopState {
@@ -136,17 +121,7 @@ export const useHomeDesktop = create<HomeDesktopState>((set, get) => ({
 
   pinBookmarks: (bookmarks) => {
     const prev = get().items;
-    const pinnedUrls = new Set(
-      prev.filter((it): it is ShortcutItem => it.type === "shortcut").map((it) => it.url),
-    );
-    // 同一 URL 只固定一次；请求内也去重。
-    const seen = new Set<string>();
-    const additions: ShortcutItem[] = [];
-    for (const bookmark of bookmarks) {
-      if (!bookmark.url || pinnedUrls.has(bookmark.url) || seen.has(bookmark.url)) continue;
-      seen.add(bookmark.url);
-      additions.push(shortcutFromBookmark(bookmark));
-    }
+    const additions = mergeBookmarkShortcuts(bookmarks, prev);
     if (additions.length === 0) return;
     const items = [...prev, ...additions];
     set({ items });
@@ -167,17 +142,7 @@ export const useHomeDesktop = create<HomeDesktopState>((set, get) => ({
     const prev = get().items;
     // 移除该文件夹图标（即时反馈，不等 reconcile）。
     const withoutFolder = prev.filter((it) => !(isFolderItem(it) && it.folderId === folderId));
-    // 追加书签快捷方式（对已存在 URL 去重）。
-    const pinnedUrls = new Set(
-      withoutFolder.filter((it): it is ShortcutItem => it.type === "shortcut").map((it) => it.url),
-    );
-    const seen = new Set<string>();
-    const additions: ShortcutItem[] = [];
-    for (const bookmark of bookmarks) {
-      if (!bookmark.url || pinnedUrls.has(bookmark.url) || seen.has(bookmark.url)) continue;
-      seen.add(bookmark.url);
-      additions.push(shortcutFromBookmark(bookmark));
-    }
+    const additions = mergeBookmarkShortcuts(bookmarks, withoutFolder);
     const items = [...withoutFolder, ...additions];
     set({ items, pendingFolderChoice: null });
     schedulePersist(items);

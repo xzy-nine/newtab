@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarDays, Pin, RefreshCw } from "lucide-react";
 import { getMessage } from "@/lib/i18n";
+import { useNow } from "@/hooks/useNow";
 import { resolveWidgetSizeMode, widgetPadding } from "@/lib/widget-layout";
 import {
   CALENDAR_GAME_IDS,
@@ -25,26 +26,14 @@ import {
   type ActivityTileRow,
   type GameEntries,
   type PinnedMap,
-  type RemainingText,
 } from "@/components/widgets/activity/activity";
+import { remainingLabel } from "@/components/widgets/activity/labels";
 
 interface ActivityWidgetProps {
   data?: Record<string, unknown>;
   onDataChange?: (data: Record<string, unknown>) => void;
   containerWidth?: number;
   containerHeight?: number;
-}
-
-/** 剩余时间文案（getMessage 不做插值，故在此替换占位符）。 */
-function remainingLabel(remaining: RemainingText): string {
-  if (remaining.unit === "ended") return getMessage("hoyoActivityEnded", "已结束");
-  if (remaining.unit === "hours") {
-    return getMessage("hoyoActivityHoursLeft", "剩 {n} 小时").replace(
-      "{n}",
-      String(remaining.value),
-    );
-  }
-  return getMessage("hoyoActivityDaysLeft", "剩 {n} 天").replace("{n}", String(remaining.value));
 }
 
 /**
@@ -85,11 +74,10 @@ export function ActivityWidget({
     [displayGames],
   );
   /**
-   * 当前时间作为 state（而非渲染期直接调用 Date.now()）。
-   * 每 60 秒刷新一次，让「剩 X 小时」等相对时间能自行走动；
+   * 当前时间：让「剩 X 小时」等相对时间能自行走动；
    * 跨天后 todayKey 变化会推动窗口滚动，从而触发重新取数（长 TTL 的配套）。
    */
-  const [now, setNow] = useState(() => Date.now());
+  const now = useNow();
   const todayKey = utc8DayKey(now);
   const to = useMemo(() => addDaysToDayKey(todayKey, DEFAULT_WINDOW_DAYS), [todayKey]);
 
@@ -127,11 +115,6 @@ export function ActivityWidget({
   // 无任何可用数据时才显示"加载中"，避免先闪一下"暂无活动"
   const [loading, setLoading] = useState(() => cached === null);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
 
   const load = useCallback(
     async (force: boolean) => {

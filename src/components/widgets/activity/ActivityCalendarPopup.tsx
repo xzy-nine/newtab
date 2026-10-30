@@ -38,9 +38,10 @@ import {
   utc8WeekdayLabel,
   type CalendarCapabilities,
   type ParsedActivityEntry,
-  type RemainingText,
   type ViewMode,
 } from "@/components/widgets/activity/activity";
+import { remainingLabel } from "@/components/widgets/activity/labels";
+import { useNow } from "@/hooks/useNow";
 
 interface ActivityCalendarPopupProps {
   data?: Record<string, unknown>;
@@ -75,17 +76,6 @@ function windowOptionLabel(days: number): string {
   if (days === 180) return getMessage("hoyoActivityHalfYear", "半年");
   if (days === 365) return getMessage("hoyoActivityOneYear", "一年");
   return `${days} ${getMessage("hoyoActivityDays", "天")}`;
-}
-
-function remainingLabel(remaining: RemainingText): string {
-  if (remaining.unit === "ended") return getMessage("hoyoActivityEnded", "已结束");
-  if (remaining.unit === "hours") {
-    return getMessage("hoyoActivityHoursLeft", "剩 {n} 小时").replace(
-      "{n}",
-      String(remaining.value),
-    );
-  }
-  return getMessage("hoyoActivityDaysLeft", "剩 {n} 天").replace("{n}", String(remaining.value));
 }
 
 /**
@@ -138,8 +128,8 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
   const [unavailable, setUnavailable] = useState(false);
   const [error, setError] = useState("");
 
-  // 当前时间作为 state：既用于状态判定，也用于跨天推动窗口滚动
-  const [now, setNow] = useState(() => Date.now());
+  // 当前时间：既用于状态判定，也用于跨天推动窗口滚动
+  const now = useNow();
   const from = utc8DayKey(now);
   const query = useMemo(
     () => ({ gameId, from, to: addDaysToDayKey(from, DEFAULT_WINDOW_DAYS) }),
@@ -193,11 +183,6 @@ export function ActivityCalendarPopup({ data, onDataChange }: ActivityCalendarPo
     },
     [gameId, query],
   );
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
 
   // 包一层 async IIFE，避免被判定为「effect 内同步 setState」
   useEffect(() => {

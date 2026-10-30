@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { bookmarkLikesFromNodes } from "@/lib/desktop-items";
 
 type BNode = chrome.bookmarks.BookmarkTreeNode;
 
@@ -166,11 +167,7 @@ export function useBookmarkFolders() {
   const getFolderBookmarks = useCallback(async (folderId: string): Promise<BookmarkItem[]> => {
     try {
       const [folder] = await browser.bookmarks.getSubTree(folderId);
-      if (folder?.children) {
-        return folder.children
-          .filter((c): c is BNode & { url: string } => !!c.url)
-          .map((c) => ({ id: c.id, title: c.title || c.url, url: c.url }));
-      }
+      return bookmarkLikesFromNodes(folder?.children);
     } catch (e) {
       console.error("获取书签失败:", e);
     }

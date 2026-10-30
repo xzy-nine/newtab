@@ -6,7 +6,7 @@
  */
 
 /** 对话消息角色。与 OpenAI 兼容接口的 role 取值保持一致。 */
-export type AIRole = "user" | "assistant" | "system";
+type AIRole = "user" | "assistant" | "system";
 
 /** 一条对话消息。 */
 export interface AIMessage {
@@ -35,7 +35,7 @@ export interface ChatStreamCallbacks {
 }
 
 /** `sendMessage` 的调用方回调。 */
-export interface SendMessageCallbacks extends ChatStreamCallbacks {
+interface SendMessageCallbacks extends ChatStreamCallbacks {
   onDone?: () => void;
   onError?: (err: Error) => void;
 }

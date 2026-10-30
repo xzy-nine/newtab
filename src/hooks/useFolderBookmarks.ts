@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { BookmarkLike } from "@/lib/desktop-items";
+import { bookmarkLikesFromNodes, type BookmarkLike } from "@/lib/desktop-items";
 
 /**
  * 读取某个书签文件夹内的书签。
@@ -24,11 +24,7 @@ export function useFolderBookmarks(folderId: string | null | undefined): {
       let items: BookmarkLike[] = [];
       try {
         const [folder] = await browser.bookmarks.getSubTree(key);
-        if (folder?.children) {
-          items = folder.children
-            .filter((c): c is chrome.bookmarks.BookmarkTreeNode & { url: string } => !!c.url)
-            .map((c) => ({ id: c.id, title: c.title || c.url, url: c.url }));
-        }
+        items = bookmarkLikesFromNodes(folder?.children);
       } catch (e) {
         console.error("获取书签失败:", e);
       }

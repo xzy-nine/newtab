@@ -24,16 +24,6 @@ import { readFreshCache, readStaleCache, removeCache, writeCache } from "@/lib/c
 /** Akasha 服务地址。 */
 const AKASHA_BASE = "https://akasha.trrw.cn";
 
-/** 每条日程记录在数据库中的分类（`kind`），API 只会有这六种。 */
-const CALENDAR_KINDS = [
-  "游戏内活动",
-  "网页活动",
-  "版本日程",
-  "卡池",
-  "通行证",
-  "角色生日",
-] as const;
-
 /** 支持日程的游戏 ID；其余游戏调用日程接口会返回 404。 */
 export const CALENDAR_GAME_IDS = ["ys", "sr", "zzz"] as const;
 
@@ -100,9 +90,6 @@ export const EMPTY_RESULT_TTL_MS = 60 * 60 * 1000;
 
 /** 筛选规则（capabilities）的缓存时长：结构极少变动。 */
 const CAPABILITIES_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-/** 游戏列表的缓存时长。 */
-const GAMES_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** 默认时间窗口长度（天）；接口 `to` 缺省为 from + 366 天。 */
 export const DEFAULT_WINDOW_DAYS = 366;
@@ -447,12 +434,6 @@ export function daysUntilEnd(entry: ParsedActivityEntry, now: number): number {
   return Math.ceil((entry.endMs - now) / DAY_MS);
 }
 
-/** 距开始还有多少天（向上取整）；已开始返回 0。 */
-function daysUntilStart(entry: ParsedActivityEntry, now: number): number {
-  if (now >= entry.startMs) return 0;
-  return Math.ceil((entry.startMs - now) / DAY_MS);
-}
-
 /**
  * 「即将截止」的判定阈值：距结束不足该天数即标红提醒。
  *
@@ -530,11 +511,6 @@ export function selectPinned(
 /** 切换某个 id 的固定状态，返回新的固定列表。 */
 export function togglePinned(pinnedIds: readonly string[], id: string): string[] {
   return pinnedIds.includes(id) ? pinnedIds.filter((item) => item !== id) : [...pinnedIds, id];
-}
-
-/** 某条日程是否被固定。 */
-function isPinned(pinnedIds: readonly string[], id: string): boolean {
-  return pinnedIds.includes(id);
 }
 
 /**
@@ -1454,9 +1430,6 @@ function calendarCapabilitiesPath(gameId: string): string {
   return `/api/v1/games/${encodeURIComponent(gameId)}/calendar/capabilities`;
 }
 
-/** 游戏列表路径。 */
-const GAMES_PATH = "/api/v1/games";
-
 export interface CalendarQuery {
   gameId: string;
   /** 开始日期 `YYYY-MM-DD`。 */
@@ -1529,11 +1502,6 @@ function isUsableCapabilities(value: unknown): value is CalendarCapabilities {
   if (!value || typeof value !== "object") return false;
   const c = value as Partial<CalendarCapabilities>;
   return typeof c.gameId === "string" && Array.isArray(c.selectors);
-}
-
-/** 缓存是否可用（游戏列表）。 */
-function isUsableGames(value: unknown): value is GameSummary[] {
-  return Array.isArray(value);
 }
 
 // ───────────────────────────────── 网络 ─────────────────────────────────
@@ -1723,28 +1691,6 @@ export async function fetchCapabilities(
     validate,
     options.force === true,
   ) as Promise<CalendarCapabilities | null>;
-}
-
-/** 取游戏列表（用于展示游戏名与图标）。 */
-async function fetchGames(options: { force?: boolean } = {}): Promise<GameSummary[]> {
-  const key = `${CACHE_PREFIX}games`;
-
-  function isEmptyGames(value: GameSummary[]): boolean {
-    return value.length === 0;
-  }
-
-  return readThroughBucket(
-    key,
-    async () => {
-      const { ok, status, data } = await fetchJson(`${AKASHA_BASE}${GAMES_PATH}`);
-      if (!ok) throw new Error(`HTTP ${status}`);
-      return normalizeGamesResponse(data);
-    },
-    GAMES_TTL_MS,
-    isEmptyGames,
-    isUsableGames,
-    options.force === true,
-  );
 }
 
 /** 按 id 取游戏名，取不到时回落到内置中文名。 */

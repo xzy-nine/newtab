@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { RssWidget } from "@/components/widgets/rss/RssWidget";
 import { RssFeedPopup } from "@/components/widgets/rss/RssFeedPopup";
 import { DEFAULT_FEED_URL } from "@/components/widgets/rss/rss";
+import { useFetchStub } from "@/test/support/fetch";
 
 /**
  * RSS 小部件的渲染测试。
@@ -39,17 +40,7 @@ function textResponse(body: string, ok = true, status = ok ? 200 : 500) {
 }
 
 describe("RssWidget", () => {
-  const fetchMock = vi.fn();
-
-  beforeEach(() => {
-    localStorage.clear();
-    fetchMock.mockReset();
-    vi.stubGlobal("fetch", fetchMock);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  const { fetchMock } = useFetchStub();
 
   it("subscribes to the DeepSeek status feed by default", async () => {
     fetchMock.mockResolvedValue(textResponse(FEED_XML));
@@ -209,17 +200,7 @@ describe("RssWidget", () => {
 });
 
 describe("RssFeedPopup", () => {
-  const fetchMock = vi.fn();
-
-  beforeEach(() => {
-    localStorage.clear();
-    fetchMock.mockReset();
-    vi.stubGlobal("fetch", fetchMock);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  const { fetchMock } = useFetchStub();
 
   it("lists every entry with its summary", async () => {
     fetchMock.mockResolvedValue(textResponse(FEED_XML));

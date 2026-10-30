@@ -1,8 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { render, screen, waitFor } from "@testing-library/react";
 import { ActivityWidget } from "@/components/widgets/activity/ActivityWidget";
+import { useFetchStub } from "@/test/support/fetch";
+import {
+  calendarItem,
+  gameOf,
+  gameScopedFetch,
+  isoInDays,
+  jsonResponse,
+  only,
+  requestedGames,
+} from "@/test/support/activity-fixtures";
 
 /**
  * 活动小部件（磁贴）的行为测试。
@@ -17,64 +27,20 @@ import { ActivityWidget } from "@/components/widgets/activity/ActivityWidget";
  * 另外钉住"允许外部滚动"：阈值内的条目全部渲染，不按磁贴高度截断。
  */
 
-/** 构造一个 ISO 时间：相对当前时间偏移若干天。 */
-function isoInDays(days: number): string {
-  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
-}
-
-/**
- * 默认结束时间取"2 天后"，刻意留在 3 天阈值**以内**。
- *
- * 阈值是闭区间（距结束 ≤ 3 天），而 `isoInDays(3)` 是在取数前构造的，
- * 等到磁贴渲染时已经比此刻早了几毫秒，恰好落到阈值之外——
- * 边界值只应在专门测边界的用例里出现，默认夹具不该踩在上面。
- */
-function calendarItem(overrides: Record<string, unknown>) {
-  return {
-    id: "e1",
-    kind: "游戏内活动",
-    title: "活动 A",
-    start: isoInDays(-1),
-    end: isoInDays(2),
-    all_day: false,
-    version: "7.0",
-    labels: [],
-    url: "https://example.com/a",
-    ...overrides,
-  };
-}
-
-function jsonResponse(payload: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => payload,
-  } as Response;
-}
-
-/** 只外显指定游戏的配置（测试里用它把多游戏请求收窄成单游戏）。 */
-function only(...games: string[]) {
-  return { displayGames: { mode: "custom" as const, games } };
-}
-
-/** 该 URL 属于哪个游戏。 */
-function gameOf(url: string): string {
-  const match = /\/api\/v1\/games\/([^/]+)\/calendar/.exec(url);
-  return match?.[1] ?? "";
-}
-
 describe("ActivityWidget", () => {
-  const fetchMock = vi.fn();
+  const { fetchMock } = useFetchStub();
 
-  beforeEach(() => {
-    localStorage.clear();
-    fetchMock.mockReset();
-    vi.stubGlobal("fetch", fetchMock);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  /**
+   * 渲染磁贴并等待原神的活动渲染完成。
+   * @param data 小部件数据；缺省为只外显原神。
+   */
+  async function renderActivity(data: Record<string, unknown> = only("ys")) {
+    const result = render(<ActivityWidget data={data} />);
+    await waitFor(() => {
+      expect(screen.queryByText("ys 的活动")).not.toBeNull();
+    });
+    return result;
+  }
 
   it("renders the soonest-expiring activity after loading", async () => {
     fetchMock.mockResolvedValue(
@@ -240,9 +206,7 @@ describe("ActivityWidget", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalled();
     });
-    const games = new Set(
-      fetchMock.mock.calls.map((call) => gameOf(String(call[0]))).filter((id) => id !== ""),
-    );
+    const games = requestedGames(fetchMock);
     expect(games).toEqual(new Set(["ys", "sr", "zzz"]));
   });
 
@@ -254,9 +218,7 @@ describe("ActivityWidget", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalled();
     });
-    const games = new Set(
-      fetchMock.mock.calls.map((call) => gameOf(String(call[0]))).filter((id) => id !== ""),
-    );
+    const games = requestedGames(fetchMock);
     // 只勾选星铁 → 绝不能请求原神/绝区零（这是"不显示某个游戏"的实现基础）
     expect(games).toEqual(new Set(["sr"]));
   });
@@ -278,18 +240,9 @@ describe("ActivityWidget", () => {
   it("ignores the popup's current game and keeps showing only the display games", async () => {
     // 需求 4：弹窗里切到星铁，磁贴不应跟着换；它只认 displayGames
     // 结束时间取阈值内（2 天），确保这些行确实会渲染，才谈得上"换没换"
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-      const game = gameOf(String(input));
-      return jsonResponse({
-        total: 1,
-        items: [calendarItem({ id: `${game}-1`, title: `${game} 的活动`, end: isoInDays(2) })],
-      });
-    });
+    fetchMock.mockImplementation(gameScopedFetch());
 
-    const { rerender } = render(<ActivityWidget data={{ ...only("ys"), gameId: "ys" }} />);
-    await waitFor(() => {
-      expect(screen.queryByText("ys 的活动")).not.toBeNull();
-    });
+    const { rerender } = await renderActivity({ ...only("ys"), gameId: "ys" });
 
     // 只改弹窗查看的游戏，displayGames 不变
     rerender(<ActivityWidget data={{ ...only("ys"), gameId: "sr" }} />);
@@ -302,18 +255,9 @@ describe("ActivityWidget", () => {
   });
 
   it("follows displayGames changes and drops the previous game's data", async () => {
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-      const game = gameOf(String(input));
-      return jsonResponse({
-        total: 1,
-        items: [calendarItem({ id: `${game}-1`, title: `${game} 的活动`, end: isoInDays(2) })],
-      });
-    });
+    fetchMock.mockImplementation(gameScopedFetch());
 
-    const { rerender } = render(<ActivityWidget data={only("ys")} />);
-    await waitFor(() => {
-      expect(screen.queryByText("ys 的活动")).not.toBeNull();
-    });
+    const { rerender } = await renderActivity();
 
     rerender(<ActivityWidget data={only("sr")} />);
 
@@ -388,9 +332,7 @@ describe("ActivityWidget", () => {
       expect(screen.queryByText("sr 固定项")).not.toBeNull();
     });
     // 该游戏未被勾选，因此仍要单独为它取数，否则固定项取不到
-    const games = new Set(
-      fetchMock.mock.calls.map((call) => gameOf(String(call[0]))).filter((id) => id !== ""),
-    );
+    const games = requestedGames(fetchMock);
     expect(games).toEqual(new Set(["ys", "sr"]));
   });
 

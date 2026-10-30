@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { getMessage } from "@/lib/i18n";
+import { useNow } from "@/hooks/useNow";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { openUrl } from "@/lib/open-url";
@@ -53,16 +54,11 @@ export function RssFeedPopup({ data, onDataChange }: RssFeedPopupProps) {
   const snapshot = fetched?.url === url ? fetched.snapshot : cached;
   const [loading, setLoading] = useState(() => cached === null);
   const [error, setError] = useState("");
-  const [now, setNow] = useState(() => Date.now());
+  const now = useNow();
   /** 当前展示的是回落的旧内容而非本次联网结果。 */
   const [stale, setStale] = useState(false);
   /** 每次请求的序号：丢弃迟到的旧响应，避免覆盖新订阅的数据。 */
   const requestRef = useRef(0);
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
 
   const load = useCallback(async (target: string) => {
     const token = ++requestRef.current;

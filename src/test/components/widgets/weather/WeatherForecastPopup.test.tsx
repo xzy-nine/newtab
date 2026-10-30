@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { WeatherForecastPopup } from "@/components/widgets/weather/WeatherForecastPopup";
 import { forecastCacheKey } from "@/components/widgets/weather/weather";
+import { useFetchStub } from "@/test/support/fetch";
 
 /**
  * 展开弹窗的按需请求与缓存行为。
@@ -68,24 +69,27 @@ function seedCache(city: string) {
   );
 }
 
+/** 缓存键，测试里反复用到同一城市。 */
+function cacheKeyFor(city: string): string {
+  return `newtab:cache:${forecastCacheKey({ city, lang: "zh" })}`;
+}
+
 describe("WeatherForecastPopup", () => {
-  const fetchMock = vi.fn();
+  const { fetchMock } = useFetchStub();
 
-  beforeEach(() => {
-    localStorage.clear();
-    fetchMock.mockReset();
-    vi.stubGlobal("fetch", fetchMock);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  /** 渲染弹窗并等待首个预报渲染完成。 */
+  async function renderPopup(city = "北京") {
+    const result = render(<WeatherForecastPopup data={{ city }} />);
+    await waitFor(() => {
+      expect(screen.queryByText("17:00")).not.toBeNull();
+    });
+    return result;
+  }
 
   it("fetches the forecast on mount (i.e. only after expanding)", async () => {
     fetchMock.mockResolvedValue(ok(FORECAST));
-    render(<WeatherForecastPopup data={{ city: "北京" }} />);
+    await renderPopup();
 
-    await waitFor(() => expect(screen.queryByText("17:00")).not.toBeNull());
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const url = String(fetchMock.mock.calls[0]![0]);
     expect(url).toContain("hourly=true");
@@ -109,8 +113,7 @@ describe("WeatherForecastPopup", () => {
       }),
     );
 
-    render(<WeatherForecastPopup data={{ city: "北京" }} />);
-    await waitFor(() => expect(screen.queryByText("17:00")).not.toBeNull());
+    await renderPopup();
 
     // 必须有实际图标，不能是问号占位
     expect(screen.queryByText("⛅")).not.toBeNull();
@@ -122,8 +125,7 @@ describe("WeatherForecastPopup", () => {
 
   it("keeps the hourly and daily sections in separate scroll containers", async () => {
     fetchMock.mockResolvedValue(ok(FORECAST));
-    const { container } = render(<WeatherForecastPopup data={{ city: "北京" }} />);
-    await waitFor(() => expect(screen.queryByText("17:00")).not.toBeNull());
+    const { container } = await renderPopup();
 
     const hourly = container.querySelector(".weather-hourly");
     const daily = container.querySelector(".weather-daily");
@@ -136,18 +138,15 @@ describe("WeatherForecastPopup", () => {
 
   it("serves a cached forecast without any network request", async () => {
     seedCache("北京");
+    await renderPopup();
 
-    render(<WeatherForecastPopup data={{ city: "北京" }} />);
-
-    await waitFor(() => expect(screen.queryByText("17:00")).not.toBeNull());
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("does not reuse another city's cache", async () => {
     seedCache("上海");
-
     fetchMock.mockResolvedValue(ok(FORECAST));
-    render(<WeatherForecastPopup data={{ city: "北京" }} />);
+    await renderPopup();
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(String(fetchMock.mock.calls[0]![0])).toContain(encodeURIComponent("北京"));
@@ -155,12 +154,9 @@ describe("WeatherForecastPopup", () => {
 
   it("writes the fetched forecast into the 24h cache", async () => {
     fetchMock.mockResolvedValue(ok(FORECAST));
-    render(<WeatherForecastPopup data={{ city: "北京" }} />);
+    await renderPopup();
 
-    await waitFor(() => expect(screen.queryByText("17:00")).not.toBeNull());
-    const stored = localStorage.getItem(
-      `newtab:cache:${forecastCacheKey({ city: "北京", lang: "zh" })}`,
-    );
+    const stored = localStorage.getItem(cacheKeyFor("北京"));
     expect(stored).not.toBeNull();
     const record = JSON.parse(stored!) as { ttl: number; value: typeof NORMALIZED_FORECAST };
     expect(record.ttl).toBe(24 * 60 * 60 * 1000);
@@ -170,7 +166,6 @@ describe("WeatherForecastPopup", () => {
   it("shows an error state instead of crashing when the request fails", async () => {
     // 503 可重试：会退避重试到次数上限后才报错
     fetchMock.mockResolvedValue(fail(503));
-
     render(<WeatherForecastPopup data={{ city: "北京" }} />);
 
     await waitFor(
@@ -184,15 +179,13 @@ describe("WeatherForecastPopup", () => {
   it("recovers from a corrupted cached value instead of rendering undefined", async () => {
     // 结构不合法的缓存：旧版本写入或外部损坏
     localStorage.setItem(
-      `newtab:cache:${forecastCacheKey({ city: "北京", lang: "zh" })}`,
+      cacheKeyFor("北京"),
       JSON.stringify({ savedAt: Date.now(), ttl: 24 * 60 * 60 * 1000, value: { nope: true } }),
     );
     fetchMock.mockResolvedValue(ok(FORECAST));
 
-    render(<WeatherForecastPopup data={{ city: "北京" }} />);
-
     // 坏缓存被丢弃并重新请求，最终正常渲染
-    await waitFor(() => expect(screen.queryByText("17:00")).not.toBeNull());
+    await renderPopup();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

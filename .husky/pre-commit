@@ -1,1 +1,2 @@
 lint-staged
+node scripts/run-hooks.mjs pre-commit

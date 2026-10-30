@@ -177,6 +177,12 @@ export function TimerWidget({
     [isRunning],
   );
 
+  /** 从某个十位数字进位到更高的位：m2 满 10 进位到 m1。 */
+  const carryTensToMinutes = (d: Record<DigitPos, number>): void => {
+    d.m2 = (d.m2 + 1) % 10;
+    if (d.m2 === 0) d.m1 = (d.m1 + 1) % 10;
+  };
+
   const incrementDigit = useCallback(
     (pos: DigitPos) => {
       const d = { ...digitsRef.current };
@@ -184,20 +190,13 @@ export function TimerWidget({
         d.s2 = (d.s2 + 1) % 10;
         if (d.s2 === 0) {
           d.s1 = (d.s1 + 1) % 6;
-          if (d.s1 === 0) {
-            d.m2 = (d.m2 + 1) % 10;
-            if (d.m2 === 0) d.m1 = (d.m1 + 1) % 10;
-          }
+          if (d.s1 === 0) carryTensToMinutes(d);
         }
       } else if (pos === "s1") {
         d.s1 = (d.s1 + 1) % 6;
-        if (d.s1 === 0) {
-          d.m2 = (d.m2 + 1) % 10;
-          if (d.m2 === 0) d.m1 = (d.m1 + 1) % 10;
-        }
+        if (d.s1 === 0) carryTensToMinutes(d);
       } else if (pos === "m2") {
-        d.m2 = (d.m2 + 1) % 10;
-        if (d.m2 === 0) d.m1 = (d.m1 + 1) % 10;
+        carryTensToMinutes(d);
       } else if (pos === "m1") {
         d.m1 = (d.m1 + 1) % 10;
       }

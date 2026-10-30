@@ -10,34 +10,6 @@ interface IconResult {
   score: number;
 }
 
-async function getIconUrl(url: string): Promise<string> {
-  if (!url) return "";
-
-  try {
-    const domain = getDomain(url);
-
-    if (iconCache.has(domain)) {
-      return stripFallbackPrefix(iconCache.get(domain)!.data);
-    }
-
-    try {
-      const cached = (await chrome.storage.local.get([url, domain])) as Record<
-        string,
-        string | undefined
-      >;
-      const iconData = cached[url] || cached[domain];
-      if (iconData && !iconData.startsWith("data:text/html")) {
-        iconCache.set(domain, { data: iconData, timestamp: Date.now() });
-        return stripFallbackPrefix(iconData);
-      }
-    } catch {}
-
-    return generateInitialBasedIcon(domain);
-  } catch {
-    return "";
-  }
-}
-
 export async function fetchIconFromSources(url: string, domain: string): Promise<string | null> {
   try {
     const cached = (await chrome.storage.local.get([url, domain])) as Record<

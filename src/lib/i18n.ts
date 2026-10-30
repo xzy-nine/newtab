@@ -1,5 +1,4 @@
-let currentLanguage = "zh";
-let translations: Record<string, { message: string }> = {};
+const currentLanguage = "zh";
 
 const FALLBACK_TRANSLATIONS: Record<string, Partial<Record<string, string>>> = {
   zh: {
@@ -54,43 +53,12 @@ const FALLBACK_TRANSLATIONS: Record<string, Partial<Record<string, string>>> = {
   },
 };
 
-async function loadTranslationsFromFiles(language: string) {
-  const locale = language === "zh" ? "zh_CN" : "en";
-  try {
-    const response = await fetch(`/_locales/${locale}/messages.json`);
-    if (response.ok) {
-      const data = await response.json();
-      translations = data;
-      return;
-    }
-  } catch {}
-  try {
-    const fallback = await fetch("/_locales/en/messages.json");
-    if (fallback.ok) {
-      const data = await fallback.json();
-      translations = data;
-    }
-  } catch {}
-}
-
-async function initI18n() {
-  try {
-    const result = (await chrome.storage.sync.get("language")) as { language?: string };
-    currentLanguage = result.language || "zh";
-  } catch {
-    currentLanguage = navigator.language.slice(0, 2);
-    if (!["zh", "en"].includes(currentLanguage)) currentLanguage = "en";
-  }
-  await loadTranslationsFromFiles(currentLanguage);
-}
-
 export function getMessage(key: string, defaultValue = ""): string {
   if (currentLanguage === "zh" && defaultValue) return defaultValue;
   try {
     const msg = chrome.i18n?.getMessage(key);
     if (msg) return msg;
   } catch {}
-  if (translations[key]?.message) return translations[key].message;
   if (FALLBACK_TRANSLATIONS[currentLanguage]?.[key])
     return FALLBACK_TRANSLATIONS[currentLanguage][key]!;
   if (FALLBACK_TRANSLATIONS.en?.[key]) return FALLBACK_TRANSLATIONS.en[key]!;
@@ -99,12 +67,4 @@ export function getMessage(key: string, defaultValue = ""): string {
 
 export function getCurrentLanguage(): string {
   return currentLanguage;
-}
-
-async function changeLanguage(language: string) {
-  currentLanguage = language;
-  try {
-    await chrome.storage.sync.set({ language });
-  } catch {}
-  await loadTranslationsFromFiles(language);
 }
