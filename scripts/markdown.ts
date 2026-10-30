@@ -4,6 +4,7 @@ import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { gfm } from "micromark-extension-gfm";
 import type { Nodes } from "mdast";
+import { splitLines } from "./repo-files.ts";
 
 /** 围栏代码块与渲染时消失的 HTML 注释之外的一行手写 Markdown。 */
 export interface MarkdownProseLine {
@@ -169,7 +170,7 @@ export function markdownDestination(
  * @returns 每个块的起始行、语言、info string 与块体。
  */
 export function markdownFences(source: string): MarkdownFence[] {
-  const lines = source.split("\n");
+  const lines = splitLines(source);
   const fences: MarkdownFence[] = [];
   visitMarkdown(parseMarkdown(source), (node) => {
     if (node.type !== "code" || node.position === undefined) return;
@@ -202,7 +203,7 @@ export function markdownHeadingLines(
   source: string,
   tree: Nodes = parseMarkdown(source),
 ): MarkdownHeadingLine[] {
-  const rawLines = source.split("\n");
+  const rawLines = splitLines(source);
   const headings: MarkdownHeadingLine[] = [];
   visitMarkdown(tree, (node) => {
     if (node.type !== "heading" || node.position === undefined) return;
@@ -280,7 +281,7 @@ export function markdownProseLines(
   source: string,
   tree: Nodes = parseMarkdown(source),
 ): MarkdownProseLine[] {
-  const rawLines = source.split("\n");
+  const rawLines = splitLines(source);
   const comments = htmlCommentRanges(tree, rawLines);
   const fenced = new Set<number>();
   visitMarkdown(tree, (node) => {

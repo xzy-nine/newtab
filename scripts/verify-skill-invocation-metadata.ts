@@ -6,6 +6,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { load } from "js-yaml";
+import { splitLines } from "./repo-files.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -18,7 +19,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 
 /** 把技能的 YAML frontmatter 解析为对象。 */
 function parseSkillFrontmatter(source: string): Record<string, unknown> {
-  const lines = source.split("\n");
+  const lines = splitLines(source);
   if (lines[0] !== "---") throw new Error("SKILL.md must start with YAML frontmatter");
   const end = lines.indexOf("---", 1);
   if (end < 0) throw new Error("SKILL.md frontmatter is not closed");

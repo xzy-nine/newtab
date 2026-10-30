@@ -7,6 +7,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { agentNoteRoot, walkAgentNoteTree } from "./agent-note-tree.ts";
+import { splitLines } from "./repo-files.ts";
 
 /** 这些格式规则的生效日期；豁免注释仅在该日期之前有效。 */
 const FORMAT_ADOPTED = "2026-07-05";
@@ -43,7 +44,7 @@ for (const note of notes) {
   const fail = (msg: string): void => {
     errors.push(`format: ${note.rel} — ${msg}`);
   };
-  const lines = readFileSync(resolve(agentNoteRoot, note.rel), "utf8").split("\n");
+  const lines = splitLines(readFileSync(resolve(agentNoteRoot, note.rel), "utf8"));
   // 围栏示例中的格式 token 不构成文档结构。
   let inFence = false;
   const prose = lines.filter((l) => {

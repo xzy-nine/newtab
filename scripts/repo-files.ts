@@ -35,6 +35,19 @@ export function isArchivedAgentNotePath(path: string): boolean {
 }
 
 /**
+ * 按行切分文本，兼容 LF 与 CRLF。
+ *
+ * 同一份文件在不同平台检出时的行尾不同，门禁读到的源可能是任一种。按 `"\n"` 直接
+ * 切分会给每行末尾留下 `"\r"`，使逐行精确比较与行首正则全部失配——空行判定、
+ * `Status:` 行匹配这类规则会整体失效。
+ * @param source - 待切分的文本。
+ * @returns 不含行尾符的逐行数组。
+ */
+export function splitLines(source: string): string[] {
+  return source.split(/\r?\n/);
+}
+
+/**
  * 判断模式段是否匹配一个目录或文件名。支持段内的 `*`、`?`，并遵循 node
  * glob 的 `dot: false`：首字符为通配符的段不匹配点开头的名字。`**` 由
  * 遍历器整体处理，不进入此函数。
@@ -275,7 +288,7 @@ export function findReferenceViolations(
   const file = relative(root, absPath).split(sep).join("/");
   const out: ReferenceViolation[] = [];
   const source = readFileSync(absPath, "utf8");
-  const lines = source.split("\n");
+  const lines = splitLines(source);
   const excluded = excludedRange?.(file, source);
   for (let i = 0; i < lines.length; i++) {
     if (excluded !== undefined && i >= excluded[0] && i < excluded[1]) continue;

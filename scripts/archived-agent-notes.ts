@@ -8,6 +8,7 @@
 
 import { createHash } from "node:crypto";
 import { AGENT_NOTE_CLASSES } from "./agent-note-tree.ts";
+import { splitLines } from "./repo-files.ts";
 
 /** 冻结内容清单中的版本化字段。 */
 export interface ArchiveManifest {
@@ -90,7 +91,7 @@ function validDate(value: string): boolean {
 
 function validateMetadata(path: string, content: Buffer, sourceBase: string): string[] {
   const errors: string[] = [];
-  const lines = content.toString("utf8").split("\n");
+  const lines = splitLines(content.toString("utf8"));
   const status = lines.findIndex((line) => line.startsWith("Status:"));
   if (lines[status] !== "Status: implemented")
     errors.push(`${path}: requires \`Status: implemented\``);

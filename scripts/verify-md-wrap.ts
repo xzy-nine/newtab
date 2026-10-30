@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { relative } from "node:path";
 import type { Nodes } from "mdast";
 import { parseMarkdown, visitMarkdown } from "./markdown.ts";
-import { isArchivedAgentNotePath, uniqueRepoFiles } from "./repo-files.ts";
+import { isArchivedAgentNotePath, splitLines, uniqueRepoFiles } from "./repo-files.ts";
 import { docSystem, repoRoot } from "./doc-system.config.ts";
 
 const root = repoRoot;
@@ -23,7 +23,7 @@ interface Violation {
 }
 
 function maskVitePressStructure(source: string): string {
-  const lines = source.split("\n");
+  const lines = splitLines(source);
   if (lines[0] === "---") {
     const closing = lines.indexOf("---", 1);
     if (closing !== -1) {
@@ -45,7 +45,7 @@ function findViolations(absPath: string): Violation[] {
     if (node.type === "paragraph" && node.position) {
       const { start, end } = node.position;
       if (end.line > start.line) {
-        const firstLine = source.split("\n")[start.line - 1] ?? "";
+        const firstLine = splitLines(source)[start.line - 1] ?? "";
         out.push({ file, line: start.line, text: firstLine.trim() });
       }
       // 段落的子节点皆为行内节点，因此不会再嵌套段落。
