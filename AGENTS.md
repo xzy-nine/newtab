@@ -50,3 +50,5 @@ pnpm run zip        # 打包 .zip；zip:edge / zip:firefox 换目标浏览器
 | 扩展清单、入口、权限   | `pnpm run build`，确认 manifest 与入口产物      |
 
 **新增门禁必须自证**：写一个非法用例，看它变红，再回退。只证明它能通过，等于没证明它有用。
+
+提交与推送由 `scripts/run-hooks.mjs` 分级拦截，级别划分见[测试](docs/testing.md#git-hooks)。

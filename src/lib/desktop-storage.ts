@@ -111,7 +111,7 @@ export async function fetchFolderBookmarks(folderId: string): Promise<BookmarkLi
  * Chrome 的书签树根节点 `tree[0]` 的第一个子节点即"书签栏"，
  * 其直接书签子节点就是用户放在栏上的网址。
  */
-export async function fetchBookmarksBarBookmarks(): Promise<BookmarkLike[]> {
+async function fetchBookmarksBarBookmarks(): Promise<BookmarkLike[]> {
   try {
     const tree = await chrome.bookmarks.getTree();
     return bookmarkLikesFromNodes(tree[0]?.children?.[0]?.children);

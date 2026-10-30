@@ -13,3 +13,16 @@
 ## 运行
 
 `pnpm run test:unit` 跑一次性全量（带 `--passWithNoTests`），`pnpm run test:watch` 进入监听模式。全量校验顺序是 lint → compile → test:unit → build；局部改动按根 [AGENTS.md](../AGENTS.md#校验)的表格选择最小充分证据。
+
+<a id="git-hooks"></a>
+
+## git hook
+
+`scripts/run-hooks.mjs` 分级执行门禁，与 `.github/workflows/test.yml` 的阻断点一一对应：
+
+| 级别         | 门禁                                 | 耗时     |
+| ------------ | ------------------------------------ | -------- |
+| `pre-commit` | `oxlint`、`knip`                     | 约 3 秒  |
+| `pre-push`   | `compile`、`verify-all`、`test:unit` | 约 22 秒 |
+
+提交级只跑秒级检查，推送级补齐 CI 的全部阻断点，因此本地通过的东西不会在 CI 才红。级别失败即中止 git 操作，`--no-verify` 可跳过。

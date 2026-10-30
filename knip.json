@@ -1,13 +1,12 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["src/entrypoints/**/*.{ts,tsx}", "scripts/*.ts"],
-  "project": ["src/**/*.{ts,tsx,css}", "scripts/*.ts"],
+  "entry": ["src/entrypoints/**/*.{ts,tsx}", "scripts/*.ts", "scripts/*.mjs"],
+  "project": ["src/**/*.{ts,tsx,css}", "scripts/*.ts", "scripts/*.mjs"],
   "ignoreDependencies": [
     "@semantic-release/commit-analyzer",
     "@semantic-release/github",
     "@semantic-release/npm",
     "@semantic-release/release-notes-generator",
-    "conventional-changelog-conventionalcommits",
-    "lint-staged"
+    "conventional-changelog-conventionalcommits"
   ]
 }

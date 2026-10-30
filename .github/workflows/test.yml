@@ -7,6 +7,11 @@ on:
     paths:
       - "src/**"
       - "public/**"
+      - "scripts/**"
+      - "docs/**"
+      - ".agents/**"
+      - "*.md"
+      - "duplication-baseline.json"
       - ".oxfmtrc.json"
       - ".oxlintrc.json"
       - "package.json"
@@ -21,6 +26,11 @@ on:
     paths:
       - "src/**"
       - "public/**"
+      - "scripts/**"
+      - "docs/**"
+      - ".agents/**"
+      - "*.md"
+      - "duplication-baseline.json"
       - ".oxfmtrc.json"
       - ".oxlintrc.json"
       - "package.json"
@@ -54,6 +64,9 @@ jobs:
       - name: Lint
         run: pnpm exec oxlint .
 
+      - name: Check unused files, exports and dependencies
+        run: pnpm run knip
+
   typecheck:
     runs-on: ubuntu-latest
     needs: lint
@@ -75,9 +88,30 @@ jobs:
       - name: Typecheck
         run: pnpm run compile
 
-  test:
+  gates:
     runs-on: ubuntu-latest
     needs: typecheck
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 11.21.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify documentation, Agent Notes, skills and duplication
+        run: pnpm run verify-all
+
+  test:
+    runs-on: ubuntu-latest
+    needs: gates
     steps:
       - uses: actions/checkout@v6
 
