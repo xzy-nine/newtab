@@ -16,7 +16,7 @@ vi.mock("@/lib/desktop-storage", () => ({
   loadHomeDesktop: () => loadHomeDesktop(),
 }));
 
-const { useHomeDesktop, shortcutFromBookmark } = await import("@/lib/home-desktop-store");
+const { useHomeDesktop } = await import("@/lib/home-desktop-store");
 
 const bookmark = (id: string, url: string, title = id) => ({ id, url, title });
 
@@ -96,19 +96,6 @@ describe("home-desktop-store pinning", () => {
     useHomeDesktop.setState({ items: before });
     useHomeDesktop.getState().unpinBookmarks(["https://zzz.com"]);
     expect(useHomeDesktop.getState().items).toBe(before);
-  });
-
-  it("builds a stable shortcut id from the bookmark id", () => {
-    expect(shortcutFromBookmark(bookmark("bm-1", "https://a.com"))).toMatchObject({
-      id: "shortcut:bm-1",
-      type: "shortcut",
-    });
-  });
-
-  it("falls back to the URL as the shortcut name", () => {
-    expect(shortcutFromBookmark({ id: "a", url: "https://a.com", title: "" })).toMatchObject({
-      name: "https://a.com",
-    });
   });
 });
 

@@ -65,12 +65,20 @@ describe("WeatherWidget 手动修改地点", () => {
     vi.unstubAllGlobals();
   });
 
+  /**
+   * 渲染已存"北京"的磁贴，并等待挂载时的首次拉取完成。
+   * @param onDataChange 可选的数据变更回调。
+   * @returns 渲染结果。
+   */
+  async function renderBeijing(onDataChange?: (data: Record<string, unknown>) => void) {
+    const result = render(<WeatherWidget data={storedData("北京")} onDataChange={onDataChange} />);
+    await waitFor(() => expect(screen.queryByText("27°")).not.toBeNull());
+    return result;
+  }
+
   it("loads the weather for a city the user types and persists it", async () => {
     const changes: Record<string, unknown>[] = [];
-    render(<WeatherWidget data={storedData("北京")} onDataChange={(d) => changes.push(d)} />);
-
-    // 挂载时先按已存城市拉取
-    await waitFor(() => expect(screen.queryByText("27°")).not.toBeNull());
+    await renderBeijing((d) => changes.push(d));
 
     const input = typeCity("上海");
     fireEvent.keyDown(input, { key: "Enter" });
@@ -84,8 +92,7 @@ describe("WeatherWidget 手动修改地点", () => {
   });
 
   it("commits the typed city on blur", async () => {
-    render(<WeatherWidget data={storedData("北京")} />);
-    await waitFor(() => expect(screen.queryByText("27°")).not.toBeNull());
+    await renderBeijing();
 
     const input = typeCity("广州");
     fireEvent.blur(input);
@@ -97,8 +104,7 @@ describe("WeatherWidget 手动修改地点", () => {
   });
 
   it("shows the new city name after a successful change", async () => {
-    render(<WeatherWidget data={storedData("北京")} />);
-    await waitFor(() => expect(screen.queryByText("27°")).not.toBeNull());
+    await renderBeijing();
 
     const input = typeCity("上海");
     fireEvent.keyDown(input, { key: "Enter" });
@@ -109,8 +115,7 @@ describe("WeatherWidget 手动修改地点", () => {
   });
 
   it("abandons the edit on Escape without firing a request", async () => {
-    render(<WeatherWidget data={storedData("北京")} />);
-    await waitFor(() => expect(screen.queryByText("27°")).not.toBeNull());
+    await renderBeijing();
     const before = fetchMock.mock.calls.length;
 
     const input = typeCity("上海");

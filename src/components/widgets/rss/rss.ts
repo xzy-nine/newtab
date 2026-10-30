@@ -324,28 +324,45 @@ function buildEntry(
   };
 }
 
-/** 归一化 RSS 2.0 解析结果。 */
-function normalizeRss(feed: RssFeed.Feed<number | null>, feedUrl: string): RssSnapshot {
-  const items = feed.items ?? [];
+/**
+ * 归一化 RDF（RSS 1.0）解析结果。
+ *
+ * RSS 2.0 与 RDF 的字段结构不同，但快照的组装方式一致：标题/链接/描述兜底、
+ * 条目按 `MAX_ENTRIES` 截断、逐条交给 `buildEntry`。差异只在每个条目取哪个字段，
+ * 由 `toInput` 承担。
+ */
+function normalizeItemFeed<T>(
+  feed: { title?: string; link?: string; description?: string },
+  items: readonly T[],
+  feedUrl: string,
+  toInput: (item: T) => {
+    id?: string;
+    title?: string;
+    link?: string;
+    summary?: string;
+    publishedAt: number | null;
+  },
+): RssSnapshot {
   return {
     title: firstText(feed.title, feed.link, DEFAULT_FEED_URL),
     link: firstText(feed.link),
     description: stripHtmlToText(feed.description),
-    entries: items.slice(0, MAX_ENTRIES).map((item, index) =>
-      buildEntry(
-        index,
-        {
-          id: item.guid?.value,
-          title: item.title,
-          link: item.link,
-          summary: item.description ?? item.content?.encoded ?? item.dc?.descriptions?.[0],
-          publishedAt: toTimestamp(item.pubDate) ?? toTimestamp(item.dc?.dates?.[0]),
-        },
-        feedUrl,
-      ),
-    ),
+    entries: items
+      .slice(0, MAX_ENTRIES)
+      .map((item, index) => buildEntry(index, toInput(item), feedUrl)),
     fetchedAt: Date.now(),
   };
+}
+
+/** 归一化 RSS 2.0 解析结果。 */
+function normalizeRss(feed: RssFeed.Feed<number | null>, feedUrl: string): RssSnapshot {
+  return normalizeItemFeed(feed, feed.items ?? [], feedUrl, (item) => ({
+    id: item.guid?.value,
+    title: item.title,
+    link: item.link,
+    summary: item.description ?? item.content?.encoded ?? item.dc?.descriptions?.[0],
+    publishedAt: toTimestamp(item.pubDate) ?? toTimestamp(item.dc?.dates?.[0]),
+  }));
 }
 
 /** 归一化 Atom 解析结果。 */
@@ -374,26 +391,13 @@ function normalizeAtom(feed: AtomFeed.Feed<number | null>, feedUrl: string): Rss
 
 /** 归一化 RDF（RSS 1.0）解析结果。 */
 function normalizeRdf(feed: RdfFeed.Feed<number | null>, feedUrl: string): RssSnapshot {
-  const items = feed.items ?? [];
-  return {
-    title: firstText(feed.title, feed.link, DEFAULT_FEED_URL),
-    link: firstText(feed.link),
-    description: stripHtmlToText(feed.description),
-    entries: items.slice(0, MAX_ENTRIES).map((item, index) =>
-      buildEntry(
-        index,
-        {
-          id: item.rdf?.about,
-          title: item.title,
-          link: item.link,
-          summary: item.description ?? item.dc?.descriptions?.[0] ?? item.content?.encoded,
-          publishedAt: toTimestamp(item.dc?.dates?.[0]),
-        },
-        feedUrl,
-      ),
-    ),
-    fetchedAt: Date.now(),
-  };
+  return normalizeItemFeed(feed, feed.items ?? [], feedUrl, (item) => ({
+    id: item.rdf?.about,
+    title: item.title,
+    link: item.link,
+    summary: item.description ?? item.dc?.descriptions?.[0] ?? item.content?.encoded,
+    publishedAt: toTimestamp(item.dc?.dates?.[0]),
+  }));
 }
 
 /** 归一化 JSON Feed 解析结果。 */

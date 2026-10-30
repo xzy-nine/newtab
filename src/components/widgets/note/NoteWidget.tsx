@@ -10,6 +10,16 @@ interface NoteWidgetProps {
   containerHeight?: number;
 }
 
+/** 把光标移到编辑器内容末尾，进入编辑时正文接续在末尾而不是开头。 */
+function moveCaretToEnd(el: HTMLElement): void {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
 function htmlToPlainText(html: string): string {
   const tmp = document.createElement("div");
   tmp.innerHTML = html;
@@ -106,12 +116,7 @@ export function NoteWidget({
           if (editorRef.current) {
             editorRef.current.innerHTML = plainTextToHtml(contentRef.current);
             editorRef.current.focus();
-            const range = document.createRange();
-            range.selectNodeContents(editorRef.current);
-            range.collapse(false);
-            const sel = window.getSelection();
-            sel?.removeAllRanges();
-            sel?.addRange(range);
+            moveCaretToEnd(editorRef.current);
           }
         });
       }
@@ -143,12 +148,7 @@ export function NoteWidget({
     if (isEditing && editorRef.current) {
       prevContentRef.current = contentRef.current;
       editorRef.current.innerHTML = plainTextToHtml(contentRef.current);
-      const range = document.createRange();
-      range.selectNodeContents(editorRef.current);
-      range.collapse(false);
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(range);
+      moveCaretToEnd(editorRef.current);
     }
   }, [isEditing]);
 

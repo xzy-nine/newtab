@@ -1,38 +1,11 @@
-import { useEffect } from "react";
-import { useAppSettings } from "@/lib/app-settings-store";
-import { ensureUapiSettingsHydrated } from "@/lib/uapi-settings-store";
-import { useTheme } from "@/hooks/useTheme";
-import { useBackgroundStyle } from "@/components/background/Background";
+import { useShellBootstrap } from "@/hooks/useShellBootstrap";
 import { ClockWidget } from "@/components/clock/ClockWidget";
 import { SearchBox } from "@/components/search/SearchBox";
 import { NotificationCenter } from "@/components/notification/NotificationCenter";
 import { DesktopWorkspace } from "@/components/desktop/DesktopWorkspace";
-import { useWidgetRegistration } from "@/components/widget-system/WidgetSystem";
 
 export function SidePanelHome() {
-  const { hydrate, showClock, glassOpacity, glassBlur } = useAppSettings();
-  useTheme();
-  useWidgetRegistration();
-  const backgroundStyle = useBackgroundStyle();
-
-  useEffect(() => {
-    hydrate();
-    // UAPI 密钥/冷却状态独立存储，需与设置一起就绪
-    void ensureUapiSettingsHydrated();
-  }, [hydrate]);
-
-  // 玻璃效果同步：将透明度与模糊设置应用到 documentElement 的 CSS 变量和 data 属性
-  useEffect(() => {
-    const el = document.documentElement;
-    const isGlassActive = glassBlur > 0 || glassOpacity < 100;
-    if (isGlassActive) {
-      el.setAttribute("data-glass", "");
-    } else {
-      el.removeAttribute("data-glass");
-    }
-    el.style.setProperty("--xb-glass-opacity", `${glassOpacity / 100}`);
-    el.style.setProperty("--xb-glass-blur", `${glassBlur}px`);
-  }, [glassOpacity, glassBlur]);
+  const { showClock, backgroundStyle } = useShellBootstrap();
 
   return (
     <div className="h-full w-full overflow-hidden flex flex-col bg-background text-foreground relative">

@@ -15,7 +15,7 @@ import { FolderPopup } from "@/components/folder/FolderPopup";
 import { WidgetPopupHost } from "@/components/widget-system/WidgetPopupHost";
 import { ContextMenu } from "@/components/ui/context-menu";
 import { MigrationFolderDialog } from "@/components/desktop/MigrationFolderDialog";
-import { BOOKMARK_DRAG_TYPE } from "@/components/dock/DockFolderLayer";
+import { hasBookmarkDragType, readBookmarkDragPayload } from "@/lib/bookmark-drag";
 import { useContextMenu, type ContextMenuItem } from "@/hooks/useContextMenu";
 import { getMessage } from "@/lib/i18n";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -384,21 +384,16 @@ export const HomeDesktop = forwardRef<HomeDesktopHandle, HomeDesktopProps>(funct
       <div
         className={`home-desktop-drop h-full ${compact ? "home-desktop-compact" : ""}`}
         onDragOver={(e) => {
-          if (e.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)) {
+          if (hasBookmarkDragType(e.dataTransfer)) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "copy";
           }
         }}
         onDrop={(e) => {
-          const raw = e.dataTransfer.getData(BOOKMARK_DRAG_TYPE);
-          if (!raw) return;
+          const payload = readBookmarkDragPayload(e.dataTransfer);
+          if (payload.length === 0) return;
           e.preventDefault();
-          try {
-            const payload = JSON.parse(raw) as BookmarkLike[];
-            if (Array.isArray(payload)) pinBookmarks(payload);
-          } catch {
-            /* 忽略非法拖拽数据 */
-          }
+          pinBookmarks(payload);
         }}
       >
         <DesktopGridView

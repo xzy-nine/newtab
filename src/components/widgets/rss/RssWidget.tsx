@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, RefreshCw, Rss } from "lucide-react";
 import { getMessage } from "@/lib/i18n";
+import { useNow } from "@/hooks/useNow";
 import { resolveWidgetSizeMode, widgetPadding } from "@/lib/widget-layout";
 import {
   SUMMARY_TILE_COMPACT_LENGTH,
@@ -59,15 +60,9 @@ export function RssWidget({
   /** 每次请求的序号：丢弃迟到的旧响应，避免覆盖切换订阅后的新状态。 */
   const requestRef = useRef(0);
   /**
-   * 当前时间作为 state（而非渲染期直接调用 Date.now()）。
-   * 每 60 秒刷新一次，让「x 分钟前」这类相对时间自行走动。
+   * 当前时间：让「x 分钟前」这类相对时间自行走动。
    */
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
+  const now = useNow();
 
   const load = useCallback(async () => {
     /*

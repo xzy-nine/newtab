@@ -18,6 +18,7 @@ import {
   HOME_DESKTOP_STORAGE_KEY,
   LEGACY_WIDGETS_STORAGE_KEY,
   PINNED_FOLDERS_STORAGE_KEY,
+  bookmarkLikesFromNodes,
   collectWidgetItems,
   normalizeDesktopItems,
   reconcileFolderItems,
@@ -97,11 +98,7 @@ async function writePinnedFolderIds(ids: string[]): Promise<void> {
 export async function fetchFolderBookmarks(folderId: string): Promise<BookmarkLike[]> {
   try {
     const [folder] = await chrome.bookmarks.getSubTree(folderId);
-    if (folder?.children) {
-      return folder.children
-        .filter((c): c is chrome.bookmarks.BookmarkTreeNode & { url: string } => !!c.url)
-        .map((c) => ({ id: c.id, title: c.title || c.url, url: c.url }));
-    }
+    return bookmarkLikesFromNodes(folder?.children);
   } catch (e) {
     console.error("读取文件夹书签失败:", e);
   }
@@ -117,12 +114,7 @@ export async function fetchFolderBookmarks(folderId: string): Promise<BookmarkLi
 export async function fetchBookmarksBarBookmarks(): Promise<BookmarkLike[]> {
   try {
     const tree = await chrome.bookmarks.getTree();
-    const bar = tree[0]?.children?.[0];
-    if (bar?.children) {
-      return bar.children
-        .filter((c): c is chrome.bookmarks.BookmarkTreeNode & { url: string } => !!c.url)
-        .map((c) => ({ id: c.id, title: c.title || c.url, url: c.url }));
-    }
+    return bookmarkLikesFromNodes(tree[0]?.children?.[0]?.children);
   } catch (e) {
     console.error("读取收藏夹栏失败:", e);
   }

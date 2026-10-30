@@ -56,48 +56,54 @@ export function CounterWidget({
     }, 1000);
   }, []);
 
+  /** 按方向累加计数并回写数据。长按与加速定时器共用同一套累加语义。 */
+  const applyDelta = useCallback(
+    (delta: number) => {
+      setCount((prev) => {
+        const next = prev + delta;
+        if (onDataChange) onDataChange({ count: next, title });
+        return next;
+      });
+    },
+    [onDataChange, title],
+  );
+
+  /** 以当前长按速度重启累加定时器；速度被加速后重新调用即可生效。 */
+  const restartLongPressInterval = useCallback(
+    (delta: number) => {
+      if (longPressInterval.current) clearInterval(longPressInterval.current);
+      longPressInterval.current = setInterval(() => {
+        applyDelta(delta);
+      }, longPressSpeed.current);
+    },
+    [applyDelta],
+  );
+
   const startLongPress = useCallback(
     (delta: number) => {
       pressTimer.current = setTimeout(() => {
         isLongPressing.current = true;
-        longPressInterval.current = setInterval(() => {
-          setCount((prev) => {
-            const next = prev + delta;
-            if (onDataChange) onDataChange({ count: next, title });
-            return next;
-          });
-        }, longPressSpeed.current);
+        restartLongPressInterval(delta);
         speedupTimer.current = setTimeout(function speedup() {
           if (longPressSpeed.current > 50) {
             longPressSpeed.current = Math.max(50, longPressSpeed.current - 30);
-            if (longPressInterval.current) clearInterval(longPressInterval.current);
-            longPressInterval.current = setInterval(() => {
-              setCount((prev) => {
-                const next = prev + delta;
-                if (onDataChange) onDataChange({ count: next, title });
-                return next;
-              });
-            }, longPressSpeed.current);
+            restartLongPressInterval(delta);
             speedupTimer.current = setTimeout(speedup, 1000);
           }
         }, 1000);
       }, 500);
     },
-    [onDataChange, title],
+    [restartLongPressInterval],
   );
 
   const handlePointerDown = useCallback(
     (delta: number) => (e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      setCount((prev) => {
-        const next = prev + delta;
-        if (onDataChange) onDataChange({ count: next, title });
-        return next;
-      });
+      applyDelta(delta);
       startLongPress(delta);
     },
-    [startLongPress, onDataChange, title],
+    [applyDelta, startLongPress],
   );
 
   const handlePointerUp = useCallback(() => {

@@ -23,6 +23,7 @@ const gates: Gate[] = [
   { script: "verify-md-wrap", purpose: "one physical line per paragraph" },
   { script: "verify-md-links", purpose: "relative links and fragments resolve" },
   { script: "verify-doc-budgets", purpose: "standing docs stay within their word ceilings" },
+  { script: "verify-duplication", purpose: "src/ duplication stays within the accepted baseline" },
   {
     script: "verify-agent-note-classification",
     purpose: "Agent Note lifecycle/class paths and filenames",

@@ -272,11 +272,48 @@ export function normalizeDesktopItems(raw: unknown): DesktopItem[] {
   return items;
 }
 
+/** 书签树节点中本模块用到的字段。 */
+interface BookmarkTreeNodeLike {
+  id: string;
+  title: string;
+  url?: string;
+}
+
+/**
+ * 从书签树节点中挑出直接书签（仅一层，不含子文件夹）。
+ * @param nodes 书签树节点的子节点列表。
+ * @returns 书签列表；无 url 的文件夹节点被丢弃。
+ */
+export function bookmarkLikesFromNodes(
+  nodes: readonly BookmarkTreeNodeLike[] | undefined,
+): BookmarkLike[] {
+  if (!nodes) return [];
+  const result: BookmarkLike[] = [];
+  for (const node of nodes) {
+    if (!node.url) continue;
+    result.push({ id: node.id, title: node.title || node.url, url: node.url });
+  }
+  return result;
+}
+
+/** 由书签构造桌面快捷方式。 */
+function shortcutFromBookmark(bookmark: BookmarkLike): ShortcutItem {
+  return {
+    id: `shortcut:${bookmark.id}`,
+    type: "shortcut",
+    name: bookmark.title || bookmark.url || DEFAULT_ITEM_NAME,
+    url: bookmark.url,
+    color: DEFAULT_SHORTCUT_COLOR,
+    w: 1,
+    h: 1,
+  };
+}
+
 /**
  * 由书签列表构造桌面快捷方式（按 URL 去重，先出现的优先）。
  *
  * 迁移时把某个文件夹或收藏夹栏的书签"释放"到主桌面用此函数；
- * 运行时固定书签走 store 的 `pinBookmarks`（还会对已存在项去重）。
+ * 运行时固定书签走 `mergeBookmarkShortcuts`（还会对已存在项去重）。
  */
 export function shortcutsFromBookmarks(bookmarks: BookmarkLike[]): ShortcutItem[] {
   const seen = new Set<string>();
@@ -284,17 +321,31 @@ export function shortcutsFromBookmarks(bookmarks: BookmarkLike[]): ShortcutItem[
   for (const bookmark of bookmarks) {
     if (!bookmark.url || seen.has(bookmark.url)) continue;
     seen.add(bookmark.url);
-    result.push({
-      id: `shortcut:${bookmark.id}`,
-      type: "shortcut",
-      name: bookmark.title || bookmark.url || DEFAULT_ITEM_NAME,
-      url: bookmark.url,
-      color: DEFAULT_SHORTCUT_COLOR,
-      w: 1,
-      h: 1,
-    });
+    result.push(shortcutFromBookmark(bookmark));
   }
   return result;
+}
+
+/**
+ * 把书签并入已有的快捷方式列表：跳过无 url、已固定与本次重复的 URL。
+ * @param bookmarks 待固定的书签。
+ * @param existing 现有桌面项目，用于判断 URL 是否已固定。
+ * @returns 需要追加的快捷方式，按输入顺序；全部跳过时为空数组。
+ */
+export function mergeBookmarkShortcuts(
+  bookmarks: readonly BookmarkLike[],
+  existing: readonly DesktopItem[],
+): ShortcutItem[] {
+  const pinnedUrls = new Set(
+    existing.filter((it): it is ShortcutItem => it.type === "shortcut").map((it) => it.url),
+  );
+  const additions: ShortcutItem[] = [];
+  for (const bookmark of bookmarks) {
+    if (!bookmark.url || pinnedUrls.has(bookmark.url)) continue;
+    pinnedUrls.add(bookmark.url);
+    additions.push(shortcutFromBookmark(bookmark));
+  }
+  return additions;
 }
 
 /**

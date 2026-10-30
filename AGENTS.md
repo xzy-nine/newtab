@@ -20,7 +20,7 @@ pnpm run compile    # 仅类型检查
 pnpm run test:unit  # 单元测试（Vitest + jsdom）
 pnpm run knip       # 未使用文件、导出与依赖检查
 pnpm run lint       # oxfmt 格式化 + oxlint 修复
-pnpm run verify-all # 全部门禁（文档、Agent Note、技能、槽位）
+pnpm run verify-all # 全部门禁（文档、Agent Note、技能、槽位、重复代码）
 pnpm run zip        # 打包 .zip；zip:edge / zip:firefox 换目标浏览器
 ```
 

@@ -72,6 +72,20 @@ function provider(overrides: Partial<AIProvider> = {}): AIProvider {
 
 const userMessage = (content: string): AIMessage => ({ role: "user", content, timestamp: 1 });
 
+/**
+ * 以默认模型参数发起一次流式对话。
+ * @param fetch 假 fetch 实现。
+ * @returns 流式对话的 promise。
+ */
+function chatWith(fetch: typeof globalThis.fetch) {
+  return streamChat({
+    model: resolveModel(provider(), undefined, { fetch }),
+    provider: provider(),
+    messages: [userMessage("hi")],
+    systemPrompt: "",
+  });
+}
+
 describe("streamChat", () => {
   it("accumulates text and reasoning deltas and reports them incrementally", async () => {
     const { fetch } = captureFetch(() =>
@@ -215,14 +229,7 @@ describe("streamChat", () => {
         }),
     );
 
-    await expect(
-      streamChat({
-        model: resolveModel(provider(), undefined, { fetch }),
-        provider: provider(),
-        messages: [userMessage("hi")],
-        systemPrompt: "",
-      }),
-    ).rejects.toThrow(/API密钥认证失败.*Invalid API key/s);
+    await expect(chatWith(fetch)).rejects.toThrow(/API密钥认证失败.*Invalid API key/s);
   });
 
   it("surfaces a 402 balance error", async () => {
@@ -230,14 +237,7 @@ describe("streamChat", () => {
       () => new Response(JSON.stringify({ error: { message: "no funds" } }), { status: 402 }),
     );
 
-    await expect(
-      streamChat({
-        model: resolveModel(provider(), undefined, { fetch }),
-        provider: provider(),
-        messages: [userMessage("hi")],
-        systemPrompt: "",
-      }),
-    ).rejects.toThrow(/余额不足/);
+    await expect(chatWith(fetch)).rejects.toThrow(/余额不足/);
   });
 
   it("propagates an in-stream error part", async () => {
@@ -245,14 +245,7 @@ describe("streamChat", () => {
       sseResponse([JSON.stringify({ error: { message: "模型内部错误" } })]),
     );
 
-    await expect(
-      streamChat({
-        model: resolveModel(provider(), undefined, { fetch }),
-        provider: provider(),
-        messages: [userMessage("hi")],
-        systemPrompt: "",
-      }),
-    ).rejects.toThrow(/模型内部错误/);
+    await expect(chatWith(fetch)).rejects.toThrow(/模型内部错误/);
   });
 
   it("rejects when the response stream ends without a finish reason", async () => {
@@ -261,14 +254,7 @@ describe("streamChat", () => {
       sseResponse([JSON.stringify({ choices: [{ delta: { content: "partial" } }] })]),
     );
 
-    await expect(
-      streamChat({
-        model: resolveModel(provider(), undefined, { fetch }),
-        provider: provider(),
-        messages: [userMessage("hi")],
-        systemPrompt: "",
-      }),
-    ).rejects.toThrow(/finish reason/i);
+    await expect(chatWith(fetch)).rejects.toThrow(/finish reason/i);
   });
 });
 

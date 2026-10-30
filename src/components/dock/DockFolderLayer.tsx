@@ -8,6 +8,11 @@ import { useFolderBookmarks } from "@/hooks/useFolderBookmarks";
 import { useHomeDesktop } from "@/lib/home-desktop-store";
 import { getMessage } from "@/lib/i18n";
 import { openUrl } from "@/lib/open-url";
+import {
+  BOOKMARK_DRAG_TYPE,
+  hasBookmarkDragType,
+  readBookmarkDragPayload,
+} from "@/lib/bookmark-drag";
 import type { BookmarkLike } from "@/lib/desktop-items";
 
 export interface DockFolderLayerProps {
@@ -21,9 +26,6 @@ export interface DockFolderLayerProps {
   /** 初始选中的文件夹（上次查看的那个）。 */
   initialFolderId?: string | null;
 }
-
-/** 拖拽固定到主桌面时使用的 dataTransfer 类型。 */
-export const BOOKMARK_DRAG_TYPE = "application/x-newtab-bookmark";
 
 /**
  * Dock 文件夹视图。
@@ -175,15 +177,10 @@ export function DockFolderLayer({
   /** 拖到浮层外部 = 拖到主桌面：固定这些书签。 */
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
-      const raw = e.dataTransfer.getData(BOOKMARK_DRAG_TYPE);
-      if (!raw) return;
+      const payload = readBookmarkDragPayload(e.dataTransfer);
+      if (payload.length === 0) return;
       e.preventDefault();
-      try {
-        const payload = JSON.parse(raw) as BookmarkLike[];
-        if (Array.isArray(payload) && payload.length > 0) pinBookmarks(payload);
-      } catch {
-        /* 忽略非法拖拽数据 */
-      }
+      pinBookmarks(payload);
     },
     [pinBookmarks],
   );
@@ -240,7 +237,7 @@ export function DockFolderLayer({
         className="fixed inset-0 z-[60]"
         onClick={onClose}
         onDragOver={(e) => {
-          if (e.dataTransfer.types.includes(BOOKMARK_DRAG_TYPE)) {
+          if (hasBookmarkDragType(e.dataTransfer)) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "copy";
           }
